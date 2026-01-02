@@ -1,0 +1,35 @@
+{
+    "name": "2026 Multi-Agent Lab",
+    "image": "mcr.microsoft.com/devcontainers/python:3.12-bookworm",
+    "features": {
+        // 🛡️ The Bridge: Allows Cursor/SSH to connect to the cloud
+        "ghcr.io/devcontainers/features/sshd:1": {
+            "version": "latest"
+        },
+        // 📦 Node.js: Needed for building GUIs
+        "ghcr.io/devcontainers/features/node:1": {
+            "version": "20"
+        },
+        // 🐳 Docker-in-Docker: In case you want to test containerized agents
+        "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "ms-azuretools.vscode-docker",
+                "tamasfe.even-better-toml",
+                "christian-kohler.path-intellisense"
+            ],
+            "settings": {
+                "python.defaultInterpreterPath": "/usr/local/bin/python",
+                "editor.formatOnSave": true
+            }
+        }
+    },
+    // 🚀 Automation: Runs the first time the lab is built
+    "postCreateCommand": "pip install --upgrade pip && pip install crewai langgraph langchain pydantic-ai",
+    
+    "remoteUser": "vscode"
+}
