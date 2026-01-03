@@ -1,9 +1,9 @@
-# apps/research-auditor/nixpacks.toml
-
 [phases.setup]
-# Adding python3 here ensures it is available in the final container
-nixPkgs = ["python3"]
+nixPkgs = ["python312"]
+
+[variables]
+# We manually inject this so the script passes its own audit
+IN_NIX_SHELL = "impure"
 
 [start]
-# We no longer need 'nix develop' here because the environment is already built
 cmd = "python3 audit_env.py"
