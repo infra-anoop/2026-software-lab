@@ -1,5 +1,9 @@
+# apps/research-auditor/nixpacks.toml
+
 [phases.setup]
-nixPkgs = ["nix", "python3"]
+# Adding python3 here ensures it is available in the final container
+nixPkgs = ["python3"]
 
 [start]
-cmd = "nix develop --command python3 audit_env.py"
+# We no longer need 'nix develop' here because the environment is already built
+cmd = "python3 audit_env.py"
