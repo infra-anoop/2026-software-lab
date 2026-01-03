@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["python3"]
+nixPkgs = ["nix", "python3"]
 
 [start]
-cmd = "python3 audit_env.py"
+cmd = "nix develop --command python3 audit_env.py"
