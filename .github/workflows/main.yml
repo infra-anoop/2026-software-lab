@@ -25,5 +25,5 @@ jobs:
         run: nix build .
 
       - name: Deploy to Railway
-        # We hand the token directly to the CLI and tell it which project to target
-        run: npx @railway/cli up --service research-auditor -d --token ${{ secrets.RAILWAY_TOKEN }}
+        # We manually inject the token right before the command
+        run: RAILWAY_TOKEN=${{ secrets.RAILWAY_TOKEN }} npx @railway/cli up --service research-auditor -d
