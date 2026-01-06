@@ -24,6 +24,4 @@ jobs:
       - name: Build Application
         run: nix build .
 
-      - name: Deploy to Railway
-        # We manually inject the token right before the command
-        run: RAILWAY_TOKEN=${{ secrets.RAILWAY_TOKEN }} npx @railway/cli up --service research-auditor -d
+      
