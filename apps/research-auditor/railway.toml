@@ -4,5 +4,5 @@ builder = "RAILPACK"
 
 [deploy]
 startCommand = "python3 audit_env.py"
-healthcheckPath = "/"
+#checkPath = "/"
 restartPolicyType = "ON_FAILURE"
