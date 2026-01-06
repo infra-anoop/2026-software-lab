@@ -1,9 +1,0 @@
-[phases.setup]
-nixPkgs = ["python312"]
-
-[variables]
-# We manually inject this so the script passes its own audit
-IN_NIX_SHELL = "impure"
-
-[start]
-cmd = "python3 audit_env.py"
