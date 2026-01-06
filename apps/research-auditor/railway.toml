@@ -3,6 +3,6 @@ builder = "RAILPACK"
 
 
 [deploy]
-startCommand = "python3 apps/research-auditor/audit_env.py"
+startCommand = "python3 audit_env.py"
 healthcheckPath = "/"
 restartPolicyType = "ON_FAILURE"
