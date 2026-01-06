@@ -1,17 +1,6 @@
-# File location: /apps/research-auditor/railway.toml
-#[build]
-#builder = "RAILPACK"
-#buildCommand = "npm run build"
-#watchPatterns = ["/apps/api/**", "/packages/shared/**"]
-
-#[deploy]
-#startCommand = "node dist/index.js"
-#healthcheckPath = "/api/health"
-#restartPolicyType = "ON_FAILURE"
-
 [build]
 builder = "RAILPACK"
-pythonVersion = "3.12"
+
 
 [deploy]
 startCommand = "python3 apps/research-auditor/audit_env.py"
