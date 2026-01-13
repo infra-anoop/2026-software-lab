@@ -1,45 +1,13 @@
 [build]
 builder = "RAILPACK"
-
-
-# --- Build Control Knobs ---
-
-# Watch paths: Only trigger a new deploy if files in these paths change
 watchPatterns = ["apps/research-auditor/**", "packages/shared/**"]
-
-# Install specific versions of languages (using mise for Railpack)
 misePackages = ["python@3.12.4"]
-
-# Add system-level Linux packages via Nix
-# nixpkgs = ["postgresql", "ffmpeg", "gcc"]
-
-# Custom build command if you need more than just 'pip install'
-# buildCommand = "pip install -r requirements.txt && python setup_extra.py"
-
 
 [deploy]
 startCommand = "python3 audit_env.py"
-#checkPath = "/"
 restartPolicyType = "ON_FAILURE"
-
-# --- Runtime Control Knobs ---
-
-# Pre-deploy: Run this (e.g., migrations) before starting the new version
-# preDeployCommand = "python manage.py migrate"
-
-# Healthchecks: Guarantee zero-downtime by checking this endpoint
-# healthcheckPath = "/health"
-# healthcheckTimeout = 120 # Seconds to wait for app to be ready
-
-# Restart Policy: 'always', 'on_failure' (default), or 'never'
-# restartPolicyType = "on_failure"
-# restartPolicyMaxRetries = 10 # Only for paid plans or specific policies
-
-#Deployment Teardown: Control how long the old version stays live during a new deploy ---
-overlapSeconds = 30 # Time the old and new deploys overlap
-
+overlapSeconds = 30
 
 # --- Environment-Specific Overrides ---
-# Great for monorepos with different settings for production vs. staging
 # [environments.production.deploy]
 # startCommand = "gunicorn app:app"
