@@ -1,0 +1,42 @@
+name: "Ship Container to GHCR"
+
+on:
+  push:
+    branches:
+      - feat/milestone-3-registry
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write  # Crucial: Allows the action to upload to GHCR
+      contents: read
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v25
+        with:
+          nix_path: nixpkgs=channel:nixos-23.11
+
+      - name: Build Container with Nix
+        run: nix build .#container
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }} # Built-in secret, no setup needed
+
+      - name: Load and Tag Image
+        run: |
+          # Nix outputs a symlink called 'result'. We load that into docker.
+          docker load < result
+          # Tag it so GHCR knows where it belongs
+          docker tag research-auditor:latest ghcr.io/${{ github.repository_owner }}/research-auditor:latest
+          # Push it to the cloud
+          docker push ghcr.io/${{ github.repository_owner }}/research-auditor:latest
