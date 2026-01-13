@@ -1,6 +1,7 @@
 [build]
 builder = "RAILPACK"
 
+
 # --- Build Control Knobs ---
 
 # Watch paths: Only trigger a new deploy if files in these paths change
@@ -14,9 +15,6 @@ misePackages = ["python@3.12.4"]
 
 # Custom build command if you need more than just 'pip install'
 # buildCommand = "pip install -r requirements.txt && python setup_extra.py"
-
-[build.env]
-RAILPACK_PYTHON_VERSION = "3.12.4"
 
 
 [deploy]
@@ -37,7 +35,7 @@ restartPolicyType = "ON_FAILURE"
 # restartPolicyType = "on_failure"
 # restartPolicyMaxRetries = 10 # Only for paid plans or specific policies
 
-#Deployment Teardown: Control how long the old version stays live during a new deploy
+#Deployment Teardown: Control how long the old version stays live during a new deploy ---
 overlapSeconds = 30 # Time the old and new deploys overlap
 
 
