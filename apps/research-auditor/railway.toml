@@ -1,12 +1,11 @@
 [build]
 builder = "RAILPACK"
 watchPatterns = ["apps/research-auditor/**", "packages/shared/**"]
-misePackages = ["python@3.12.4"]
 
 [deploy]
 startCommand = "python3 audit_env.py"
 restartPolicyType = "ON_FAILURE"
-overlapSeconds = 30
+#overlapSeconds = 30
 
 # --- Environment-Specific Overrides ---
 # [environments.production.deploy]
