@@ -1,9 +1,21 @@
 import os
+import sys
 from dotenv import load_dotenv
 from pydantic_ai import Agent
 from models import ResearchOutput
 
+# We no longer strictly need load_dotenv() if using platform secrets,
+# but keeping it doesn't hurt for local fallback.
+from dotenv import load_dotenv
 load_dotenv()
+
+
+api_key = os.getenv("OPENAI_API_KEY")
+
+if not api_key:
+    print("❌ ERROR: OPENAI_API_KEY not found in environment variables.")
+    sys.exit(1)
+
 
 # We define the agent and tell it exactly what its "Result Type" must be.
 researcher_agent = Agent(

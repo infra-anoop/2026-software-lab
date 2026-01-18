@@ -1,9 +1,21 @@
 import os
+import sys
 from dotenv import load_dotenv
 from pydantic_ai import Agent
 from models import ResearchOutput, AuditFeedback
 
+
+# We no longer strictly need load_dotenv() if using platform secrets,
+# but keeping it doesn't hurt for local fallback.
+from dotenv import load_dotenv
 load_dotenv()
+
+api_key = os.getenv("OPENAI_API_KEY")
+
+if not api_key:
+    print("❌ ERROR: OPENAI_API_KEY not found in environment variables.")
+    sys.exit(1)
+
 
 # The Critic Agent: Bound to the AuditFeedback model
 critic_agent = Agent(
