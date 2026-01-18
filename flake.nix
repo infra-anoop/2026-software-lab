@@ -3,7 +3,8 @@
   description = "2026 Research Auditor Industrial Pipeline";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.11";
+    # nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
@@ -14,9 +15,13 @@
         pkgs = import nixpkgs { inherit system; };
         
         # Define our Python environment once so it's consistent everywhere
-        pythonEnv = pkgs.python312.withPackages (ps: with ps; [
-          requests
+        pythonEnv = pkgs.python312.withPackages (ps: [
+          ps.requests
           # Add more libraries here as we go
+          ps.python-dotenv
+          ps.pydantic
+          ps.pydantic-ai-slim
+          ps.openai
         ]);
       in
       {
