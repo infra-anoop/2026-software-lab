@@ -1,0 +1,22 @@
+[project]
+name = "research-auditor-industrial"
+version = "0.1.0"
+description = "Stable multi-agent research environment with industrial pipeline"
+requires-python = ">=3.12"
+
+# Mapped directly from your original flake + research recommendations
+dependencies = [
+    "requests>=2.31.0",
+    "python-dotenv>=1.0.1",
+    #    "pydantic==2.11.3", 
+    "pydantic==2.11.9",         # UPDATED: Satisfies CrewAI 1.8.0 but avoids 2.12+        # PINNED for stability vs v2.12
+    "pydantic-ai-slim>=0.0.14",
+    "openai>=1.58.1",
+    "crewai==1.8.0",            # From Research
+    "langgraph==1.0.1",         # From Research
+    "supabase==2.11.0",         # From Research
+]
+
+[tool.uv]
+managed = true
+package = false
