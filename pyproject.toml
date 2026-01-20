@@ -8,13 +8,13 @@ requires-python = ">=3.12"
 dependencies = [
     "requests>=2.31.0",
     "python-dotenv>=1.0.1",
-    #    "pydantic==2.11.3", 
+    #    "pydantic==2.11.3",
     "pydantic==2.11.9",         # UPDATED: Satisfies CrewAI 1.8.0 but avoids 2.12+        # PINNED for stability vs v2.12
-    "pydantic-ai-slim>=0.0.14",
-    "openai>=1.58.1",
+    "pydantic-ai-slim[openai]>=0.0.14",
     "crewai==1.8.0",            # From Research
-    "langgraph==1.0.1",         # From Research
+    "langgraph>=1.0.6,<1.1",         # From Research
     "supabase==2.11.0",         # From Research
+    "logfire>=3.18,<3.24.1",
 ]
 
 [tool.uv]

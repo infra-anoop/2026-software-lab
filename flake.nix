@@ -23,6 +23,7 @@
         run-app-script = pkgs.writeShellScriptBin "run-app" ''
           export PATH="${pkgs.python312Full}/bin:${pkgs.uv}/bin:$PATH"
           # --frozen ensures we use the exact uv.lock without trying to update it
+          # Test 1. I want to check if this change shows up in browser
           exec uv run --frozen python3 /apps/research-auditor/audit_env.py
         '';
       in
@@ -37,6 +38,7 @@
               uv sync --quiet
               source .venv/bin/activate
             fi
+            
             echo "Research Auditor Lab Environment (Stable) Loaded"
           '';
         };
