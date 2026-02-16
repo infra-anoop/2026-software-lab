@@ -27,13 +27,17 @@
                 "christian-kohler.path-intellisense"
             ],
             "settings": {
-                "python.defaultInterpreterPath": "/usr/local/bin/python",
+                //"python.defaultInterpreterPath": "/usr/local/bin/python",
+                "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+
                 "editor.formatOnSave": true
             }
         }
     },
     // 🚀 Automation: Runs the first time the lab is built
-    "postCreateCommand": "pip install --upgrade pip && pip install crewai langgraph langchain pydantic-ai",
+    //"postCreateCommand": "pip install --upgrade pip && pip install crewai langgraph langchain pydantic-ai",
+    "postCreateCommand": "nix develop -c bash -lc 'uv sync --quiet'",
+
     
     "remoteUser": "vscode"
 }
