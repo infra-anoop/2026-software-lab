@@ -2,19 +2,26 @@
 name = "research-auditor-industrial"
 version = "0.1.0"
 description = "Stable multi-agent research environment with industrial pipeline"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.13"
 
-# Mapped directly from your original flake + research recommendations
 dependencies = [
-    "requests>=2.31.0",
-    "python-dotenv>=1.0.1",
-    #    "pydantic==2.11.3",
-    "pydantic==2.11.9",         # UPDATED: Satisfies CrewAI 1.8.0 but avoids 2.12+        # PINNED for stability vs v2.12
-    "pydantic-ai-slim[openai]>=0.0.14",
-    "crewai==1.8.0",            # From Research
-    "langgraph>=1.0.6,<1.1",         # From Research
-    "supabase==2.11.0",         # From Research
-    "logfire>=3.18,<3.24.1",
+  "requests>=2.31,<3",
+  "python-dotenv>=1,<2",
+
+  # Keep your deliberate pydantic ceiling if you know 2.12 breaks your stack:
+  "pydantic>=2.11.9,<2.12",
+
+  # pydantic-ai is major 1 now; cap at next major:
+  "pydantic-ai-slim[openai]>=1.59,<2",
+
+
+  "langgraph>=1.0.6,<1.1",
+
+  "supabase>=2.28,<3",
+
+  # If you’re okay moving with logfire’s current major:
+  "logfire>=4.24,<5",
+
 ]
 
 [tool.uv]

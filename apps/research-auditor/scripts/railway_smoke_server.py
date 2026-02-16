@@ -1,3 +1,8 @@
+"""
+Legacy smoke server used to validate Railway PORT + 0.0.0.0 binding.
+Not used by the main application runtime.
+"""
+
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import os
 

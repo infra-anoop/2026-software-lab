@@ -2,7 +2,7 @@ import os
 import sys
 from dotenv import load_dotenv
 from pydantic_ai import Agent
-from models import ResearchOutput, AuditFeedback
+from app.agents.models import ResearchOutput, AuditFeedback
 
 
 # We no longer strictly need load_dotenv() if using platform secrets,
@@ -20,7 +20,7 @@ if not api_key:
 # The Critic Agent: Bound to the AuditFeedback model
 critic_agent = Agent(
     'openai:gpt-4o',
-    result_type=AuditFeedback,
+    output_type=AuditFeedback,
     system_prompt=(
         "You are an Industrial Auditor. You receive structured research "
         "and must verify if the findings are technically sound and well-supported "
@@ -35,4 +35,4 @@ async def run_audit(research_data: ResearchOutput):
     result = await critic_agent.run(
         f"Review this research: {research_data.model_dump_json()}"
     )
-    return result.data
+    return result.output

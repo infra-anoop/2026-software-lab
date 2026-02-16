@@ -2,7 +2,7 @@ import os
 import sys
 from dotenv import load_dotenv
 from pydantic_ai import Agent
-from models import ResearchOutput
+from app.agents.models import ResearchOutput
 
 # We no longer strictly need load_dotenv() if using platform secrets,
 # but keeping it doesn't hurt for local fallback.
@@ -20,7 +20,7 @@ if not api_key:
 # We define the agent and tell it exactly what its "Result Type" must be.
 researcher_agent = Agent(
     'openai:gpt-4o',  # Or your preferred model
-    result_type=ResearchOutput,
+    output_type=ResearchOutput,
     system_prompt=(
         "You are a Senior Industrial Researcher. Your job is to extract "
         "technical facts from raw text. You must provide quotes for every claim."
@@ -33,4 +33,4 @@ researcher_agent = Agent(
 async def run_research(text_input: str):
     result = await researcher_agent.run(text_input)
     # The result.data is now a validated ResearchOutput object, NOT a string!
-    return result.data
+    return result.output
