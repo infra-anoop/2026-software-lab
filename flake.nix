@@ -23,8 +23,8 @@
         run-app-script = pkgs.writeShellScriptBin "run-app" ''
           export PATH="${pkgs.python312Full}/bin:${pkgs.uv}/bin:$PATH"
           # --frozen ensures we use the exact uv.lock without trying to update it
-          # Test 1. I want to check if this change shows up in browser
-          exec uv run --frozen python3 /apps/research-auditor/audit_env.py
+          cd /apps/research-auditor
+          exec uv run --frozen python3 -m app.main
         '';
       in
       {
@@ -49,7 +49,8 @@
           runtimeInputs = runtimeDeps;
           text = ''
             # Runs the app using the locked dependencies
-            exec uv run --frozen python3 apps/research-auditor/app.py "$@"
+            cd apps/research-auditor
+            exec uv run --frozen python3 -m app.main "$@"
           '';
         };
 
@@ -69,7 +70,8 @@
             # THE CARGO: Copying local files into the container
             (pkgs.runCommand "app-src" {} ''
               mkdir -p $out/apps/research-auditor
-              cp ${./apps/research-auditor/audit_env.py} $out/apps/research-auditor/audit_env.py
+              # Copy entire app directory structure
+              cp -r ${./apps/research-auditor/app} $out/apps/research-auditor/
               # MUST include these for 'uv run' to function in the container
               cp ${./pyproject.toml} $out/pyproject.toml
               cp ${./uv.lock} $out/uv.lock
@@ -95,7 +97,10 @@
           # Sandbox setup: uv requires the project files to validate the run
           cp ${./pyproject.toml} .
           cp ${./uv.lock} .
-          uv run --frozen python3 ${./apps/research-auditor/audit_env.py}
+          mkdir -p apps/research-auditor
+          cp -r ${./apps/research-auditor/app} apps/research-auditor/
+          cd apps/research-auditor
+          uv run --frozen python3 -m app.main
           touch $out
         '';
       }
