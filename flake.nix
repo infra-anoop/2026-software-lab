@@ -33,12 +33,11 @@
           buildInputs = runtimeDeps;
           shellHook = ''
             export IN_NIX_SHELL=impure
-            # Initialize uv environment if pyproject.toml exists
-            if [ -f "pyproject.toml" ]; then 
-              uv sync --quiet
-              source .venv/bin/activate
+            # Per-app venvs: sync default app so "nix develop" gives a ready env
+            if [ -f "apps/research-auditor/pyproject.toml" ]; then
+              (cd apps/research-auditor && uv sync --quiet)
+              source apps/research-auditor/.venv/bin/activate
             fi
-            
             echo "Research Auditor Lab Environment (Stable) Loaded"
           '';
         };
@@ -103,7 +102,7 @@
           mkdir -p apps/research-auditor
           cp -r ${./apps/research-auditor/app} apps/research-auditor/
           cd apps/research-auditor
-          uv run --frozen python3 -m app.entrypoints.http.py
+          uv run --frozen python3 -m app.entrypoints.http
           touch $out
         '';
       }

@@ -36,7 +36,7 @@
     },
     // 🚀 Automation: Runs the first time the lab is built
     //"postCreateCommand": "pip install --upgrade pip && pip install crewai langgraph langchain pydantic-ai",
-    "postCreateCommand": "nix develop -c bash -lc 'uv sync --quiet'",
+    "postCreateCommand": "nix develop -c bash -lc 'cd apps/research-auditor && uv sync --quiet'",
 
     
     "remoteUser": "vscode"
