@@ -1,0 +1,39 @@
+name: "Post-Ship Smoke Test (Railway)"
+
+on:
+  workflow_run:
+    workflows: ["Ship Container to GHCR"]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    # Only run if the ship workflow succeeded
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Smoke test Railway endpoint
+        env:
+          RAILWAY_URL: ${{ secrets.RAILWAY_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${RAILWAY_URL:-}" ]]; then
+            echo "ERROR: RAILWAY_URL secret is not set."
+            exit 1
+          fi
+
+          echo "Testing: ${RAILWAY_URL}"
+
+          # Try /health first; fall back to /
+          curl -fsS -m 20 "${RAILWAY_URL}/health" || curl -fsS -m 20 "${RAILWAY_URL}/"
+
+          echo "Smoke test OK"

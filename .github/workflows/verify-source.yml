@@ -1,27 +1,34 @@
-name: "Build Test and Deploy"
+name: "Verify Source (Nix)"
 
-# This section tells GitHub WHEN to run
 on:
+  pull_request:
   push:
     branches:
       - main
-  workflow_dispatch: # This adds a manual "Run" button in GitHub as a backup
+  workflow_dispatch:
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  industrial-pipeline:
+  verify:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Install Nix
         uses: cachix/install-nix-action@v25
         with:
           nix_path: nixpkgs=channel:nixos-23.11
 
-      - name: Run Nix Checks
+      - name: Nix flake check
         run: nix flake check
 
-      - name: Build Application
-        run: nix build .
-
-      
+      # "Buildability check" for what you ship (does not publish)
+      - name: Build container derivation
+        run: nix build .#container

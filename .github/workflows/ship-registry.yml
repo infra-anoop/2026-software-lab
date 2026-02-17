@@ -1,24 +1,24 @@
 name: "Ship Container to GHCR"
 
-
 on:
   push:
-    branches:
-      - main
-      - "milestone-*"
-      - "feat/*"
+    tags:
+      - "v*"
   workflow_dispatch:
 
+concurrency:
+  group: ship-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
-      packages: write  # Crucial: Allows the action to upload to GHCR
       contents: read
-    
+      packages: write
+
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install Nix
@@ -26,21 +26,35 @@ jobs:
         with:
           nix_path: nixpkgs=channel:nixos-23.11
 
-      - name: Build Container with Nix
+      - name: Build container with Nix
         run: nix build .#container
 
-      - name: Log in to GHCR
+      - name: Login to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }} # Built-in secret, no setup needed
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Load and Tag Image
+      - name: Load, tag, and push
+        shell: bash
         run: |
-          # Nix outputs a symlink called 'result'. We load that into docker.
+          set -euo pipefail
+
           docker load < result
-          # Tag it so GHCR knows where it belongs
-          docker tag research-auditor:latest ghcr.io/${{ github.repository_owner }}/research-auditor:latest
-          # Push it to the cloud
-          docker push ghcr.io/${{ github.repository_owner }}/research-auditor:latest
+
+          OWNER="${{ github.repository_owner }}"
+          IMAGE="ghcr.io/${OWNER}/research-auditor"
+
+          TAG="${{ github.ref_name }}"          # e.g. v0.3.0
+          SHORT_SHA="$(echo "${{ github.sha }}" | cut -c1-7)"
+
+          docker tag research-auditor:latest "${IMAGE}:${TAG}"
+          docker tag research-auditor:latest "${IMAGE}:sha-${SHORT_SHA}"
+
+          docker push "${IMAGE}:${TAG}"
+          docker push "${IMAGE}:sha-${SHORT_SHA}"
+
+          # Optional: also update "latest" on every release tag (commented by default)
+          # docker tag research-auditor:latest "${IMAGE}:latest"
+          # docker push "${IMAGE}:latest"

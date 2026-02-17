@@ -21,12 +21,12 @@
 
         # Shared script logic for the Product and the Container
         run-app-script = pkgs.writeShellScriptBin "run-app" ''
-          export PATH="${pkgs.python312Full}/bin:${pkgs.uv}/bin:$PATH"
-          # --frozen ensures we use the exact uv.lock without trying to update it
-          cd /apps/research-auditor
-          exec uv run --frozen python3 -m app.main
-        '';
-      in
+        export PATH="${pkgs.python312Full}/bin:${pkgs.uv}/bin:$PATH"
+        cd /apps/research-auditor
+        exec uv run --frozen python3 -m app.entrypoints.http
+      '';
+
+       in
       {
         # 1. THE WORKSTATION: For local development in Cursor
         devShells.default = pkgs.mkShell {
@@ -69,13 +69,12 @@
             
             # THE CARGO: Copying local files into the container
             (pkgs.runCommand "app-src" {} ''
-              mkdir -p $out/apps/research-auditor
-              # Copy entire app directory structure
-              cp -r ${./apps/research-auditor/app} $out/apps/research-auditor/
-              # MUST include these for 'uv run' to function in the container
-              cp ${./pyproject.toml} $out/pyproject.toml
-              cp ${./uv.lock} $out/uv.lock
+            mkdir -p $out/apps/research-auditor
+            cp -r ${./apps/research-auditor/app} $out/apps/research-auditor/
+            cp ${./apps/research-auditor/pyproject.toml} $out/apps/research-auditor/pyproject.toml
+            cp ${./apps/research-auditor/uv.lock} $out/apps/research-auditor/uv.lock
             '')
+
           ];
 
           config = {
@@ -95,12 +94,12 @@
           buildInputs = runtimeDeps; 
         } ''
           # Sandbox setup: uv requires the project files to validate the run
-          cp ${./pyproject.toml} .
-          cp ${./uv.lock} .
+          cp ${./apps/research-auditor/pyproject.toml} .
+          cp ${./apps/research-auditor/uv.lock} .
           mkdir -p apps/research-auditor
           cp -r ${./apps/research-auditor/app} apps/research-auditor/
           cd apps/research-auditor
-          uv run --frozen python3 -m app.main
+          uv run --frozen python3 -m app.entrypoints.http.py
           touch $out
         '';
       }
