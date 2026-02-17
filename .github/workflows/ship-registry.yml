@@ -1,10 +1,14 @@
 name: "Ship Container to GHCR"
 
+
 on:
   push:
     branches:
-      - feat/milestone-3-registry
+      - main
+      - "milestone-*"
+      - "feat/*"
   workflow_dispatch:
+
 
 jobs:
   build-and-push:
