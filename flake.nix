@@ -70,10 +70,14 @@
             # THE CARGO: Copying local files into the container
             (pkgs.runCommand "app-src" {} ''
             mkdir -p $out/apps/research-auditor
-            cp -r ${./apps/research-auditor/app} $out/apps/research-auditor/
+            
+            # Create stable app/ directory name
+            cp -r ${./apps/research-auditor/app} $out/apps/research-auditor/app
+            
+            # Place manifest files with stable names
             cp ${./apps/research-auditor/pyproject.toml} $out/apps/research-auditor/pyproject.toml
             cp ${./apps/research-auditor/uv.lock} $out/apps/research-auditor/uv.lock
-            '')
+          '')
 
           ];
 
