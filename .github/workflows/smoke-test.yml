@@ -1,8 +1,18 @@
+# ------------------------------------------------------------------------------
+# Post-Deploy Smoke Test (Railway)
+# ------------------------------------------------------------------------------
+# Runs after "Deploy to Railway" completes (or manually). Verifies the live
+# Railway deployment by curling RAILWAY_URL. Triggering after Deploy (not Ship)
+# avoids the race where the new image is not yet deployed. Only runs when
+# Deploy succeeded. Requires RAILWAY_URL repository (or org) secret.
+# ------------------------------------------------------------------------------
+
 name: "Post-Ship Smoke Test (Railway)"
 
+# Triggered when Deploy to Railway finishes (so new image is live), or manually.
 on:
   workflow_run:
-    workflows: ["Ship Container to GHCR"]
+    workflows: ["Deploy to Railway"]
     types: [completed]
   workflow_dispatch:
 
@@ -12,7 +22,7 @@ concurrency:
 
 jobs:
   smoke:
-    # Only run if the ship workflow succeeded
+    # Run only when run manually or when the Deploy workflow succeeded.
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
@@ -33,7 +43,7 @@ jobs:
 
           echo "Testing: ${RAILWAY_URL}"
 
-          # Try /health first; fall back to /
+          # Prefer /health; if missing or non-2xx, try root path.
           curl -fsS -m 20 "${RAILWAY_URL}/health" || curl -fsS -m 20 "${RAILWAY_URL}/"
 
           echo "Smoke test OK"

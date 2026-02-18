@@ -1,0 +1,38 @@
+# Railway Production Deployment Configuration
+#
+# This file defines how the research-auditor app is deployed to Railway.
+# It's referenced by: .github/workflows/deploy.yml
+#
+# To update deployment:
+#   1. Edit this file
+#   2. Commit and push
+#   3. Tag a new version: git tag vX.Y.Z && git push origin vX.Y.Z
+#   4. GitHub Actions will deploy automatically
+
+app: research-auditor
+environment: production
+
+railway:
+  service_name: research-auditor
+  
+  container:
+    # Image is built by Nix and pushed to GHCR
+    # Format: ghcr.io/OWNER/research-auditor:TAG
+    registry: ghcr.io
+    repository: "{{ github.repository_owner }}/research-auditor"
+    
+    # Start command (overrides container CMD if needed)
+    start_command: "bash -c 'cd /app && uv sync --frozen && exec uv run --frozen python -m app.entrypoints.http'"
+    
+    # Port configuration
+    port: 8080
+  
+  resources:
+    # Memory limit (MB)
+    memory: 512
+    
+  # Health check configuration
+  health_check:
+    path: /health
+    interval: 30
+    timeout: 10

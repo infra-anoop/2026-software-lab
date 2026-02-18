@@ -1,0 +1,17 @@
+# Railway Staging Environment
+# Same structure as production.yaml but for staging
+
+app: research-auditor
+environment: staging
+
+railway:
+  service_name: research-auditor-staging
+  
+  container:
+    registry: ghcr.io
+    repository: "{{ github.repository_owner }}/research-auditor"
+    start_command: "bash -c 'cd /app && uv sync --frozen && exec uv run --frozen python -m app.entrypoints.http'"
+    port: 8080
+  
+  resources:
+    memory: 256  # Less resources for staging
