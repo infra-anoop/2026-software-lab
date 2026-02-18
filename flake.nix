@@ -190,7 +190,8 @@
           # ───────────────────────────────────────────────────────────────
           # Validates business logic before building artifacts
           test-unit = pkgs.runCommand "test-unit-research-auditor" {
-            buildInputs = runtimeDeps;
+            buildInputs = runtimeDeps ++ [ pkgs.cacert ];
+            SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
           } ''
             export UV_CACHE_DIR="$TMPDIR/uv-cache"
             export UV_PROJECT_ENVIRONMENT="$TMPDIR/venv"
