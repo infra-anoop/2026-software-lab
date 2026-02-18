@@ -17,7 +17,8 @@
     "features": {
         "ghcr.io/devcontainers/features/nix:1": {
             "version": "latest",
-            "multiUser": false
+            "multiUser": false,
+            "extraNixConfig": "experimental-features = nix-command flakes"
         },
         "ghcr.io/devcontainers/features/sshd:1": {
             "version": "latest"
