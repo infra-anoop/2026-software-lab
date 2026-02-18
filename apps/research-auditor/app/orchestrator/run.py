@@ -1,5 +1,5 @@
 import os
-from typing import TypedDict, List, Any
+from typing import TypedDict, Any
 from langgraph.graph import StateGraph, END
 from app.agents.researcher import run_research
 from app.agents.critic import run_audit

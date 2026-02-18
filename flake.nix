@@ -201,6 +201,9 @@
             
             uv sync --frozen --extra dev
             
+            # Coverage writes to TMPDIR (build dir may be read-only or cause sqlite issues)
+            export COVERAGE_FILE="$TMPDIR/.coverage"
+            
             # Run pytest with coverage (raise --cov-fail-under when tests grow)
             uv run pytest tests/unit/ \
               --cov=app \

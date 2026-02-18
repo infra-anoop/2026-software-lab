@@ -1,9 +1,6 @@
 import os
 from datetime import datetime
 from supabase import create_client, Client
-from app.db.repo import RunRepo
-
-
 class SupabaseRepo:
     """Supabase implementation of RunRepo."""
     

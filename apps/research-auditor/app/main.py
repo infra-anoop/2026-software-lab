@@ -1,11 +1,8 @@
 import asyncio
 import os
 import sys
-import logfire
-from supabase import create_client, Client
-from app.orchestrator.run import app
 
-# CLI: --version / -V before loading heavy env
+# CLI: --version / -V before any imports that need OPENAI_API_KEY (e.g. agents)
 if "--version" in sys.argv or "-V" in sys.argv:
     from pathlib import Path
     import tomllib
@@ -14,6 +11,10 @@ if "--version" in sys.argv or "-V" in sys.argv:
         version = tomllib.load(f)["project"]["version"]
     print(version)
     sys.exit(0)
+
+import logfire
+from supabase import create_client, Client
+from app.orchestrator.run import app
 
 # 1. Environment & Observability
 if os.getenv("LOGFIRE_TOKEN"):
