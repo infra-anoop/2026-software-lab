@@ -1,15 +1,12 @@
-import os
 from datetime import datetime
-from supabase import create_client, Client
+from supabase import Client
+
+
 class SupabaseRepo:
-    """Supabase implementation of RunRepo."""
-    
-    def __init__(self):
-        url = os.environ.get("SUPABASE_URL")
-        key = os.environ.get("SUPABASE_SECRET_KEY")
-        if not url or not key:
-            raise ValueError("SUPABASE_URL and SUPABASE_SECRET_KEY must be set")
-        self.client: Client = create_client(url, key)
+    """Supabase implementation of RunRepo. Uses the shared Supabase client."""
+
+    def __init__(self, client: Client) -> None:
+        self.client = client
     
     def create_run(self, topic: str) -> str:
         """Create a new run and return its ID."""

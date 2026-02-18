@@ -12,9 +12,13 @@ if "--version" in sys.argv or "-V" in sys.argv:
     print(version)
     sys.exit(0)
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import logfire
-from supabase import create_client, Client
-from app.orchestrator.run import app
+from app.db.client import get_supabase_client
+from app.orchestrator.run import run_workflow
 
 # 1. Environment & Observability (token from env e.g. GitHub Codespaces secrets, not .logfire)
 if os.getenv("LOGFIRE_TOKEN"):
@@ -23,20 +27,8 @@ if os.getenv("LOGFIRE_TOKEN"):
 else:
     print("Logfire disabled: LOGFIRE_TOKEN not set")
 
-
-# Initialize Supabase
-url = os.environ.get("SUPABASE_URL")
-key = os.environ.get("SUPABASE_SECRET_KEY")
-supabase: Client | None = None
-if url and key and url.strip() and key.strip():
-    try:
-        supabase = create_client(url, key)
-    except Exception as e:
-        print("Supabase disabled: invalid SUPABASE_URL or SUPABASE_SECRET_KEY")
-        print(f"Supabase error: {type(e).__name__}: {e}")
-        supabase = None
-else:
-    print("Supabase disabled: missing SUPABASE_URL or SUPABASE_SECRET_KEY")
+# Single shared Supabase client (used for research_audits here; runs/turns via orchestrator repo)
+supabase = get_supabase_client()
 
 
 def save_to_supabase(final_state):
@@ -61,6 +53,11 @@ def save_to_supabase(final_state):
         print(f"❌ Supabase Error: {e}")
 
 async def main():
+    key = os.getenv("OPENAI_API_KEY")
+    if not key or not key.strip():
+        print("❌ ERROR: OPENAI_API_KEY not found in environment variables.")
+        sys.exit(1)
+
     initial_input = {
         "raw_input": "Project X-14 uses a Liquid Salt Cooling system. It operates at 700°C.",
         "iterations": 0
@@ -69,8 +66,8 @@ async def main():
     print("--- Starting Industrial Audit Workflow ---")
     
     try:
-        # Execute the Graph
-        final_state = await app.ainvoke(initial_input)
+        # Execute the Graph (run_workflow persists runs/turns; returns same state shape)
+        final_state = await run_workflow(initial_input)
 
         print("\n--- Workflow Complete ---")
         print(f"Final Verdict: {final_state['feedback'].verdict} ({final_state['iterations']} iterations)")

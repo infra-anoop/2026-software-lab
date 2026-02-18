@@ -1,4 +1,4 @@
-# apps/research-auditor/app/server.py
+# app/entrypoints/http.py — HTTP server for health checks and deployment (PORT, 0.0.0.0).
 import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
 

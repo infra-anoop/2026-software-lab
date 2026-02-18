@@ -1,24 +1,22 @@
-import os
 from typing import TypedDict, Any
 from langgraph.graph import StateGraph, END
 from app.agents.researcher import run_research
 from app.agents.critic import run_audit
 from app.agents.models import ResearchOutput, AuditFeedback
+from app.db.client import get_supabase_client
 from app.db.null_repo import NullRepo
-from app.db.supabase_repo import SupabaseRepo
 from app.db.repo import RunRepo
+from app.db.supabase_repo import SupabaseRepo
 
-# Module-level repo instance (set per execution)
 _repo: RunRepo | None = None
 
+
 def get_repo() -> RunRepo:
-    """Get repo instance: SupabaseRepo if env vars exist, else NullRepo."""
+    """Get repo instance: SupabaseRepo if shared client is configured, else NullRepo."""
     global _repo
     if _repo is None:
-        if os.getenv("SUPABASE_URL") and os.getenv("SUPABASE_SECRET_KEY"):
-            _repo = SupabaseRepo()
-        else:
-            _repo = NullRepo()
+        client = get_supabase_client()
+        _repo = SupabaseRepo(client) if client else NullRepo()
     return _repo
 
 # 1. Define the 'State' - what the agents share
