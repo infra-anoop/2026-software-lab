@@ -4,9 +4,10 @@ import sys
 import tomllib
 from pathlib import Path
 
-from dotenv import load_dotenv
 import logfire
 
+from app.agents.models import FinalState
+from app.config import init_env, require_openai_api_key
 from app.db.client import get_supabase_client
 
 # CLI: --version / -V (exit before importing agents, which need OPENAI_API_KEY)
@@ -17,7 +18,7 @@ if "--version" in sys.argv or "-V" in sys.argv:
     print(version)
     sys.exit(0)
 
-load_dotenv()
+init_env()
 
 # 1. Environment & Observability (token from env e.g. GitHub Codespaces secrets, not .logfire)
 if os.getenv("LOGFIRE_TOKEN"):
@@ -30,7 +31,7 @@ else:
 supabase = get_supabase_client()
 
 
-def save_to_supabase(final_state):
+def save_to_supabase(final_state: FinalState) -> None:
     """Saves the agent's final state to the research_audits table."""
     if supabase is None:
         return
@@ -52,10 +53,7 @@ def save_to_supabase(final_state):
         print(f"❌ Supabase Error: {e}")
 
 async def main():
-    key = os.getenv("OPENAI_API_KEY")
-    if not key or not key.strip():
-        print("❌ ERROR: OPENAI_API_KEY not found in environment variables.")
-        sys.exit(1)
+    require_openai_api_key()
 
     from app.orchestrator.run import run_workflow
 

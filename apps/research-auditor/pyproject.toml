@@ -1,5 +1,5 @@
 [project]
-name = "research-auditor-industrial"
+name = "research-auditor"
 version = "0.1.0"
 description = "Stable multi-agent research environment with industrial pipeline"
 requires-python = ">=3.12,<3.13"

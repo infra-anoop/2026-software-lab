@@ -1,6 +1,15 @@
 # app/entrypoints/http.py — HTTP server for health checks and deployment (PORT, 0.0.0.0).
+#
+# Deployment contract: The deployed image runs this module (health + static message only).
+# There is no HTTP API to run the workflow yet. Next step: add a POST endpoint that
+# calls run_workflow when you need remote execution.
+#
 import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
+
+from app.config import init_env
+
+init_env()
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):

@@ -1,5 +1,6 @@
+from typing import List, Literal, TypedDict
+
 from pydantic import BaseModel, Field
-from typing import List, Literal
 
 
 class ResearchOutput(BaseModel):
@@ -32,3 +33,11 @@ class AuditFeedback(BaseModel):
     suggested_focus: str = Field(
         description="Actionable guidance for the researcher if revision is needed."
     )
+
+
+class FinalState(TypedDict):
+    """Workflow output passed to save_to_supabase: research, feedback, iterations."""
+
+    research: ResearchOutput
+    feedback: AuditFeedback
+    iterations: int

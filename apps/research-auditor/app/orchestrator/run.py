@@ -130,5 +130,5 @@ async def run_workflow(initial_input: dict[str, Any]) -> dict[str, Any]:
         repo.finalize_run(run_id, "failed", error=str(e))
         raise
 
-# Export both the compiled app (for direct use) and the wrapper
-app = _compiled_app
+# Compiled LangGraph workflow (direct ainvoke); use run_workflow for persistence.
+workflow_app = _compiled_app
