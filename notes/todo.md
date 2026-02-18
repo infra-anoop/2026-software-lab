@@ -22,4 +22,4 @@ Flake other targets seem to be hard coded for research-auditor.  What is the gen
 get in the habit of feature branch development and merge to main and publish from main method. Talk to LLM to get comfortable
 ship-registry to trigger only after verify source completes
 verify source should run not only on push to main but also for any v* tags
-deploy v0.3.2
+deploy v0.3.4
