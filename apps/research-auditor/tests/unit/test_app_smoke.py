@@ -3,9 +3,9 @@
 import pytest
 
 
-def test_workflow_entrypoint_importable() -> None:
-    """Workflow entrypoint (run_workflow) is importable and callable."""
-    from app.orchestrator.run import run_workflow
+def test_agent_models_importable() -> None:
+    """Agent output schemas are importable (no OPENAI_API_KEY required)."""
+    from app.agents.models import AuditFeedback, ResearchOutput
 
-    assert run_workflow is not None
-    assert callable(run_workflow)
+    assert ResearchOutput is not None
+    assert AuditFeedback is not None

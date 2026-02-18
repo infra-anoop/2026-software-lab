@@ -8,9 +8,8 @@ from dotenv import load_dotenv
 import logfire
 
 from app.db.client import get_supabase_client
-from app.orchestrator.run import run_workflow
 
-# CLI: --version / -V (exit before running workflow, which needs OPENAI_API_KEY)
+# CLI: --version / -V (exit before importing agents, which need OPENAI_API_KEY)
 if "--version" in sys.argv or "-V" in sys.argv:
     pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
     with open(pyproject, "rb") as f:
@@ -57,6 +56,8 @@ async def main():
     if not key or not key.strip():
         print("❌ ERROR: OPENAI_API_KEY not found in environment variables.")
         sys.exit(1)
+
+    from app.orchestrator.run import run_workflow
 
     initial_input = {
         "raw_input": "Project X-14 uses a Liquid Salt Cooling system. It operates at 700°C.",
