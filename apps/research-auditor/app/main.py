@@ -16,7 +16,7 @@ import logfire
 from supabase import create_client, Client
 from app.orchestrator.run import app
 
-# 1. Environment & Observability
+# 1. Environment & Observability (token from env e.g. GitHub Codespaces secrets, not .logfire)
 if os.getenv("LOGFIRE_TOKEN"):
     logfire.configure()
     logfire.instrument_pydantic_ai()
