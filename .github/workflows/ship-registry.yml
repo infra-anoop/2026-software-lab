@@ -55,5 +55,5 @@ jobs:
           docker push "${IMAGE}:sha-${SHORT_SHA}"
 
           # Optional: also update "latest" on every release tag (commented by default)
-          # docker tag research-auditor:latest "${IMAGE}:latest"
-          # docker push "${IMAGE}:latest"
+          docker tag research-auditor:latest "${IMAGE}:latest"
+          docker push "${IMAGE}:latest"
