@@ -6,7 +6,6 @@ from app.agents.models import ResearchOutput
 
 # We no longer strictly need load_dotenv() if using platform secrets,
 # but keeping it doesn't hurt for local fallback.
-from dotenv import load_dotenv
 load_dotenv()
 
 

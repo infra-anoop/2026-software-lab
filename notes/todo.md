@@ -12,3 +12,10 @@ pinecone vector db
 The "AI Personalization" File: Project config. curosrrules
 
 
+Feb 17, 2026
+
+.logfire has credentials. Even though it is protected by .gitignore, I should fine a better way
+find a CLI way to deploy to railway. That way parameters can be passed from repository
+create a script like "go project a" and that should do things like uv sync etc.
+Is Railway.toml still required
+Flake other targets seem to be hard coded for research-auditor.  What is the general way to fix it

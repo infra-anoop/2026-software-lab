@@ -1,9 +1,12 @@
 [build]
 builder = "RAILPACK"
-watchPatterns = ["apps/research-auditor/**", "packages/shared/**"]
+# Only paths that exist in this repo (no packages/shared)
+watchPatterns = ["apps/research-auditor/**"]
 
 [deploy]
-startCommand = "python3 audit_env.py"
+# Nix-built image (GHCR): image CMD runs `uv sync --frozen` then this server; Railway uses the image CMD.
+# Railpack (build from source): build step installs deps; this startCommand runs the server.
+startCommand = "python3 -m app.entrypoints.http"
 restartPolicyType = "ON_FAILURE"
 #overlapSeconds = 30
 

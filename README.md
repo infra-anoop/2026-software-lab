@@ -102,32 +102,32 @@ Don’t rely on apt-get for durable installs (it drifts).
 
 Keep Nix as the “system dependency truth,” not $HOME/.local.
 
-Layer 4 — Python Runtime & Dependencies: pyproject.toml + uv (+ uv.lock)
+Layer 4 — Python Runtime & Dependencies: per-app pyproject.toml + uv (+ uv.lock)
 
 Your statement (correct):
-3) All Python packages are in pyproject.toml and operated by uv.
+3) All Python packages are in each app's pyproject.toml and operated by uv (e.g. apps/research-auditor/pyproject.toml).
 
 What belongs here
 
-Python deps pinned via uv.lock
+Per-app Python deps pinned via each app's uv.lock (e.g. apps/<app>/uv.lock)
 
-Tooling config (formatters/linters/test runners)
+Tooling config (formatters/linters/test runners) in the app's pyproject.toml
 
 Script entrypoints
 
 Best practice
 
-Commit uv.lock (this is your reproducibility anchor)
+Commit each app's uv.lock (this is your reproducibility anchor)
 
-Prefer a project venv (.venv) created by uv
+Prefer a per-app venv (.venv inside the app directory) created by uv
 
-Use uv sync --locked everywhere (local + CI)
+Use uv sync --locked everywhere (local + CI); run from the app directory
 
 Gotchas
 
 pip install ad-hoc inside the container = pet behavior
 
-If you install something manually, add it to pyproject.toml and re-lock
+If you install something manually, add it to that app's pyproject.toml and re-lock (uv lock)
 
 Layer 5 — Editor Behavior & Guardrails: .cursorrules (operated by Cursor)
 
@@ -243,7 +243,7 @@ Must-haves
 
 ✅ flake.nix + flake.lock pin system tools (Nix provides them)
 
-✅ pyproject.toml + uv.lock pin python deps (uv provides them)
+✅ Per-app pyproject.toml + uv.lock pin python deps (uv provides them; e.g. apps/research-auditor/)
 
 ✅ .github/workflows/*.yml defines build/test/deploy automation (CI/CD as cattle)
 
@@ -304,7 +304,7 @@ Installing stuff “just this once” into $HOME
 → feels fast, becomes non-reproducible debt.
 
 Unpinned deps
-→ if it isn’t in a lockfile (uv.lock, flake.lock), it will drift.
+→ if it isn’t in a lockfile (per-app uv.lock, flake.lock), it will drift.
 
 CI drift
 

@@ -1,5 +1,4 @@
 from uuid import uuid4
-from app.db.repo import RunRepo
 
 
 class NullRepo:

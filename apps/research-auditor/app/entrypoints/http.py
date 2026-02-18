@@ -22,7 +22,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     port = int(os.environ.get("PORT", "8080"))
-    httpd = HTTPServer(("0.0.0.0", port), Handler)
+    httpd = HTTPServer(("0.0.0.0", port), Handler)  # nosec B104 - intentional for container
     print(f"Listening on 0.0.0.0:{port}", flush=True)
     httpd.serve_forever()
 

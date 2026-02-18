@@ -1,8 +1,19 @@
 import asyncio
 import os
+import sys
 import logfire
 from supabase import create_client, Client
 from app.orchestrator.run import app
+
+# CLI: --version / -V before loading heavy env
+if "--version" in sys.argv or "-V" in sys.argv:
+    from pathlib import Path
+    import tomllib
+    pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
+    with open(pyproject, "rb") as f:
+        version = tomllib.load(f)["project"]["version"]
+    print(version)
+    sys.exit(0)
 
 # 1. Environment & Observability
 if os.getenv("LOGFIRE_TOKEN"):

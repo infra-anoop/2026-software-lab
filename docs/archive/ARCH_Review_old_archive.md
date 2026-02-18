@@ -1,5 +1,37 @@
 # Architectural Review: 2026-software-lab
 
+### Structural Blueprint
+
+┌─────────────────────────────────────────────────┐
+│ DEVCONTAINER                                    │
+│ Responsibility: "The Hotel Room"               │
+│ - Minimal base OS                               │
+│ - IDE integration (Cursor/VS Code)              │
+│ - Nix installation                              │
+│ - Extensions and editor settings                │
+│ - Remote connection (SSH)                       │
+└─────────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────────┐
+│ NIX                                             │
+│ Responsibility: "System Packages & Tools"       │
+│ - Python runtime                                │
+│ - uv (package manager)                          │
+│ - System libraries (libffi, zlib, openssl)      │
+│ - Node.js (if needed)                           │
+│ - Databases (PostgreSQL, Redis, etc.)           │
+│ - Build tools                                   │
+└─────────────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────────────┐
+│ UV + PYPROJECT.TOML                             │
+│ Responsibility: "Python Dependencies"           │
+│ - Application-specific Python packages          │
+│ - Per-app virtual environments                  │
+│ - Lockfiles for reproducibility                 │
+└─────────────────────────────────────────────────┘
+
+
 ## Executive Summary
 
 This review examines `flake.nix`, `.devcontainer/devcontainer.json`, `pyproject.toml`, and overall repository structure for bugs, inconsistencies, and opportunities for state-of-the-art improvements.

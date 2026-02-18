@@ -23,8 +23,7 @@ jobs:
 
       - name: Install Nix
         uses: cachix/install-nix-action@v25
-        with:
-          nix_path: nixpkgs=channel:nixos-23.11
+        # No nix_path override: CI uses the flake's pinned nixpkgs (flake.lock), same as local.
 
       - name: Build container with Nix
         run: nix build .#container

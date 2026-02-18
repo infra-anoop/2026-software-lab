@@ -144,6 +144,12 @@ ENV/
 env.bak/
 venv.bak/
 
+# Nix build artifact (nix build .#container creates result symlink)
+result
+
+# uv cache (when using UV_CACHE_DIR in workspace)
+.uv-cache/
+
 # Spyder project settings
 .spyderproject
 .spyproject
@@ -214,6 +220,8 @@ __marimo__/
 *.key
 secrets.json
 credentials.json
+# Logfire CLI state and credentials (generated / may contain tokens)
+.logfire/
 
 # ==========================================
 # 📦 GUI & WEB LOGIC (Node.js/React)

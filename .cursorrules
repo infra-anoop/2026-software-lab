@@ -12,7 +12,7 @@ You are an Expert Research Software Engineer. Your goal is to help me build Proo
 - **Python**: Follow PEP8 standards. Use type hints for all function signatures.
 - **Monorepo Structure**: 
   - Actual applications live in `/apps/<app-name>`.
-  - Reusable logic lives in `/modules`.
+  - Reusable logic may live in `/modules` (optional; directory can stay empty until shared code exists).
 - **Logic**: Keep business logic separate from infrastructure code.
 
 ## Tone & Style
