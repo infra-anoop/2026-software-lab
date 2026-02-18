@@ -220,7 +220,8 @@
           # Tests the built package works correctly
           # Runs after package is built to verify deployment readiness
           test-integration = pkgs.runCommand "test-integration-research-auditor" {
-            buildInputs = runtimeDeps ++ [ self.packages.${system}.default ];
+            buildInputs = runtimeDeps ++ [ pkgs.cacert self.packages.${system}.default ];
+            SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
           } ''
             export UV_CACHE_DIR="$TMPDIR/uv-cache"
             export UV_PROJECT_ENVIRONMENT="$TMPDIR/venv"

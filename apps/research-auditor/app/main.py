@@ -1,24 +1,24 @@
 import asyncio
 import os
 import sys
+import tomllib
+from pathlib import Path
 
-# CLI: --version / -V before any imports that need OPENAI_API_KEY (e.g. agents)
+from dotenv import load_dotenv
+import logfire
+
+from app.db.client import get_supabase_client
+from app.orchestrator.run import run_workflow
+
+# CLI: --version / -V (exit before running workflow, which needs OPENAI_API_KEY)
 if "--version" in sys.argv or "-V" in sys.argv:
-    from pathlib import Path
-    import tomllib
     pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
     with open(pyproject, "rb") as f:
         version = tomllib.load(f)["project"]["version"]
     print(version)
     sys.exit(0)
 
-from dotenv import load_dotenv
-
 load_dotenv()
-
-import logfire
-from app.db.client import get_supabase_client
-from app.orchestrator.run import run_workflow
 
 # 1. Environment & Observability (token from env e.g. GitHub Codespaces secrets, not .logfire)
 if os.getenv("LOGFIRE_TOKEN"):
