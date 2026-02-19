@@ -1,4 +1,5 @@
 from typing import TypedDict, Any
+import logfire
 from langgraph.graph import StateGraph, END
 from app.agents.researcher import run_research
 from app.agents.critic import run_audit
@@ -20,12 +21,14 @@ def get_repo() -> RunRepo:
     return _repo
 
 # 1. Define the 'State' - what the agents share
-class AgentState(TypedDict):
+class AgentState(TypedDict, total=False):
     raw_input: str
     research: ResearchOutput
     feedback: AuditFeedback
     iterations: int
-    # Note: run_id and step are optional and accessed via .get() when present
+    max_iterations: int
+    run_id: str
+    step: int
 
 # 2. Define the Nodes (The Workers)
 async def researcher_node(state: AgentState):
@@ -41,7 +44,8 @@ async def researcher_node(state: AgentState):
         # Track turn if run_id exists
         if run_id:
             repo = get_repo()
-            repo.append_turn(run_id, step, "researcher", input_data, output_data, True, None)
+            with logfire.span("repo.append_turn", agent="researcher", run_id=run_id, step=step):
+                repo.append_turn(run_id, step, "researcher", input_data, output_data, True, None)
         
         result = {
             "research": res,
@@ -53,7 +57,8 @@ async def researcher_node(state: AgentState):
     except Exception as e:
         if run_id:
             repo = get_repo()
-            repo.append_turn(run_id, step, "researcher", input_data, None, False, str(e))
+            with logfire.span("repo.append_turn", agent="researcher", run_id=run_id, step=step):
+                repo.append_turn(run_id, step, "researcher", input_data, None, False, str(e))
         raise
 
 async def critic_node(state: AgentState):
@@ -69,7 +74,8 @@ async def critic_node(state: AgentState):
         # Track turn if run_id exists
         if run_id:
             repo = get_repo()
-            repo.append_turn(run_id, step, "critic", input_data, output_data, True, None)
+            with logfire.span("repo.append_turn", agent="critic", run_id=run_id, step=step):
+                repo.append_turn(run_id, step, "critic", input_data, output_data, True, None)
         
         result = {"feedback": feedback}
         if run_id:
@@ -78,12 +84,14 @@ async def critic_node(state: AgentState):
     except Exception as e:
         if run_id:
             repo = get_repo()
-            repo.append_turn(run_id, step, "critic", input_data, None, False, str(e))
+            with logfire.span("repo.append_turn", agent="critic", run_id=run_id, step=step):
+                repo.append_turn(run_id, step, "critic", input_data, None, False, str(e))
         raise
 
 # 3. Define the Router (The Decision Maker)
 def should_continue(state: AgentState):
-    if state['feedback'].verdict == "PASS" or state['iterations'] > 3:
+    max_it = state.get('max_iterations', 3)
+    if state['feedback'].verdict == "PASS" or state['iterations'] >= max_it:
         return END
     return "researcher"
 
@@ -105,7 +113,8 @@ async def run_workflow(initial_input: dict[str, Any]) -> dict[str, Any]:
     
     # Extract topic from input (use raw_input as topic)
     topic = initial_input.get('raw_input', 'unknown')
-    run_id = repo.create_run(topic)
+    with logfire.span("repo.create_run", topic=topic):
+        run_id = repo.create_run(topic)
     
     # Add run_id and step to initial state
     state_with_run = {
@@ -115,7 +124,8 @@ async def run_workflow(initial_input: dict[str, Any]) -> dict[str, Any]:
     }
     
     try:
-        final_state = await _compiled_app.ainvoke(state_with_run)
+        with logfire.span("langgraph.ainvoke", run_id=run_id):
+            final_state = await _compiled_app.ainvoke(state_with_run)
         
         # Prepare final output dict
         final_output = {
@@ -124,10 +134,12 @@ async def run_workflow(initial_input: dict[str, Any]) -> dict[str, Any]:
             "iterations": final_state['iterations']
         }
         
-        repo.finalize_run(run_id, "completed", final_output=final_output)
+        with logfire.span("repo.finalize_run", run_id=run_id, status="completed"):
+            repo.finalize_run(run_id, "completed", final_output=final_output)
         return final_state
     except Exception as e:
-        repo.finalize_run(run_id, "failed", error=str(e))
+        with logfire.span("repo.finalize_run", run_id=run_id, status="failed"):
+            repo.finalize_run(run_id, "failed", error=str(e))
         raise
 
 # Compiled LangGraph workflow (direct ainvoke); use run_workflow for persistence.

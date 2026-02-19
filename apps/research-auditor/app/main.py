@@ -31,6 +31,8 @@ else:
 supabase = get_supabase_client()
 
 
+MAX_ITERATIONS = 8
+
 def save_to_supabase(final_state: FinalState) -> None:
     """Saves the agent's final state to the research_audits table."""
     if supabase is None:
@@ -58,8 +60,9 @@ async def main():
     from app.orchestrator.run import run_workflow
 
     initial_input = {
-        "raw_input": "Project X-14 uses a Liquid Salt Cooling system. It operates at 700°C.",
-        "iterations": 0
+        "raw_input": "President Trump did indeed stopped the India Pakistan war in 2025",
+        "iterations": 0,
+        "max_iterations": MAX_ITERATIONS,
     }
 
     print("--- Starting Industrial Audit Workflow ---")

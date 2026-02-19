@@ -1,3 +1,4 @@
+import logfire
 from pydantic_ai import Agent
 from app.agents.models import ResearchOutput, AuditFeedback
 
@@ -8,15 +9,15 @@ critic_agent = Agent(
     system_prompt=(
         "You are an Industrial Auditor. You receive structured research "
         "and must verify if the findings are technically sound and well-supported "
-        "by the provided quotes. Be strict. If the confidence_score is below 0.7, "
+        "by the provided quotes. Be strict. If the confidence_score is below 0.9, "
         "mark it as NEEDS_REVISION."
     ),
 )
 
 
 async def run_audit(research_data: ResearchOutput):
-    # We pass the validated object directly to the agent
-    result = await critic_agent.run(
-        f"Review this research: {research_data.model_dump_json()}"
-    )
+    with logfire.span("llm.critic", agent="critic"):
+        result = await critic_agent.run(
+            f"Review this research: {research_data.model_dump_json()}"
+        )
     return result.output

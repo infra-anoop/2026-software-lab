@@ -1,3 +1,4 @@
+import logfire
 from pydantic_ai import Agent
 from app.agents.models import ResearchOutput
 
@@ -15,6 +16,7 @@ researcher_agent = Agent(
 
 
 async def run_research(text_input: str):
-    result = await researcher_agent.run(text_input)
+    with logfire.span("llm.researcher", agent="researcher"):
+        result = await researcher_agent.run(text_input)
     # The result.data is now a validated ResearchOutput object, NOT a string!
     return result.output
