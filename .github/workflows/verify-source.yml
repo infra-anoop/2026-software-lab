@@ -27,6 +27,9 @@ jobs:
 
       - name: Install Nix
         uses: cachix/install-nix-action@v25
+        with:
+          extra_nix_config: |
+            sandbox = false
 
       - name: Nix flake check
         run: nix flake check
