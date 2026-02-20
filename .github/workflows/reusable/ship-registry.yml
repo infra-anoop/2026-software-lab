@@ -1,23 +1,16 @@
 # ------------------------------------------------------------------------------
-# Ship Container to GHCR
+# Reusable: Ship Container to GHCR
 # ------------------------------------------------------------------------------
-# Runs when you push a version tag (v*) or trigger manually. Builds the
-# container image with Nix, loads it into the runner’s Docker, then pushes
-# it to GitHub Container Registry (ghcr.io) under the repo owner and
-# research-auditor image name. Used as the release/deploy step; Railway
-# (or other platforms) can pull from GHCR.
+# Builds the container image with Nix, loads into Docker, pushes to GHCR.
+# NOT auto-triggered. Call via: ci-cd-pipeline.yml
 # ------------------------------------------------------------------------------
 
 name: "Ship Container to GHCR"
 
-# Runs on tag push matching v* (e.g. v1.0.0, v0.3.0) or manual dispatch.
 on:
-  push:
-    tags:
-      - "v*"
-  workflow_dispatch:
+  workflow_call:
+  workflow_dispatch:  # Manual run only; no auto-trigger
 
-# One ship at a time per ref; do not cancel so the push completes.
 concurrency:
   group: ship-${{ github.ref }}
   cancel-in-progress: false
@@ -25,7 +18,6 @@ concurrency:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    # packages: write required to push to ghcr.io.
     permissions:
       contents: read
       packages: write
@@ -36,9 +28,7 @@ jobs:
 
       - name: Install Nix
         uses: cachix/install-nix-action@v25
-        # No nix_path override: CI uses the flake's pinned nixpkgs (flake.lock), same as local.
 
-      # Produces result (symlink to docker image tarball in Nix store).
       - name: Build container with Nix
         run: nix build .#container
 
@@ -49,7 +39,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # result is the Nix build output path; load into Docker then tag and push.
       - name: Load, tag, and push
         shell: bash
         run: |
@@ -70,6 +59,5 @@ jobs:
           docker push "${IMAGE}:${TAG}"
           docker push "${IMAGE}:sha-${SHORT_SHA}"
 
-          # Push :latest so deploy.yml can auto-deploy to production (v* → Ship → Deploy)
           docker tag research-auditor:latest "${IMAGE}:latest"
           docker push "${IMAGE}:latest"

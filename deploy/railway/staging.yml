@@ -10,7 +10,8 @@ railway:
   container:
     registry: ghcr.io
     repository: "{{ github.repository_owner }}/research-auditor"
-    start_command: "bash -c 'cd /app && uv sync --frozen && exec uv run --frozen python -m app.entrypoints.http'"
+    # Aligned with flake.nix: FastAPI + Uvicorn
+    start_command: "bash -c 'cd /app && uv sync --frozen && exec uv run --frozen uvicorn app.entrypoints.http:app --host 0.0.0.0 --port ${PORT:-8080}'"
     port: 8080
   
   resources:

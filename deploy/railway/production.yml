@@ -1,7 +1,10 @@
 # Railway Production Deployment Configuration
 #
 # This file defines how the research-auditor app is deployed to Railway.
-# It's referenced by: .github/workflows/deploy.yml
+# It's referenced by: .github/workflows/reusable/deploy.yml
+#
+# GHCR path: Nix builds image → Ship pushes to GHCR → Deploy passes this start_command.
+# railway.toml is for Railpack (build-from-source) reference only; not used here.
 #
 # To update deployment:
 #   1. Edit this file
@@ -14,15 +17,16 @@ environment: production
 
 railway:
   service_name: research-auditor
-  
+
   container:
     # Image is built by Nix and pushed to GHCR
     # Format: ghcr.io/OWNER/research-auditor:TAG
     registry: ghcr.io
     repository: "{{ github.repository_owner }}/research-auditor"
-    
-    # Start command (overrides container CMD if needed)
-    start_command: "bash -c 'cd /app && uv sync --frozen && exec uv run --frozen python -m app.entrypoints.http'"
+
+    # Aligned with flake.nix CMD: FastAPI + Uvicorn
+    # PORT is set by Railway; uv sync ensures deps in container.
+    start_command: "bash -c 'cd /app && uv sync --frozen && exec uv run --frozen uvicorn app.entrypoints.http:app --host 0.0.0.0 --port ${PORT:-8080}'"
     
     # Port configuration
     port: 8080

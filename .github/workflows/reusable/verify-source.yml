@@ -1,0 +1,35 @@
+# ------------------------------------------------------------------------------
+# Reusable: Verify Source (Nix)
+# ------------------------------------------------------------------------------
+# Validates that the repo builds and passes all Nix checks. Does not publish.
+# NOT auto-triggered. Call via: ci-cd-pipeline.yml
+# ------------------------------------------------------------------------------
+
+name: "Verify Source (Nix)"
+
+on:
+  workflow_call:
+  workflow_dispatch:  # Manual run only; no auto-trigger
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v25
+
+      - name: Nix flake check
+        run: nix flake check
+
+      - name: Build container derivation
+        run: nix build .#container

@@ -23,3 +23,4 @@ get in the habit of feature branch development and merge to main and publish fro
 ship-registry to trigger only after verify source completes
 verify source should run not only on push to main but also for any v* tags
 Revisit workflows.  these 4 workflows didn't trigger as expected. Gemini thought that an alternative approach where there is only one master workflow and conditional execution is controlled by key words jobs, needs, and uses.
+hookup http framework to play with the app by giving different topics
