@@ -30,7 +30,6 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'pull_request' ||
       (github.event_name == 'push' && (github.ref_type == 'branch' || (github.ref_type == 'tag' && startsWith(github.ref_name, 'v'))))
-    runs-on: ubuntu-latest
     uses: ./.github/workflows/reusable/verify-source.yml
 
   # ─────────────────────────────────────────────────────────────────────────
@@ -43,7 +42,6 @@ jobs:
       github.event_name == 'push' &&
       github.ref_type == 'tag' &&
       startsWith(github.ref_name, 'v')
-    runs-on: ubuntu-latest
     uses: ./.github/workflows/reusable/ship-registry.yml
 
   # ─────────────────────────────────────────────────────────────────────────
@@ -53,7 +51,6 @@ jobs:
     name: Deploy to Railway
     needs: ship
     if: success()  # Only when ship succeeded
-    runs-on: ubuntu-latest
     uses: ./.github/workflows/reusable/deploy.yml
     with:
       environment: production
@@ -66,5 +63,4 @@ jobs:
     name: Smoke Test
     needs: deploy
     if: success()  # Only when deploy succeeded
-    runs-on: ubuntu-latest
     uses: ./.github/workflows/reusable/smoke-test.yml
