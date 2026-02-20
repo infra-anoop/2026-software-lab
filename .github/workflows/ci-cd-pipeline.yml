@@ -42,6 +42,9 @@ jobs:
       github.event_name == 'push' &&
       github.ref_type == 'tag' &&
       startsWith(github.ref_name, 'v')
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/ship-registry.yml
 
   # ─────────────────────────────────────────────────────────────────────────
@@ -51,6 +54,9 @@ jobs:
     name: Deploy to Railway
     needs: ship
     if: success()  # Only when ship succeeded
+    permissions:
+      contents: read
+      packages: read
     uses: ./.github/workflows/deploy.yml
     with:
       environment: production
