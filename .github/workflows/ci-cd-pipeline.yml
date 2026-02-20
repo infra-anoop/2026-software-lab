@@ -39,7 +39,7 @@ jobs:
   ship:
     name: Ship Container
     needs: verify
-    if: |success() # Only when verify succeeded
+    if:
       github.event_name == 'push' &&
       github.ref_type == 'tag' &&
       startsWith(github.ref_name, 'v')
