@@ -13,7 +13,7 @@ from app.config import init_env
 
 init_env()
 
-app = FastAPI(title="Research Auditor", version="0.1.0")
+app = FastAPI(title="Research Auditor", version="0.3.4")
 
 
 class AuditRequest(BaseModel):
@@ -79,7 +79,7 @@ def main() -> None:
     import uvicorn
 
     port = int(os.environ.get("PORT", "8080"))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(app, host="0.0.0.0", port=port)  # nosec B104 — intentional for container deployment
 
 
 if __name__ == "__main__":

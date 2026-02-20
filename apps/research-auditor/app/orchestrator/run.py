@@ -82,7 +82,7 @@ async def critic_node(state: AgentState):
         feedback = await run_audit(state['research'])
         output_data = feedback.model_dump() if hasattr(feedback, 'model_dump') else feedback
         iteration = state['iterations']
-        verdict_score = {"PASS": 1.0, "NEEDS_REVISION": 0.5, "FAIL": 0.0}.get(feedback.verdict, 0.0)
+        verdict_score = {"PASS": 1.0, "NEEDS_REVISION": 0.5, "FAIL": 0.0}.get(feedback.verdict, 0.0)  # nosec B105 — verdict labels, not passwords
         history_entry = (iteration, "critic", verdict_score)
         history = list(state.get('history', [])) + [history_entry]
 
