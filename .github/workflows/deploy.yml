@@ -94,14 +94,23 @@ jobs:
 
           SERVICE_NAME=$(yq eval '.railway.service_name' "$CONFIG_FILE")
           START_CMD=$(yq eval '.railway.container.start_command' "$CONFIG_FILE")
+          PROJECT_ID=$(yq eval '.railway.project_id // ""' "$CONFIG_FILE" 2>/dev/null || true)
+          if [ -z "$PROJECT_ID" ]; then
+            PROJECT_ID="${{ secrets.RAILWAY_PROJECT_ID }}"
+          fi
 
           if [ -z "$SERVICE_NAME" ] || [ "$SERVICE_NAME" == "null" ]; then
             echo "❌ service_name not found in config"
             exit 1
           fi
+          if [ -z "$PROJECT_ID" ]; then
+            echo "❌ project_id not set. Add railway.project_id in config or RAILWAY_PROJECT_ID secret."
+            exit 1
+          fi
 
           echo "service_name=$SERVICE_NAME" >> $GITHUB_OUTPUT
           echo "start_command=$START_CMD" >> $GITHUB_OUTPUT
+          echo "project_id=$PROJECT_ID" >> $GITHUB_OUTPUT
 
       - name: Verify container image exists
         env:
@@ -119,19 +128,27 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           SERVICE_NAME: ${{ steps.config.outputs.service_name }}
+          PROJECT_ID: ${{ steps.config.outputs.project_id }}
         run: |
-          QUERY='{"query": "query { services { edges { node { id name } } } }"}'
-          RESPONSE=$(curl -s -X POST https://backboard.railway.app/graphql \
+          QUERY=$(jq -n --arg id "$PROJECT_ID" '{query: "query project($id: String!) { project(id: $id) { services { edges { node { id name } } } } }", variables: {id: $id}}')
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST https://backboard.railway.com/graphql/v2 \
             -H "Authorization: Bearer $RAILWAY_TOKEN" \
             -H "Content-Type: application/json" \
             -d "$QUERY")
+          HTTP_BODY="${RESPONSE%$'\n'*}"
+          HTTP_CODE="${RESPONSE##*$'\n'}"
 
-          if echo "$RESPONSE" | jq -e '.errors' > /dev/null 2>&1; then
-            echo "❌ Railway API error:" && echo "$RESPONSE" | jq '.errors'
+          if ! echo "$HTTP_BODY" | jq -e . > /dev/null 2>&1; then
+            echo "❌ Railway API returned invalid JSON (HTTP $HTTP_CODE)"
+            echo "Response: $HTTP_BODY"
+            exit 1
+          fi
+          if echo "$HTTP_BODY" | jq -e '.errors' > /dev/null 2>&1; then
+            echo "❌ Railway API error:" && echo "$HTTP_BODY" | jq '.errors'
             exit 1
           fi
 
-          SERVICE_ID=$(echo "$RESPONSE" | jq -r ".data.services.edges[] | select(.node.name == \"$SERVICE_NAME\") | .node.id")
+          SERVICE_ID=$(echo "$HTTP_BODY" | jq -r ".data.project.services.edges[] | select(.node.name == \"$SERVICE_NAME\") | .node.id")
           if [ -z "$SERVICE_ID" ] || [ "$SERVICE_ID" == "null" ]; then
             echo "❌ Service not found: $SERVICE_NAME"
             exit 1
@@ -152,7 +169,7 @@ jobs:
             --arg startCommand "$START_COMMAND" \
             '{query: "mutation serviceInstanceUpdate($serviceId: String!, $input: ServiceInstanceUpdateInput!) { serviceInstanceUpdate(serviceId: $serviceId, input: $input) { id } }", variables: {serviceId: $serviceId, input: {source: {image: $image}, startCommand: $startCommand}}}')
 
-          RESPONSE=$(curl -s -X POST https://backboard.railway.app/graphql \
+          RESPONSE=$(curl -s -X POST https://backboard.railway.com/graphql/v2 \
             -H "Authorization: Bearer $RAILWAY_TOKEN" \
             -H "Content-Type: application/json" \
             -d "$MUTATION")
@@ -177,7 +194,7 @@ jobs:
 
           while [ $ELAPSED -lt $MAX_WAIT ]; do
             QUERY=$(jq -n --arg id "$SERVICE_ID" '{query: "query service($id: String!) { service(id: $id) { deployments(first: 1) { edges { node { status } } } } }", variables: {id: $id}}')
-            RESPONSE=$(curl -s -X POST https://backboard.railway.app/graphql \
+            RESPONSE=$(curl -s -X POST https://backboard.railway.com/graphql/v2 \
               -H "Authorization: Bearer $RAILWAY_TOKEN" \
               -H "Content-Type: application/json" \
               -d "$QUERY")
