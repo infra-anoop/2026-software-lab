@@ -29,6 +29,7 @@ class AgentState(TypedDict, total=False):
     max_iterations: int
     run_id: str
     step: int
+    history: list  # (iteration#, agent_name, score) tuples per turn
 
 # 2. Define the Nodes (The Workers)
 async def researcher_node(state: AgentState):
@@ -40,25 +41,35 @@ async def researcher_node(state: AgentState):
     try:
         res = await run_research(state['raw_input'])
         output_data = res.model_dump() if hasattr(res, 'model_dump') else res
-        
-        # Track turn if run_id exists
+        iteration = state.get('iterations', 0) + 1
+        score = res.confidence_score
+        history_entry = (iteration, "researcher", score)
+        history = list(state.get('history', [])) + [history_entry]
+
+        # Track turn if run_id exists (include history in turn log)
         if run_id:
             repo = get_repo()
+            turn_output = {**output_data, "history": history}
             with logfire.span("repo.append_turn", agent="researcher", run_id=run_id, step=step):
-                repo.append_turn(run_id, step, "researcher", input_data, output_data, True, None)
-        
+                repo.append_turn(run_id, step, "researcher", input_data, turn_output, True, None)
+
         result = {
             "research": res,
-            "iterations": state.get('iterations', 0) + 1
+            "iterations": iteration,
+            "history": history,
         }
         if run_id:
             result["step"] = step + 1
         return result
     except Exception as e:
+        iteration = state.get('iterations', 0) + 1
+        history_entry = (iteration, "researcher", None)
+        history = list(state.get('history', [])) + [history_entry]
         if run_id:
             repo = get_repo()
+            turn_output = {"history": history}
             with logfire.span("repo.append_turn", agent="researcher", run_id=run_id, step=step):
-                repo.append_turn(run_id, step, "researcher", input_data, None, False, str(e))
+                repo.append_turn(run_id, step, "researcher", input_data, turn_output, False, str(e))
         raise
 
 async def critic_node(state: AgentState):
@@ -70,22 +81,31 @@ async def critic_node(state: AgentState):
     try:
         feedback = await run_audit(state['research'])
         output_data = feedback.model_dump() if hasattr(feedback, 'model_dump') else feedback
-        
-        # Track turn if run_id exists
+        iteration = state['iterations']
+        verdict_score = {"PASS": 1.0, "NEEDS_REVISION": 0.5, "FAIL": 0.0}.get(feedback.verdict, 0.0)
+        history_entry = (iteration, "critic", verdict_score)
+        history = list(state.get('history', [])) + [history_entry]
+
+        # Track turn if run_id exists (include history in turn log)
         if run_id:
             repo = get_repo()
+            turn_output = {**output_data, "history": history}
             with logfire.span("repo.append_turn", agent="critic", run_id=run_id, step=step):
-                repo.append_turn(run_id, step, "critic", input_data, output_data, True, None)
-        
-        result = {"feedback": feedback}
+                repo.append_turn(run_id, step, "critic", input_data, turn_output, True, None)
+
+        result = {"feedback": feedback, "history": history}
         if run_id:
             result["step"] = step + 1
         return result
     except Exception as e:
+        iteration = state['iterations']
+        history_entry = (iteration, "critic", None)
+        history = list(state.get('history', [])) + [history_entry]
         if run_id:
             repo = get_repo()
+            turn_output = {"history": history}
             with logfire.span("repo.append_turn", agent="critic", run_id=run_id, step=step):
-                repo.append_turn(run_id, step, "critic", input_data, None, False, str(e))
+                repo.append_turn(run_id, step, "critic", input_data, turn_output, False, str(e))
         raise
 
 # 3. Define the Router (The Decision Maker)
@@ -116,31 +136,35 @@ async def run_workflow(initial_input: dict[str, Any]) -> dict[str, Any]:
     with logfire.span("repo.create_run", topic=topic):
         run_id = repo.create_run(topic)
     
-    # Add run_id and step to initial state
+    # Add run_id, step, and empty history to initial state
     state_with_run = {
         **initial_input,
         "run_id": run_id,
-        "step": 1
+        "step": 1,
+        "history": [],
     }
-    
-    try:
-        with logfire.span("langgraph.ainvoke", run_id=run_id):
-            final_state = await _compiled_app.ainvoke(state_with_run)
-        
-        # Prepare final output dict
-        final_output = {
-            "research": final_state['research'].model_dump() if hasattr(final_state['research'], 'model_dump') else final_state['research'],
-            "feedback": final_state['feedback'].model_dump() if hasattr(final_state['feedback'], 'model_dump') else final_state['feedback'],
-            "iterations": final_state['iterations']
-        }
-        
-        with logfire.span("repo.finalize_run", run_id=run_id, status="completed"):
-            repo.finalize_run(run_id, "completed", final_output=final_output)
-        return final_state
-    except Exception as e:
-        with logfire.span("repo.finalize_run", run_id=run_id, status="failed"):
-            repo.finalize_run(run_id, "failed", error=str(e))
-        raise
+
+    # Baggage propagates run_id and topic to all descendant spans (LangGraph, nodes, LLM, repo)
+    with logfire.set_baggage(run_id=run_id, topic=topic):
+        try:
+            with logfire.span("langgraph.ainvoke", run_id=run_id):
+                final_state = await _compiled_app.ainvoke(state_with_run)
+
+            # Prepare final output dict
+            final_output = {
+                "research": final_state['research'].model_dump() if hasattr(final_state['research'], 'model_dump') else final_state['research'],
+                "feedback": final_state['feedback'].model_dump() if hasattr(final_state['feedback'], 'model_dump') else final_state['feedback'],
+                "iterations": final_state['iterations'],
+                "history": final_state.get('history', []),
+            }
+
+            with logfire.span("repo.finalize_run", run_id=run_id, status="completed"):
+                repo.finalize_run(run_id, "completed", final_output=final_output)
+            return final_state
+        except Exception as e:
+            with logfire.span("repo.finalize_run", run_id=run_id, status="failed"):
+                repo.finalize_run(run_id, "failed", error=str(e))
+            raise
 
 # Compiled LangGraph workflow (direct ainvoke); use run_workflow for persistence.
 workflow_app = _compiled_app

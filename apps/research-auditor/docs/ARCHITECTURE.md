@@ -134,6 +134,10 @@ The **Researcher** and **Critic** agents are PydanticAI agents with schema-bound
 - **Setup** in `main.py` (before workflow): `logfire.configure()` and `logfire.instrument_pydantic_ai()` when `LOGFIRE_TOKEN` is set.
 - **Instrumentation**: `instrument_pydantic_ai()` auto-instruments PydanticAI agents so their runs, traces, and outputs are sent to Logfire.
 
+### Baggage (Global Entities)
+
+`run_workflow` uses `logfire.set_baggage(run_id=run_id, topic=topic)` so that `run_id` and `topic` are attached to all descendant spans in the trace. Baggage propagates automatically: every span created during the workflow (LangGraph execution, nodes, LLM calls, repo writes) inherits these attributes, making it easy to filter and correlate traces by run or topic in the Logfire UI.
+
 ### Data Path
 
 ```
@@ -142,6 +146,10 @@ main.py (startup)
     → logfire.instrument_pydantic_ai()
         → PydanticAI agents (Researcher, Critic) are instrumented
         → Each agent.run() produces spans/traces sent to Logfire
+
+run_workflow()
+    → logfire.set_baggage(run_id, topic)  # propagates to all descendant spans
+    → langgraph.ainvoke, nodes, LLM, repo spans all carry run_id, topic
 
 Researcher / Critic agent.run()
     → Logfire captures: input, output, latency, model calls

@@ -60,7 +60,7 @@ async def main():
     from app.orchestrator.run import run_workflow
 
     initial_input = {
-        "raw_input": "President Trump did indeed stopped the India Pakistan war in 2025",
+        "raw_input": "Indian Rupee will continue to fall against US dollar in 2026, but it will not reach 100 to 1",
         "iterations": 0,
         "max_iterations": MAX_ITERATIONS,
     }

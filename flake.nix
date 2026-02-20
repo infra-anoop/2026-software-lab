@@ -345,7 +345,7 @@
             # uv sync runs in container (not in Nix build) so Nix sandbox needs no network.
             Cmd = [
               "bash" "-c"
-              "cd /app && uv sync --frozen && exec uv run --frozen python -m app.entrypoints.http"
+              "cd /app && uv sync --frozen && exec uv run --frozen uvicorn app.entrypoints.http:app --host 0.0.0.0 --port ''${PORT:-8080}"
             ];
 
             # ─────────────────────────────────────────────────────────────

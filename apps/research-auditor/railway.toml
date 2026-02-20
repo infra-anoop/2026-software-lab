@@ -6,7 +6,7 @@ watchPatterns = ["apps/research-auditor/**"]
 [deploy]
 # Nix-built image (GHCR): image CMD runs `uv sync --frozen` then this server; Railway uses the image CMD.
 # Railpack (build from source): build step installs deps; this startCommand runs the server.
-startCommand = "python3 -m app.entrypoints.http"
+startCommand = "uvicorn app.entrypoints.http:app --host 0.0.0.0 --port ${PORT:-8080}"
 restartPolicyType = "ON_FAILURE"
 #overlapSeconds = 30
 
