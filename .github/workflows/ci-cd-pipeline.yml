@@ -61,6 +61,7 @@ jobs:
     with:
       environment: production
       tag: latest
+    secrets: inherit
 
   # ─────────────────────────────────────────────────────────────────────────
   # Smoke: after deploy succeeds
@@ -70,3 +71,4 @@ jobs:
     needs: deploy
     if: success()  # Only when deploy succeeded
     uses: ./.github/workflows/smoke-test.yml
+    secrets: inherit
