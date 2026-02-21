@@ -1,17 +1,3 @@
-# ---------------------------------------------------------------------------
-# .github/workflows/deploy.yml
-# ---------------------------------------------------------------------------
-# Reusable + manual deploy workflow for Railway.
-#
-# Reads deploy/railway/<environment>.yml (e.g. production.yml)
-# Resolves Railway project/service IDs by NAME (no hardcoded IDs)
-# Triggers deploy from GHCR image tag (default: latest)
-# Waits for terminal deployment state before succeeding.
-#
-# Requires:
-#   - GitHub Secret: RAILWAY_TOKEN
-# ---------------------------------------------------------------------------
-
 name: Deploy to Railway
 
 on:
@@ -61,6 +47,19 @@ jobs:
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
           yq --version
+
+      - name: Select Railway token (workspace preferred)
+        run: |
+          if [ -n "${{ secrets.RAILWAY_WORKSPACE_TOKEN }}" ]; then
+            echo "RAILWAY_TOKEN_EFFECTIVE=${{ secrets.RAILWAY_WORKSPACE_TOKEN }}" >> "$GITHUB_ENV"
+            echo "Using RAILWAY_WORKSPACE_TOKEN"
+          elif [ -n "${{ secrets.RAILWAY_TOKEN }}" ]; then
+            echo "RAILWAY_TOKEN_EFFECTIVE=${{ secrets.RAILWAY_TOKEN }}" >> "$GITHUB_ENV"
+            echo "Using RAILWAY_TOKEN"
+          else
+            echo "❌ No Railway token found. Set secrets.RAILWAY_WORKSPACE_TOKEN (preferred) or secrets.RAILWAY_TOKEN."
+            exit 1
+          fi
 
       - name: Resolve inputs
         id: params
@@ -152,12 +151,13 @@ jobs:
             exit 1
           fi
 
-      - name: Resolve Railway IDs (project + service)
+      - name: Resolve Railway IDs (project + service + environment)
         id: ids
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_TOKEN: ${{ env.RAILWAY_TOKEN_EFFECTIVE }}
           PROJECT_NAME: ${{ steps.cfg.outputs.project_name }}
           SERVICE_NAME: ${{ steps.cfg.outputs.service_name }}
+          ENV_NAME: ${{ steps.cfg.outputs.environment_name }}
         run: |
           set -euo pipefail
 
@@ -179,7 +179,8 @@ jobs:
           PROJECT_ID=$(echo "$PROJECT_RESP" | jq -r --arg n "$PROJECT_NAME" '.data.projects.edges[].node | select(.name==$n) | .id' | head -n 1)
           if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "null" ]; then
             echo "❌ Project not found: $PROJECT_NAME"
-            echo "Available projects:"; echo "$PROJECT_RESP" | jq -r '.data.projects.edges[].node.name' | sed 's/^/  - /'
+            echo "Available projects:"
+            echo "$PROJECT_RESP" | jq -r '.data.projects.edges[].node.name' | sed 's/^/  - /'
             exit 1
           fi
           echo "✅ Project ID: $PROJECT_ID"
@@ -193,22 +194,37 @@ jobs:
           SERVICE_ID=$(echo "$SERVICE_RESP" | jq -r --arg n "$SERVICE_NAME" '.data.project.services.edges[].node | select(.name==$n) | .id' | head -n 1)
           if [ -z "$SERVICE_ID" ] || [ "$SERVICE_ID" = "null" ]; then
             echo "❌ Service not found: $SERVICE_NAME"
-            echo "Available services:"; echo "$SERVICE_RESP" | jq -r '.data.project.services.edges[].node.name' | sed 's/^/  - /'
+            echo "Available services:"
+            echo "$SERVICE_RESP" | jq -r '.data.project.services.edges[].node.name' | sed 's/^/  - /'
             exit 1
           fi
           echo "✅ Service ID: $SERVICE_ID"
 
+          echo "🔍 Finding environment ID for: $ENV_NAME"
+          ENV_RESP=$(call_api "{\"query\":\"{ project(id:\\\"$PROJECT_ID\\\") { environments { edges { node { id name } } } } }\"}")
+          if echo "$ENV_RESP" | jq -e '.errors' >/dev/null 2>&1; then
+            echo "❌ Railway API errors:"; echo "$ENV_RESP" | jq '.errors'; exit 1
+          fi
+
+          ENV_ID=$(echo "$ENV_RESP" | jq -r --arg n "$ENV_NAME" '.data.project.environments.edges[].node | select(.name==$n) | .id' | head -n 1)
+          if [ -z "$ENV_ID" ] || [ "$ENV_ID" = "null" ]; then
+            echo "❌ Environment not found: $ENV_NAME"
+            echo "Available environments:"
+            echo "$ENV_RESP" | jq -r '.data.project.environments.edges[].node.name' | sed 's/^/  - /'
+            exit 1
+          fi
+          echo "✅ Environment ID: $ENV_ID"
+
           echo "project_id=$PROJECT_ID" >> "$GITHUB_OUTPUT"
           echo "service_id=$SERVICE_ID" >> "$GITHUB_OUTPUT"
+          echo "environment_id=$ENV_ID" >> "$GITHUB_OUTPUT"
 
       - name: Trigger Railway deployment and wait
         id: deploy
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_TOKEN: ${{ env.RAILWAY_TOKEN_EFFECTIVE }}
           SERVICE_ID: ${{ steps.ids.outputs.service_id }}
-          ENV_NAME: ${{ steps.cfg.outputs.environment_name }}
-          IMAGE_REF: ${{ steps.cfg.outputs.image_ref }}
-          START_COMMAND: ${{ steps.cfg.outputs.start_command }}
+          ENVIRONMENT_ID: ${{ steps.ids.outputs.environment_id }}
         run: |
           set -euo pipefail
 
@@ -223,24 +239,15 @@ jobs:
 
           echo "🚀 Triggering deployment"
           echo "  service_id: $SERVICE_ID"
-          echo "  environment: $ENV_NAME"
-          echo "  image: $IMAGE_REF"
+          echo "  environment_id: $ENVIRONMENT_ID"
 
-          # NOTE: Railway's GraphQL schema can evolve. If this mutation name differs
-          # in your project, adjust only this block.
+          # serviceInstanceDeploy returns Boolean! in your schema.
           MUTATION=$(jq -n \
             --arg serviceId "$SERVICE_ID" \
-            --arg environmentName "$ENV_NAME" \
-            --arg image "$IMAGE_REF" \
-            --arg startCommand "$START_COMMAND" \
+            --arg environmentId "$ENVIRONMENT_ID" \
             '{
-              query: "mutation Deploy($serviceId: String!, $environmentName: String!, $image: String!, $startCommand: String) { serviceInstanceDeploy(input:{ serviceId:$serviceId, environmentName:$environmentName, image:$image, startCommand:$startCommand }) { id } }",
-              variables: {
-                serviceId: $serviceId,
-                environmentName: $environmentName,
-                image: $image,
-                startCommand: $startCommand
-              }
+              query: "mutation Deploy($serviceId: String!, $environmentId: String!) { serviceInstanceDeploy(serviceId: $serviceId, environmentId: $environmentId) }",
+              variables: { serviceId: $serviceId, environmentId: $environmentId }
             }')
 
           RESP=$(call_api "$MUTATION")
@@ -248,34 +255,48 @@ jobs:
             echo "❌ Deploy call failed:"; echo "$RESP" | jq '.errors'; exit 1
           fi
 
-          DEPLOY_ID=$(echo "$RESP" | jq -r '.data.serviceInstanceDeploy.id // empty')
-          if [ -z "$DEPLOY_ID" ]; then
-            echo "❌ No deployment id returned. Full response:"; echo "$RESP" | jq
+          OK=$(echo "$RESP" | jq -r '.data.serviceInstanceDeploy // empty')
+          if [ "$OK" != "true" ]; then
+            echo "❌ Deploy mutation did not return true. Full response:"
+            echo "$RESP" | jq
             exit 1
           fi
 
-          echo "deployment_id=$DEPLOY_ID" >> "$GITHUB_OUTPUT"
-          echo "✅ Deployment started: $DEPLOY_ID"
+          echo "✅ Deploy triggered. Waiting for latest deployment to reach terminal state..."
 
-          echo "⏳ Waiting for deployment to complete..."
           MAX_WAIT=900
           INTERVAL=10
           ELAPSED=0
 
           while [ $ELAPSED -lt $MAX_WAIT ]; do
-            Q=$(jq -n --arg id "$DEPLOY_ID" '{ query: "query($id: String!) { deployment(id:$id) { status } }", variables: { id: $id } }')
-            R=$(call_api "$Q")
+            Q=$(jq -n --arg id "$SERVICE_ID" \
+              '{ query: "query($id: String!) { service(id: $id) { deployments(first: 1) { edges { node { id status createdAt } } } } }", variables: { id: $id } }')
 
-            STATUS=$(echo "$R" | jq -r '.data.deployment.status // "UNKNOWN"')
-            echo "Status: $STATUS (${ELAPSED}s)"
+            R=$(call_api "$Q")
+            if echo "$R" | jq -e '.errors' >/dev/null 2>&1; then
+              echo "⚠️ Status query error:"; echo "$R" | jq '.errors'
+              sleep $INTERVAL
+              ELAPSED=$((ELAPSED + INTERVAL))
+              continue
+            fi
+
+            DEPLOY_ID=$(echo "$R" | jq -r '.data.service.deployments.edges[0].node.id // empty')
+            STATUS=$(echo "$R" | jq -r '.data.service.deployments.edges[0].node.status // "UNKNOWN"')
+            echo "Latest deployment: ${DEPLOY_ID:-<none>}  status=$STATUS  (${ELAPSED}s)"
 
             case "$STATUS" in
               ACTIVE|SUCCESS)
                 echo "✅ Deployment complete: $STATUS"
+                if [ -n "$DEPLOY_ID" ]; then
+                  echo "deployment_id=$DEPLOY_ID" >> "$GITHUB_OUTPUT"
+                fi
                 exit 0
                 ;;
               FAILED|CRASHED|ERROR)
                 echo "❌ Deployment failed: $STATUS"
+                if [ -n "$DEPLOY_ID" ]; then
+                  echo "deployment_id=$DEPLOY_ID" >> "$GITHUB_OUTPUT"
+                fi
                 exit 1
                 ;;
               *)
