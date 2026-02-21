@@ -95,7 +95,7 @@ jobs:
           echo "  service: $SERVICE_NAME"
           echo "  environment: $ENV_NAME"
 
-      - name: Resolve service + environment IDs and fetch public URL
+      - name: Resolve IDs and discover public URL
         id: url
         env:
           RAILWAY_TOKEN: ${{ env.RAILWAY_TOKEN_EFFECTIVE }}
@@ -115,16 +115,25 @@ jobs:
 
           # project id
           P=$(call_api '{"query":"{ projects { edges { node { id name } } } }"}')
+          if echo "$P" | jq -e '.errors' >/dev/null 2>&1; then
+            echo "❌ Railway API errors:"; echo "$P" | jq '.errors'; exit 1
+          fi
           PROJECT_ID=$(echo "$P" | jq -r --arg n "$PROJECT_NAME" '.data.projects.edges[].node | select(.name==$n) | .id' | head -n 1)
           [ -n "$PROJECT_ID" ] && [ "$PROJECT_ID" != "null" ] || { echo "❌ Project not found: $PROJECT_NAME"; exit 1; }
 
           # service id
           S=$(call_api "{\"query\":\"{ project(id:\\\"$PROJECT_ID\\\") { services { edges { node { id name } } } } }\"}")
+          if echo "$S" | jq -e '.errors' >/dev/null 2>&1; then
+            echo "❌ Railway API errors:"; echo "$S" | jq '.errors'; exit 1
+          fi
           SERVICE_ID=$(echo "$S" | jq -r --arg n "$SERVICE_NAME" '.data.project.services.edges[].node | select(.name==$n) | .id' | head -n 1)
           [ -n "$SERVICE_ID" ] && [ "$SERVICE_ID" != "null" ] || { echo "❌ Service not found: $SERVICE_NAME"; exit 1; }
 
           # environment id
           E=$(call_api "{\"query\":\"{ project(id:\\\"$PROJECT_ID\\\") { environments { edges { node { id name } } } } }\"}")
+          if echo "$E" | jq -e '.errors' >/dev/null 2>&1; then
+            echo "❌ Railway API errors:"; echo "$E" | jq '.errors'; exit 1
+          fi
           ENV_ID=$(echo "$E" | jq -r --arg n "$ENV_NAME" '.data.project.environments.edges[].node | select(.name==$n) | .id' | head -n 1)
           [ -n "$ENV_ID" ] && [ "$ENV_ID" != "null" ] || { echo "❌ Environment not found: $ENV_NAME"; exit 1; }
 
@@ -133,12 +142,16 @@ jobs:
           echo "  service_id=$SERVICE_ID"
           echo "  environment_id=$ENV_ID"
 
-          # Fetch domains for the service in this environment.
-          # NOTE: Railway schema can differ slightly. This query matches common v2 patterns:
-          Q=$(jq -n --arg sid "$SERVICE_ID" --arg eid "$ENV_ID" '{
-            query: "query($sid: String!, $eid: String!) { service(id:$sid) { domains(environmentId:$eid) { domain } } }",
-            variables: { sid: $sid, eid: $eid }
-          }')
+          # --- Correct domain discovery for Railway GraphQL v2 ---
+          # Domains are not on Service; use the top-level domains(...) query.
+          Q=$(jq -n \
+            --arg projectId "$PROJECT_ID" \
+            --arg environmentId "$ENV_ID" \
+            --arg serviceId "$SERVICE_ID" \
+            '{
+              query: "query Domains($projectId: String!, $environmentId: String!, $serviceId: String!) { domains(projectId: $projectId, environmentId: $environmentId, serviceId: $serviceId) { serviceDomains { id domain suffix } customDomains { id domain } } }",
+              variables: { projectId: $projectId, environmentId: $environmentId, serviceId: $serviceId }
+            }')
 
           D=$(call_api "$Q")
           if echo "$D" | jq -e '.errors' >/dev/null 2>&1; then
@@ -147,14 +160,21 @@ jobs:
             exit 1
           fi
 
-          DOMAIN=$(echo "$D" | jq -r '.data.service.domains[0].domain // empty')
-          if [ -z "$DOMAIN" ]; then
-            echo "❌ No domain found for service/environment."
-            echo "Full response:"; echo "$D" | jq
-            exit 1
+          # Prefer custom domain if present, else Railway service domain+suffix.
+          CUSTOM=$(echo "$D" | jq -r '.data.domains.customDomains[0].domain // empty')
+          if [ -n "$CUSTOM" ]; then
+            URL="https://${CUSTOM}"
+          else
+            SD=$(echo "$D" | jq -r '.data.domains.serviceDomains[0].domain // empty')
+            SUFFIX=$(echo "$D" | jq -r '.data.domains.serviceDomains[0].suffix // empty')
+            if [ -z "$SD" ] || [ -z "$SUFFIX" ]; then
+              echo "❌ No domains found for service/environment (customDomains empty, serviceDomains empty)."
+              echo "Full response:"; echo "$D" | jq
+              exit 1
+            fi
+            URL="https://${SD}${SUFFIX}"
           fi
 
-          URL="https://${DOMAIN}"
           echo "url=$URL" >> "$GITHUB_OUTPUT"
           echo "✅ URL: $URL"
 
