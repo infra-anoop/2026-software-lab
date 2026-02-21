@@ -1,44 +1,85 @@
 # Railway Production Deployment Configuration
 #
-# This file defines how the research-auditor app is deployed to Railway.
-# It's referenced by: .github/workflows/reusable/deploy.yml
+# Used by: .github/workflows/deploy.yml
 #
-# GHCR path: Nix builds image → Ship pushes to GHCR → Deploy passes this start_command.
-# railway.toml is for Railpack (build-from-source) reference only; not used here.
+# Architecture Flow:
+#   1. flake.nix defines container build (including CMD)
+#   2. ship-registry.yml builds with Nix → pushes to GHCR
+#   3. deploy.yml reads this config → deploys via Railway API
+#   4. Railway pulls from GHCR and runs with start_command below
 #
-# To update deployment:
-#   1. Edit this file
-#   2. Commit and push
-#   3. Tag a new version: git tag vX.Y.Z && git push origin vX.Y.Z
-#   4. GitHub Actions will deploy automatically
+# Authentication:
+#   - Uses project-scoped Railway token (set in GitHub secrets)
+#   - No project_id needed (token is automatically scoped to project)
+#   - Token format: RAILWAY_TOKEN=rwy_prj_...
+#
+# To get project-scoped token:
+#   Railway Dashboard → Your Project → Settings → Tokens → Create Token
+#
+# To deploy:
+#   git tag v0.X.Y && git push origin v0.X.Y
+#   (Automatically triggers: ship-registry.yml → deploy.yml)
 
-app: research-auditor
-environment: production
+service:
+  # Human-readable service name
+  # Railway API queries by this name (no hardcoded service ID needed)
+  name: "research-auditor"
 
-railway:
-  # Project ID: set here OR add RAILWAY_PROJECT_ID repo secret (Railway: Cmd+K → Copy Project ID)
-  project_id: ""  # e.g. "abc12345-1234-1234-1234-123456789abc"
-  service_name: research-auditor
-
-  container:
-    # Image is built by Nix and pushed to GHCR
-    # Format: ghcr.io/OWNER/research-auditor:TAG
-    registry: ghcr.io
-    repository: "{{ github.repository_owner }}/research-auditor"
-
-    # Aligned with flake.nix CMD: FastAPI + Uvicorn
-    # PORT is set by Railway; uv sync ensures deps in container.
-    start_command: "bash -c 'cd /app && uv sync --frozen && exec uv run --frozen uvicorn app.entrypoints.http:app --host 0.0.0.0 --port ${PORT:-8080}'"
-    
-    # Port configuration
-    port: 8080
+source:
+  # Container image configuration
+  type: "image"
+  registry: "ghcr.io"
   
-  resources:
-    # Memory limit (MB)
-    memory: 512
-    
+  # Repository path (template replaced in workflow)
+  # {{ github_repository_owner }} becomes your actual GitHub username/org
+  repository: "{{ github_repository_owner }}/research-auditor"
+  
+  # Tag to deploy (overridden in workflow based on trigger)
+  # - Automatic deploys: uses 'latest'
+  # - Manual deploys: can specify any tag (v0.5.0, sha-abc123, etc.)
+  # Overridden in workflow based on trigger
+
+deployment:
+  # Start command - matches flake.nix CMD exactly
+  #
+  # Why this command:
+  #   1. cd /app                    → Navigate to app directory
+  #   2. uv sync --frozen           → Install Python deps from uv.lock
+  #   3. uv run --frozen            → Activate venv and run Python
+  #   4. python -m app.entrypoints.http → Run FastAPI server
+  #
+  # Railway automatically sets PORT environment variable
+  # Your app should read: port = int(os.getenv("PORT", "8080"))
+  start_command: "bash -c 'cd /app && uv sync --frozen && exec uv run --frozen python -m app.entrypoints.http'"
+  
   # Health check configuration
   health_check:
-    path: /health
-    interval: 30
-    timeout: 10
+    # Endpoint Railway will ping to verify app is healthy
+    path: "/health"
+    
+    # Max time to wait for first successful health check
+    # Set high because uv sync can take time on first container start
+    timeout: 300  # 5 minutes
+    
+    # How often to check once app is running
+    interval: 30  # 30 seconds
+  
+  # Restart policy
+  # on-failure: Restart if container exits with non-zero code
+  # always: Restart no matter what (not recommended)
+  # never: Don't auto-restart
+  restart_policy: "on-failure"
+  restart_max_retries: 3
+
+resources:
+  # Memory limit in MB
+  # Railway Hobby plan: Max 512 MB per service
+  # Railway Pro plan: Higher limits available
+  memory_mb: 512
+  
+  # CPU allocation is automatic (based on plan)
+  # Hobby: Shared CPU
+  # Pro: Dedicated CPU options
+
+# Optional: Environment-specific overrides
+# (Not used yet, but structure for future staging environment)

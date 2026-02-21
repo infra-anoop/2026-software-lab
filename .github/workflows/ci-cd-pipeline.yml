@@ -60,7 +60,7 @@ jobs:
     uses: ./.github/workflows/deploy.yml
     with:
       environment: production
-      tag: latest
+      tag: ${{ github.ref_name }} # Pass 'v0.3.4' instead of 'latest'
     secrets: inherit
 
   # ─────────────────────────────────────────────────────────────────────────
