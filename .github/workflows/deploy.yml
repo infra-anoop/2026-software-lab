@@ -96,6 +96,9 @@ jobs:
           REPOSITORY=$(yq -r '.image.repository' "$CONFIG_FILE")
           START_CMD=$(yq -r '.runtime.start_command' "$CONFIG_FILE")
 
+          # Substitute our config template tokens
+          REPOSITORY="${REPOSITORY//\{\{ github_repository_owner \}\}/${{ github.repository_owner }}}"
+
           if [ -z "$PROJECT_NAME" ] || [ "$PROJECT_NAME" = "null" ]; then
             echo "❌ railway.project_name missing in $CONFIG_FILE"; exit 1
           fi
