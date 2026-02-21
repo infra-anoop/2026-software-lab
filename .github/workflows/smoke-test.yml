@@ -172,7 +172,13 @@ jobs:
               echo "Full response:"; echo "$D" | jq
               exit 1
             fi
-            URL="https://${SD}${SUFFIX}"
+            HOST="$SD"
+            # If SD already includes the suffix or already contains a railway domain, don't append.
+            if [[ "$HOST" == *"$SUFFIX" ]] || [[ "$HOST" == *".railway.app" ]]; then
+              URL="https://${HOST}"
+            else
+              URL="https://${HOST}${SUFFIX}"
+            fi
           fi
 
           echo "url=$URL" >> "$GITHUB_OUTPUT"
