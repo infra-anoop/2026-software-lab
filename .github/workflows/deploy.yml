@@ -36,12 +36,18 @@ on:
       environment:
         description: 'Environment to deploy to'
         required: false
-        type: choice
+        type: string
         options:
           - production
           - staging
         default: 'production'
-  
+      secrets:
+        RAILWAY_TOKEN:
+          required: true
+        
+
+
+
   # Manual: Allow manual deployment with tag selection
   workflow_dispatch:
     inputs:
