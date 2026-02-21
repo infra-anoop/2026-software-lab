@@ -1,9 +1,12 @@
 # ------------------------------------------------------------------------------
 # Reusable: Deploy to Railway
 # ------------------------------------------------------------------------------
-# Deploys container images from GHCR to Railway via GraphQL API.
+# Deploys container images from GHCR to Railway. Uses minimal API (image update)
+# and health-check polling for completion. Railway CLI cannot update source
+# image—API is required for pre-built GHCR images.
+#
 # NOT auto-triggered. Call via: ci-cd-pipeline.yml
-# Requires: RAILWAY_TOKEN, container in GHCR
+# Requires: RAILWAY_TOKEN, RAILWAY_URL, RAILWAY_PROJECT_ID (or in config)
 # ------------------------------------------------------------------------------
 
 name: "Deploy to Railway"
@@ -21,8 +24,15 @@ on:
         required: false
         default: latest
         type: string
+    secrets:
+      RAILWAY_TOKEN:
+        required: true
+      RAILWAY_PROJECT_ID:
+        required: false
+      RAILWAY_URL:
+        required: true
 
-  workflow_dispatch:  # Manual run only; no auto-trigger
+  workflow_dispatch:
     inputs:
       environment:
         description: 'Environment'
@@ -49,7 +59,7 @@ jobs:
       packages: read
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Login to GHCR
@@ -59,161 +69,96 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install yq (YAML parser)
+      - name: Install yq
         run: |
           sudo wget -qO /usr/local/bin/yq \
             https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
-          yq --version
 
-      - name: Set deployment parameters
-        id: params
-        run: |
-          ENVIRONMENT="${{ inputs.environment }}"
-          TAG="${{ inputs.tag }}"
-
-          echo "environment=${ENVIRONMENT}" >> $GITHUB_OUTPUT
-          echo "tag=${TAG}" >> $GITHUB_OUTPUT
-          echo "image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG}" >> $GITHUB_OUTPUT
-
-          echo "📦 Deploying: $ENVIRONMENT"
-          echo "🏷️  Tag: $TAG"
-
-      - name: Load Railway configuration
-        id: config
+      - name: Load config and set params
+        id: setup
         env:
-          ENVIRONMENT: ${{ steps.params.outputs.environment }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          TAG: ${{ inputs.tag }}
         run: |
-          CONFIG_FILE="deploy/railway/${ENVIRONMENT}.yml"
-
-          if [ ! -f "$CONFIG_FILE" ]; then
-            echo "❌ Configuration file not found: $CONFIG_FILE"
-            ls -la deploy/railway/
-            exit 1
-          fi
-
-          SERVICE_NAME=$(yq eval '.railway.service_name' "$CONFIG_FILE")
-          START_CMD=$(yq eval '.railway.container.start_command' "$CONFIG_FILE")
-          PROJECT_ID=$(yq eval '.railway.project_id // ""' "$CONFIG_FILE" 2>/dev/null || true)
-          if [ -z "$PROJECT_ID" ]; then
-            PROJECT_ID="${{ secrets.RAILWAY_PROJECT_ID }}"
-          fi
-
-          if [ -z "$SERVICE_NAME" ] || [ "$SERVICE_NAME" == "null" ]; then
-            echo "❌ service_name not found in config"
-            exit 1
-          fi
-          if [ -z "$PROJECT_ID" ]; then
-            echo "❌ project_id not set. Add railway.project_id in config or RAILWAY_PROJECT_ID secret."
-            exit 1
-          fi
-
+          CONFIG="deploy/railway/${ENVIRONMENT}.yml"
+          [ -f "$CONFIG" ] || { echo "❌ Config not found: $CONFIG"; exit 1; }
+          SERVICE_NAME=$(yq eval '.railway.service_name' "$CONFIG")
+          START_CMD=$(yq eval '.railway.container.start_command' "$CONFIG")
+          PROJECT_ID=$(yq eval '.railway.project_id // ""' "$CONFIG" 2>/dev/null || true)
+          [ -z "$PROJECT_ID" ] && PROJECT_ID="${{ secrets.RAILWAY_PROJECT_ID }}"
+          [ -z "$SERVICE_NAME" ] || [ "$SERVICE_NAME" = "null" ] && { echo "❌ service_name not found"; exit 1; }
+          [ -z "$PROJECT_ID" ] && { echo "❌ project_id not set"; exit 1; }
+          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG}"
+          echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
           echo "service_name=$SERVICE_NAME" >> $GITHUB_OUTPUT
           echo "start_command=$START_CMD" >> $GITHUB_OUTPUT
           echo "project_id=$PROJECT_ID" >> $GITHUB_OUTPUT
+          echo "📦 $ENVIRONMENT | Tag: $TAG"
 
-      - name: Verify container image exists
-        env:
-          IMAGE: ${{ steps.params.outputs.image }}
+      - name: Verify image exists
         run: |
-          echo "🔍 Verifying image exists: $IMAGE"
-          docker manifest inspect "$IMAGE" > /dev/null 2>&1 || {
-            echo "❌ Image not found: $IMAGE"
-            exit 1
-          }
+          docker manifest inspect ${{ steps.setup.outputs.image }} > /dev/null 2>&1 || { echo "❌ Image not found"; exit 1; }
           echo "✅ Image found"
 
       - name: Get Railway service ID
         id: railway
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          SERVICE_NAME: ${{ steps.config.outputs.service_name }}
-          PROJECT_ID: ${{ steps.config.outputs.project_id }}
+          PROJECT_ID: ${{ steps.setup.outputs.project_id }}
+          SERVICE_NAME: ${{ steps.setup.outputs.service_name }}
         run: |
-          QUERY=$(jq -n --arg id "$PROJECT_ID" '{query: "query project($id: String!) { project(id: $id) { services { edges { node { id name } } } } }", variables: {id: $id}}')
-          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST https://backboard.railway.com/graphql/v2 \
+          PAYLOAD=$(jq -n --arg id "$PROJECT_ID" '{query: "query project($id: String!) { project(id: $id) { services { edges { node { id name } } } } }", variables: {id: $id}}')
+          BODY=$(curl -sS -X POST https://backboard.railway.com/graphql/v2 \
             -H "Authorization: Bearer $RAILWAY_TOKEN" \
             -H "Content-Type: application/json" \
-            -d "$QUERY")
-          HTTP_BODY="${RESPONSE%$'\n'*}"
-          HTTP_CODE="${RESPONSE##*$'\n'}"
+            -d "$PAYLOAD")
+          echo "$BODY" | jq -e '.errors' > /dev/null 2>&1 && { echo "❌ API error:"; echo "$BODY" | jq '.errors'; exit 1; }
+          SID=$(echo "$BODY" | jq -r ".data.project.services.edges[].node | select(.name == \"$SERVICE_NAME\") | .id")
+          [ -z "$SID" ] || [ "$SID" = "null" ] && { echo "❌ Service not found: $SERVICE_NAME"; exit 1; }
+          echo "service_id=$SID" >> $GITHUB_OUTPUT
+          echo "✅ Service ID resolved"
 
-          if ! echo "$HTTP_BODY" | jq -e . > /dev/null 2>&1; then
-            echo "❌ Railway API returned invalid JSON (HTTP $HTTP_CODE)"
-            echo "Response: $HTTP_BODY"
-            exit 1
-          fi
-          if echo "$HTTP_BODY" | jq -e '.errors' > /dev/null 2>&1; then
-            echo "❌ Railway API error:" && echo "$HTTP_BODY" | jq '.errors'
-            exit 1
-          fi
-
-          SERVICE_ID=$(echo "$HTTP_BODY" | jq -r ".data.project.services.edges[] | select(.node.name == \"$SERVICE_NAME\") | .node.id")
-          if [ -z "$SERVICE_ID" ] || [ "$SERVICE_ID" == "null" ]; then
-            echo "❌ Service not found: $SERVICE_NAME"
-            exit 1
-          fi
-          echo "service_id=$SERVICE_ID" >> $GITHUB_OUTPUT
-
-      - name: Trigger Railway deployment
-        id: deploy
+      - name: Trigger deployment
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          SERVICE_ID: ${{ steps.railway.outputs.service_id }}
-          IMAGE: ${{ steps.params.outputs.image }}
-          START_COMMAND: ${{ steps.config.outputs.start_command }}
+          IMAGE: ${{ steps.setup.outputs.image }}
+          SID: ${{ steps.railway.outputs.service_id }}
+          START_CMD: ${{ steps.setup.outputs.start_command }}
         run: |
-          MUTATION=$(jq -n \
-            --arg serviceId "$SERVICE_ID" \
-            --arg image "$IMAGE" \
-            --arg startCommand "$START_COMMAND" \
-            '{query: "mutation serviceInstanceUpdate($serviceId: String!, $input: ServiceInstanceUpdateInput!) { serviceInstanceUpdate(serviceId: $serviceId, input: $input) { id } }", variables: {serviceId: $serviceId, input: {source: {image: $image}, startCommand: $startCommand}}}')
-
-          RESPONSE=$(curl -s -X POST https://backboard.railway.com/graphql/v2 \
+          PAYLOAD=$(jq -n \
+            --arg sid "$SID" --arg img "$IMAGE" --arg cmd "$START_CMD" \
+            '{query: "mutation serviceInstanceUpdate($serviceId: String!, $input: ServiceInstanceUpdateInput!) { serviceInstanceUpdate(serviceId: $serviceId, input: $input) { id } }", variables: {serviceId: $sid, input: {source: {image: $img}, startCommand: $cmd}}}')
+          BODY=$(curl -sS -X POST https://backboard.railway.com/graphql/v2 \
             -H "Authorization: Bearer $RAILWAY_TOKEN" \
             -H "Content-Type: application/json" \
-            -d "$MUTATION")
-
-          if echo "$RESPONSE" | jq -e '.errors' > /dev/null 2>&1; then
-            echo "❌ Deployment failed:" && echo "$RESPONSE" | jq '.errors'
-            exit 1
-          fi
-
-          DEPLOYMENT_ID=$(echo "$RESPONSE" | jq -r '.data.serviceInstanceUpdate.id')
-          echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
+            -d "$PAYLOAD")
+          echo "$BODY" | jq -e '.errors' > /dev/null 2>&1 && { echo "❌ Deploy failed:"; echo "$BODY" | jq '.errors'; exit 1; }
           echo "✅ Deployment triggered"
 
-      - name: Wait for deployment to complete
+      - name: Wait for healthy
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          SERVICE_ID: ${{ steps.railway.outputs.service_id }}
+          RAILWAY_URL: ${{ secrets.RAILWAY_URL }}
         run: |
-          MAX_WAIT=300
-          INTERVAL=15
+          MAX=300
+          INTERVAL=10
           ELAPSED=0
-
-          while [ $ELAPSED -lt $MAX_WAIT ]; do
-            QUERY=$(jq -n --arg id "$SERVICE_ID" '{query: "query service($id: String!) { service(id: $id) { deployments(first: 1) { edges { node { status } } } } }", variables: {id: $id}}')
-            RESPONSE=$(curl -s -X POST https://backboard.railway.com/graphql/v2 \
-              -H "Authorization: Bearer $RAILWAY_TOKEN" \
-              -H "Content-Type: application/json" \
-              -d "$QUERY")
-            STATUS=$(echo "$RESPONSE" | jq -r '.data.service.deployments.edges[0].node.status // "UNKNOWN"')
-
-            echo "   Status: $STATUS (${ELAPSED}s)"
-
-            case "$STATUS" in
-              "SUCCESS") echo "✅ Deployment succeeded!"; exit 0 ;;
-              "FAILED"|"CRASHED") echo "❌ Deployment failed"; exit 1 ;;
-            esac
+          while [ $ELAPSED -lt $MAX ]; do
+            if curl -sfS -m 10 "$RAILWAY_URL/health" > /dev/null 2>&1 || curl -sfS -m 10 "$RAILWAY_URL/" > /dev/null 2>&1; then
+              echo "✅ Deployment healthy (${ELAPSED}s)"
+              exit 0
+            fi
+            echo "   Waiting... ${ELAPSED}s"
             sleep $INTERVAL
             ELAPSED=$((ELAPSED + INTERVAL))
           done
-          echo "⚠️ Timeout"; exit 1
+          echo "⚠️ Timeout waiting for health"; exit 1
 
-      - name: Generate summary
+      - name: Summary
         if: always()
         run: |
           echo "## Railway Deployment 🚀" >> $GITHUB_STEP_SUMMARY
-          echo "- **Environment:** ${{ steps.params.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Image:** \`${{ steps.params.outputs.image }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** ${{ steps.setup.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image:** \`${{ steps.setup.outputs.image }}\`" >> $GITHUB_STEP_SUMMARY

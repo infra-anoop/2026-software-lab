@@ -16,7 +16,8 @@ app: research-auditor
 environment: production
 
 railway:
-  # project_id: from RAILWAY_PROJECT_ID repo secret (Railway dashboard: Cmd+K → Copy Project ID)
+  # Project ID: set here OR add RAILWAY_PROJECT_ID repo secret (Railway: Cmd+K → Copy Project ID)
+  project_id: ""  # e.g. "abc12345-1234-1234-1234-123456789abc"
   service_name: research-auditor
 
   container:
