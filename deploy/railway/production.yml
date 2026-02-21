@@ -7,7 +7,7 @@ image:
   registry: "ghcr.io"
   # If your GHCR image is exactly ghcr.io/<owner>/<repo>, keep it as github.repository.
   # If you publish to ghcr.io/<owner>/research-auditor explicitly, set that exact path.
-  repository: "{{ github.repository_owner }}/research-auditor"
+  repository: "{{ github_repository_owner }}/research-auditor"
 
 runtime:
   # Only used if your Railway deploy mutation accepts overriding startCommand.
