@@ -1,19 +1,32 @@
 # ------------------------------------------------------------------------------
 # Reusable: Post-Deploy Smoke Test (Railway)
 # ------------------------------------------------------------------------------
-# Verifies the live Railway deployment by curling RAILWAY_URL.
-# NOT auto-triggered. Call via: ci-cd-pipeline.yml
-# Requires: RAILWAY_URL secret
+# Derives the Railway public URL via GraphQL and curls /health.
+# Requires: RAILWAY_WORKSPACE_TOKEN (preferred) or RAILWAY_TOKEN
+# Config: deploy/railway/production.yml provides project/service/environment names
 # ------------------------------------------------------------------------------
 
 name: "Post-Deploy Smoke Test (Railway)"
 
 on:
   workflow_call:
-  workflow_dispatch:  # Manual run only; no auto-trigger
+    inputs:
+      environment:
+        description: "Deployment config name (production/staging). Default: production"
+        required: false
+        type: string
+        default: production
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment config name (production/staging). Default: production"
+        required: false
+        type: choice
+        options: [production, staging]
+        default: production
 
 concurrency:
-  group: smoke-${{ github.ref }}
+  group: smoke-${{ github.ref }}-${{ inputs.environment || 'production' }}
   cancel-in-progress: true
 
 jobs:
@@ -23,20 +36,133 @@ jobs:
       contents: read
 
     steps:
-      - name: Smoke test Railway endpoint
-        env:
-          RAILWAY_URL: ${{ secrets.RAILWAY_URL }}
-        shell: bash
-        run: |
-          set -euo pipefail
+      - name: Checkout
+        uses: actions/checkout@v4
 
-          if [[ -z "${RAILWAY_URL:-}" ]]; then
-            echo "ERROR: RAILWAY_URL secret is not set."
+      - name: Install jq + yq
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+          yq --version
+
+      - name: Select Railway token (workspace preferred)
+        run: |
+          if [ -n "${{ secrets.RAILWAY_WORKSPACE_TOKEN }}" ]; then
+            echo "RAILWAY_TOKEN_EFFECTIVE=${{ secrets.RAILWAY_WORKSPACE_TOKEN }}" >> "$GITHUB_ENV"
+            echo "Using RAILWAY_WORKSPACE_TOKEN"
+          elif [ -n "${{ secrets.RAILWAY_TOKEN }}" ]; then
+            echo "RAILWAY_TOKEN_EFFECTIVE=${{ secrets.RAILWAY_TOKEN }}" >> "$GITHUB_ENV"
+            echo "Using RAILWAY_TOKEN"
+          else
+            echo "❌ No Railway token found. Set secrets.RAILWAY_WORKSPACE_TOKEN (preferred) or secrets.RAILWAY_TOKEN."
             exit 1
           fi
 
-          echo "Testing: ${RAILWAY_URL}"
+      - name: Load Railway names from deploy config
+        id: cfg
+        env:
+          ENV_CONFIG: ${{ inputs.environment || 'production' }}
+        run: |
+          CONFIG_FILE="deploy/railway/${ENV_CONFIG}.yml"
+          if [ ! -f "$CONFIG_FILE" ]; then
+            echo "❌ Missing config: $CONFIG_FILE"
+            ls -la deploy/railway || true
+            exit 1
+          fi
 
-          curl -fsS -m 20 "${RAILWAY_URL}/health" || curl -fsS -m 20 "${RAILWAY_URL}/"
+          PROJECT_NAME=$(yq -r '.railway.project_name' "$CONFIG_FILE")
+          SERVICE_NAME=$(yq -r '.railway.service_name' "$CONFIG_FILE")
+          ENV_NAME=$(yq -r '.railway.environment_name' "$CONFIG_FILE")
 
+          if [ -z "$PROJECT_NAME" ] || [ "$PROJECT_NAME" = "null" ]; then
+            echo "❌ railway.project_name missing in $CONFIG_FILE"; exit 1
+          fi
+          if [ -z "$SERVICE_NAME" ] || [ "$SERVICE_NAME" = "null" ]; then
+            echo "❌ railway.service_name missing in $CONFIG_FILE"; exit 1
+          fi
+          if [ -z "$ENV_NAME" ] || [ "$ENV_NAME" = "null" ]; then
+            echo "❌ railway.environment_name missing in $CONFIG_FILE"; exit 1
+          fi
+
+          echo "project_name=$PROJECT_NAME" >> "$GITHUB_OUTPUT"
+          echo "service_name=$SERVICE_NAME" >> "$GITHUB_OUTPUT"
+          echo "environment_name=$ENV_NAME" >> "$GITHUB_OUTPUT"
+
+          echo "Config:"
+          echo "  project: $PROJECT_NAME"
+          echo "  service: $SERVICE_NAME"
+          echo "  environment: $ENV_NAME"
+
+      - name: Resolve service + environment IDs and fetch public URL
+        id: url
+        env:
+          RAILWAY_TOKEN: ${{ env.RAILWAY_TOKEN_EFFECTIVE }}
+          PROJECT_NAME: ${{ steps.cfg.outputs.project_name }}
+          SERVICE_NAME: ${{ steps.cfg.outputs.service_name }}
+          ENV_NAME: ${{ steps.cfg.outputs.environment_name }}
+        run: |
+          set -euo pipefail
+          API="https://backboard.railway.app/graphql/v2"
+
+          call_api () {
+            curl -sS -X POST "$API" \
+              -H "Authorization: Bearer $RAILWAY_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "$1"
+          }
+
+          # project id
+          P=$(call_api '{"query":"{ projects { edges { node { id name } } } }"}')
+          PROJECT_ID=$(echo "$P" | jq -r --arg n "$PROJECT_NAME" '.data.projects.edges[].node | select(.name==$n) | .id' | head -n 1)
+          [ -n "$PROJECT_ID" ] && [ "$PROJECT_ID" != "null" ] || { echo "❌ Project not found: $PROJECT_NAME"; exit 1; }
+
+          # service id
+          S=$(call_api "{\"query\":\"{ project(id:\\\"$PROJECT_ID\\\") { services { edges { node { id name } } } } }\"}")
+          SERVICE_ID=$(echo "$S" | jq -r --arg n "$SERVICE_NAME" '.data.project.services.edges[].node | select(.name==$n) | .id' | head -n 1)
+          [ -n "$SERVICE_ID" ] && [ "$SERVICE_ID" != "null" ] || { echo "❌ Service not found: $SERVICE_NAME"; exit 1; }
+
+          # environment id
+          E=$(call_api "{\"query\":\"{ project(id:\\\"$PROJECT_ID\\\") { environments { edges { node { id name } } } } }\"}")
+          ENV_ID=$(echo "$E" | jq -r --arg n "$ENV_NAME" '.data.project.environments.edges[].node | select(.name==$n) | .id' | head -n 1)
+          [ -n "$ENV_ID" ] && [ "$ENV_ID" != "null" ] || { echo "❌ Environment not found: $ENV_NAME"; exit 1; }
+
+          echo "✅ IDs:"
+          echo "  project_id=$PROJECT_ID"
+          echo "  service_id=$SERVICE_ID"
+          echo "  environment_id=$ENV_ID"
+
+          # Fetch domains for the service in this environment.
+          # NOTE: Railway schema can differ slightly. This query matches common v2 patterns:
+          Q=$(jq -n --arg sid "$SERVICE_ID" --arg eid "$ENV_ID" '{
+            query: "query($sid: String!, $eid: String!) { service(id:$sid) { domains(environmentId:$eid) { domain } } }",
+            variables: { sid: $sid, eid: $eid }
+          }')
+
+          D=$(call_api "$Q")
+          if echo "$D" | jq -e '.errors' >/dev/null 2>&1; then
+            echo "❌ Domain query failed:"; echo "$D" | jq '.errors'
+            echo "Full response:"; echo "$D" | jq
+            exit 1
+          fi
+
+          DOMAIN=$(echo "$D" | jq -r '.data.service.domains[0].domain // empty')
+          if [ -z "$DOMAIN" ]; then
+            echo "❌ No domain found for service/environment."
+            echo "Full response:"; echo "$D" | jq
+            exit 1
+          fi
+
+          URL="https://${DOMAIN}"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "✅ URL: $URL"
+
+      - name: Smoke test /health
+        env:
+          URL: ${{ steps.url.outputs.url }}
+        run: |
+          set -euo pipefail
+          echo "Testing: $URL/health"
+          curl -fsS -m 20 "$URL/health" || curl -fsS -m 20 "$URL/"
           echo "Smoke test OK"
