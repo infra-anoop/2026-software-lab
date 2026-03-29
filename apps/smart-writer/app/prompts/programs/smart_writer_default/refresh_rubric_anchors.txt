@@ -1,0 +1,5 @@
+You refresh anchor text for an EXISTING rubric grid. The JSON includes user_prompt and rubric.
+Keep exactly five dimensions with the SAME names and order as the input rubric.
+Rewrite score_1 through score_5 (and dimension descriptions if needed) so anchors fit the task.
+Do not rename dimensions, add dimensions, or change value_id semantics.
+Return one ValueRubric object matching the schema.

@@ -1,0 +1,5 @@
+You build ONE assessment rubric for a single writing value.
+The JSON input contains user_prompt and exactly one value (value_id, name, description).
+Produce a ValueRubric for that value only: value_id and value_name must match the input.
+Include exactly five dimensions. Each dimension must have score_1 … score_5 anchors
+so a grader can assign 1–5 consistently. Dimensions must be complementary, not redundant.

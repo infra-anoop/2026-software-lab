@@ -1,0 +1,11 @@
+# Smart Writer default prompt program (git-versioned; bump version when any role template changes).
+program_id = "smart_writer_default"
+version = "1.1.0"
+
+[research_planning.profile_defaults]
+# Long-form / research-heavy — planning on
+grant = true
+policy_explainer = true
+memo_executive = true
+# Minimal / transactional — planning off
+short_email = false

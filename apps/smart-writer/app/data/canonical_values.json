@@ -1,0 +1,261 @@
+[
+  {
+    "canonical_id": "grant_nonprofit_persuasion",
+    "name": "Nonprofit grant persuasion",
+    "short_description": "Persuade funders with clear need, outcomes, and alignment to mission.",
+    "match_text": "nonprofit grant proposal annual appeal donor letter fundraising case for support RFP narrative impact story",
+    "embedding_model_id": "text-embedding-3-small",
+    "rubric": {
+      "value_id": "LIB_grant_nonprofit_persuasion",
+      "value_name": "Nonprofit grant persuasion",
+      "dimensions": [
+        {
+          "name": "grant_nonprofit_persuasion_axis_0",
+          "description": "Measures aspect 0 for grant_nonprofit_persuasion.",
+          "score_1": "Poor",
+          "score_2": "Weak",
+          "score_3": "Adequate",
+          "score_4": "Strong",
+          "score_5": "Exemplary"
+        },
+        {
+          "name": "grant_nonprofit_persuasion_axis_1",
+          "description": "Measures aspect 1 for grant_nonprofit_persuasion.",
+          "score_1": "Poor",
+          "score_2": "Weak",
+          "score_3": "Adequate",
+          "score_4": "Strong",
+          "score_5": "Exemplary"
+        },
+        {
+          "name": "grant_nonprofit_persuasion_axis_2",
+          "description": "Measures aspect 2 for grant_nonprofit_persuasion.",
+          "score_1": "Poor",
+          "score_2": "Weak",
+          "score_3": "Adequate",
+          "score_4": "Strong",
+          "score_5": "Exemplary"
+        },
+        {
+          "name": "grant_nonprofit_persuasion_axis_3",
+          "description": "Measures aspect 3 for grant_nonprofit_persuasion.",
+          "score_1": "Poor",
+          "score_2": "Weak",
+          "score_3": "Adequate",
+          "score_4": "Strong",
+          "score_5": "Exemplary"
+        },
+        {
+          "name": "grant_nonprofit_persuasion_axis_4",
+          "description": "Measures aspect 4 for grant_nonprofit_persuasion.",
+          "score_1": "Poor",
+          "score_2": "Weak",
+          "score_3": "Adequate",
+          "score_4": "Strong",
+          "score_5": "Exemplary"
+        }
+      ]
+    },
+    "library_version": 1,
+    "tags": [
+      "nonprofit",
+      "grant"
+    ],
+    "default_raw_weight": 1.0,
+    "enabled": true
+  },
+  {
+    "canonical_id": "technical_doc_clarity",
+    "name": "Technical documentation clarity",
+    "short_description": "Explain concepts accurately for practitioners with precise structure.",
+    "match_text": "technical documentation API reference developer guide runbook architecture spec clarity accuracy",
+    "embedding_model_id": "text-embedding-3-small",
+    "rubric": {
+      "value_id": "LIB_technical_doc_clarity",
+      "value_name": "Technical documentation clarity",
+      "dimensions": [
+        {
+          "name": "technical_doc_clarity_axis_0",
+          "description": "Measures aspect 0 for technical_doc_clarity.",
+          "score_1": "Poor",
+          "score_2": "Weak",
+          "score_3": "Adequate",
+          "score_4": "Strong",
+          "score_5": "Exemplary"
+        },
+        {
+          "name": "technical_doc_clarity_axis_1",
+          "description": "Measures aspect 1 for technical_doc_clarity.",
+          "score_1": "Poor",
+          "score_2": "Weak",
+          "score_3": "Adequate",
+          "score_4": "Strong",
+          "score_5": "Exemplary"
+        },
+        {
+          "name": "technical_doc_clarity_axis_2",
+          "description": "Measures aspect 2 for technical_doc_clarity.",
+          "score_1": "Poor",
+          "score_2": "Weak",
+          "score_3": "Adequate",
+          "score_4": "Strong",
+          "score_5": "Exemplary"
+        },
+        {
+          "name": "technical_doc_clarity_axis_3",
+          "description": "Measures aspect 3 for technical_doc_clarity.",
+          "score_1": "Poor",
+          "score_2": "Weak",
+          "score_3": "Adequate",
+          "score_4": "Strong",
+          "score_5": "Exemplary"
+        },
+        {
+          "name": "technical_doc_clarity_axis_4",
+          "description": "Measures aspect 4 for technical_doc_clarity.",
+          "score_1": "Poor",
+          "score_2": "Weak",
+          "score_3": "Adequate",
+          "score_4": "Strong",
+          "score_5": "Exemplary"
+        }
+      ]
+    },
+    "library_version": 1,
+    "tags": [
+      "technical",
+      "docs"
+    ],
+    "default_raw_weight": 1.0,
+    "enabled": true
+  },
+  {
+    "canonical_id": "sales_outreach_conversion",
+    "name": "Sales outreach conversion",
+    "short_description": "Drive replies and meetings with concise value props and clear CTAs.",
+    "match_text": "cold email sales outreach SDR conversion CTA demo booking pipeline revenue",
+    "embedding_model_id": "text-embedding-3-small",
+    "rubric": {
+      "value_id": "LIB_sales_outreach_conversion",
+      "value_name": "Sales outreach conversion",
+      "dimensions": [
+        {
+          "name": "sales_outreach_conversion_axis_0",
+          "description": "Measures aspect 0 for sales_outreach_conversion.",
+          "score_1": "Poor",
+          "score_2": "Weak",
+          "score_3": "Adequate",
+          "score_4": "Strong",
+          "score_5": "Exemplary"
+        },
+        {
+          "name": "sales_outreach_conversion_axis_1",
+          "description": "Measures aspect 1 for sales_outreach_conversion.",
+          "score_1": "Poor",
+          "score_2": "Weak",
+          "score_3": "Adequate",
+          "score_4": "Strong",
+          "score_5": "Exemplary"
+        },
+        {
+          "name": "sales_outreach_conversion_axis_2",
+          "description": "Measures aspect 2 for sales_outreach_conversion.",
+          "score_1": "Poor",
+          "score_2": "Weak",
+          "score_3": "Adequate",
+          "score_4": "Strong",
+          "score_5": "Exemplary"
+        },
+        {
+          "name": "sales_outreach_conversion_axis_3",
+          "description": "Measures aspect 3 for sales_outreach_conversion.",
+          "score_1": "Poor",
+          "score_2": "Weak",
+          "score_3": "Adequate",
+          "score_4": "Strong",
+          "score_5": "Exemplary"
+        },
+        {
+          "name": "sales_outreach_conversion_axis_4",
+          "description": "Measures aspect 4 for sales_outreach_conversion.",
+          "score_1": "Poor",
+          "score_2": "Weak",
+          "score_3": "Adequate",
+          "score_4": "Strong",
+          "score_5": "Exemplary"
+        }
+      ]
+    },
+    "library_version": 1,
+    "tags": [
+      "sales",
+      "marketing"
+    ],
+    "default_raw_weight": 1.0,
+    "enabled": true
+  },
+  {
+    "canonical_id": "executive_memo_brevity",
+    "name": "Executive memo brevity",
+    "short_description": "Deliver decisions and implications in tight executive-ready prose.",
+    "match_text": "executive summary memo board brief decision log brevity leadership update",
+    "embedding_model_id": "text-embedding-3-small",
+    "rubric": {
+      "value_id": "LIB_executive_memo_brevity",
+      "value_name": "Executive memo brevity",
+      "dimensions": [
+        {
+          "name": "executive_memo_brevity_axis_0",
+          "description": "Measures aspect 0 for executive_memo_brevity.",
+          "score_1": "Poor",
+          "score_2": "Weak",
+          "score_3": "Adequate",
+          "score_4": "Strong",
+          "score_5": "Exemplary"
+        },
+        {
+          "name": "executive_memo_brevity_axis_1",
+          "description": "Measures aspect 1 for executive_memo_brevity.",
+          "score_1": "Poor",
+          "score_2": "Weak",
+          "score_3": "Adequate",
+          "score_4": "Strong",
+          "score_5": "Exemplary"
+        },
+        {
+          "name": "executive_memo_brevity_axis_2",
+          "description": "Measures aspect 2 for executive_memo_brevity.",
+          "score_1": "Poor",
+          "score_2": "Weak",
+          "score_3": "Adequate",
+          "score_4": "Strong",
+          "score_5": "Exemplary"
+        },
+        {
+          "name": "executive_memo_brevity_axis_3",
+          "description": "Measures aspect 3 for executive_memo_brevity.",
+          "score_1": "Poor",
+          "score_2": "Weak",
+          "score_3": "Adequate",
+          "score_4": "Strong",
+          "score_5": "Exemplary"
+        },
+        {
+          "name": "executive_memo_brevity_axis_4",
+          "description": "Measures aspect 4 for executive_memo_brevity.",
+          "score_1": "Poor",
+          "score_2": "Weak",
+          "score_3": "Adequate",
+          "score_4": "Strong",
+          "score_5": "Exemplary"
+        }
+      ]
+    },
+    "library_version": 1,
+    "tags": [
+      "executive"
+    ],
+    "default_raw_weight": 1.0,
+    "enabled": true
+  }
+]
