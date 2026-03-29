@@ -52,5 +52,11 @@
     // ───────────────────────────────────────────────────────────────────────
     "postCreateCommand": "nix develop",
 
+    // smart-writer: cap parallel OpenAI calls (rubric + assessor) to reduce TPM 429s.
+    // Canonical default + docs: apps/smart-writer/app/config.py (DEFAULT_MAX_CONCURRENT_LLM).
+    "containerEnv": {
+        "SMART_WRITER_MAX_CONCURRENT_LLM": "1"
+    },
+
     "remoteUser": "vscode"
 }

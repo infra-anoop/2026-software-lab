@@ -100,6 +100,9 @@
             echo ""
             echo "🐳 Build Container:"
             echo "  nix build .#container"
+            echo ""
+            echo "📝 smart-writer OpenAI fan-out: SMART_WRITER_MAX_CONCURRENT_LLM (default 1)"
+            echo "   See apps/smart-writer/app/config.py and .devcontainer/devcontainer.json"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           '';
         };
