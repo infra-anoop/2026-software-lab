@@ -24,3 +24,6 @@ ship-registry to trigger only after verify source completes
 verify source should run not only on push to main but also for any v* tags
 Revisit workflows.  these 4 workflows didn't trigger as expected. Gemini thought that an alternative approach where there is only one master workflow and conditional execution is controlled by key words jobs, needs, and uses.
 hookup http framework to play with the app by giving different topics
+
+March 28, 2026
+1: Develop a new secerets architecture. To avoid secrets sprawl. Explore 1password API or Github workflow.  For now the secrets are in Railway
