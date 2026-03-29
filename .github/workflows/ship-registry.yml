@@ -49,9 +49,15 @@ jobs:
           OWNER="${{ github.repository_owner }}"
           IMAGE="ghcr.io/${OWNER}/research-auditor"
 
-          # Tag from the ref that triggered the run (e.g. v0.3.0).
-          TAG="${{ github.ref_name }}"
+          REF="${{ github.ref_name }}"
           SHORT_SHA="$(echo "${{ github.sha }}" | cut -c1-7)"
+          
+          #Prefer semver tag if present, else use branch name
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            TAG="$REF"              # Semver tag, e.g., v0.3.0
+          else
+            TAG="branch-$REF"       # Branch name, e.g., branch-main
+          fi
 
           docker tag research-auditor:latest "${IMAGE}:${TAG}"
           docker tag research-auditor:latest "${IMAGE}:sha-${SHORT_SHA}"
