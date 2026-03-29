@@ -78,6 +78,11 @@
           buildInputs = runtimeDeps ++ devOnlyTools;
           
           shellHook = ''
+            # Force uv to use this shell's Nix Python for new venvs. Otherwise uv may pick
+            # /usr/local/bin/python (devcontainer) and mix runtimes — native modules (zlib,
+            # ssl, etc.) can then fail to load when LD_LIBRARY_PATH differs.
+            export UV_PYTHON="''${UV_PYTHON:-$(command -v python)}"
+
             echo "🚀 Multi-Agent Lab Development Environment"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "📦 Available Tools:"
