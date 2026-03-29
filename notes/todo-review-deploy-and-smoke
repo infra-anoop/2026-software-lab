@@ -1,0 +1,133 @@
+---
+
+# Review: deploy.yml and smoke-test.yml
+
+## Issues and bugs (by priority)
+
+### 1. **deploy.yml: Image is never sent to Railway**
+- **Location:** Lines 244–252  
+- **Issue:** `serviceInstanceDeploy(serviceId, environmentId)` only triggers a redeploy. It does not take `image` or `startCommand`. `image_ref` is built and checked in GHCR but never sent to Railway.  
+- **Impact:** Deploy will redeploy the current Railway config, not the image shipped by the pipeline (e.g. `v0.3.0`). New images will not be used.  
+- **Priority:** Critical
+
+### 2. **deploy.yml: Railway API base URL**
+- **Location:** Lines 163, 230  
+- **Issue:** Uses `https://backboard.railway.app/graphql/v2`. Railway docs specify `https://backboard.railway.com/graphql/v2`.  
+- **Impact:** May fail or hit an unsupported endpoint.  
+- **Priority:** High
+
+### 3. **smoke-test.yml: Same Railway API URL**
+- **Location:** Line 105  
+- **Issue:** Same `.app` vs `.com` mismatch.  
+- **Priority:** High
+
+### 4. **production.yml vs deploy substitution**
+- **Location:** production.yml line 10, deploy line 98  
+- **Issue:** production.yml uses `{{ github_repository_owner }}`; deploy replaces `{{ github_repository_owner }}`. These match, but the comment in production.yml refers to `github.repository` instead.  
+- **Impact:** Potential confusion; not a functional bug.  
+- **Priority:** Medium
+
+### 5. **`projects` query with project-scoped token**
+- **Location:** deploy line 173, smoke line 115  
+- **Issue:** Root-level `{ projects { ... } }` may behave differently with project-scoped vs workspace tokens.  
+- **Impact:** Could fail or return empty when using `RAILWAY_TOKEN`.  
+- **Priority:** Medium
+
+### 6. **smoke-test domain query schema**
+- **Location:** Lines 146–154  
+- **Issue:** `domains(projectId, environmentId, serviceId)` and `serviceDomains` / `customDomains` assume a specific schema that may change.  
+- **Impact:** Domain discovery could fail if the API structure differs.  
+- **Priority:** Medium
+
+### 7. **deploy summary deployment_id check**
+- **Location:** Line 321  
+- **Issue:** `if [ -n "${{ steps.deploy.outputs.deployment_id }}" ]` – bash receives the raw value; edge cases with empty/newline could be fragile.  
+- **Impact:** Low; mostly cosmetic.  
+- **Priority:** Low
+
+### 8. **ci-cd-pipeline does not pass `environment` to smoke**
+- **Location:** ci-cd-pipeline lines 67–74  
+- **Issue:** Smoke is invoked without `with:` inputs, so it always uses default `environment: production`.  
+- **Impact:** Fine for current setup; staging would not be tested if deploy supported it.  
+- **Priority:** Low
+
+---
+
+## Improvement suggestions (by priority)
+
+### 1. **Use serviceInstanceUpdate before redeploy**
+- **Issue:** Current flow does not update the image.  
+- **Suggestion:** Call `serviceInstanceUpdate` with `source: { image }` (and optionally `startCommand`), then `serviceInstanceDeploy` (or equivalent) to trigger the deploy. Align with the backup workflow and Railway docs.  
+- **Priority:** Critical
+
+### 2. **Optional RAILWAY_URL for smoke-test**
+- **Issue:** Smoke always does ID lookup and domain discovery even when the URL is already known.  
+- **Suggestion:** Add optional `railway_url` input. If set, skip API calls and use it for `/health`. This avoids GraphQL for domain lookup when URL is a secret.  
+- **Priority:** High
+
+### 3. **Shared composite for token selection**
+- **Issue:** Token selection logic is duplicated in deploy and smoke.  
+- **Suggestion:** Extract to a composite action (e.g. `.github/actions/railway-token/action.yml`) and reuse.  
+- **Priority:** Medium
+
+### 4. **Shared composite for Railway ID resolution**
+- **Issue:** Project/service/environment resolution is duplicated in deploy and smoke.  
+- **Suggestion:** Extract to a composite action that takes config names and returns IDs.  
+- **Priority:** Medium
+
+### 5. **Shared composite for jq + yq setup**
+- **Issue:** Both workflows install jq and yq in separate steps.  
+- **Suggestion:** Use a composite action or a single reusable step to reduce duplication and speed runs.  
+- **Priority:** Medium
+
+### 6. **Add permissions to deploy.yml**
+- **Issue:** deploy does not set `permissions`; smoke sets `contents: read`.  
+- **Suggestion:** Add `permissions: contents: read` (and `packages: read` if needed) for consistency and least privilege.  
+- **Priority:** Low
+
+### 7. **Add smoke-test summary step**
+- **Issue:** Smoke has no `GITHUB_STEP_SUMMARY` output.  
+- **Suggestion:** Add a summary step with environment, URL, and pass/fail status.  
+- **Priority:** Low
+
+### 8. **Parameterize GHCR package in deploy summary**
+- **Location:** Line 328  
+- **Issue:** `research-auditor` is hardcoded in the GHCR link.  
+- **Suggestion:** Derive from `steps.cfg.outputs.image_ref` (e.g. extract image name) or from config.  
+- **Priority:** Low
+
+### 9. **Document token requirements**
+- **Issue:** Token selection comments are brief; project vs workspace behavior is not fully explained.  
+- **Suggestion:** In workflow headers, document when to use `RAILWAY_WORKSPACE_TOKEN` vs `RAILWAY_TOKEN` and which API calls require which.  
+- **Priority:** Low
+
+### 10. **Pin yq version**
+- **Location:** Both workflows, wget of yq  
+- **Issue:** Uses `latest` download; breaking changes could affect workflows.  
+- **Suggestion:** Pin to a specific yq release (e.g. in the URL) for stability.  
+- **Priority:** Low
+
+---
+
+## Summary table
+
+| # | Type      | Issue                                                  | Priority |
+|---|-----------|--------------------------------------------------------|----------|
+| 1 | Bug       | deploy never sends image to Railway                    | Critical |
+| 2 | Bug       | Wrong Railway API domain (.app vs .com)                | High     |
+| 3 | Bug       | Same API domain in smoke-test                          | High     |
+| 4 | Bug       | production.yml comment mismatch                        | Medium   |
+| 5 | Bug       | `projects` query may not work with project token       | Medium   |
+| 6 | Bug       | Domain query schema may not match current API          | Medium   |
+| 7 | Bug       | Summary deployment_id check edge case                  | Low      |
+| 8 | Bug       | smoke not passed environment from pipeline             | Low      |
+| 9 | Suggestion| Use serviceInstanceUpdate + deploy flow                | Critical |
+| 10| Suggestion| Optional RAILWAY_URL for smoke-test                    | High     |
+| 11| Suggestion| Shared composite for token selection                   | Medium   |
+| 12| Suggestion| Shared composite for Railway ID resolution             | Medium   |
+| 13| Suggestion| Shared composite for jq + yq setup                     | Medium   |
+| 14| Suggestion| Add deploy permissions block                           | Low      |
+| 15| Suggestion| Add smoke-test summary step                            | Low      |
+| 16| Suggestion| Parameterize GHCR link in deploy summary               | Low      |
+| 17| Suggestion| Document token types                                   | Low      |
+| 18| Suggestion| Pin yq version                                         | Low      |
