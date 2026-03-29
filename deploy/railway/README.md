@@ -5,11 +5,13 @@ This directory contains deployment configurations for all environments.
 ## Structure
 ```
 deploy/
-├── railway/              # Railway deployment configs
-│   ├── production.yaml   # Production environment
-│   └── staging.yaml      # Staging environment
-└── README.md            # This file
+├── railway/              # Railway deployment configs (same schema per file)
+│   ├── production.yml    # CI default on v* tags (see ci-cd-pipeline.yml)
+│   └── staging.yml       # Manual: gh workflow run deploy.yml -f environment=staging
+└── README.md             # This file
 ```
+
+Pre-production will be called **preview** in docs/workflows (not Git “staging area”). `staging.yml` here is an optional second Railway target until preview is wired.
 
 ## How Deployment Works
 

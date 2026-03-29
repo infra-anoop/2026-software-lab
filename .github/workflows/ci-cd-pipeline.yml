@@ -1,6 +1,16 @@
 # ------------------------------------------------------------------------------
 # CI-CD Master Pipeline
 # ------------------------------------------------------------------------------
+# Design context (solo POC / learning; durable pipelines; focus on app work):
+# We intentionally skip release branches and a separate long-lived "staging"
+# deployment environment. When we add a pre-production path, we call it *preview*
+# (last-mile checks: keys, URLs, cloud behavior)—not "staging," to avoid
+# colliding with Git's index/staging-area meaning. Deployments stay triggered by
+# the same semver-style v* tags; routing preview vs production later should use
+# branch context on branch pushes and/or whether the tagged commit is on main,
+# not tag-shape alone. Today: verify on every push/PR; ship → Railway prod →
+# smoke only on v* tag pushes.
+#
 # Single entry point for all CI/CD. Triggered on every push and pull_request.
 # Calls reusable workflows which are NOT auto-triggered.
 #
@@ -26,10 +36,8 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────────
   verify:
     name: Verify Source
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'pull_request' ||
-      (github.event_name == 'push' && (github.ref_type == 'branch' || (github.ref_type == 'tag' && startsWith(github.ref_name, 'v'))))
+    # Single-line if avoids embedded newlines in the expression (YAML | block can break GHA).
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || (github.event_name == 'push' && (github.ref_type == 'branch' || (github.ref_type == 'tag' && startsWith(github.ref_name, 'v'))))
     uses: ./.github/workflows/verify-source.yml
 
   # ─────────────────────────────────────────────────────────────────────────

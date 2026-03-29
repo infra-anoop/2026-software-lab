@@ -26,4 +26,5 @@ Revisit workflows.  these 4 workflows didn't trigger as expected. Gemini thought
 hookup http framework to play with the app by giving different topics
 
 March 28, 2026
+CI/CD: Add preview deployment (separate Railway target + workflow wiring). Same v* tag trigger; route preview vs production using branch context and/or whether the tagged commit is on main—see comment block in `.github/workflows/ci-cd-pipeline.yml`.
 1: Develop a new secerets architecture. To avoid secrets sprawl. Explore 1password API or Github workflow.  For now the secrets are in Railway

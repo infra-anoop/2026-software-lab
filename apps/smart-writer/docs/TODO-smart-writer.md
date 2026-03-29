@@ -58,3 +58,5 @@ Your TODO items **1–5** align well with the five semantic priorities in `Impro
 
 1:  Adapt the Supabase tables for the new structure
 
+2: **App configuration layer (holistic)** — Today many tunables (including `SMART_WRITER_MAX_CONCURRENT_LLM` / `DEFAULT_MAX_CONCURRENT_LLM`) are surfaced via environment variables and `.env` as a delivery mechanism. Introduce a unified **application config** story: typed defaults in code, optional committed config file for non-secret parameters, `.env` / platform env for secrets and deploy overrides, and clear precedence. Fold `MAX_CONCURRENT_LLM` and other `SMART_WRITER_*` knobs into that model so configuration is not scattered across `os.getenv` and workspace-level tooling. (Tracked here; implement when focusing on the app layer.)
+

@@ -1,4 +1,6 @@
 # ------------------------------------------------------------------------------
+# ARCHIVED backup — not used by ci-cd-pipeline.yml. Kept for reference; prefer deploy.yml.
+# ------------------------------------------------------------------------------
 # Reusable: Deploy to Railway
 # ------------------------------------------------------------------------------
 # Deploys container images from GHCR to Railway. Uses minimal API (image update)
@@ -9,7 +11,7 @@
 # Requires: RAILWAY_TOKEN, RAILWAY_URL, RAILWAY_PROJECT_ID (or in config)
 # ------------------------------------------------------------------------------
 
-name: "Deploy to Railway"
+name: "Deploy to Railway (archived backup)"
 
 on:
   workflow_call:

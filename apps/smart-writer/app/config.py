@@ -3,11 +3,11 @@
 Smart Writer fan-out (many rubric + assessor calls) can hit OpenAI **tokens-per-minute (TPM)**
 limits if too many completions overlap. The knob below is the **canonical default** in code.
 
-Where this default is also declared for infrastructure-as-code (keep in sync when you change it):
+Where this default is also mirrored for local dev (keep in sync when you change it):
   - This file: ``DEFAULT_MAX_CONCURRENT_LLM`` (single source of truth for Python).
   - ``apps/smart-writer/.env.example`` — copy to ``.env`` locally; ``.env`` is gitignored.
-  - Repo root ``.devcontainer/devcontainer.json`` → ``containerEnv.SMART_WRITER_MAX_CONCURRENT_LLM``
-    (Codespaces / dev containers inherit it without a manual export).
+
+A unified app config layer (file + precedence) is planned; see ``docs/TODO-smart-writer.md``.
 
 Override anytime: ``export SMART_WRITER_MAX_CONCURRENT_LLM=2`` (higher throughput if your tier allows).
 Env var name (note spelling): ``SMART_WRITER_MAX_CONCURRENT_LLM`` — not ``...COMCURRENT...``.

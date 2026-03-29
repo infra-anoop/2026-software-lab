@@ -1,18 +1,15 @@
-# Railway Staging Environment
-# Same structure as production.yaml but for staging
-
-app: research-auditor
-environment: staging
+# Railway: second target for manual / future preview workflows.
+# Schema must match production.yml — consumed by .github/workflows/deploy.yml and smoke-test.yml.
+# Master pipeline (ci-cd-pipeline.yml) uses production only; run deploy.yml with environment=staging manually if needed.
 
 railway:
-  service_name: research-auditor-staging
-  
-  container:
-    registry: ghcr.io
-    repository: "{{ github.repository_owner }}/research-auditor"
-    # Aligned with flake.nix: FastAPI + Uvicorn
-    start_command: "bash -c 'cd /app && uv sync --frozen && exec uv run --frozen uvicorn app.entrypoints.http:app --host 0.0.0.0 --port ${PORT:-8080}'"
-    port: 8080
-  
-  resources:
-    memory: 256  # Less resources for staging
+  project_name: "2026-software-lab"
+  service_name: "research-auditor-staging"
+  environment_name: "staging"
+
+image:
+  registry: "ghcr.io"
+  repository: "{{ github_repository_owner }}/research-auditor"
+
+runtime:
+  start_command: "bash -c 'cd /app && uv sync --frozen && exec uv run --frozen python -m app.entrypoints.http'"
