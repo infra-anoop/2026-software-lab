@@ -310,13 +310,6 @@ def build_craft_template(craft_key: str) -> CraftTemplate:
             rub = factory(vid)
             if len(rub.dimensions) != DIMENSIONS_PER_VALUE:
                 raise RuntimeError(f"Craft rubric {vid} must have {DIMENSIONS_PER_VALUE} dimensions.")
-            vd = ValueDefinition(
-                value_id=vid,
-                name=title,
-                description=desc,
-                raw_weight=w,
-                craft_key=key,
-            )
             return CraftTemplate(
                 craft_key=key,
                 value_id=vid,

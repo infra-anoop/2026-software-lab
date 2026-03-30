@@ -11,12 +11,7 @@
 # not tag-shape alone. Today: verify on every push/PR; ship → Railway prod →
 # smoke only on v* tag pushes.
 #
-# Single entry point for all CI/CD. Triggered on every push and pull_request.
-# Calls reusable workflows which are NOT auto-triggered.
-#
-# FLOW:
-#   - Every push / PR → verify
-#   - Tag push v*     → verify → ship → deploy → smoke
+# Ship / deploy / smoke fan out per apps/registry.json (see registry-matrices job).
 # ------------------------------------------------------------------------------
 
 name: "CI-CD Pipeline"
@@ -36,47 +31,106 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────────
   verify:
     name: Verify Source
-    # Single-line if avoids embedded newlines in the expression (YAML | block can break GHA).
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || (github.event_name == 'push' && (github.ref_type == 'branch' || (github.ref_type == 'tag' && startsWith(github.ref_name, 'v'))))
     uses: ./.github/workflows/verify-source.yml
 
   # ─────────────────────────────────────────────────────────────────────────
-  # Ship: only on version tag v*, after verify succeeds
+  # Registry matrices (v* tags only): JSON for ship / deploy matrix.include
+  # ─────────────────────────────────────────────────────────────────────────
+  registry-matrices:
+    name: Registry matrices
+    needs: verify
+    if: github.event_name == 'push' && github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
+    runs-on: ubuntu-latest
+    outputs:
+      ship_include: ${{ steps.set.outputs.ship_include }}
+      deploy_include: ${{ steps.set.outputs.deploy_include }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build matrix JSON from apps/registry.json
+        id: set
+        run: |
+          set -euo pipefail
+          SHIP=$(jq -c '[.applications[] | select(.ship.publish_container == true) | {app_id: .id, nix_attr: ("container-" + .id), image_name: .oci.image_name}]' apps/registry.json)
+          DEPLOY=$(jq -c '[.applications[] | select(.deploy.enabled == true) | {app_id: .id}]' apps/registry.json)
+          if [ "$(echo "$SHIP" | jq 'length')" -eq 0 ]; then
+            echo "❌ No applications with ship.publish_container in apps/registry.json"
+            exit 1
+          fi
+          if [ "$(echo "$DEPLOY" | jq 'length')" -eq 0 ]; then
+            echo "❌ No applications with deploy.enabled in apps/registry.json"
+            exit 1
+          fi
+          {
+            echo 'ship_include<<__EOF__'
+            echo "$SHIP"
+            echo '__EOF__'
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo 'deploy_include<<__EOF__'
+            echo "$DEPLOY"
+            echo '__EOF__'
+          } >> "$GITHUB_OUTPUT"
+          echo "Ship matrix: $SHIP"
+          echo "Deploy matrix: $DEPLOY"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Ship: only on version tag v*, after verify + matrices (one job per app)
   # ─────────────────────────────────────────────────────────────────────────
   ship:
-    name: Ship Container
-    needs: verify
-    if:
-      github.event_name == 'push' &&
-      github.ref_type == 'tag' &&
-      startsWith(github.ref_name, 'v')
+    name: Ship ${{ matrix.app_id }}
+    needs: [verify, registry-matrices]
+    if: github.event_name == 'push' && github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
     permissions:
       contents: read
       packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.registry-matrices.outputs.ship_include) }}
     uses: ./.github/workflows/ship-registry.yml
+    with:
+      app_id: ${{ matrix.app_id }}
+      nix_attr: ${{ matrix.nix_attr }}
+      image_name: ${{ matrix.image_name }}
+    secrets: inherit
 
   # ─────────────────────────────────────────────────────────────────────────
-  # Deploy: after ship succeeds (tag push only)
+  # Deploy: after all ship jobs succeed (one job per app with deploy.enabled)
   # ─────────────────────────────────────────────────────────────────────────
   deploy:
-    name: Deploy to Railway
-    needs: ship
-    if: success()  # Only when ship succeeded
+    name: Deploy ${{ matrix.app_id }}
+    needs: [registry-matrices, ship]
+    if: success()
     permissions:
       contents: read
       packages: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.registry-matrices.outputs.deploy_include) }}
     uses: ./.github/workflows/deploy.yml
     with:
+      app_id: ${{ matrix.app_id }}
       environment: production
-      tag: ${{ github.ref_name }} # Pass 'v0.3.4' instead of 'latest'
+      tag: ${{ github.ref_name }}
     secrets: inherit
 
   # ─────────────────────────────────────────────────────────────────────────
-  # Smoke: after deploy succeeds
+  # Smoke: after all deploy jobs (health check per deployed app)
   # ─────────────────────────────────────────────────────────────────────────
   smoke:
-    name: Smoke Test
-    needs: deploy
-    if: success()  # Only when deploy succeeded
+    name: Smoke ${{ matrix.app_id }}
+    needs: [registry-matrices, deploy]
+    if: success()
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.registry-matrices.outputs.deploy_include) }}
     uses: ./.github/workflows/smoke-test.yml
+    with:
+      app_id: ${{ matrix.app_id }}
+      environment: production
     secrets: inherit
+

@@ -3,33 +3,41 @@ name: Deploy to Railway
 on:
   workflow_call:
     inputs:
+      app_id:
+        description: "Application id — selects deploy/railway/<environment>/<app_id>.yml"
+        required: true
+        type: string
       tag:
         description: "GHCR tag to deploy (default: latest)"
         required: false
         type: string
         default: latest
       environment:
-        description: "Deployment config name (production/staging). Default: production"
+        description: "Config folder under deploy/railway/ (production/staging)"
         required: false
         type: string
         default: production
 
   workflow_dispatch:
     inputs:
+      app_id:
+        description: "Application id (see apps/registry.json)"
+        required: true
+        type: string
       tag:
         description: "GHCR tag to deploy (default: latest)"
         required: false
         type: string
         default: latest
       environment:
-        description: "Deployment config name (production/staging). Default: production"
+        description: "Config folder under deploy/railway/"
         required: false
         type: choice
         options: [production, staging]
         default: production
 
 concurrency:
-  group: railway-deploy-${{ github.ref }}-${{ inputs.environment || 'production' }}
+  group: railway-deploy-${{ github.ref }}-${{ inputs.environment || 'production' }}-${{ inputs.app_id }}
   cancel-in-progress: true
 
 jobs:
@@ -79,11 +87,13 @@ jobs:
         env:
           ENV_CONFIG: ${{ steps.params.outputs.env_config }}
           TAG: ${{ steps.params.outputs.tag }}
+          APP_ID: ${{ inputs.app_id }}
         run: |
-          CONFIG_FILE="deploy/railway/${ENV_CONFIG}.yml"
+          CONFIG_FILE="deploy/railway/${ENV_CONFIG}/${APP_ID}.yml"
           if [ ! -f "$CONFIG_FILE" ]; then
             echo "❌ Missing config: $CONFIG_FILE"
-            ls -la deploy/railway || true
+            echo "Add deploy/railway/${ENV_CONFIG}/<app_id>.yml for this app (see apps/registry.yaml)."
+            ls -la "deploy/railway/${ENV_CONFIG}" || true
             exit 1
           fi
 
@@ -325,5 +335,5 @@ jobs:
             echo ""
             echo "**Links**"
             echo "- Railway Dashboard: https://railway.app"
-            echo "- GHCR Package: https://github.com/${{ github.repository }}/pkgs/container/research-auditor"
+            echo "- GHCR Package: https://github.com/${{ github.repository }}/pkgs/container/$(echo '${{ inputs.app_id }}' | tr '[:upper:]' '[:lower:]')"
           } >> "$GITHUB_STEP_SUMMARY"

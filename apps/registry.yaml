@@ -1,0 +1,86 @@
+# App registry — single source of truth for "what is an application" in this monorepo.
+#
+# Convention: each `id` MUST equal the directory name under apps/ (the last segment
+# of `path`). Example: path apps/research-auditor → id research-auditor.
+# Validated by: scripts/validate_app_registry.py (run via `uv run` — see script header).
+# Nix reads apps/registry.json — after editing YAML: uv run scripts/validate_app_registry.py --write-json
+# and commit both files (CI uses --check-json).
+#
+# There is no universal standard schema; this file is our contract. Bump
+# registry_schema_version when you make breaking changes so tooling can migrate.
+#
+# Medium-term notes:
+# - ci.watch_paths / depends_on: feed "affected" CI and dependency fan-out.
+# - deploy.*: per-app Railway (or other) targets without hardcoding names in workflows.
+# - capabilities: skip container/ship for non-deployable packages when you add them.
+# - owner: optional; can drive CODEOWNERS or review rules later.
+
+registry_schema_version: 1
+
+# Optional defaults merged by tooling (not all fields need repeating per app).
+defaults:
+  oci:
+    # Full image: ghcr.io/<github_repository_owner>/<github_repository>/<image_name>
+    # image_name below is the last path segment only.
+    registry: ghcr.io
+  deploy:
+    enabled: true
+
+applications:
+  - id: research-auditor
+    title: Research Auditor
+    path: apps/research-auditor
+    python:
+      # [project].name in pyproject.toml (import/package naming may still use app.*)
+      project_name: research-auditor
+      # Args after `uv sync --frozen` to install dev tools (optional-dependencies vs dependency-groups).
+      uv:
+        sync_dev_args:
+          - --extra
+          - dev
+    oci:
+      image_name: research-auditor
+    capabilities:
+      container: true
+      cli: true
+      http_server: true
+    ship:
+      # If false, CI skips building/pushing an image for this app.
+      publish_container: true
+    deploy:
+      enabled: true
+      railway:
+        service_name: research-auditor
+    ci:
+      # Extra repo paths (beyond this app's path) that should trigger its checks.
+      watch_paths: []
+      # Other application ids or logical names; when those paths/apps change,
+      # tooling may treat this app as affected (medium-term dependency graph).
+      depends_on: []
+    owner: null
+
+  - id: smart-writer
+    title: Smart Writer
+    path: apps/smart-writer
+    python:
+      project_name: smart-writer
+      uv:
+        sync_dev_args:
+          - --group
+          - dev
+    oci:
+      image_name: smart-writer
+    capabilities:
+      container: true
+      cli: true
+      http_server: true
+    ship:
+      publish_container: true
+    deploy:
+      enabled: true
+      railway:
+        service_name: smart-writer
+    ci:
+      watch_paths: []
+      depends_on: []
+    owner: null

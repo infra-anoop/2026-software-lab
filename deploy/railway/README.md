@@ -1,46 +1,57 @@
 # Deployment Configuration
 
-This directory contains deployment configurations for all environments.
+Railway deploy and post-deploy smoke read **per-app** YAML files keyed by application id (same ids as `apps/registry.yaml`).
 
-## Structure
+## Layout
+
 ```
-deploy/
-├── railway/              # Railway deployment configs (same schema per file)
-│   ├── production.yml    # CI default on v* tags (see ci-cd-pipeline.yml)
-│   └── staging.yml       # Manual: gh workflow run deploy.yml -f environment=staging
-└── README.md             # This file
+deploy/railway/
+├── production/
+│   ├── research-auditor.yml   # production service + GHCR image mapping
+│   └── smart-writer.yml
+├── staging/
+│   └── research-auditor.yml   # optional; manual / preview workflows
+└── README.md
 ```
 
-Pre-production will be called **preview** in docs/workflows (not Git “staging area”). `staging.yml` here is an optional second Railway target until preview is wired.
+- **Path pattern:** `deploy/railway/<environment>/<app_id>.yml`
+- **CI** (`.github/workflows/deploy.yml`, `smoke-test.yml`): `environment` is the folder name (`production` or `staging`).
+- **Registry:** `deploy.railway.service_name` in `apps/registry.yaml` must match the Railway service name; `image.repository` must match how images are pushed from `ship-registry.yml` (typically `ghcr.io/<owner>/<oci.image_name>`).
 
-## How Deployment Works
+## Flow
 
-1. **Build**: Nix builds container image (see `/flake.nix`)
-2. **Push**: GitHub Actions pushes to GHCR
-3. **Deploy**: GitHub Actions uses configs in this directory to deploy to Railway
+1. **Build:** `nix build .#container-<app_id>` (see `flake.nix`)
+2. **Push:** GitHub Actions pushes `ghcr.io/<owner>/<oci.image_name>:<tag>`
+3. **Deploy:** For each app with `deploy.enabled`, the pipeline loads `deploy/railway/production/<app_id>.yml` and triggers Railway.
 
-## Deploying
+## Production release (tag)
 
-### Production
 ```bash
 git tag v1.0.0
 git push origin v1.0.0
 ```
 
-### Staging (Manual)
+Pushes images for every app with `ship.publish_container`, then deploys every app with `deploy.enabled`, then smoke-tests each.
+
+## Manual deploy (one app)
+
 ```bash
-gh workflow run deploy.yml -f environment=staging
+gh workflow run deploy.yml \
+  -f app_id=smart-writer \
+  -f tag=v1.0.0 \
+  -f environment=production
 ```
 
-## Modifying Deployment Config
+## Manual smoke
 
-1. Edit the appropriate YAML file
-2. Commit and push
-3. Next deployment will use new config
+```bash
+gh workflow run smoke-test.yml \
+  -f app_id=research-auditor \
+  -f environment=production
+```
 
-## Service Names
+## Adding a new app
 
-- **Production**: `research-auditor`
-- **Staging**: `research-auditor-staging`
-
-These are queried by name (not hardcoded IDs).
+1. Add the app to `apps/registry.yaml` and run `uv run scripts/validate_app_registry.py --write-json`.
+2. Add `deploy/railway/production/<app_id>.yml` (and Railway service + GHCR wiring).
+3. Ensure `flake.nix` already builds `container-<app_id>` for that id.

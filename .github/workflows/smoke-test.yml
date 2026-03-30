@@ -3,7 +3,7 @@
 # ------------------------------------------------------------------------------
 # Derives the Railway public URL via GraphQL and curls /health.
 # Requires: RAILWAY_WORKSPACE_TOKEN (preferred) or RAILWAY_TOKEN
-# Config: deploy/railway/production.yml provides project/service/environment names
+# Config: deploy/railway/<environment>/<app_id>.yml (see apps/registry.yaml)
 # ------------------------------------------------------------------------------
 
 name: "Post-Deploy Smoke Test (Railway)"
@@ -11,22 +11,30 @@ name: "Post-Deploy Smoke Test (Railway)"
 on:
   workflow_call:
     inputs:
+      app_id:
+        description: "Application id — selects deploy/railway/<environment>/<app_id>.yml"
+        required: true
+        type: string
       environment:
-        description: "Deployment config name (production/staging). Default: production"
+        description: "Config folder under deploy/railway/"
         required: false
         type: string
         default: production
   workflow_dispatch:
     inputs:
+      app_id:
+        description: "Application id (see apps/registry.json)"
+        required: true
+        type: string
       environment:
-        description: "Deployment config name (production/staging). Default: production"
+        description: "Config folder under deploy/railway/"
         required: false
         type: choice
         options: [production, staging]
         default: production
 
 concurrency:
-  group: smoke-${{ github.ref }}-${{ inputs.environment || 'production' }}
+  group: smoke-${{ github.ref }}-${{ inputs.environment || 'production' }}-${{ inputs.app_id }}
   cancel-in-progress: true
 
 jobs:
@@ -64,11 +72,12 @@ jobs:
         id: cfg
         env:
           ENV_CONFIG: ${{ inputs.environment || 'production' }}
+          APP_ID: ${{ inputs.app_id }}
         run: |
-          CONFIG_FILE="deploy/railway/${ENV_CONFIG}.yml"
+          CONFIG_FILE="deploy/railway/${ENV_CONFIG}/${APP_ID}.yml"
           if [ ! -f "$CONFIG_FILE" ]; then
             echo "❌ Missing config: $CONFIG_FILE"
-            ls -la deploy/railway || true
+            ls -la "deploy/railway/${ENV_CONFIG}" || true
             exit 1
           fi
 

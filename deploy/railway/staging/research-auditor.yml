@@ -1,6 +1,5 @@
-# Railway: second target for manual / future preview workflows.
-# Schema must match production.yml — consumed by .github/workflows/deploy.yml and smoke-test.yml.
-# Master pipeline (ci-cd-pipeline.yml) uses production only; run deploy.yml with environment=staging manually if needed.
+# Railway: staging target for research-auditor (manual / preview workflows).
+# Schema matches production files — consumed by deploy.yml and smoke-test.yml.
 
 railway:
   project_name: "2026-software-lab"

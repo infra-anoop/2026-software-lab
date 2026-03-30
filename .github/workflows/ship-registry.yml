@@ -1,18 +1,46 @@
 # ------------------------------------------------------------------------------
-# Reusable: Ship Container to GHCR
+# Reusable: Ship one app container to GHCR
 # ------------------------------------------------------------------------------
-# Builds the container image with Nix, loads into Docker, pushes to GHCR.
-# NOT auto-triggered. Call via: ci-cd-pipeline.yml
+# Builds `nix build .#<nix_attr>` (e.g. container-research-auditor), loads into
+# Docker, tags ghcr.io/<owner>/<image_name>, pushes.
+# Callers supply matrix inputs from apps/registry.json (see ci-cd-pipeline.yml).
 # ------------------------------------------------------------------------------
 
 name: "Ship Container to GHCR"
 
 on:
   workflow_call:
-  workflow_dispatch:  # Manual run only; no auto-trigger
+    inputs:
+      app_id:
+        description: "Registry application id (for logs)"
+        required: true
+        type: string
+      nix_attr:
+        description: "Flake attribute (e.g. container-research-auditor)"
+        required: true
+        type: string
+      image_name:
+        description: "Docker/OCI image basename (matches oci.image_name)"
+        required: true
+        type: string
+
+  workflow_dispatch:
+    inputs:
+      app_id:
+        description: "Application id (see apps/registry.json)"
+        required: true
+        type: string
+      nix_attr:
+        description: "Flake attribute (e.g. container-smart-writer)"
+        required: true
+        type: string
+      image_name:
+        description: "Image basename after docker load"
+        required: true
+        type: string
 
 concurrency:
-  group: ship-${{ github.ref }}
+  group: ship-${{ github.ref }}-${{ inputs.app_id }}
   cancel-in-progress: false
 
 jobs:
@@ -33,7 +61,7 @@ jobs:
             sandbox = false
 
       - name: Build container with Nix
-        run: nix build .#container
+        run: nix build ".#${{ inputs.nix_attr }}"
 
       - name: Login to GHCR
         uses: docker/login-action@v3
@@ -44,29 +72,34 @@ jobs:
 
       - name: Load, tag, and push
         shell: bash
+        env:
+          APP_ID: ${{ inputs.app_id }}
+          NIX_ATTR: ${{ inputs.nix_attr }}
+          IMAGE_NAME: ${{ inputs.image_name }}
         run: |
           set -euo pipefail
 
           docker load < result
 
           OWNER="${{ github.repository_owner }}"
-          IMAGE="ghcr.io/${OWNER}/research-auditor"
+          IMAGE="ghcr.io/${OWNER}/${IMAGE_NAME}"
 
           REF="${{ github.ref_name }}"
           SHORT_SHA="$(echo "${{ github.sha }}" | cut -c1-7)"
-          
-          #Prefer semver tag if present, else use branch name
+
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
-            TAG="$REF"              # Semver tag, e.g., v0.3.0
+            TAG="$REF"
           else
-            TAG="branch-$REF"       # Branch name, e.g., branch-main
+            TAG="branch-$REF"
           fi
 
-          docker tag research-auditor:latest "${IMAGE}:${TAG}"
-          docker tag research-auditor:latest "${IMAGE}:sha-${SHORT_SHA}"
+          echo "Shipping ${APP_ID} (${NIX_ATTR}) → ${IMAGE}"
+
+          docker tag "${IMAGE_NAME}:latest" "${IMAGE}:${TAG}"
+          docker tag "${IMAGE_NAME}:latest" "${IMAGE}:sha-${SHORT_SHA}"
 
           docker push "${IMAGE}:${TAG}"
           docker push "${IMAGE}:sha-${SHORT_SHA}"
 
-          docker tag research-auditor:latest "${IMAGE}:latest"
+          docker tag "${IMAGE_NAME}:latest" "${IMAGE}:latest"
           docker push "${IMAGE}:latest"

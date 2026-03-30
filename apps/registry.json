@@ -1,0 +1,85 @@
+{
+  "registry_schema_version": 1,
+  "defaults": {
+    "oci": {
+      "registry": "ghcr.io"
+    },
+    "deploy": {
+      "enabled": true
+    }
+  },
+  "applications": [
+    {
+      "id": "research-auditor",
+      "title": "Research Auditor",
+      "path": "apps/research-auditor",
+      "python": {
+        "project_name": "research-auditor",
+        "uv": {
+          "sync_dev_args": [
+            "--extra",
+            "dev"
+          ]
+        }
+      },
+      "oci": {
+        "image_name": "research-auditor"
+      },
+      "capabilities": {
+        "container": true,
+        "cli": true,
+        "http_server": true
+      },
+      "ship": {
+        "publish_container": true
+      },
+      "deploy": {
+        "enabled": true,
+        "railway": {
+          "service_name": "research-auditor"
+        }
+      },
+      "ci": {
+        "watch_paths": [],
+        "depends_on": []
+      },
+      "owner": null
+    },
+    {
+      "id": "smart-writer",
+      "title": "Smart Writer",
+      "path": "apps/smart-writer",
+      "python": {
+        "project_name": "smart-writer",
+        "uv": {
+          "sync_dev_args": [
+            "--group",
+            "dev"
+          ]
+        }
+      },
+      "oci": {
+        "image_name": "smart-writer"
+      },
+      "capabilities": {
+        "container": true,
+        "cli": true,
+        "http_server": true
+      },
+      "ship": {
+        "publish_container": true
+      },
+      "deploy": {
+        "enabled": true,
+        "railway": {
+          "service_name": "smart-writer"
+        }
+      },
+      "ci": {
+        "watch_paths": [],
+        "depends_on": []
+      },
+      "owner": null
+    }
+  ]
+}

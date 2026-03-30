@@ -25,7 +25,7 @@ Therefore, a **pure Railway CLI** approach is not possible for your flow (Nix bu
    - Removed redundant outputs
 
 3. **Same goals preserved**
-   - No hardcoding (config from `deploy/railway/production.yml`)
+   - No hardcoding (config from `deploy/railway/<environment>/<app_id>.yml`)
    - No configuration in Railway (image + start_command passed each deploy)
    - Trigger only after ship-registry (unchanged in ci-cd-pipeline)
    - Manual deploy via `workflow_dispatch`

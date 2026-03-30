@@ -74,7 +74,7 @@ def _sleep_seconds(attempt: int, exc: BaseException, cfg: tuple[int, float, floa
     _, base_sec, cap_sec = cfg
     header_wait = _retry_after_seconds(exc)
     exp = min(cap_sec, base_sec * (2**attempt))
-    jitter = random.uniform(0, max(base_sec * 0.25, 0.05))
+    jitter = random.uniform(0, max(base_sec * 0.25, 0.05))  # nosec B311 — non-cryptographic backoff jitter
     delay = exp + jitter
     if header_wait is not None:
         delay = max(delay, min(header_wait, cap_sec))
@@ -113,4 +113,4 @@ async def with_transient_llm_retry(
                     run_id=rid,
                 )
             await asyncio.sleep(wait)
-    assert False, "unreachable: loop always returns or raises"  # pragma: no cover
+    raise RuntimeError("unreachable: loop always returns or raises")  # pragma: no cover

@@ -1,0 +1,11 @@
+railway:
+  project_name: "2026-software-lab"
+  service_name: "research-auditor"
+  environment_name: "production"
+
+image:
+  registry: "ghcr.io"
+  repository: "{{ github_repository_owner }}/research-auditor"
+
+runtime:
+  start_command: "bash -c 'cd /app && uv sync --frozen && exec uv run --frozen python -m app.entrypoints.http'"
