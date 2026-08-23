@@ -48,9 +48,9 @@
     },
 
     // ───────────────────────────────────────────────────────────────────────
-    // SETUP: Activate Nix environment on container creation
+    // SETUP: Warm Nix env non-interactively (bare `nix develop` hangs postCreate)
     // ───────────────────────────────────────────────────────────────────────
-    "postCreateCommand": "nix develop",
+    "postCreateCommand": "nix develop --command true",
 
     "remoteUser": "vscode"
 }
