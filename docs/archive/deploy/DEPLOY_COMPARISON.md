@@ -10,7 +10,7 @@ Therefore, a **pure Railway CLI** approach is not possible for your flow (Nix bu
 
 | Approach | API usage | Complexity | "No config in Railway" |
 |----------|-----------|------------|------------------------|
-| **Original (deploy_api_backup.uml)** | Full: service lookup, image update, status polling | High: yq, jq, 3 GraphQL calls, 225 lines | ✅ Yes |
+| **Original (`docs/archive/deploy/deploy_api_backup.uml`)** | Full: service lookup, image update, status polling | High: yq, jq, 3 GraphQL calls, 225 lines | ✅ Yes |
 | **Streamlined (deploy.yml)** | Minimal: service lookup, image update; health-check wait | Lower: same config loading, 2 GraphQL calls, ~120 lines | ✅ Yes |
 
 ## What changed in the streamlined version

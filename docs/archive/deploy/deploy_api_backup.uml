@@ -6,7 +6,7 @@
 #   - serviceInstanceUpdate (set image + start_command, trigger deploy)
 #   - Deployment status polling
 #
-# To restore: mv deploy_api_backup.uml deploy.yml
+# To restore: copy docs/archive/deploy/deploy_api_backup.uml to .github/workflows/deploy.yml
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
