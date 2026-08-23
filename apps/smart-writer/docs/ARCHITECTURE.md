@@ -133,7 +133,17 @@ Implement **Smart Writer** as a **LangGraph** workflow with an upfront **plannin
 
 ### Migration note (implementation status)
 
-The **smart-writer** app implements this pipeline in code: `decode_values` → `build_rubrics` → `writer` ↔ `assess_all` (parallel per value) → `merge_feedback`, with **max iterations** and **plateau** routing. HTTP/CLI use a **writing prompt** (`raw_input`). Legacy researcher–critic modules were removed. **Infrastructure** (FastAPI, Supabase `RunRepo`, Logfire, Railway) is unchanged in role.
+The **smart-writer** app implements this pipeline in code: `decode_values` → `build_rubrics` → `writer` ↔ `assess_all` (parallel per value) → `merge_feedback`, with **max iterations** and **plateau** routing. HTTP/CLI use a **writing prompt** (`raw_input`). HTTP `POST /audit` enqueues a background job (202); `GET /jobs/{id}` polls. Preview gate: header `X-Audit-Secret` must match `SMART_WRITER_AUDIT_SECRET` (401 wrong/missing; 503 if unset). HTTP `max_iterations` cap is **8** (422 if the client sends more). CLI `--max-iterations` is flag-driven (default 2) and is not the public cost control. `GET /`, `/health`, `/ready`, `/docs` stay public. Legacy researcher–critic modules were removed. **Infrastructure** (FastAPI, Supabase `RunRepo`, Logfire, Railway) is unchanged in role.
+
+```bash
+curl -sS -X POST http://localhost:8080/audit \
+  -H "Content-Type: application/json" \
+  -H "X-Audit-Secret: $AUDIT_SECRET" \
+  -d '{"raw_input":"Write one sentence about testing.","max_iterations":1}'
+# 202 {"job_id","status":"queued","location"}
+curl -sS http://localhost:8080/jobs/JOB_ID \
+  -H "X-Audit-Secret: $AUDIT_SECRET"
+```
 
 ### Risks and mitigations
 

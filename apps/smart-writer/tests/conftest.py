@@ -8,7 +8,9 @@ def isolated_db_and_repo(monkeypatch: pytest.MonkeyPatch) -> None:
     """No live Supabase calls in unit/integration tests; fresh ``NullRepo`` each test."""
     import app.db.client as db_client
     import app.orchestrator.run as orch
+    from app.config import get_settings
 
+    get_settings.cache_clear()
     monkeypatch.delenv("SUPABASE_URL", raising=False)
     monkeypatch.delenv("SUPABASE_SECRET_KEY", raising=False)
     monkeypatch.setenv("LOGFIRE_IGNORE_NO_CONFIG", "1")
@@ -19,3 +21,4 @@ def isolated_db_and_repo(monkeypatch: pytest.MonkeyPatch) -> None:
     orch._repo = None  # noqa: SLF001
     db_client._cached = None  # noqa: SLF001
     db_client._initialized = False  # noqa: SLF001
+    get_settings.cache_clear()

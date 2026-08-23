@@ -2,9 +2,11 @@ import logfire
 from pydantic_ai import Agent
 from app.agents.models import ResearchOutput, AuditFeedback
 
+from app.config import get_settings
+
 # OPENAI_API_KEY is read at runtime by pydantic_ai; enforced at CLI entrypoint (main.py).
 critic_agent = Agent(
-    'openai:gpt-4o',
+    get_settings().research_auditor_model,
     output_type=AuditFeedback,
     system_prompt=(
         "You are an Industrial Research Auditor.\n"

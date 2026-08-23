@@ -1,5 +1,10 @@
 name: Deploy to Railway
 
+# Pins the Railway service to the GHCR image digest shipped by CI, applies
+# runtime.start_command from deploy/railway/<environment>/<app_id>.yml, then
+# deploys and waits for that new deployment to go terminal.
+# Railway is a runtime only — it must not build from git/Railpack.
+
 on:
   workflow_call:
     inputs:
@@ -8,7 +13,7 @@ on:
         required: true
         type: string
       tag:
-        description: "GHCR tag to deploy (default: latest)"
+        description: "GHCR tag to resolve to a digest (default: latest)"
         required: false
         type: string
         default: latest
@@ -25,7 +30,7 @@ on:
         required: true
         type: string
       tag:
-        description: "GHCR tag to deploy (default: latest)"
+        description: "GHCR tag to resolve to a digest (default: latest)"
         required: false
         type: string
         default: latest
@@ -39,6 +44,10 @@ on:
 concurrency:
   group: railway-deploy-${{ github.ref }}-${{ inputs.environment || 'production' }}-${{ inputs.app_id }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: read
 
 jobs:
   deploy:
@@ -89,6 +98,7 @@ jobs:
           TAG: ${{ steps.params.outputs.tag }}
           APP_ID: ${{ inputs.app_id }}
         run: |
+          set -euo pipefail
           CONFIG_FILE="deploy/railway/${ENV_CONFIG}/${APP_ID}.yml"
           if [ ! -f "$CONFIG_FILE" ]; then
             echo "❌ Missing config: $CONFIG_FILE"
@@ -123,43 +133,66 @@ jobs:
           if [ -z "$REPOSITORY" ] || [ "$REPOSITORY" = "null" ]; then
             echo "❌ image.repository missing in $CONFIG_FILE"; exit 1
           fi
+          if [ -z "$START_CMD" ] || [ "$START_CMD" = "null" ]; then
+            echo "❌ runtime.start_command missing in $CONFIG_FILE"; exit 1
+          fi
 
           IMAGE_REF="${REGISTRY}/${REPOSITORY}:${TAG}"
 
           echo "project_name=$PROJECT_NAME" >> "$GITHUB_OUTPUT"
           echo "service_name=$SERVICE_NAME" >> "$GITHUB_OUTPUT"
           echo "environment_name=$ENV_NAME" >> "$GITHUB_OUTPUT"
+          echo "registry=$REGISTRY" >> "$GITHUB_OUTPUT"
+          echo "repository=$REPOSITORY" >> "$GITHUB_OUTPUT"
           echo "image_ref=$IMAGE_REF" >> "$GITHUB_OUTPUT"
-          echo "start_command=$START_CMD" >> "$GITHUB_OUTPUT"
+          {
+            echo "start_command<<STARTEOF"
+            echo "$START_CMD"
+            echo "STARTEOF"
+          } >> "$GITHUB_OUTPUT"
 
           echo "Config loaded:"
           echo "  project: $PROJECT_NAME"
           echo "  service: $SERVICE_NAME"
           echo "  environment: $ENV_NAME"
           echo "  image: $IMAGE_REF"
+          echo "  start_command: $START_CMD"
 
-      - name: Login to GHCR (for manifest lookup)
+      - name: Login to GHCR (for digest lookup)
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Verify image exists in GHCR
+      - name: Resolve GHCR digest (tag is not the production identity)
+        id: pin
         env:
           IMAGE_REF: ${{ steps.cfg.outputs.image_ref }}
+          REGISTRY: ${{ steps.cfg.outputs.registry }}
+          REPOSITORY: ${{ steps.cfg.outputs.repository }}
         run: |
-          echo "🔍 Checking image: $IMAGE_REF"
-          if docker manifest inspect "$IMAGE_REF" >/dev/null 2>&1; then
-            echo "✅ Image exists"
-            DIGEST=$(docker manifest inspect "$IMAGE_REF" | jq -r '.manifests[0].digest // empty')
-            if [ -n "$DIGEST" ]; then
-              echo "Digest: $DIGEST"
-            fi
-          else
-            echo "❌ Image not found: $IMAGE_REF"
+          set -euo pipefail
+          echo "🔍 Resolving digest for: $IMAGE_REF"
+
+          if ! docker buildx imagetools inspect "$IMAGE_REF" >/tmp/image-inspect.txt 2>/tmp/image-inspect.err; then
+            echo "❌ Image not found or inspect failed: $IMAGE_REF"
+            cat /tmp/image-inspect.err || true
             exit 1
           fi
+
+          DIGEST=$(awk '/^Digest:/{print $2; exit}' /tmp/image-inspect.txt)
+          if [[ ! "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "❌ Could not parse a content digest from imagetools inspect"
+            echo "--- inspect ---"
+            cat /tmp/image-inspect.txt
+            exit 1
+          fi
+
+          IMAGE_PIN="${REGISTRY}/${REPOSITORY}@${DIGEST}"
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "image_pin=$IMAGE_PIN" >> "$GITHUB_OUTPUT"
+          echo "✅ Tag $IMAGE_REF → $IMAGE_PIN"
 
       - name: Resolve Railway IDs (project + service + environment)
         id: ids
@@ -171,7 +204,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          API="https://backboard.railway.app/graphql/v2"
+          API="https://backboard.railway.com/graphql/v2"
 
           call_api () {
             curl -sS -X POST "$API" \
@@ -229,16 +262,19 @@ jobs:
           echo "service_id=$SERVICE_ID" >> "$GITHUB_OUTPUT"
           echo "environment_id=$ENV_ID" >> "$GITHUB_OUTPUT"
 
-      - name: Trigger Railway deployment and wait
+      - name: Set image source + start command, deploy, wait
         id: deploy
         env:
           RAILWAY_TOKEN: ${{ env.RAILWAY_TOKEN_EFFECTIVE }}
           SERVICE_ID: ${{ steps.ids.outputs.service_id }}
           ENVIRONMENT_ID: ${{ steps.ids.outputs.environment_id }}
+          IMAGE_PIN: ${{ steps.pin.outputs.image_pin }}
+          IMAGE_REF: ${{ steps.cfg.outputs.image_ref }}
+          START_CMD: ${{ steps.cfg.outputs.start_command }}
         run: |
           set -euo pipefail
 
-          API="https://backboard.railway.app/graphql/v2"
+          API="https://backboard.railway.com/graphql/v2"
 
           call_api () {
             curl -sS -X POST "$API" \
@@ -247,12 +283,200 @@ jobs:
               -d "$1"
           }
 
-          echo "🚀 Triggering deployment"
-          echo "  service_id: $SERVICE_ID"
-          echo "  environment_id: $ENVIRONMENT_ID"
+          has_errors () {
+            echo "$1" | jq -e '.errors != null' >/dev/null 2>&1
+          }
 
-          # serviceInstanceDeploy returns Boolean! in your schema.
-          MUTATION=$(jq -n \
+          echo "🔎 Introspecting Railway GraphQL (mutation + input type + start-command field)"
+
+          # Unwrap NON_NULL/LIST wrappers to the inner named type.
+          TYPE_NAME_JQ='def named: if .name then .name elif .ofType then .ofType | named else empty end;'
+
+          MUTATION_INTRO=$(call_api '{"query":"{ __type(name: \"Mutation\") { fields { name args { name type { name kind ofType { name kind ofType { name } } } } } } }"}')
+          if has_errors "$MUTATION_INTRO"; then
+            echo "❌ Mutation introspection failed:"
+            echo "$MUTATION_INTRO" | jq '.errors'
+            exit 1
+          fi
+
+          MUTATION_FIELDS=$(echo "$MUTATION_INTRO" | jq -r '.data.__type.fields // [] | .[].name')
+
+          # Distinct mutation names: live docs vs older service-level update.
+          MUTATION_NAME=""
+          for candidate in serviceInstanceUpdate serviceUpdate; do
+            if echo "$MUTATION_FIELDS" | grep -qx "$candidate"; then
+              MUTATION_NAME="$candidate"
+              break
+            fi
+          done
+          if [ -z "$MUTATION_NAME" ]; then
+            echo "❌ Live schema has neither serviceInstanceUpdate nor serviceUpdate."
+            echo "Available mutations (filtered):"
+            echo "$MUTATION_FIELDS" | grep -iE 'service|deploy' | sed 's/^/  - /' || true
+            echo "Gap: cannot set image source. Stopping without a poke-deploy."
+            exit 1
+          fi
+          echo "Chosen mutation: $MUTATION_NAME (probed: serviceInstanceUpdate, serviceUpdate)"
+
+          INPUT_FROM_MUTATION=$(echo "$MUTATION_INTRO" | jq -r --arg m "$MUTATION_NAME" "$TYPE_NAME_JQ"'
+            .data.__type.fields[] | select(.name == $m) | .args[] | select(.name == "input") | .type | named
+          ')
+
+          # Distinct input-type lookups: documented name, then whatever the mutation actually takes.
+          INPUT_TYPE=""
+          TYPE_INTRO=""
+          TRIED_TYPES=""
+          for candidate in ServiceInstanceUpdateInput "$INPUT_FROM_MUTATION"; do
+            [ -n "$candidate" ] || continue
+            case " $TRIED_TYPES " in
+              *" $candidate "*) continue ;;
+            esac
+            TRIED_TYPES="$TRIED_TYPES $candidate "
+            TYPE_INTRO=$(call_api "$(jq -n --arg n "$candidate" '{query: ("{ __type(name: \"" + $n + "\") { name inputFields { name } } }")}')")
+            if has_errors "$TYPE_INTRO"; then
+              echo "⚠️ __type($candidate) returned errors:"; echo "$TYPE_INTRO" | jq '.errors'
+              continue
+            fi
+            found=$(echo "$TYPE_INTRO" | jq -r '.data.__type.name // empty')
+            if [ -n "$found" ]; then
+              INPUT_TYPE="$found"
+              break
+            fi
+            echo "⚠️ __type($candidate) is null"
+          done
+          if [ -z "$INPUT_TYPE" ]; then
+            echo "❌ Could not resolve an input type (probed ServiceInstanceUpdateInput, then mutation input arg: '${INPUT_FROM_MUTATION:-<none>}')."
+            echo "Gap: this workflow cannot set the image source. Stopping without a poke-deploy."
+            exit 1
+          fi
+          echo "Chosen input type: $INPUT_TYPE (mutation input arg was: ${INPUT_FROM_MUTATION:-<none>})"
+
+          FIELDS=$(echo "$TYPE_INTRO" | jq -r '.data.__type.inputFields[]?.name // empty')
+          echo "$INPUT_TYPE fields:"
+          echo "$FIELDS" | sed 's/^/  - /'
+
+          if ! echo "$FIELDS" | grep -qx 'source'; then
+            echo "❌ Live schema has no 'source' on ${INPUT_TYPE}."
+            echo "Gap: GraphQL cannot set the service image. Stopping."
+            exit 1
+          fi
+
+          # Distinct field names: GraphQL camelCase vs snake_case.
+          START_FIELD=""
+          for candidate in startCommand start_command; do
+            if echo "$FIELDS" | grep -qx "$candidate"; then
+              START_FIELD="$candidate"
+              break
+            fi
+          done
+          if [ -z "$START_FIELD" ]; then
+            echo "❌ Live schema has neither startCommand nor start_command on ${INPUT_TYPE}."
+            echo "Gap: cannot apply runtime.start_command. Stopping."
+            exit 1
+          fi
+          echo "Chosen start-command field: $START_FIELD (probed: startCommand, start_command)"
+
+          list_deployments () {
+            local payload r
+            payload=$(jq -n --arg sid "$SERVICE_ID" --arg eid "$ENVIRONMENT_ID" '{
+              query: "query($sid: String!, $eid: String!) { deployments(first: 10, input: { serviceId: $sid, environmentId: $eid }) { edges { node { id status createdAt } } } }",
+              variables: { sid: $sid, eid: $eid }
+            }')
+            r=$(call_api "$payload")
+            if has_errors "$r"; then
+              payload=$(jq -n --arg id "$SERVICE_ID" '{
+                query: "query($id: String!) { service(id: $id) { deployments(first: 10) { edges { node { id status createdAt } } } } }",
+                variables: { id: $id }
+              }')
+              r=$(call_api "$payload")
+              if has_errors "$r"; then
+                echo "❌ Could not list deployments:" >&2
+                echo "$r" | jq '.errors' >&2
+                echo "[]"
+                return 1
+              fi
+              echo "$r" | jq -c '.data.service.deployments.edges // []'
+            else
+              echo "$r" | jq -c '.data.deployments.edges // []'
+            fi
+          }
+
+          echo "📸 Snapshotting deployments before source update"
+          OLD_EDGES=$(list_deployments)
+          OLD_IDS=$(echo "$OLD_EDGES" | jq -r '.[].node.id')
+          echo "Existing deployment ids:"
+          echo "${OLD_IDS:-<none>}" | sed 's/^/  - /'
+
+          echo "🔧 Setting Railway source image + ${START_FIELD}"
+          echo "  image: $IMAGE_PIN"
+          echo "  (from tag $IMAGE_REF)"
+          echo "  ${START_FIELD}: $START_CMD"
+
+          send_update () {
+            local image="$1"
+            local query
+            query=$(jq -n \
+              --arg sid "$SERVICE_ID" \
+              --arg eid "$ENVIRONMENT_ID" \
+              --arg img "$image" \
+              --arg cmd "$START_CMD" \
+              --arg inputType "$INPUT_TYPE" \
+              --arg startField "$START_FIELD" \
+              --arg mutationName "$MUTATION_NAME" \
+              '{
+                query: ("mutation Update($serviceId: String!, $environmentId: String, $input: " + $inputType + "!) { " + $mutationName + "(serviceId: $serviceId, environmentId: $environmentId, input: $input) }"),
+                variables: {
+                  serviceId: $sid,
+                  environmentId: $eid,
+                  input: ({ source: { image: $img } } + { ($startField): $cmd })
+                }
+              }')
+            call_api "$query"
+          }
+
+          UPDATE_RESP=$(send_update "$IMAGE_PIN")
+          if has_errors "$UPDATE_RESP"; then
+            ERR_MSG=$(echo "$UPDATE_RESP" | jq -r '[.errors[].message] | join("; ")')
+            echo "⚠️ serviceInstanceUpdate with digest pin failed: $ERR_MSG"
+
+            if echo "$ERR_MSG" | grep -qiE 'selection|subfield|must have a selection'; then
+              echo "Retrying serviceInstanceUpdate with { id } selection set"
+              QUERY=$(jq -n \
+                --arg sid "$SERVICE_ID" \
+                --arg eid "$ENVIRONMENT_ID" \
+                --arg img "$IMAGE_PIN" \
+                --arg cmd "$START_CMD" \
+                --arg inputType "$INPUT_TYPE" \
+                --arg startField "$START_FIELD" \
+                --arg mutationName "$MUTATION_NAME" \
+                '{
+                  query: ("mutation Update($serviceId: String!, $environmentId: String, $input: " + $inputType + "!) { " + $mutationName + "(serviceId: $serviceId, environmentId: $environmentId, input: $input) { id } }"),
+                  variables: {
+                    serviceId: $sid,
+                    environmentId: $eid,
+                    input: ({ source: { image: $img } } + { ($startField): $cmd })
+                  }
+                }')
+              UPDATE_RESP=$(call_api "$QUERY")
+            elif echo "$ERR_MSG" | grep -qiE 'image|digest|sha256|invalid'; then
+              PIN_WITH_TAG="${IMAGE_REF}@${IMAGE_PIN##*@}"
+              echo "Retrying source.image as tag@digest: $PIN_WITH_TAG"
+              UPDATE_RESP=$(send_update "$PIN_WITH_TAG")
+            fi
+          fi
+
+          if has_errors "$UPDATE_RESP"; then
+            echo "❌ serviceInstanceUpdate failed. Railway did not receive the image."
+            echo "$UPDATE_RESP" | jq
+            echo "Not calling serviceInstanceDeploy (that would poke the previous source)."
+            exit 1
+          fi
+
+          echo "✅ Source updated"
+          echo "$UPDATE_RESP" | jq -c --arg m "$MUTATION_NAME" '.data[$m]'
+
+          echo "🚀 Triggering deployment of the pinned image"
+          DEPLOY_MUTATION=$(jq -n \
             --arg serviceId "$SERVICE_ID" \
             --arg environmentId "$ENVIRONMENT_ID" \
             '{
@@ -260,53 +484,57 @@ jobs:
               variables: { serviceId: $serviceId, environmentId: $environmentId }
             }')
 
-          RESP=$(call_api "$MUTATION")
-          if echo "$RESP" | jq -e '.errors' >/dev/null 2>&1; then
-            echo "❌ Deploy call failed:"; echo "$RESP" | jq '.errors'; exit 1
+          DEPLOY_RESP=$(call_api "$DEPLOY_MUTATION")
+          if has_errors "$DEPLOY_RESP"; then
+            echo "❌ Deploy call failed:"; echo "$DEPLOY_RESP" | jq '.errors'; exit 1
           fi
 
-          OK=$(echo "$RESP" | jq -r '.data.serviceInstanceDeploy // empty')
+          OK=$(echo "$DEPLOY_RESP" | jq -r '.data.serviceInstanceDeploy // empty')
           if [ "$OK" != "true" ]; then
             echo "❌ Deploy mutation did not return true. Full response:"
-            echo "$RESP" | jq
+            echo "$DEPLOY_RESP" | jq
             exit 1
           fi
 
-          echo "✅ Deploy triggered. Waiting for latest deployment to reach terminal state..."
+          echo "✅ Deploy triggered. Waiting for a deployment created after the source update..."
 
           MAX_WAIT=900
           INTERVAL=10
           ELAPSED=0
+          TARGET_ID=""
 
           while [ $ELAPSED -lt $MAX_WAIT ]; do
-            Q=$(jq -n --arg id "$SERVICE_ID" \
-              '{ query: "query($id: String!) { service(id: $id) { deployments(first: 1) { edges { node { id status createdAt } } } } }", variables: { id: $id } }')
-
-            R=$(call_api "$Q")
-            if echo "$R" | jq -e '.errors' >/dev/null 2>&1; then
-              echo "⚠️ Status query error:"; echo "$R" | jq '.errors'
-              sleep $INTERVAL
-              ELAPSED=$((ELAPSED + INTERVAL))
-              continue
+            EDGES=$(list_deployments || echo '[]')
+            if [ -z "$TARGET_ID" ]; then
+              TARGET_ID=$(echo "$EDGES" | jq -r --argjson old "$(echo "$OLD_EDGES")" '
+                (map(.node) | sort_by(.createdAt) | reverse) as $n
+                | ($n | map(select(.id as $id | ($old | map(.node.id) | index($id) | not))) | .[0].id)
+                // empty
+              ')
+              if [ -z "$TARGET_ID" ]; then
+                echo "Waiting for a new deployment to appear... (${ELAPSED}s)"
+                sleep $INTERVAL
+                ELAPSED=$((ELAPSED + INTERVAL))
+                continue
+              fi
+              echo "▶️ Tracking new deployment: $TARGET_ID"
             fi
 
-            DEPLOY_ID=$(echo "$R" | jq -r '.data.service.deployments.edges[0].node.id // empty')
-            STATUS=$(echo "$R" | jq -r '.data.service.deployments.edges[0].node.status // "UNKNOWN"')
-            echo "Latest deployment: ${DEPLOY_ID:-<none>}  status=$STATUS  (${ELAPSED}s)"
+            STATUS=$(echo "$EDGES" | jq -r --arg id "$TARGET_ID" '.[] | select(.node.id==$id) | .node.status // empty')
+            if [ -z "$STATUS" ]; then
+              STATUS="UNKNOWN"
+            fi
+            echo "Deployment $TARGET_ID  status=$STATUS  (${ELAPSED}s)"
 
             case "$STATUS" in
               ACTIVE|SUCCESS)
                 echo "✅ Deployment complete: $STATUS"
-                if [ -n "$DEPLOY_ID" ]; then
-                  echo "deployment_id=$DEPLOY_ID" >> "$GITHUB_OUTPUT"
-                fi
+                echo "deployment_id=$TARGET_ID" >> "$GITHUB_OUTPUT"
                 exit 0
                 ;;
               FAILED|CRASHED|ERROR)
                 echo "❌ Deployment failed: $STATUS"
-                if [ -n "$DEPLOY_ID" ]; then
-                  echo "deployment_id=$DEPLOY_ID" >> "$GITHUB_OUTPUT"
-                fi
+                echo "deployment_id=$TARGET_ID" >> "$GITHUB_OUTPUT"
                 exit 1
                 ;;
               *)
@@ -327,7 +555,9 @@ jobs:
             echo "- **Project:** ${{ steps.cfg.outputs.project_name }}"
             echo "- **Service:** ${{ steps.cfg.outputs.service_name }}"
             echo "- **Environment:** ${{ steps.cfg.outputs.environment_name }}"
-            echo "- **Image:** \`${{ steps.cfg.outputs.image_ref }}\`"
+            echo "- **Image tag (lookup only):** \`${{ steps.cfg.outputs.image_ref }}\`"
+            echo "- **Image digest (what Railway should run):** \`${{ steps.pin.outputs.image_pin }}\`"
+            echo "- **Start command:** \`${{ steps.cfg.outputs.start_command }}\`"
             if [ -n "${{ steps.deploy.outputs.deployment_id }}" ]; then
               echo "- **Deployment ID:** \`${{ steps.deploy.outputs.deployment_id }}\`"
             fi

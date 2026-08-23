@@ -1,4 +1,4 @@
-"""HTTP /audit contract tests (workflow mocked; no OpenAI)."""
+"""HTTP /audit job contract tests (workflow mocked; no OpenAI)."""
 
 from __future__ import annotations
 
@@ -9,7 +9,6 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.db.null_repo import NullRepo
 from app.entrypoints.http import app
 
 SECRET = "test-secret"
@@ -18,7 +17,7 @@ AUTH = {"X-Audit-Secret": SECRET}
 
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
-    monkeypatch.setenv("SMART_WRITER_AUDIT_SECRET", SECRET)
+    monkeypatch.setenv("RESEARCH_AUDITOR_AUDIT_SECRET", SECRET)
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test-fake")
     from app.config import get_settings
 
@@ -46,43 +45,31 @@ def test_health_public(client: TestClient) -> None:
 
 def test_audit_enqueues_and_get_returns_result(client: TestClient) -> None:
     fake_state = {
+        "research": SimpleNamespace(source_material_title="Title", executive_summary=["finding"]),
+        "feedback": SimpleNamespace(verdict="PASS", summary="Looks good."),
         "iterations": 1,
-        "max_iterations": 1,
-        "aggregate_value_score": 12.0,
-        "aggregate_history": [12.0],
-        "draft": "Final text.",
-        "run_id": "00000000-0000-0000-0000-000000000099",
-        "last_assessments": [],
-        "composed_values": None,
-        "merged_feedback": "",
     }
 
-    with (
-        patch("app.orchestrator.run.run_workflow", new_callable=AsyncMock, return_value=fake_state),
-        patch("app.orchestrator.run.get_repo", return_value=NullRepo()),
-    ):
+    with patch("app.orchestrator.run.run_workflow", new_callable=AsyncMock, return_value=fake_state):
         r = client.post(
             "/audit",
             headers=AUTH,
-            json={"raw_input": "Write one sentence about testing.", "max_iterations": 1},
+            json={"raw_input": "Some topic to audit", "max_iterations": 1},
         )
         assert r.status_code == 202
         body = r.json()
-        assert "job_id" in body
         assert body["status"] == "queued"
-        assert "draft" not in body
+        assert "verdict" not in body
         job_id = body["job_id"]
-        assert r.headers.get("location") == f"/jobs/{job_id}"
-
         done = _wait_terminal(client, job_id)
         data = done.json()
         assert data["status"] == "succeeded"
         result = data["result"]
-        assert result["stop_reason"] == "max_iterations"
+        assert result["verdict"] == "PASS"
+        assert result["title"] == "Title"
+        assert result["findings"] == ["finding"]
+        assert result["summary"] == "Looks good."
         assert result["iterations"] == 1
-        assert result["draft"] == "Final text."
-        assert result["run_id"] == fake_state["run_id"]
-        assert result["persistence_enabled"] is False
 
 
 def test_audit_401_without_secret(client: TestClient) -> None:
@@ -104,11 +91,6 @@ def test_get_job_401_without_secret(client: TestClient) -> None:
     assert r.status_code == 401
 
 
-def test_get_job_404(client: TestClient) -> None:
-    r = client.get("/jobs/00000000-0000-0000-0000-000000000001", headers=AUTH)
-    assert r.status_code == 404
-
-
 def test_audit_max_iterations_99_is_422(client: TestClient) -> None:
     r = client.post(
         "/audit",
@@ -118,8 +100,13 @@ def test_audit_max_iterations_99_is_422(client: TestClient) -> None:
     assert r.status_code == 422
 
 
+def test_get_job_404(client: TestClient) -> None:
+    r = client.get("/jobs/00000000-0000-0000-0000-000000000001", headers=AUTH)
+    assert r.status_code == 404
+
+
 def test_audit_503_when_secret_unset(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("SMART_WRITER_AUDIT_SECRET", raising=False)
+    monkeypatch.delenv("RESEARCH_AUDITOR_AUDIT_SECRET", raising=False)
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test-fake")
     with TestClient(app) as c:
         r = c.post("/audit", json={"raw_input": "hello world", "max_iterations": 1})
@@ -127,7 +114,7 @@ def test_audit_503_when_secret_unset(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_job_timed_out(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("SMART_WRITER_AUDIT_TIMEOUT_SEC", "0.05")
+    monkeypatch.setenv("RESEARCH_AUDITOR_AUDIT_TIMEOUT_SEC", "0.05")
     from app.config import get_settings
 
     get_settings.cache_clear()
@@ -146,16 +133,15 @@ def test_job_timed_out(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> N
 
 
 def test_audit_429_when_rate_limited(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("SMART_WRITER_AUDIT_SECRET", SECRET)
+    monkeypatch.setenv("RESEARCH_AUDITOR_AUDIT_SECRET", SECRET)
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test-fake")
-    monkeypatch.setenv("SMART_WRITER_AUDIT_RATE_LIMIT_PER_MIN", "1")
+    monkeypatch.setenv("RESEARCH_AUDITOR_AUDIT_RATE_LIMIT_PER_MIN", "1")
     from app.config import get_settings
 
     get_settings.cache_clear()
     body = {"raw_input": "hello world", "max_iterations": 1}
     with (
         patch("app.orchestrator.run.run_workflow", new_callable=AsyncMock, return_value={}),
-        patch("app.orchestrator.run.get_repo", return_value=NullRepo()),
         TestClient(app) as c,
     ):
         first = c.post("/audit", headers=AUTH, json=body)

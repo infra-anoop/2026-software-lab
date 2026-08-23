@@ -31,6 +31,9 @@ jobs:
       - name: Validate app registry
         run: uv run scripts/validate_app_registry.py --check-json
 
+      - name: Validate deploy env checklists
+        run: uv run scripts/validate_deploy_env.py
+
       - name: Install Nix
         uses: cachix/install-nix-action@v25
         with:
@@ -42,3 +45,37 @@ jobs:
 
       - name: Build container derivation
         run: nix build .#container
+
+      - name: Offline boot smoke (default image)
+        run: |
+          set -euo pipefail
+          LOAD_OUT=$(docker load < result)
+          echo "$LOAD_OUT"
+          IMAGE=$(echo "$LOAD_OUT" | awk '/Loaded image:/{print $3; exit}')
+          if [ -z "$IMAGE" ]; then
+            echo "Failed to parse image name from docker load"
+            exit 1
+          fi
+          echo "Loaded $IMAGE"
+          CMD=$(docker inspect --format '{{json .Config.Cmd}}' "$IMAGE")
+          echo "Cmd: $CMD"
+          echo "$CMD" | grep -q 'uv sync' && { echo "FAIL: Cmd still runs uv sync"; exit 1; }
+          echo "$CMD" | grep -q uvicorn || { echo "FAIL: Cmd does not invoke uvicorn"; exit 1; }
+
+          CID=$(docker run -d --network none -e PORT=8080 "$IMAGE")
+          cleanup() { docker rm -f "$CID" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          ok=0
+          for i in $(seq 1 30); do
+            if docker exec "$CID" /app/.venv/bin/python -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8080/health").read()' 2>/dev/null; then
+              echo "health ok"
+              ok=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ok" != 1 ]; then
+            echo "FAIL: /health did not succeed with --network none"
+            docker logs "$CID" || true
+            exit 1
+          fi

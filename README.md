@@ -102,6 +102,8 @@ Don’t rely on apt-get for durable installs (it drifts).
 
 Keep Nix as the “system dependency truth,” not $HOME/.local.
 
+OCI images (`nix build .#container`): Python deps from each app’s `uv.lock` are installed at **image build**. That step needs network (PyPI). CI sets `sandbox = false`; locally use `nix build .#container --option sandbox false`. Container start is uvicorn only.
+
 Layer 4 — Python Runtime & Dependencies: per-app pyproject.toml + uv (+ uv.lock)
 
 Your statement (correct):

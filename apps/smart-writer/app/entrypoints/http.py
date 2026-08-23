@@ -1,29 +1,65 @@
 # app/entrypoints/http.py — FastAPI server for health checks, form UI, and workflow API (PORT, 0.0.0.0).
 #
 # Endpoints:
-#   GET  /         — Workflow form (HTML)
-#   GET  /health   — Health check
-#   POST /audit    — Run values→rubrics→writer loop (body: writing prompt + limits)
+#   GET  /              — Workflow form (HTML; public)
+#   GET  /health        — Health check (public, no OpenAI)
+#   GET  /ready         — Config present (OPENAI_API_KEY non-empty; no OpenAI call)
+#   POST /audit         — Enqueue job (202 + job_id). Does not run the graph on this request.
+#   GET  /jobs/{job_id} — Snapshot of job status / result (does not wait)
 #
-# Server-side wall-clock limit for ``/audit``: ``SMART_WRITER_AUDIT_TIMEOUT_SEC`` (see ``app.config``).
-# Browser and API clients should still use a long HTTP read timeout (workflows often take minutes).
+# Auth: header ``X-Audit-Secret`` must match ``SMART_WRITER_AUDIT_SECRET`` (503 if unset).
+# Jobs are in-memory: lost on process restart; not shared across Railway instances.
+# Worker wall-clock: ``SMART_WRITER_AUDIT_TIMEOUT_SEC`` (default 300; 0 = no limit).
+# In-flight graphs: ``SMART_WRITER_JOB_CONCURRENCY`` (default 1). Queue: ``SMART_WRITER_JOB_QUEUE_MAX`` (default 4).
 #
-import asyncio
-import re
-import os
+from __future__ import annotations
 
+import hmac
+import os
+import re
+from contextlib import asynccontextmanager
 from typing import List, Literal
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field, field_validator
 
-from app.config import get_audit_timeout_sec, get_max_concurrent_llm, init_env
+from app.config import (
+    HTTP_MAX_ITERATIONS,
+    get_audit_rate_limit_per_min,
+    get_audit_secret,
+    get_audit_timeout_sec,
+    get_job_concurrency,
+    get_job_queue_max,
+    get_max_concurrent_llm,
+    get_settings,
+    init_env,
+)
 from app.db.null_repo import NullRepo
+from app.entrypoints.jobs import Job, JobRunner, QueueFullError, SlidingWindowRateLimiter
 
 init_env()
 
-app = FastAPI(title="Smart Writer", version="0.1.0")
+AUDIT_SECRET_HEADER = "X-Audit-Secret"
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Start the in-process job worker. Health does not touch this."""
+    runner = JobRunner(
+        execute=_execute_audit_job,
+        timeout_sec=get_audit_timeout_sec,
+        concurrency=get_job_concurrency(),
+        queue_max=get_job_queue_max(),
+    )
+    app.state.job_runner = runner
+    app.state.rate_limiter = SlidingWindowRateLimiter()
+    await runner.start()
+    yield
+    await runner.stop()
+
+
+app = FastAPI(title="Smart Writer", version="0.1.0", lifespan=lifespan)
 
 # Input limits for injection/DoS mitigation
 RAW_INPUT_MAX_LEN = 10_000
@@ -58,10 +94,10 @@ class AuditRequest(BaseModel):
         description="Writing prompt: what to produce, audience, tone, length, etc.",
     )
     max_iterations: int = Field(
-        default=10,
+        default=8,
         ge=1,
-        le=20,
-        description="Max writer iterations (draft → assess → merge cycles).",
+        le=HTTP_MAX_ITERATIONS,
+        description="Max writer iterations (draft → assess → merge cycles). HTTP clamp 8.",
     )
     plateau_window: int = Field(default=2, ge=1, le=10, description="Plateau: compare aggregate to score this many rounds ago.")
     plateau_epsilon: float = Field(
@@ -160,7 +196,7 @@ class ValueScoreLine(BaseModel):
 
 
 class AuditResponse(BaseModel):
-    """Response from POST /audit."""
+    """Terminal audit payload (nested under GET /jobs/{id}.result on success)."""
 
     stop_reason: str
     iterations: int
@@ -191,10 +227,159 @@ class AuditResponse(BaseModel):
     )
 
 
+class EnqueueResponse(BaseModel):
+    """202 body for POST /audit."""
+
+    job_id: str
+    status: Literal["queued"] = "queued"
+    location: str
+
+
+class JobView(BaseModel):
+    """Snapshot from GET /jobs/{job_id}. Does not wait for completion."""
+
+    job_id: str
+    status: Literal["queued", "running", "succeeded", "failed", "timed_out"]
+    created_at: str
+    started_at: str | None = None
+    finished_at: str | None = None
+    error: str | None = None
+    result: AuditResponse | None = None
+
+
+def require_audit_secret(
+    x_audit_secret: str | None = Header(default=None, alias="X-Audit-Secret"),
+) -> None:
+    """Reject missing/wrong secret with 401; unset env with 503 (fail closed)."""
+    expected = get_audit_secret()
+    if expected is None:
+        raise HTTPException(
+            status_code=503,
+            detail="SMART_WRITER_AUDIT_SECRET is not configured",
+        )
+    provided = x_audit_secret or ""
+    try:
+        matched = hmac.compare_digest(provided, expected)
+    except (TypeError, ValueError):
+        matched = False
+    if not matched:
+        raise HTTPException(status_code=401, detail="Invalid or missing X-Audit-Secret")
+
+
+def _job_to_view(job: Job) -> JobView:
+    """Map an in-memory job to the public snapshot."""
+    result: AuditResponse | None = None
+    if job.result is not None:
+        result = (
+            job.result
+            if isinstance(job.result, AuditResponse)
+            else AuditResponse.model_validate(job.result)
+        )
+    return JobView(
+        job_id=job.job_id,
+        status=job.status,
+        created_at=job.created_at,
+        started_at=job.started_at,
+        finished_at=job.finished_at,
+        error=job.error,
+        result=result,
+    )
+
+
+def _payload_from_request(body: AuditRequest) -> dict:
+    """Build the orchestrator input dict from the HTTP request (graph unchanged)."""
+    initial_input: dict = {
+        "raw_input": body.raw_input,
+        "iterations": 0,
+        "max_iterations": min(body.max_iterations, HTTP_MAX_ITERATIONS),
+        "plateau_window": body.plateau_window,
+        "plateau_epsilon": body.plateau_epsilon,
+        "plateau_epsilon_craft": body.plateau_epsilon_craft,
+        "plateau_epsilon_grounding": body.plateau_epsilon_grounding,
+        "assess_parallel": body.assess_parallel,
+        "max_concurrent_llm": body.max_concurrent_llm,
+        "grounding_enabled": body.grounding_enabled,
+        "reference_material": body.reference_material,
+        "retrieval_mode": body.retrieval_mode,
+        "library_enabled": body.library_enabled,
+        "library_max_matches": body.library_max_matches,
+        "library_match_threshold": body.library_match_threshold,
+    }
+    if body.prompt_program_id is not None and body.prompt_program_id.strip():
+        initial_input["prompt_program_id"] = body.prompt_program_id.strip()
+    if body.prompt_profile_id is not None and body.prompt_profile_id.strip():
+        initial_input["prompt_profile_id"] = body.prompt_profile_id.strip()
+    if body.prompt_parameters is not None:
+        initial_input["prompt_parameters"] = body.prompt_parameters.model_dump(exclude_none=True)
+    if body.research_planning_enabled is not None:
+        initial_input["research_planning_enabled"] = body.research_planning_enabled
+    initial_input["force_research_planning"] = body.force_research_planning
+    return initial_input
+
+
+def _audit_response_from_state(final_state: dict) -> AuditResponse:
+    """Map graph state to today's AuditResponse (no second public schema)."""
+    from app.agents.models import AssessorResult, ComposedValues
+    from app.orchestrator.run import _infer_stop_reason, get_repo
+
+    repo = get_repo()
+    persistence_enabled = not isinstance(repo, NullRepo)
+    stop_reason = _infer_stop_reason(final_state)
+    raw_assess = final_state.get("last_assessments") or []
+    assessments: list[AssessorResult] = [
+        AssessorResult.model_validate(x) if isinstance(x, dict) else x for x in raw_assess
+    ]
+    composed_raw = final_state.get("composed_values")
+    composed: ComposedValues | None
+    if composed_raw is None:
+        composed = None
+    elif isinstance(composed_raw, dict):
+        composed = ComposedValues.model_validate(composed_raw)
+    else:
+        composed = composed_raw
+    name_by_id = {v.value_id: v.name for v in composed.values} if composed else {}
+    value_scores = [
+        ValueScoreLine(value_id=a.value_id, name=name_by_id.get(a.value_id, a.value_id), total=a.total)
+        for a in assessments
+    ]
+    merged = final_state.get("merged_feedback") or ""
+    cids = final_state.get("canonical_ids_used")
+    if not isinstance(cids, list):
+        cids = []
+    return AuditResponse(
+        stop_reason=stop_reason,
+        iterations=final_state.get("iterations", 0),
+        aggregate_value_score=float(final_state.get("aggregate_value_score", 0.0)),
+        draft=final_state.get("draft") or "",
+        run_id=final_state.get("run_id"),
+        persistence_enabled=persistence_enabled,
+        value_scores=value_scores,
+        merged_feedback_preview=merged[:1200] + ("…" if len(merged) > 1200 else ""),
+        canonical_ids_used=[str(x) for x in cids],
+        library_version_aggregate=final_state.get("library_version_aggregate"),
+    )
+
+
+async def _execute_audit_job(payload: dict) -> AuditResponse:
+    """Worker body: same ``run_workflow`` as CLI. Import inside so tests can patch it."""
+    from app.orchestrator.run import run_workflow
+
+    final_state = await run_workflow(payload)
+    return _audit_response_from_state(final_state)
+
+
 @app.get("/health")
 def health() -> dict:
     """Health check for load balancers and deployment probes."""
     return {"ok": True}
+
+
+@app.get("/ready")
+def ready() -> JSONResponse:
+    """Readiness: required secrets present. Does not call OpenAI or run the graph."""
+    key_ok = bool(get_settings().openai_api_key.strip())
+    body = {"ok": key_ok, "openai_api_key": "set" if key_ok else "missing"}
+    return JSONResponse(status_code=200 if key_ok else 503, content=body)
 
 
 AUDIT_FORM_HTML = """
@@ -211,7 +396,7 @@ AUDIT_FORM_HTML = """
     legend { font-weight: 600; padding: 0 0.25rem; }
     label { display: block; margin-top: 0.5rem; color: #555; font-size: 0.9rem; }
     textarea { width: 100%; min-height: 120px; box-sizing: border-box; }
-    input[type="number"] { width: 5rem; }
+    input[type="password"], input[type="text"] { width: 100%; box-sizing: border-box; padding: 0.35rem; }
     button { padding: 0.5rem 1rem; cursor: pointer; }
     #result { margin-top: 1rem; padding: 1rem; border: 1px solid #ccc; display: none; }
     #result.visible { display: block; }
@@ -239,8 +424,14 @@ AUDIT_FORM_HTML = """
 
     <fieldset>
       <legend>Maximum writer iterations</legend>
-      <label for="max_iterations">Draft → assess → merge cycles (1–20). Default 10; lower for cheaper runs.</label>
-      <input type="number" id="max_iterations" name="max_iterations" value="10" min="1" max="20">
+      <label for="max_iterations">Draft → assess → merge cycles (1–8). Server clamps at 8.</label>
+      <input type="number" id="max_iterations" name="max_iterations" value="8" min="1" max="8">
+    </fieldset>
+
+    <fieldset>
+      <legend>API secret</legend>
+      <label for="audit_secret">Preview gate only. The browser sends this as X-Audit-Secret. Anyone with the secret can run paid audits. This is not a login.</label>
+      <input type="password" id="audit_secret" name="audit_secret" autocomplete="off" required>
     </fieldset>
 
     <button type="submit">Run workflow</button>
@@ -253,11 +444,24 @@ AUDIT_FORM_HTML = """
   <script>
     const form = document.getElementById("audit-form");
     const result = document.getElementById("result");
+    const SECRET_KEY = "smart_writer_audit_secret";
+    const secretInput = document.getElementById("audit_secret");
+    const stored = sessionStorage.getItem(SECRET_KEY);
+    if (stored) secretInput.value = stored;
+
+    function detailText(data, fallback) {
+      if (!data) return fallback;
+      const d = data.detail;
+      if (typeof d === "string") return d;
+      if (Array.isArray(d)) return d.map(function (x) { return x.msg || JSON.stringify(x); }).join("; ");
+      return fallback;
+    }
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const rawInput = document.getElementById("raw_input").value.trim();
       const maxIter = parseInt(document.getElementById("max_iterations").value, 10);
+      const secret = secretInput.value;
 
       if (!rawInput) {
         showResult("Please enter text to process.", true);
@@ -267,18 +471,26 @@ AUDIT_FORM_HTML = """
         showResult("Text exceeds 10,000 characters. Please shorten it.", true);
         return;
       }
-      if (isNaN(maxIter) || maxIter < 1 || maxIter > 20) {
-        showResult("Maximum iterations must be between 1 and 20.", true);
+      if (isNaN(maxIter) || maxIter < 1 || maxIter > 8) {
+        showResult("Maximum iterations must be between 1 and 8.", true);
         return;
       }
+      if (!secret) {
+        showResult("API secret is required.", true);
+        return;
+      }
+      sessionStorage.setItem(SECRET_KEY, secret);
 
       result.className = "visible";
-      result.textContent = "Running workflow…";
+      result.textContent = "Submitting job…";
 
       try {
         const resp = await fetch("/audit", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "X-Audit-Secret": secret
+          },
           body: JSON.stringify({
             raw_input: rawInput,
             max_iterations: maxIter,
@@ -290,14 +502,39 @@ AUDIT_FORM_HTML = """
         });
         const data = await resp.json();
         if (!resp.ok) {
-          showResult("Error: " + (data.detail || resp.statusText), true);
+          showResult("Error: " + detailText(data, resp.statusText), true);
           return;
         }
-        showResultSuccess(data);
+        await pollJob(data.job_id, secret);
       } catch (err) {
         showResult("Request failed: " + (err.message || "Unknown error"), true);
       }
     });
+
+    async function pollJob(jobId, secret) {
+      result.textContent = "Job " + jobId + " queued…";
+      while (true) {
+        const jr = await fetch("/jobs/" + jobId, {
+          headers: { "X-Audit-Secret": secret }
+        });
+        const job = await jr.json();
+        if (!jr.ok) {
+          showResult("Error: " + detailText(job, jr.statusText), true);
+          return;
+        }
+        if (job.status === "queued" || job.status === "running") {
+          result.textContent = "Job " + job.status + " (" + jobId + ")…";
+          await new Promise(function (r) { setTimeout(r, 1000); });
+          continue;
+        }
+        if (job.status === "succeeded") {
+          showResultSuccess(job.result);
+          return;
+        }
+        showResult("Job " + job.status + (job.error ? ": " + job.error : ""), true);
+        return;
+      }
+    }
 
     function showResult(text, isError) {
       result.className = "visible" + (isError ? " error" : "");
@@ -375,105 +612,51 @@ def form_page() -> str:
     return AUDIT_FORM_HTML
 
 
-@app.post("/audit", response_model=AuditResponse)
-async def audit(request: AuditRequest) -> AuditResponse:
-    """Run the Smart Writer workflow. Requires OPENAI_API_KEY."""
-    key = os.getenv("OPENAI_API_KEY")
+@app.post("/audit", response_model=EnqueueResponse, status_code=202)
+async def audit(
+    body: AuditRequest,
+    request: Request,
+    response: Response,
+    _: None = Depends(require_audit_secret),
+) -> EnqueueResponse:
+    """Enqueue an audit job. Returns 202 immediately; poll GET /jobs/{job_id}."""
+    key = get_settings().openai_api_key
     if not key or not key.strip():
         raise HTTPException(status_code=503, detail="OPENAI_API_KEY not configured")
 
-    from app.orchestrator.run import get_repo, run_workflow
-
-    initial_input: dict = {
-        "raw_input": request.raw_input,
-        "iterations": 0,
-        "max_iterations": request.max_iterations,
-        "plateau_window": request.plateau_window,
-        "plateau_epsilon": request.plateau_epsilon,
-        "plateau_epsilon_craft": request.plateau_epsilon_craft,
-        "plateau_epsilon_grounding": request.plateau_epsilon_grounding,
-        "assess_parallel": request.assess_parallel,
-        "max_concurrent_llm": request.max_concurrent_llm,
-        "grounding_enabled": request.grounding_enabled,
-        "reference_material": request.reference_material,
-        "retrieval_mode": request.retrieval_mode,
-        "library_enabled": request.library_enabled,
-        "library_max_matches": request.library_max_matches,
-        "library_match_threshold": request.library_match_threshold,
-    }
-    if request.prompt_program_id is not None and request.prompt_program_id.strip():
-        initial_input["prompt_program_id"] = request.prompt_program_id.strip()
-    if request.prompt_profile_id is not None and request.prompt_profile_id.strip():
-        initial_input["prompt_profile_id"] = request.prompt_profile_id.strip()
-    if request.prompt_parameters is not None:
-        initial_input["prompt_parameters"] = request.prompt_parameters.model_dump(exclude_none=True)
-    if request.research_planning_enabled is not None:
-        initial_input["research_planning_enabled"] = request.research_planning_enabled
-    initial_input["force_research_planning"] = request.force_research_planning
-
-    timeout_sec = get_audit_timeout_sec()
-    try:
-        if timeout_sec is not None:
-            final_state = await asyncio.wait_for(
-                run_workflow(initial_input),
-                timeout=timeout_sec,
-            )
-        else:
-            final_state = await run_workflow(initial_input)
-    except asyncio.TimeoutError:
+    limiter: SlidingWindowRateLimiter = request.app.state.rate_limiter
+    if not limiter.allow(get_audit_rate_limit_per_min()):
         raise HTTPException(
-            status_code=504,
-            detail=(
-                f"Workflow exceeded server timeout ({timeout_sec}s). "
-                "Increase SMART_WRITER_AUDIT_TIMEOUT_SEC, reduce max_iterations, or call from a job runner."
-            ),
+            status_code=429,
+            detail="Rate limit exceeded; max POST /audit per minute on this instance.",
         )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
-    from app.agents.models import AssessorResult, ComposedValues
-    from app.orchestrator.run import _infer_stop_reason
+    runner: JobRunner = request.app.state.job_runner
+    try:
+        job = runner.enqueue(_payload_from_request(body))
+    except QueueFullError:
+        raise HTTPException(
+            status_code=429,
+            detail="Job queue is full; try again shortly.",
+        )
 
-    repo = get_repo()
-    persistence_enabled = not isinstance(repo, NullRepo)
+    location = f"/jobs/{job.job_id}"
+    response.headers["Location"] = location
+    return EnqueueResponse(job_id=job.job_id, status="queued", location=location)
 
-    stop_reason = _infer_stop_reason(final_state)
-    raw_assess = final_state.get("last_assessments") or []
-    assessments: list[AssessorResult] = [
-        AssessorResult.model_validate(x) if isinstance(x, dict) else x for x in raw_assess
-    ]
-    composed_raw = final_state.get("composed_values")
-    composed: ComposedValues | None
-    if composed_raw is None:
-        composed = None
-    elif isinstance(composed_raw, dict):
-        composed = ComposedValues.model_validate(composed_raw)
-    else:
-        composed = composed_raw
-    name_by_id = {v.value_id: v.name for v in composed.values} if composed else {}
-    value_scores = [
-        ValueScoreLine(value_id=a.value_id, name=name_by_id.get(a.value_id, a.value_id), total=a.total)
-        for a in assessments
-    ]
-    merged = final_state.get("merged_feedback") or ""
 
-    cids = final_state.get("canonical_ids_used")
-    if not isinstance(cids, list):
-        cids = []
-    canon_ids_used = [str(x) for x in cids]
-
-    return AuditResponse(
-        stop_reason=stop_reason,
-        iterations=final_state.get("iterations", 0),
-        aggregate_value_score=float(final_state.get("aggregate_value_score", 0.0)),
-        draft=final_state.get("draft") or "",
-        run_id=final_state.get("run_id"),
-        persistence_enabled=persistence_enabled,
-        value_scores=value_scores,
-        merged_feedback_preview=merged[:1200] + ("…" if len(merged) > 1200 else ""),
-        canonical_ids_used=canon_ids_used,
-        library_version_aggregate=final_state.get("library_version_aggregate"),
-    )
+@app.get("/jobs/{job_id}", response_model=JobView)
+def get_job(
+    job_id: str,
+    request: Request,
+    _: None = Depends(require_audit_secret),
+) -> JobView:
+    """Snapshot of a job. Never waits for the graph."""
+    runner: JobRunner = request.app.state.job_runner
+    job = runner.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Unknown job_id")
+    return _job_to_view(job)
 
 
 def main() -> None:

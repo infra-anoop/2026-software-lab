@@ -134,7 +134,36 @@
         # ═════════════════════════════════════════════════════════════════════
         # Defined before per-app package names so we can reuse mkContainer in
         # both `container-<id>` (explicit) and `container` (default alias).
+        #
+        # Deps are baked at *image build* (`uv sync --frozen --no-dev` → /app/.venv).
+        # Boot is uvicorn only — no uv, no PyPI at start.
+        # The bake needs network (PyPI). CI sets `sandbox = false`; locally:
+        #   nix build .#container --option sandbox false
         mkContainer = app:
+          let
+            appRuntime = pkgs.runCommand "${app.id}-app-runtime" {
+              nativeBuildInputs = [ pkgs.uv pkgs.python312 pkgs.cacert ];
+              SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
+              NIX_SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
+              # Keep uv's venv/scripts as written; stdenv fixup would rewrite shebangs.
+              dontFixup = true;
+            } ''
+              set -eu
+              mkdir -p $out/app
+              cp -r ${appSrc app}/app $out/app/app
+              cp ${appSrc app}/pyproject.toml $out/app/
+              cp ${appSrc app}/uv.lock $out/app/
+              chmod -R u+w $out/app
+
+              export UV_PROJECT_ENVIRONMENT="$out/app/.venv"
+              export UV_CACHE_DIR="$TMPDIR/uv-cache"
+              export UV_PYTHON="${pkgs.python312}/bin/python"
+              export SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+
+              cd $out/app
+              uv sync --frozen --no-dev
+            '';
+          in
           pkgs.dockerTools.buildLayeredImage {
             name = app.oci.image_name;
             tag = "latest";
@@ -144,30 +173,29 @@
               pkgs.bash
               pkgs.coreutils
               pkgs.python312
-              pkgs.uv
-              # Bundle only what the running service needs (app tree + lockfile).
-              (pkgs.runCommand "${app.id}-app-bundle" { } ''
-                mkdir -p $out/app
-                cp -r ${appSrc app}/app $out/app/app
-                cp ${appSrc app}/pyproject.toml $out/app/
-                cp ${appSrc app}/uv.lock $out/app/
-              '')
+              pkgs.cacert
+              pkgs.stdenv.cc.cc.lib
+              pkgs.libffi
+              pkgs.zlib
+              pkgs.openssl
+              appRuntime
             ];
 
             config = {
-              # Same production story as before: uv sync at container start (network
-              # allowed there; Nix sandbox stays hermetic), then uvicorn on PORT.
+              # Deps baked at build; boot is uvicorn only (see appRuntime above).
               Cmd = [
                 "bash" "-c"
-                "cd /app && uv sync --frozen && exec uv run --frozen uvicorn app.entrypoints.http:app --host 0.0.0.0 --port ''${PORT:-8080}"
+                "exec /app/.venv/bin/uvicorn app.entrypoints.http:app --host 0.0.0.0 --port \${PORT:-8080}"
               ];
               WorkingDir = "/app";
               ExposedPorts = { "8080/tcp" = { }; };
               Env = [
                 "PYTHONUNBUFFERED=1"
-                "UV_CACHE_DIR=/tmp/.uv_cache"
+                "PATH=/app/.venv/bin:/bin"
+                "VIRTUAL_ENV=/app/.venv"
                 "PORT=8080"
                 "ENVIRONMENT=production"
+                "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
               ];
               Labels = {
                 "org.opencontainers.image.source" =
@@ -298,6 +326,20 @@
             inspectOne = app: ''
               echo "🐳 Validating container ${app.id}..."
               skopeo inspect "docker-archive:${containerPkgs.${app.id}}" | jq .
+              # Default inspect has no Cmd; --config is the image config JSON.
+              cfg=$(skopeo inspect --config "docker-archive:${containerPkgs.${app.id}}")
+              cmd=$(echo "$cfg" | jq -r '.config.Cmd // .Cmd | join(" ")')
+              echo "Cmd: $cmd"
+              case "$cmd" in
+                *"uv sync"*)
+                  echo "FAIL: ${app.id} Cmd still runs uv sync"
+                  exit 1
+                  ;;
+              esac
+              echo "$cmd" | grep -q uvicorn || {
+                echo "FAIL: ${app.id} Cmd does not invoke uvicorn"
+                exit 1
+              }
             '';
             body = lib.concatStringsSep "\n" (map inspectOne shipApps);
           in
@@ -375,9 +417,9 @@
 # CI (local):
 #   nix flake check
 #
-# Container images:
-#   nix build .#container
-#   nix build .#container-<id>
+# Container images (needs network / sandbox false — deps baked from uv.lock):
+#   nix build .#container --option sandbox false
+#   nix build .#container-<id> --option sandbox false
 #   docker load < result
 #
 # Each app expects (same as before parameterization):

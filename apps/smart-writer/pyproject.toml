@@ -12,6 +12,7 @@ dependencies = [
 
   # Keep your deliberate pydantic ceiling if you know 2.12 breaks your stack:
   "pydantic>=2.11.9,<2.12",
+  "pydantic-settings>=2.9,<3",
 
   # pydantic-ai is major 1 now; cap at next major:
   "pydantic-ai-slim[openai]>=1.59,<2",

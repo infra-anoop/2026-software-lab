@@ -8,4 +8,19 @@ image:
   repository: "{{ github_repository_owner }}/smart-writer"
 
 runtime:
-  start_command: "bash -c 'cd /app && uv sync --frozen && exec uv run --frozen python -m app.entrypoints.http'"
+  start_command: 'bash -c "exec /app/.venv/bin/uvicorn app.entrypoints.http:app --host 0.0.0.0 --port ${PORT:-8080}"'
+
+# Names only (cattle). Values are set in the Railway service Variables UI, not GitHub.
+# PORT is platform-injected — do not list it. GET /ready requires `required` only.
+# SMART_WRITER_AUDIT_SECRET is optional for /ready; unset still fail-closes
+# POST /audit and GET /jobs with 503 (preview gate, not a user login).
+env:
+  required:
+    - OPENAI_API_KEY
+  optional:
+    - LOGFIRE_TOKEN
+    - SUPABASE_URL
+    - SUPABASE_SECRET_KEY
+    - TAVILY_API_KEY
+    - SMART_WRITER_MODEL
+    - SMART_WRITER_AUDIT_SECRET

@@ -143,8 +143,8 @@ docker run --rm research-auditor:latest ls -la /app
 # Check Python version
 docker run --rm research-auditor:latest python --version
 
-# Check installed packages
-docker run --rm research-auditor:latest sh -c "cd /app && uv pip list"
+# Check installed packages (venv is baked into the image)
+docker run --rm research-auditor:latest /app/.venv/bin/python -m pip list
 
 # Check environment variables
 docker run --rm research-auditor:latest env
@@ -185,8 +185,7 @@ docker run -it --entrypoint bash research-auditor:latest
 
 # Now manually run the startup command to see errors
 $ cd /app
-$ uv sync --frozen
-$ uv run --frozen python -m app.entrypoints.http
+$ /app/.venv/bin/uvicorn app.entrypoints.http:app --host 0.0.0.0 --port 8080
 ```
 
 ---
@@ -237,28 +236,21 @@ docker logs -t test-app | grep "$(date -u +%Y-%m-%dT%H)"
 ### **Test Endpoints**
 
 ```bash
-# Health check
+# Health check (public; no secret)
 curl http://localhost:8080/health
 
 # With pretty JSON output
 curl -s http://localhost:8080/health | jq
 
-# POST request with data
-curl -X POST http://localhost:8080/audit \
+# Enqueue an audit (preview gate). Returns 202 + job_id. HTTP max_iterations cap is 8.
+curl -sS -X POST http://localhost:8080/audit \
   -H "Content-Type: application/json" \
-  -d '{
-    "target": "example.com",
-    "depth": 5
-  }' | jq
+  -H "X-Audit-Secret: $AUDIT_SECRET" \
+  -d '{"raw_input":"One sentence to audit.","max_iterations":1}' | jq
 
-# Save response to file
-curl -s http://localhost:8080/audit \
-  -H "Content-Type: application/json" \
-  -d '{"target": "example.com"}' > response.json
-
-# Test with authentication (if needed)
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-  http://localhost:8080/protected-endpoint
+# Poll the job (same header). Repeat until status is succeeded/failed/timed_out.
+curl -sS http://localhost:8080/jobs/JOB_ID \
+  -H "X-Audit-Secret: $AUDIT_SECRET" | jq
 
 # Verbose output (see headers, timing)
 curl -v http://localhost:8080/health
@@ -325,6 +317,7 @@ uv run pytest --lf
 Add to your code:
 
 ```python
+# Illustrative logging only — not the live handler (real POST /audit enqueues a job).
 # app/entrypoints/http.py
 
 import logging
@@ -469,11 +462,12 @@ nix build .#checks.x86_64-linux.lint
 # Single request timing
 time curl -s http://localhost:8080/health
 
-# Multiple requests
+# Multiple POST /audit (preview gate; default rate limit is 5/min per process)
 for i in {1..10}; do
-  time curl -s http://localhost:8080/audit \
+  time curl -sS -X POST http://localhost:8080/audit \
     -H "Content-Type: application/json" \
-    -d '{"target": "example.com"}'
+    -H "X-Audit-Secret: $AUDIT_SECRET" \
+    -d '{"raw_input":"One sentence to audit.","max_iterations":1}'
 done
 
 # Use Apache Bench for load testing
@@ -541,7 +535,7 @@ docker run -it --entrypoint bash research-auditor:latest
 
 ```bash
 # Check if package installed
-docker exec test-app sh -c "cd /app && uv pip list | grep package-name"
+docker exec test-app /app/.venv/bin/python -m pip list | grep package-name
 
 # Check Python path
 docker exec test-app python -c "import sys; print('\n'.join(sys.path))"

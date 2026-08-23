@@ -1,15 +1,12 @@
-[build]
-builder = "RAILPACK"
-# Only paths that exist in this repo (no packages/shared)
-watchPatterns = ["apps/smart-writer/**"]
-
-[deploy]
-# Nix-built image (GHCR): image CMD runs `uv sync --frozen` then this server; Railway uses the image CMD.
-# Railpack (build from source): build step installs deps; this startCommand runs the server.
-startCommand = "uvicorn app.entrypoints.http:app --host 0.0.0.0 --port ${PORT:-8080}"
-restartPolicyType = "ON_FAILURE"
-#overlapSeconds = 30
-
-# --- Environment-Specific Overrides ---
-# [environments.production.deploy]
-# startCommand = "gunicorn app:app"
+# This is not a Railway builder config.
+# Production runtime is the Nix OCI image on GHCR, applied by
+# .github/workflows/deploy.yml (digest + start command from
+# deploy/railway/<environment>/<app_id>.yml).
+#
+# Do not add [build] or builder = "RAILPACK". That re-creates a
+# second production factory (git-connect source build).
+#
+# Image start is uvicorn only (Python deps are baked at image build).
+# The command lives in deploy/railway/<environment>/<app_id>.yml.
+#
+# See deploy/railway/README.md.

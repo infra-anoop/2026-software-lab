@@ -28,8 +28,18 @@ The app runs a **Researcher–Critic loop**:
 
 **Entrypoints:**
 
-- **CLI** (`app.main`): Runs the full workflow with hardcoded sample input; requires `OPENAI_API_KEY`.
-- **HTTP** (`app.entrypoints.http`): Serves health checks and a static message; used by deployment. No workflow API yet.
+- **CLI** (`app.main`): Runs the full workflow with hardcoded sample input; requires `OPENAI_API_KEY`. CLI `max_iterations` is hardcoded **8**; CLI is not the public cost control.
+- **HTTP** (`app.entrypoints.http`): Health, form UI, and job API (`POST /audit` enqueues; `GET /jobs/{id}` polls). Preview gate: header `X-Audit-Secret` must match `RESEARCH_AUDITOR_AUDIT_SECRET` (401 wrong/missing; 503 if unset). HTTP `max_iterations` cap is **8** (422 if the client sends more). `GET /`, `/health`, `/ready`, `/docs` stay public.
+
+```bash
+curl -sS -X POST http://localhost:8080/audit \
+  -H "Content-Type: application/json" \
+  -H "X-Audit-Secret: $AUDIT_SECRET" \
+  -d '{"raw_input":"One sentence to audit.","max_iterations":1}'
+# 202 {"job_id","status":"queued","location"}
+curl -sS http://localhost:8080/jobs/JOB_ID \
+  -H "X-Audit-Secret: $AUDIT_SECRET"
+```
 
 ---
 
@@ -198,7 +208,7 @@ If Supabase is not configured, `NullRepo` is used (no run/turn writes) and `save
 | Entrypoint            | Module                    | Purpose                              |
 |-----------------------|---------------------------|--------------------------------------|
 | CLI (workflow)        | `app.main`                | Run full workflow, persist to Supabase |
-| HTTP (deployment)     | `app.entrypoints.http`    | Health checks, static message        |
+| HTTP (deployment)     | `app.entrypoints.http`    | Health, form, job enqueue/poll       |
 | Orchestrator          | `app.orchestrator.run`    | LangGraph workflow, `run_workflow()` |
 | Researcher            | `app.agents.researcher`   | `run_research()` → `ResearchOutput`  |
 | Critic                | `app.agents.critic`       | `run_audit()` → `AuditFeedback`      |
