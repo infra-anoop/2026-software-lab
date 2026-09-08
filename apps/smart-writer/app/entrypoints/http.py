@@ -35,8 +35,8 @@ from app.config import (
     get_settings,
     init_env,
 )
-from app.db.null_repo import NullRepo
-from app.entrypoints.jobs import Job, JobRunner, QueueFullError, SlidingWindowRateLimiter
+from lab_shared.db.null_repo import NullRepo
+from lab_shared.jobs import Job, JobRunner, QueueFullError, SlidingWindowRateLimiter
 
 init_env()
 

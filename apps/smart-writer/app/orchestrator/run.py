@@ -58,10 +58,10 @@ from app.agents.value_decoder import run_decode_values
 from app.agents.writer import run_writer
 from app.config import MAX_CONCURRENT_LLM_CAP, get_max_concurrent_llm
 from app.llm.retry import reset_workflow_run_id, set_workflow_run_id
-from app.db.client import get_supabase_client
-from app.db.null_repo import NullRepo
-from app.db.repo import RunRepo
-from app.db.supabase_repo import SupabaseRepo
+from lab_shared.db.client import get_supabase_client
+from lab_shared.db.null_repo import NullRepo
+from lab_shared.db.repo import RunRepo
+from lab_shared.db.supabase_repo import SupabaseRepo
 from app.prompts.loader import (
     default_prompt_profile_id,
     get_program_metadata,

@@ -53,7 +53,8 @@ applications:
         service_name: research-auditor
     ci:
       # Extra repo paths (beyond this app's path) that should trigger its checks.
-      watch_paths: []
+      watch_paths:
+        - modules/lab_shared
       # Other application ids or logical names; when those paths/apps change,
       # tooling may treat this app as affected (medium-term dependency graph).
       depends_on: []
@@ -81,6 +82,7 @@ applications:
       railway:
         service_name: smart-writer
     ci:
-      watch_paths: []
+      watch_paths:
+        - modules/lab_shared
       depends_on: []
     owner: null

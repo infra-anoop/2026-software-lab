@@ -6,7 +6,7 @@ import pytest
 @pytest.fixture(autouse=True)
 def isolated_db_and_repo(monkeypatch: pytest.MonkeyPatch) -> None:
     """No live Supabase calls in unit/integration tests; fresh ``NullRepo`` each test."""
-    import app.db.client as db_client
+    import lab_shared.db.client as db_client
     import app.orchestrator.run as orch
     from app.config import get_settings
 

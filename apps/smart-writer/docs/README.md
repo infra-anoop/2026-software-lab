@@ -2,7 +2,7 @@
 
 ## ARCHITECTURE.md
 
-The architecture note describes purpose, data shapes, the researcher–critic loop, and persistence (`writer_runs` in Supabase when configured).
+The architecture note describes purpose, data shapes, the writer–assessor loop, and optional persistence (`public.runs` / `public.turns` in Supabase when configured). DDL: `db/supabase/runs_turns.sql` at the monorepo root.
 
 ## PDF from Markdown
 

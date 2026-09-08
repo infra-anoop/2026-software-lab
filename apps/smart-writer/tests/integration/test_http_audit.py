@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.db.null_repo import NullRepo
+from lab_shared.db.null_repo import NullRepo
 from app.entrypoints.http import app
 
 SECRET = "test-secret"

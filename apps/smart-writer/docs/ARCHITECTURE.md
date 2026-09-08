@@ -129,7 +129,7 @@ Persistence can mirror **research-auditor**: one run row + append_turn per write
 
 ### Selected architecture (summary)
 
-Implement **Smart Writer** as a **LangGraph** workflow with an upfront **planning subgraph** (decoder + grid creator), then a **writer ↔ N assessors** loop. Use **PydanticAI** agents with **`result_type`** set to the models above, **deps** for shared rubrics and iteration state, and **Logfire** spans per node. **Assessors run in parallel** each iteration; **stopping** uses **max iterations** plus **aggregate-score plateau**. **Persistence** follows the existing **RunRepo** pattern (runs + turns) for traceability and future eval harnesses.
+Implement **Smart Writer** as a **LangGraph** workflow with an upfront **planning subgraph** (decoder + grid creator), then a **writer ↔ N assessors** loop. Use **PydanticAI** agents with **`result_type`** set to the models above, **deps** for shared rubrics and iteration state, and **Logfire** spans per node. **Assessors run in parallel** each iteration; **stopping** uses **max iterations** plus **aggregate-score plateau**. **Persistence** follows the existing **RunRepo** pattern (`public.runs` + `public.turns`; DDL in monorepo `db/supabase/runs_turns.sql`) for traceability and future eval harnesses.
 
 ### Migration note (implementation status)
 

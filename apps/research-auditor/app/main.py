@@ -8,7 +8,7 @@ import logfire
 
 from app.agents.models import FinalState
 from app.config import init_env, require_openai_api_key
-from app.db.client import get_supabase_client
+from lab_shared.db.client import get_supabase_client
 
 # CLI: --version / -V (exit before importing agents, which need OPENAI_API_KEY)
 if "--version" in sys.argv or "-V" in sys.argv:

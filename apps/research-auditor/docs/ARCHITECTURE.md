@@ -173,13 +173,15 @@ If `LOGFIRE_TOKEN` is not set, instrumentation is skipped and the app runs witho
 
 Supabase is used for **audit persistence**. There are two distinct roles.
 
+**DDL in git (apply in Supabase SQL Editor):** monorepo `db/supabase/runs_turns.sql` and `db/supabase/research_audits.sql`. See `db/supabase/README.md` for apply steps, optional env, and the one-project-per-app recommendation. Persistence is optional: unset `SUPABASE_*` → `NullRepo` / no-op; `/ready` stays OpenAI-only.
+
 ### Tables and Semantics
 
 | Table           | Semantic Role                                                                 |
 |----------------|-------------------------------------------------------------------------------|
 | `runs`         | One row per workflow execution: topic, status (running/completed/failed), timestamps, final_output, error |
 | `turns`        | One row per agent invocation: run_id, step, agent (researcher/critic), input, output, ok, error |
-| `research_audits` | One row per completed audit: title, findings, verdict, critique, iterations (summary for downstream use) |
+| `research_audits` | One row per completed audit: title, findings, verdict, critique, iterations (summary for downstream use; unlinked from `runs`) |
 
 ### Data Path
 
@@ -197,7 +199,7 @@ Supabase is used for **audit persistence**. There are two distinct roles.
 **Relationship:**
 
 - `runs` + `turns`: full execution trace (debugging, replay, analytics).
-- `research_audits`: distilled output for stakeholders.
+- `research_audits`: distilled output for stakeholders; **not** FK-linked to `runs` (Python does not write a join key).
 
 If Supabase is not configured, `NullRepo` is used (no run/turn writes) and `save_to_supabase` is a no-op.
 

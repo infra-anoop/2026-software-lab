@@ -104,6 +104,22 @@
 
         # Resolve apps/<id> from flake root; `app.path` must match registry (validated in YAML).
         appSrc = app: ./. + "/${app.path}";
+        labSharedSrc = ./modules/lab_shared;
+
+        # Mini monorepo slice so uv path dep ../../modules/lab_shared resolves
+        # (apps keep package = false + [tool.uv.sources] lab-shared).
+        # db/supabase is optional (P6); included when present for schema contract tests.
+        mkAppTree = app:
+          pkgs.runCommand "${app.id}-src-tree" { } ''
+            mkdir -p "$out/apps" "$out/modules"
+            cp -r ${appSrc app} "$out/apps/${app.id}"
+            cp -r ${labSharedSrc} "$out/modules/lab_shared"
+            ${lib.optionalString (builtins.pathExists ./db/supabase) ''
+              mkdir -p "$out/db"
+              cp -r ${./db/supabase} "$out/db/supabase"
+            ''}
+            chmod -R u+w "$out"
+          '';
 
         # Dev dependencies differ per app: optional-dependencies use --extra dev;
         # dependency-groups use --group dev. Declared in registry JSON as
@@ -115,11 +131,12 @@
         # TARGET 2 (per app): CLI — writeShellApplication wrapping app.main
         # ═════════════════════════════════════════════════════════════════════
         mkCliPackage = app:
-          pkgs.writeShellApplication {
+          let tree = mkAppTree app;
+          in pkgs.writeShellApplication {
             name = app.id;
             runtimeInputs = runtimeDeps;
             text = ''
-              cd ${appSrc app}
+              cd ${tree}/apps/${app.id}
               exec uv run --frozen python -m app.main "$@"
             '';
           };
@@ -139,8 +156,13 @@
         # Boot is uvicorn only — no uv, no PyPI at start.
         # The bake needs network (PyPI). CI sets `sandbox = false`; locally:
         #   nix build .#container --option sandbox false
+        # Path dep: bake under apps/<id> + modules/lab_shared; symlink /app → apps/<id>
+        # so Railway start_command can stay on /app/.venv (architect A4).
         mkContainer = app:
           let
+            # Bake layout: apps/<id> + modules/lab_shared so ../../modules/lab_shared
+            # resolves during uv sync. Symlink /app → apps/<id> keeps Railway CMD
+            # and verify-source on /app/.venv (A4).
             appRuntime = pkgs.runCommand "${app.id}-app-runtime" {
               nativeBuildInputs = [ pkgs.uv pkgs.python312 pkgs.cacert ];
               SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
@@ -149,18 +171,18 @@
               dontFixup = true;
             } ''
               set -eu
-              mkdir -p $out/app
-              cp -r ${appSrc app}/app $out/app/app
-              cp ${appSrc app}/pyproject.toml $out/app/
-              cp ${appSrc app}/uv.lock $out/app/
-              chmod -R u+w $out/app
+              mkdir -p "$out/apps" "$out/modules"
+              cp -r ${appSrc app} "$out/apps/${app.id}"
+              cp -r ${labSharedSrc} "$out/modules/lab_shared"
+              ln -sfn "apps/${app.id}" "$out/app"
+              chmod -R u+w "$out"
 
-              export UV_PROJECT_ENVIRONMENT="$out/app/.venv"
+              export UV_PROJECT_ENVIRONMENT="$out/apps/${app.id}/.venv"
               export UV_CACHE_DIR="$TMPDIR/uv-cache"
               export UV_PYTHON="${pkgs.python312}/bin/python"
               export SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
 
-              cd $out/app
+              cd "$out/apps/${app.id}"
               uv sync --frozen --no-dev
             '';
           in
@@ -229,14 +251,16 @@
         mkLint = app:
           let
             syncArgs = uvSyncDevArgsStr app;
+            tree = mkAppTree app;
           in
           pkgs.runCommand "lint-${app.id}" {
             buildInputs = runtimeDeps;
           } ''
             export UV_CACHE_DIR="$TMPDIR/uv-cache"
             export UV_PROJECT_ENVIRONMENT="$TMPDIR/venv"
-            cp -r ${appSrc app} "$TMPDIR/${app.id}"
-            cd "$TMPDIR/${app.id}"
+            cp -r ${tree} "$TMPDIR/repo"
+            chmod -R u+w "$TMPDIR/repo"
+            cd "$TMPDIR/repo/apps/${app.id}"
 
             echo "🔍 Running code quality checks (${app.id})..."
 
@@ -245,6 +269,8 @@
             export RUFF_CACHE_DIR="$TMPDIR/ruff-cache"
             echo "  - Linting with ruff..."
             uv run ruff check app/
+            # Shared module once per app check (same sources; cheap, keeps drift visible).
+            uv run ruff check ../../modules/lab_shared/src/lab_shared/
 
             echo "  - Security scan with bandit..."
             uv run bandit -r app/
@@ -256,6 +282,7 @@
         mkTestUnit = app:
           let
             syncArgs = uvSyncDevArgsStr app;
+            tree = mkAppTree app;
           in
           pkgs.runCommand "test-unit-${app.id}" {
             buildInputs = runtimeDeps ++ [ pkgs.cacert ];
@@ -263,8 +290,9 @@
           } ''
             export UV_CACHE_DIR="$TMPDIR/uv-cache"
             export UV_PROJECT_ENVIRONMENT="$TMPDIR/venv"
-            cp -r ${appSrc app} "$TMPDIR/${app.id}"
-            cd "$TMPDIR/${app.id}"
+            cp -r ${tree} "$TMPDIR/repo"
+            chmod -R u+w "$TMPDIR/repo"
+            cd "$TMPDIR/repo/apps/${app.id}"
 
             echo "🧪 Running unit tests (${app.id})..."
 
@@ -286,6 +314,7 @@
         mkTestIntegration = app: cliPkg:
           let
             syncArgs = uvSyncDevArgsStr app;
+            tree = mkAppTree app;
           in
           pkgs.runCommand "test-integration-${app.id}" {
             buildInputs = runtimeDeps ++ [ pkgs.cacert cliPkg ];
@@ -293,8 +322,9 @@
           } ''
             export UV_CACHE_DIR="$TMPDIR/uv-cache"
             export UV_PROJECT_ENVIRONMENT="$TMPDIR/venv"
-            cp -r ${appSrc app} "$TMPDIR/${app.id}"
-            cd "$TMPDIR/${app.id}"
+            cp -r ${tree} "$TMPDIR/repo"
+            chmod -R u+w "$TMPDIR/repo"
+            cd "$TMPDIR/repo/apps/${app.id}"
 
             echo "🔗 Running integration tests (${app.id})..."
 
@@ -428,5 +458,8 @@
 #     app/entrypoints/http.py
 #     tests/unit/   tests/integration/
 #     pyproject.toml  uv.lock
+#
+# Shared path dep (P5):
+#   modules/lab_shared/   # lab-shared; apps declare [tool.uv.sources] path
 #
 # ═══════════════════════════════════════════════════════════════════════════

@@ -2,7 +2,7 @@
 
 Owned here. Other agents get a scoped prompt; they do not pick from this list unless asked.
 
-Last review: P4-F1 accepted (2026-08-23). Validator failures print to stderr and exit 1; named config helpers share the Settings snapshot with `/ready`. First live Railway run is still unproven.
+Last review: P5–P7 committed for durability (2026-09-08). Designer queue clear. First live Railway run still unproven.
 
 ## Open — architect / operator
 
@@ -20,12 +20,15 @@ Last review: P4-F1 accepted (2026-08-23). Validator failures print to stderr and
 | A10 | Timeout vs in-flight OpenAI | Job `timed_out` may not cancel an already-running LLM call; tokens can still burn. | Residual — watch |
 | A11 | `/ready` vs `/audit` secrets | `/ready` only requires `OPENAI_API_KEY`. `*_AUDIT_SECRET` is YAML **optional**; unset still 503s `/audit`. Green `/ready` ≠ audits work. | Residual — watch |
 | A12 | Settings vs leftover getenv | Catalog helpers are on Settings. Call sites still getenv: SW `llm_settings` / prompts / orchestrator / retrieval; both `main.py` Logfire; both `db/client.py` Supabase. Hybrid A — migrate later. | Residual — watch |
+| A13 | Rate-limit 429 untested in HTTP suite | P7 locked queue-full → 429. Sliding-window POST rate-limit (B5) has no dedicated contract test now. Production path still exists. | Residual — watch |
+| A14 | Supabase schema product knobs | P6: no `UNIQUE(run_id,step)` (retry can duplicate turns); `status` CHECK is closed set; SQL is greenfield `IF NOT EXISTS` (won't repair divergent live tables). Apply DDL when proving A1 persistence. | Residual — watch |
+| A15 | RA `REVIEW.md` persistence notes | Still describes old CLI vs `run_workflow` confusion; `main.py` already uses `run_workflow`. Docs hygiene, not schema. | Open, low |
 
 ## Handed to other agents (not tracked as architect work)
 
 | ID | Item |
 |---|---|
-| P7 | HTTP **result-field** lock vs live OpenAPI/mapper (e.g. stop_* / persist_* / RA research model attrs). Auth/cap/429/GET /jobs 401 are done (P3+B5). Mock `run_workflow`. No live LLM. |
+| *(none)* | Designer queue clear. Next is ops/product: A1/A2 live deploy, or backlog residuals. |
 
 ## Closed
 
@@ -38,3 +41,8 @@ Last review: P4-F1 accepted (2026-08-23). Validator failures print to stderr and
 | B5 | Gate in both apps (P3): `X-Audit-Secret`, HTTP cap 8, in-memory POST rate limit. Close-the-gaps: 422 on `max_iterations: 99`, 429 tests, RA 401 wrong secret + GET /jobs 401; docs call it a preview gate. `*_AUDIT_SECRET` stays YAML optional (`/ready` stays OpenAI-only). |
 | P4-B8 | Typed Settings + `REQUIRED_ENV_NAMES`/`ALL_ENV_NAMES`; Railway YAML `env.required`/`optional`; `GET /ready` presence-only for `OPENAI_API_KEY`; `/health` unchanged; RA `RESEARCH_AUDITOR_MODEL`; validator hooked in `verify-source`. |
 | P4-F1 | Validator `_err` → stderr + exit 1 (unit-tested). Named config helpers (`get_audit_secret`, timeouts, concurrency, rate limit, SW LLM retry/concurrency) read `get_settings()` via `_settings_str`. `os` gone from both `config.py`. |
+| P7 | HTTP contract suites lock live OpenAPI + mapper fields (SW `stop_reason`/persist_*; RA title←`source_material_title`, findings←`executive_summary`). Fake `run_workflow` uses orchestrator names. No production code change. |
+| P6 | Idempotent DDL at `db/supabase/` (`runs`/`turns` + RA `research_audits`); README apply steps + one-project-per-app; contract tests in both apps; `writer_runs` folklore fixed. Python unchanged. |
+| P5 | `modules/lab_shared` (`jobs` + `db`); hard-cut app imports; uv path dep; `flake.nix` `mkAppTree` + container `/app` → `apps/<id>` symlink; registry `watch_paths`. |
+| A16 | Durability commit: P5–P7 (+ SQL schema) pushed to `origin/main`. |
+| A17 | Removed empty `apps/*/app/db/` leftover dirs after P5 hard-cut. |

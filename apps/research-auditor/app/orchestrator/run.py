@@ -4,10 +4,10 @@ from langgraph.graph import StateGraph, END
 from app.agents.researcher import run_research
 from app.agents.critic import run_audit
 from app.agents.models import ResearchOutput, AuditFeedback
-from app.db.client import get_supabase_client
-from app.db.null_repo import NullRepo
-from app.db.repo import RunRepo
-from app.db.supabase_repo import SupabaseRepo
+from lab_shared.db.client import get_supabase_client
+from lab_shared.db.null_repo import NullRepo
+from lab_shared.db.repo import RunRepo
+from lab_shared.db.supabase_repo import SupabaseRepo
 
 _repo: RunRepo | None = None
 

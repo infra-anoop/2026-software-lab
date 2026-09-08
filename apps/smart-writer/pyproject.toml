@@ -20,13 +20,13 @@ dependencies = [
 
   "langgraph>=1.0.6,<1.1",
 
-  "supabase>=2.28,<3",
-
   # If you’re okay moving with logfire’s current major:
   "logfire>=4.24,<5",
 
   "fastapi>=0.115,<1",
   "uvicorn[standard]>=0.32,<1",
+
+  "lab-shared",
 ]
 
 # Dev tooling: use [dependency-groups] (not optional-dependencies) so `uv sync` installs
@@ -50,3 +50,6 @@ asyncio_default_fixture_loop_scope = "function"
 managed = true
 package = false
 # Install dependency-groups.dev by default (uv default-groups defaults to ["dev"]).
+
+[tool.uv.sources]
+lab-shared = { path = "../../modules/lab_shared", editable = true }

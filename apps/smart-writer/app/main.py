@@ -9,7 +9,7 @@ from pathlib import Path
 import logfire
 
 from app.config import get_max_concurrent_llm, init_env, require_openai_api_key
-from app.db.null_repo import NullRepo
+from lab_shared.db.null_repo import NullRepo
 
 _APP_ROOT = Path(__file__).resolve().parent.parent
 
