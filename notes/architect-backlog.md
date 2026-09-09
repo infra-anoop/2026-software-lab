@@ -2,14 +2,14 @@
 
 Owned here. Other agents get a scoped prompt; they do not pick from this list unless asked.
 
-Last review: P5–P7 committed for durability (2026-09-08). Designer queue clear. First live Railway run still unproven.
+Last review: Pattern A locked for deploys (2026-09-08). A1/A2 runbook at `notes/a1-a2-deploy-runbook.md`. Designer queue clear. First live Railway run still unproven.
 
 ## Open — architect / operator
 
 | ID | Item | Why it stays here | Status |
 |---|---|---|---|
-| A1 | First live deploy proof | Needs GitHub + Railway tokens this workspace does not have. Confirm UI shows `ghcr.io/…@sha256:…`, new deployment id, `ACTIVE`/`SUCCESS`. | Open |
-| A2 | Railway GHCR pull credentials | Private packages: PAT `read:packages` on the service. GraphQL success ≠ container pull. | Open (ops gate on A1) |
+| A1 | First live deploy proof | Pattern A: `v*` → production. Runbook: `notes/a1-a2-deploy-runbook.md`. Confirm UI shows `ghcr.io/…@sha256:…`, new deployment id, `ACTIVE`/`SUCCESS`, `/health` 200. Start with one app. | Open — runbook ready |
+| A2 | Railway GHCR pull credentials | Private packages: PAT `read:packages` on the service. GraphQL success ≠ container pull. Same runbook §1. | Open (ops gate on A1) |
 | A3 | Smoke GraphQL host `.app` vs `.com` | Deploy moved to `backboard.railway.com`; smoke still `.app`. Hygiene, not P1. | Open |
 | A4 | YAML start_command vs image CMD | P1 still sends YAML to Railway (Railway wins). YAML now matches flake CMD. Divergence is a prod footgun. | Residual — watch |
 | A8 | CI offline boot is default image only | `verify-source` docker `--network none` /health is `nix build .#container` (first ship app). `validate-container` checks Cmd for all apps, not a live boot. | Open, low |

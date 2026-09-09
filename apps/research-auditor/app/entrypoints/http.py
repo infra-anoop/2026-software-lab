@@ -36,7 +36,7 @@ from lab_shared.jobs import Job, JobRunner, QueueFullError, SlidingWindowRateLim
 
 init_env()
 
-AUDIT_SECRET_HEADER = "X-Audit-Secret"
+AUDIT_SECRET_HEADER = "X-Audit-Secret"  # nosec B105 — HTTP header name, not a password
 
 
 @asynccontextmanager
