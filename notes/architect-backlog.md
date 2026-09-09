@@ -2,7 +2,7 @@
 
 Owned here. Other agents get a scoped prompt; they do not pick from this list unless asked.
 
-Last review: Do-first orders 1–7 closed (A15, A7, A19, A18, A13, A3, A6). Next discuss: A20 vault product.
+Last review: Docs-min correction — reclaim automated (A18/A19); prose trimmed (A7/A15). Next discuss: A20 vault product.
 
 ## Suggested execution order (remaining)
 
@@ -68,10 +68,10 @@ Work top-down. **Discuss** = lock a product/ops choice before coding. **Straight
 | A17 | Removed empty `apps/*/app/db/` leftover dirs after P5 hard-cut. |
 | A1 | Pattern A `v0.5.0`: both apps digest-pinned, deployment SUCCESS, `/health`+`/ready` 200. |
 | A2 | Railway GHCR pull proven (private packages; SUCCESS boots). |
-| A15 | RA `REVIEW.md` status table: CLI `run_workflow` + HTTP jobs are current; old B1/R8 claims annotated. |
-| A7 | Deploy README documents mutation/start-command probe pair (`serviceInstanceUpdate`/`serviceUpdate`, `startCommand`/`start_command`). |
-| A19 | Cheat-sheet **Codespace disk**: SKU-bound capacity, GC vs rebuild, prefer Actions for heavy bake. |
-| A18 | `scripts/codespace_disk_hygiene.py` dry-run/apply; `--apply` refused in CI; unit tests + cheat-sheet link. |
+| A15 | RA `REVIEW.md` stub: superseded; contracts are `main.py` / `http.py` (no annotated archaeology). |
+| A7 | Deploy README points at `deploy.yml` for GraphQL pin/fail-closed; probe name list not duplicated in prose. |
+| A19 | Disk guidance not in cheat-sheet; reclaim is automated (verify-source + Codespace postStart). |
+| A18 | `scripts/disk_hygiene.py` dry-run/apply; `--apply` allowed in CI; wired to verify-source + postStart. |
 | A13 | RA HTTP `test_audit_429_when_rate_limited` (sliding-window; distinct from queue-full). |
 | A3 | Smoke GraphQL host `backboard.railway.com` (aligned with deploy). |
 | A6 | Pin `yq` v4.53.6 in deploy + smoke; deploy `cancel-in-progress: false`. |

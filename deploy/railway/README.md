@@ -11,13 +11,7 @@ Railway deploy and post-deploy smoke read **per-app** YAML files keyed by applic
 1. Read `deploy/railway/<environment>/<app_id>.yml`
 2. Resolve `image.registry` / `image.repository` + the workflow `tag` input to a GHCR tag
 3. Ask GHCR for that tag's **content digest** (`docker buildx imagetools inspect`)
-4. Probe live Railway GraphQL and call the working mutation to pin image + start command:
-   - Mutations tried: `serviceInstanceUpdate`, then `serviceUpdate` (schema varies)
-   - Start-command field tried: `startCommand`, then `start_command`
-   - Input: `source.image` = digest pin (`ghcr.io/…@sha256:…`) plus the chosen start field
-5. Call `serviceInstanceDeploy` and wait until **that new** deployment is `ACTIVE`/`SUCCESS` (or `FAILED`/`CRASHED`/`ERROR`)
-
-Fail-closed if neither mutation works or neither start-command field exists on the live input type.
+4. Pin digest + start command on Railway via GraphQL, then `serviceInstanceDeploy` and wait until that deployment is terminal — fail-closed if the live schema cannot accept the pin (probe details live only in `deploy.yml`)
 
 `workflow_dispatch` on `deploy.yml` is the same path as the tag pipeline (app + tag + environment).
 

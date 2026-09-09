@@ -79,3 +79,7 @@ jobs:
             docker logs "$CID" || true
             exit 1
           fi
+
+      - name: Reclaim Nix/Docker disk
+        if: always()
+        run: uv run scripts/disk_hygiene.py --apply

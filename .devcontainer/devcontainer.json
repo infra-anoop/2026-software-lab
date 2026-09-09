@@ -48,9 +48,10 @@
     },
 
     // ───────────────────────────────────────────────────────────────────────
-    // SETUP: Warm Nix env non-interactively (bare `nix develop` hangs postCreate)
-    // ───────────────────────────────────────────────────────────────────────
+    // SETUP: Warm Nix env; reclaim Nix/Docker disk on each start (Codespace SKU).
+    // Bare `nix develop` hangs postCreate — use --command true.
     "postCreateCommand": "nix develop --command true",
+    "postStartCommand": "uv run scripts/disk_hygiene.py --apply",
 
     "remoteUser": "vscode"
 }

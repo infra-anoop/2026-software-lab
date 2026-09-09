@@ -3,11 +3,10 @@
 # requires-python = ">=3.12"
 # dependencies = []
 # ///
-"""Codespace / local disk hygiene for Nix + Docker lab workspaces.
+"""Nix + Docker disk reclaim for lab CI and Codespace.
 
-Default is ``--dry-run``: print planned reclaim actions and whether tools exist.
-Destructive commands run only with ``--apply``. ``--apply`` is refused when
-``CI`` or ``GITHUB_ACTIONS`` is truthy (tests and Actions must not prune hosts).
+Default is ``--dry-run`` (print plan). ``--apply`` runs reclaim — used by
+verify-source and the Codespace postStartCommand.
 """
 from __future__ import annotations
 
@@ -16,7 +15,7 @@ import os
 import shutil
 import subprocess
 import sys
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -46,15 +45,6 @@ ACTIONS: tuple[HygieneAction, ...] = (
         tool="docker",
     ),
 )
-
-
-def _env_truthy_from(env: Mapping[str, str], name: str) -> bool:
-    return env.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
-
-
-def is_ci_environment(environ: Mapping[str, str] | None = None) -> bool:
-    env = environ if environ is not None else os.environ
-    return _env_truthy_from(env, "CI") or _env_truthy_from(env, "GITHUB_ACTIONS")
 
 
 def resolve_tool(tool: str, path_env: str | None = None) -> str | None:
@@ -125,7 +115,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         dest="mode",
         action="store_const",
         const="apply",
-        help="Run reclaim commands (refused in CI)",
+        help="Run reclaim commands (CI / Codespace lifecycle)",
     )
     parser.add_argument(
         "--path",
@@ -135,13 +125,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(list(argv) if argv is not None else None)
 
     apply = args.mode == "apply"
-    if apply and is_ci_environment():
-        print(
-            "refuse --apply: CI/GITHUB_ACTIONS is set (use a Codespace shell, not Actions)",
-            file=sys.stderr,
-        )
-        return 2
-
     planned = plan_actions(path_env=args.path)
     print(disk_report())
     print("mode:", args.mode)
