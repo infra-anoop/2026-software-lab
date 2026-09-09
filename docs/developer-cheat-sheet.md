@@ -9,6 +9,7 @@ Quick reference for rapid development, testing, and debugging.
 4. [Logs & Monitoring](#logs--monitoring)
 5. [Business Logic Testing](#business-logic-testing)
 6. [Common Workflows](#common-workflows)
+7. [Codespace disk](#codespace-disk)
 
 ---
 
@@ -451,6 +452,30 @@ nix build .#checks.x86_64-linux.lint
 ```
 
 **Time:** 2-5 minutes
+
+---
+
+## Codespace disk
+
+Disk capacity is **SKU-bound** (machine type), not “number of apps in the monorepo.” A 32G Codespace fills from the **Nix store** + **Docker images/layers**, especially after local `nix flake check` / `nix build .#container`.
+
+| Prefer | Avoid as the default |
+|---|---|
+| GitHub Actions for heavy `nix flake check` / multi-app container bake as the lab grows | Rebuilding the Codespace every time disk is tight |
+| `uv run scripts/codespace_disk_hygiene.py` (dry-run), then `--apply` when reclaiming | Blind `rm -rf` on `/nix/store` |
+| Upsize machine type if you routinely need local container builds | Assuming “another app” alone caused OOM disk |
+
+```bash
+# Plan only (default) — safe in CI and locally
+uv run scripts/codespace_disk_hygiene.py --dry-run
+
+# Reclaim Nix GC + Docker prune (refused when CI/GITHUB_ACTIONS is set)
+uv run scripts/codespace_disk_hygiene.py --apply
+```
+
+**GC vs rebuild:** collect garbage / prune first; rebuild the Codespace only when the SKU is too small for your workflow. CI already owns the expensive bake path — keep local disk for iteration, not for every ship check.
+
+Tests: `uv run pytest scripts/test_codespace_disk_hygiene.py`.
 
 ---
 

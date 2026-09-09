@@ -247,6 +247,23 @@ def test_audit_429_queue_full(monkeypatch: pytest.MonkeyPatch) -> None:
         assert third.status_code == 429
 
 
+def test_audit_429_when_rate_limited(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sliding-window POST rate limit (B5), distinct from queue-full 429."""
+    monkeypatch.setenv("RESEARCH_AUDITOR_AUDIT_SECRET", SECRET)
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-fake")
+    monkeypatch.setenv("RESEARCH_AUDITOR_AUDIT_RATE_LIMIT_PER_MIN", "1")
+    get_settings.cache_clear()
+    body = {"raw_input": "hello world", "max_iterations": 1}
+    with (
+        patch("app.orchestrator.run.run_workflow", new_callable=AsyncMock, return_value={}),
+        TestClient(app) as c,
+    ):
+        first = c.post("/audit", headers=AUTH, json=body)
+        assert first.status_code == 202
+        second = c.post("/audit", headers=AUTH, json=body)
+        assert second.status_code == 429
+
+
 def test_job_timed_out(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("RESEARCH_AUDITOR_AUDIT_TIMEOUT_SEC", "0.05")
     get_settings.cache_clear()

@@ -11,8 +11,13 @@ Railway deploy and post-deploy smoke read **per-app** YAML files keyed by applic
 1. Read `deploy/railway/<environment>/<app_id>.yml`
 2. Resolve `image.registry` / `image.repository` + the workflow `tag` input to a GHCR tag
 3. Ask GHCR for that tag's **content digest** (`docker buildx imagetools inspect`)
-4. Call Railway GraphQL `serviceInstanceUpdate` with `source.image` = digest pin and `runtime.start_command`
+4. Probe live Railway GraphQL and call the working mutation to pin image + start command:
+   - Mutations tried: `serviceInstanceUpdate`, then `serviceUpdate` (schema varies)
+   - Start-command field tried: `startCommand`, then `start_command`
+   - Input: `source.image` = digest pin (`ghcr.io/…@sha256:…`) plus the chosen start field
 5. Call `serviceInstanceDeploy` and wait until **that new** deployment is `ACTIVE`/`SUCCESS` (or `FAILED`/`CRASHED`/`ERROR`)
+
+Fail-closed if neither mutation works or neither start-command field exists on the live input type.
 
 `workflow_dispatch` on `deploy.yml` is the same path as the tag pipeline (app + tag + environment).
 
@@ -35,7 +40,7 @@ That `sha256:…` is what Railway should show as the service image after a succe
 
 Railway must **pull** the private GHCR image at runtime. That credential is **not** `GITHUB_TOKEN` (job-scoped). Store a GitHub PAT (`read:packages`) in the Railway service **Registry Credentials**. Keep GHCR packages private — do not flip them public to skip this.
 
-GraphQL endpoint used by deploy: `https://backboard.railway.com/graphql/v2` (Railway's API gateway). Smoke still uses the older `.app` host; that is out of scope for this change.
+GraphQL endpoint used by **deploy and smoke**: `https://backboard.railway.com/graphql/v2` (Railway's API gateway).
 
 ## railway.toml is not a builder
 

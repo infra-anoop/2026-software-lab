@@ -2,31 +2,53 @@
 
 Owned here. Other agents get a scoped prompt; they do not pick from this list unless asked.
 
-Last review: A1/A2 closed via Pattern A tag `v0.5.0` (2026-09-09). Both apps ship→digest-pin→SUCCESS→`/health`+`/ready` 200. Residuals A3–A15 remain.
+Last review: Do-first orders 1–7 closed (A15, A7, A19, A18, A13, A3, A6). Next discuss: A20 vault product.
+
+## Suggested execution order (remaining)
+
+Work top-down. **Discuss** = lock a product/ops choice before coding. **Straight** = implement with the acceptance tests already on the row. Soft deps noted in Order notes.
+
+| Order | ID | Mode | Order notes |
+|---|---|---|---|
+| 1 | A20 | Discuss | **Which vault product?** (Doppler / Infisical / 1Password Connect / AWS SM). Schema shape after that choice |
+| 2 | A25 | Straight | After A20: Logfire paths + manual→vault doc (no Logfire create-API required) |
+| 3 | A22 | Straight | Supabase DDL CLI; unblocks repeatable persistence setup |
+| 4 | A21 | Straight | Railway var upsert library (mocked); needs A20 name lists |
+| 5 | A23 | Discuss | **When** sync runs (dispatch only vs post-ship); vault OIDC in GitHub |
+| 6 | A24 | Straight | Read-only bootstrap verifier (mocked GraphQL) |
+| 7 | A8 | Straight | Optional: offline boot more than default image — low urgency |
+| 8 | A12 | Discuss | **Migrate all getenv now vs leave hybrid A?** Scope can sprawl |
+| 9 | A11 | Discuss | **Should `/ready` require audit secret?** Changes operator meaning of ready |
+| 10 | A14 | Discuss | UNIQUE(run_id,step)? loosen status CHECK? ALTER story for drift |
+| 11 | A10 | Discuss | How hard to cancel in-flight OpenAI on timeout (cost vs complexity) |
+| 12 | A9 | Discuss | Accept single-instance jobs vs real queue (Redis/DB) — architecture |
+| 13 | A4 | Watch | Only act on drift; YAML≈CMD today |
+| 14 | A5 | Discuss / watch | Tolerate git-connect risk vs spend to disable Railpack — policy |
 
 ## Open — architect / operator
 
 | ID | Item | Why it stays here | Status |
 |---|---|---|---|
-| A3 | Smoke GraphQL host `.app` vs `.com` | Deploy moved to `backboard.railway.com`; smoke still `.app`. Hygiene, not P1. | Open |
 | A4 | YAML start_command vs image CMD | P1 still sends YAML to Railway (Railway wins). YAML now matches flake CMD. Divergence is a prod footgun. | Residual — watch |
 | A8 | CI offline boot is default image only | `verify-source` docker `--network none` /health is `nix build .#container` (first ship app). `validate-container` checks Cmd for all apps, not a live boot. | Open, low |
 | A5 | Git-connect / Railpack residual | Dashboard can still source-build. toml comments are not a control. CI overwrite is. | Residual — watch |
-| A6 | Deploy workflow hygiene | Unpinned `yq` (`releases/latest`); `cancel-in-progress: true` on deploy can abort a prod ship. | Open, low |
-| A7 | README vs workflow mutation names | README still says only `serviceInstanceUpdate`; workflow also probes `serviceUpdate`, `startCommand` / `start_command`. | Open, low |
 | A9 | In-memory jobs | Job ids 404 after restart and across Railway replicas. Accepted P3 leftover until a real queue. | Residual — watch |
 | A10 | Timeout vs in-flight OpenAI | Job `timed_out` may not cancel an already-running LLM call; tokens can still burn. | Residual — watch |
 | A11 | `/ready` vs `/audit` secrets | `/ready` only requires `OPENAI_API_KEY`. `*_AUDIT_SECRET` is YAML **optional**; unset still 503s `/audit`. Green `/ready` ≠ audits work. | Residual — watch |
-| A12 | Settings vs leftover getenv | Catalog helpers are on Settings. Call sites still getenv: SW `llm_settings` / prompts / orchestrator / retrieval; both `main.py` Logfire; both `db/client.py` Supabase. Hybrid A — migrate later. | Residual — watch |
-| A13 | Rate-limit 429 untested in HTTP suite | P7 locked queue-full → 429. Sliding-window POST rate-limit (B5) has no dedicated contract test now. Production path still exists. | Residual — watch |
-| A14 | Supabase schema product knobs | P6: no `UNIQUE(run_id,step)` (retry can duplicate turns); `status` CHECK is closed set; SQL is greenfield `IF NOT EXISTS` (won't repair divergent live tables). Apply DDL when proving A1 persistence. | Residual — watch |
-| A15 | RA `REVIEW.md` persistence notes | Still describes old CLI vs `run_workflow` confusion; `main.py` already uses `run_workflow`. Docs hygiene, not schema. | Open, low |
+| A12 | Settings vs leftover getenv | Catalog helpers are on Settings. Call sites still getenv: SW `llm_settings` / prompts / orchestrator / retrieval; both `main.py` Logfire; `lab_shared` Supabase client. Hybrid A — migrate later. | Residual — watch |
+| A14 | Supabase schema product knobs | P6: no `UNIQUE(run_id,step)`; closed `status` CHECK; greenfield `IF NOT EXISTS`. Live RA/SW persistence proven manually; knobs still product decisions. | Residual — watch |
+| A20 | Canonical secret path schema | Stop sprinkling values without a map. Add versioned schema (e.g. `deploy/secrets/schema.yaml`) of vault paths per `app_id` × env × name (`OPENAI_API_KEY`, `*_AUDIT_SECRET`, `SUPABASE_*`, `LOGFIRE_TOKEN`, shared GHCR pull). Names must ⊆ Settings / Railway YAML catalogs. **Tests:** unit test every registry `deploy.enabled` app has required paths; unknown names fail. No live vault. | Open |
+| A21 | Railway variable upsert library | Deploy-time sync (pattern 2b), not runtime vault calls in the app. Library/CLI: given `app_id`, environment, and `{name: value}` from a vault adapter interface, upsert Railway service variables via API/GraphQL. **Tests:** httpx/GraphQL mocks — set/update/noop; never log values. Dry-run prints names only. Depends on A20 for name lists; can stub values in tests. | Open |
+| A22 | Supabase DDL apply CLI | Replace dashboard paste for `db/supabase/*.sql`. CLI: `--app research-auditor\|smart-writer` chooses file set (SW: `runs_turns` only; RA: + `research_audits`); `--dry-run` prints ordered files; `--database-url` applies. **Tests:** dry-run file order; apply against ephemeral Postgres in CI (or testcontainers) asserts tables/columns exist. No Supabase account required for CI. | Open |
+| A23 | Optional deploy job: sync secrets | Wire A21 into Actions (manual `workflow_dispatch` or post-ship). Job reads vault via OIDC/adapter (stub OK for first slice), syncs one `app_id` + `environment`. **Tests:** workflow job defined; entrypoint `--dry-run` in CI without real Railway/vault. Fail closed if names not in A20 schema. | Open |
+| A24 | New-app bootstrap verifier | API check that a registry app is operable: Railway project/service/environment exist; required env *names* from deploy YAML present on the service (values redacted). **Tests:** mocked GraphQL fixtures for pass/fail; real run optional/manual. Does not create resources (read-only verify). | Open |
+| A25 | Logfire token path in vault schema | Logfire provisioning APIs are thin; don’t block on full IaC. Extend A20 with `LOGFIRE_TOKEN` path; short doc: create token in UI once → vault → A21 sync. **Tests:** schema contains path for both apps; doc section exists. Spike note if a create-token API appears later. | Open, low |
 
 ## Handed to other agents (not tracked as architect work)
 
 | ID | Item |
 |---|---|
-| *(none)* | Designer queue clear. Next is ops/product: A1/A2 live deploy, or backlog residuals. |
+| *(none)* | Designer queue clear. Pick open A-items independently; A21→A23 and A20→A25 are soft sequences, not hard blockers to start. |
 
 ## Closed
 
@@ -46,3 +68,10 @@ Last review: A1/A2 closed via Pattern A tag `v0.5.0` (2026-09-09). Both apps shi
 | A17 | Removed empty `apps/*/app/db/` leftover dirs after P5 hard-cut. |
 | A1 | Pattern A `v0.5.0`: both apps digest-pinned, deployment SUCCESS, `/health`+`/ready` 200. |
 | A2 | Railway GHCR pull proven (private packages; SUCCESS boots). |
+| A15 | RA `REVIEW.md` status table: CLI `run_workflow` + HTTP jobs are current; old B1/R8 claims annotated. |
+| A7 | Deploy README documents mutation/start-command probe pair (`serviceInstanceUpdate`/`serviceUpdate`, `startCommand`/`start_command`). |
+| A19 | Cheat-sheet **Codespace disk**: SKU-bound capacity, GC vs rebuild, prefer Actions for heavy bake. |
+| A18 | `scripts/codespace_disk_hygiene.py` dry-run/apply; `--apply` refused in CI; unit tests + cheat-sheet link. |
+| A13 | RA HTTP `test_audit_429_when_rate_limited` (sliding-window; distinct from queue-full). |
+| A3 | Smoke GraphQL host `backboard.railway.com` (aligned with deploy). |
+| A6 | Pin `yq` v4.53.6 in deploy + smoke; deploy `cancel-in-progress: false`. |
