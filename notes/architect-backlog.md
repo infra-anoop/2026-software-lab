@@ -2,14 +2,12 @@
 
 Owned here. Other agents get a scoped prompt; they do not pick from this list unless asked.
 
-Last review: Pattern A locked for deploys (2026-09-08). A1/A2 runbook at `notes/a1-a2-deploy-runbook.md`. Designer queue clear. First live Railway run still unproven.
+Last review: A1/A2 closed via Pattern A tag `v0.5.0` (2026-09-09). Both apps ship→digest-pin→SUCCESS→`/health`+`/ready` 200. Residuals A3–A15 remain.
 
 ## Open — architect / operator
 
 | ID | Item | Why it stays here | Status |
 |---|---|---|---|
-| A1 | First live deploy proof | Pattern A: `v*` → production. Runbook: `notes/a1-a2-deploy-runbook.md`. Confirm UI shows `ghcr.io/…@sha256:…`, new deployment id, `ACTIVE`/`SUCCESS`, `/health` 200. Start with one app. | Open — runbook ready |
-| A2 | Railway GHCR pull credentials | Private packages: PAT `read:packages` on the service. GraphQL success ≠ container pull. Same runbook §1. | Open (ops gate on A1) |
 | A3 | Smoke GraphQL host `.app` vs `.com` | Deploy moved to `backboard.railway.com`; smoke still `.app`. Hygiene, not P1. | Open |
 | A4 | YAML start_command vs image CMD | P1 still sends YAML to Railway (Railway wins). YAML now matches flake CMD. Divergence is a prod footgun. | Residual — watch |
 | A8 | CI offline boot is default image only | `verify-source` docker `--network none` /health is `nix build .#container` (first ship app). `validate-container` checks Cmd for all apps, not a live boot. | Open, low |
@@ -46,3 +44,5 @@ Last review: Pattern A locked for deploys (2026-09-08). A1/A2 runbook at `notes/
 | P5 | `modules/lab_shared` (`jobs` + `db`); hard-cut app imports; uv path dep; `flake.nix` `mkAppTree` + container `/app` → `apps/<id>` symlink; registry `watch_paths`. |
 | A16 | Durability commit: P5–P7 (+ SQL schema) pushed to `origin/main`. |
 | A17 | Removed empty `apps/*/app/db/` leftover dirs after P5 hard-cut. |
+| A1 | Pattern A `v0.5.0`: both apps digest-pinned, deployment SUCCESS, `/health`+`/ready` 200. |
+| A2 | Railway GHCR pull proven (private packages; SUCCESS boots). |
