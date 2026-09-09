@@ -2,7 +2,7 @@
 
 Owned here. Other agents get a scoped prompt; they do not pick from this list unless asked.
 
-Last review: Reconciled A21↔A26 Railway GraphQL into `scripts/railway_graphql.py` (shared client + token select). A23+A24 closed by designer; A8 won’t-do.
+Last review: Infisical free-tier layout locked — one project slug `2026-software-lab`, one env `production`; schema vault_refs retargeted. Ops residual: machine identity OIDC + GitHub var + live sync.
 
 ## Decisions locked (platform secrets)
 
