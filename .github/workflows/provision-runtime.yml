@@ -1,0 +1,73 @@
+# Provision Railway runtime footprint (project / environment / service).
+#
+# Conscious bootstrap only — workflow_dispatch (or local CLI).
+# Not on push, PR, or v* ship. Secrets sync = A23; image pin = deploy.yml.
+#
+# Auth: RAILWAY_WORKSPACE_TOKEN (preferred) or RAILWAY_TOKEN (same as deploy/smoke).
+# Names: deploy/railway/<environment>/<app_id>.yml (registry deploy.enabled gate).
+
+name: Provision runtime footprint
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_id:
+        description: "Application id (deploy.enabled in apps/registry.yaml)"
+        required: true
+        type: string
+      environment:
+        description: "Config folder under deploy/railway/"
+        required: false
+        type: choice
+        options: [production, staging]
+        default: production
+      dry_run:
+        description: "If true, print planned names only (no Railway writes)"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Select Railway token (workspace preferred)
+        if: ${{ inputs.dry_run != true }}
+        run: |
+          if [ -n "${{ secrets.RAILWAY_WORKSPACE_TOKEN }}" ]; then
+            echo "RAILWAY_TOKEN_EFFECTIVE=${{ secrets.RAILWAY_WORKSPACE_TOKEN }}" >> "$GITHUB_ENV"
+            echo "Using RAILWAY_WORKSPACE_TOKEN"
+          elif [ -n "${{ secrets.RAILWAY_TOKEN }}" ]; then
+            echo "RAILWAY_TOKEN_EFFECTIVE=${{ secrets.RAILWAY_TOKEN }}" >> "$GITHUB_ENV"
+            echo "Using RAILWAY_TOKEN"
+          else
+            echo "❌ No Railway token found. Set secrets.RAILWAY_WORKSPACE_TOKEN (preferred) or secrets.RAILWAY_TOKEN."
+            exit 1
+          fi
+
+      - name: Provision (dry-run)
+        if: ${{ inputs.dry_run == true }}
+        run: >
+          uv run scripts/provision_runtime.py
+          --app-id "${{ inputs.app_id }}"
+          --environment "${{ inputs.environment }}"
+          --dry-run
+
+      - name: Provision (apply)
+        if: ${{ inputs.dry_run != true }}
+        env:
+          RAILWAY_TOKEN: ${{ env.RAILWAY_TOKEN_EFFECTIVE }}
+        run: >
+          uv run scripts/provision_runtime.py
+          --app-id "${{ inputs.app_id }}"
+          --environment "${{ inputs.environment }}"
+          --apply

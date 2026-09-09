@@ -15,11 +15,14 @@ Python source of truth (do not invent columns beyond these):
 
 ## How to apply (operator step)
 
-1. Open your Supabase project → **SQL Editor**.
-2. Paste and run `runs_turns.sql` (both apps need these tables).
-3. For research-auditor, also paste and run `research_audits.sql`.
-4. Scripts are **idempotent** (`CREATE TABLE IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS`). Re-running does not drop data.
-5. **Greenfield assumption:** if a table already exists with different columns, these scripts will **not** alter it. Fix drift manually or recreate in a fresh project.
+Use the CLI (dry-run lists ordered files; apply needs a Postgres URL):
+
+```bash
+uv run scripts/apply_supabase_ddl.py --app smart-writer --dry-run
+uv run scripts/apply_supabase_ddl.py --app research-auditor --database-url "$DATABASE_URL"
+```
+
+Scripts are **idempotent** (`CREATE TABLE IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS`). **Greenfield assumption:** existing tables with different columns are not altered.
 
 ## Environment
 

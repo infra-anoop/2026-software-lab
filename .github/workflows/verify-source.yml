@@ -21,6 +21,25 @@ jobs:
     permissions:
       contents: read
 
+    # Ephemeral Postgres for A22 DDL apply tests (no Supabase account).
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,6 +52,21 @@ jobs:
 
       - name: Validate deploy env checklists
         run: uv run scripts/validate_deploy_env.py
+
+      - name: Validate secrets schema
+        run: uv run scripts/validate_secrets_schema.py
+
+      - name: Supabase DDL dry-run (smart-writer)
+        run: uv run scripts/apply_supabase_ddl.py --app smart-writer --dry-run
+
+      - name: Supabase DDL dry-run (research-auditor)
+        run: uv run scripts/apply_supabase_ddl.py --app research-auditor --dry-run
+
+      - name: Script unit + DDL apply tests
+        # PEP 723 on CLIs is not enough for pytest; inject test/runtime deps here.
+        run: >
+          uv run --with pytest --with 'psycopg[binary]>=3.2' --with 'pyyaml>=6' --with 'httpx>=0.27'
+          pytest scripts/ -v
 
       - name: Install Nix
         uses: cachix/install-nix-action@v25

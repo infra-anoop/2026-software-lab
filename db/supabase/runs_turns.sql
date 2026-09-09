@@ -1,5 +1,5 @@
 -- Shared execution-trace tables for smart-writer and research-auditor.
--- Source of truth: apps/*/app/db/supabase_repo.py (do not invent columns).
+-- Source of truth: modules/lab_shared/.../supabase_repo.py (do not invent columns).
 -- Idempotent: safe to re-run in the Supabase SQL Editor (greenfield / CREATE IF NOT EXISTS).
 -- Does NOT ALTER existing tables if columns already diverge — treat as operator greenfield.
 

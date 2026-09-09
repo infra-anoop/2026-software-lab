@@ -1,0 +1,71 @@
+# Read-only bootstrap verify: Railway footprint + required env names (A24).
+#
+# Conscious check only — workflow_dispatch. Never creates resources or upserts
+# secrets. Not on push, PR, or v* ship. Sync = A23; provision = A26.
+#
+# Auth: RAILWAY_WORKSPACE_TOKEN (preferred) or RAILWAY_TOKEN (live path only).
+
+name: Verify runtime bootstrap
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_id:
+        description: "Application id"
+        required: true
+        type: string
+      environment:
+        description: "Config folder under deploy/railway/"
+        required: false
+        type: choice
+        options: [production, staging]
+        default: production
+      dry_run:
+        description: "If true, print planned checks from git only (no Railway)"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Verify (dry-run)
+        if: ${{ inputs.dry_run == true }}
+        run: >
+          uv run scripts/verify_runtime_bootstrap.py
+          --app-id "${{ inputs.app_id }}"
+          --environment "${{ inputs.environment }}"
+          --dry-run
+
+      - name: Select Railway token (workspace preferred)
+        if: ${{ inputs.dry_run != true }}
+        run: |
+          if [ -n "${{ secrets.RAILWAY_WORKSPACE_TOKEN }}" ]; then
+            echo "RAILWAY_TOKEN_EFFECTIVE=${{ secrets.RAILWAY_WORKSPACE_TOKEN }}" >> "$GITHUB_ENV"
+            echo "Using RAILWAY_WORKSPACE_TOKEN"
+          elif [ -n "${{ secrets.RAILWAY_TOKEN }}" ]; then
+            echo "RAILWAY_TOKEN_EFFECTIVE=${{ secrets.RAILWAY_TOKEN }}" >> "$GITHUB_ENV"
+            echo "Using RAILWAY_TOKEN"
+          else
+            echo "❌ No Railway token found. Set secrets.RAILWAY_WORKSPACE_TOKEN (preferred) or secrets.RAILWAY_TOKEN."
+            exit 1
+          fi
+
+      - name: Verify (live)
+        if: ${{ inputs.dry_run != true }}
+        env:
+          RAILWAY_TOKEN: ${{ env.RAILWAY_TOKEN_EFFECTIVE }}
+        run: >
+          uv run scripts/verify_runtime_bootstrap.py
+          --app-id "${{ inputs.app_id }}"
+          --environment "${{ inputs.environment }}"
