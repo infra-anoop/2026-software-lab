@@ -1,0 +1,14 @@
+---
+description: Lab invariants — Nix, uv, secrets, registry, cattle deploy
+alwaysApply: true
+---
+
+# Lab invariants
+
+- Prefer `nix develop` / flake tools; do not `pip install` for durable deps.
+- Per-app Python: `cd apps/<id> && uv sync --locked`; commit `uv.lock`.
+- Secrets: declare names in `deploy/secrets/schema.yaml` + Settings; never commit values.
+- Apps must be in `apps/registry.yaml` (regenerate `registry.json` after edits).
+- Honor locked decisions / won’t-dos in `notes/architect-backlog.md`.
+- Cattle deploy: change manifests in git (`deploy/railway/`, workflows), not UI-only config.
+- Codespaces: rebuild via Codespaces UI; do not “Reopen in Container” from Cursor here.

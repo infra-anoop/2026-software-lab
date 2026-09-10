@@ -1,0 +1,14 @@
+---
+description: Python app conventions — PydanticAI, layout, tests
+globs: apps/**/*.py,modules/**/*.py
+alwaysApply: false
+---
+
+# Python apps
+
+- Type hints on all function signatures (PEP8).
+- PydanticAI: schema-first `result_type`; inject deps via `deps_type` + `RunContext`.
+- Keep business logic out of `entrypoints/` and infra scripts.
+- Prefer failing unit/contract tests before implementation when executing a packet.
+- Shared code belongs in `modules/lab_shared` only when used by more than one app.
+- Run from app dir: `uv run pytest`, `uv run ruff check app/`.

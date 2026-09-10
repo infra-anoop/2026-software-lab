@@ -1,0 +1,25 @@
+---
+description: Agent OS workflow — SDD phases, artifact bus, human as governor
+alwaysApply: true
+---
+
+# Agent OS
+
+Follow root `AGENTS.md` and `docs/agent-os/README.md`.
+
+## Default loop
+
+1. **Specify** — `specs/<feature>/spec.md` before non-trivial code.
+2. **Plan** — `specs/<feature>/plan.md`; wait for human approval on architecture.
+3. **Packet** — `notes/packets/<id>.md` with DoD, owned paths, out-of-scope.
+4. **Implement** — one packet → one branch → one PR when possible.
+5. **Verify** — run the packet’s acceptance commands; do not declare done on vibe.
+
+## Communication
+
+- Prefer updating specs/packets/PRs over asking the human to copy context between agents.
+- Escalate only for missing decisions, invariant conflicts, or unblockable DoD.
+
+## Skills
+
+Use project skills `sdd-specify`, `sdd-packet`, `sdd-implement` when the user is in that phase.

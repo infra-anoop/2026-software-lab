@@ -1,6 +1,8 @@
 # 2026-software-lab
 A monorepo to work on 2026 hacks, POCs and experiments
 
+**Agent OS (SDD):** [`AGENTS.md`](./AGENTS.md) · map [`docs/agent-os/README.md`](./docs/agent-os/README.md)
+
 Cattle-First Dev & Deploy Cheat Sheet (Codespaces + Cursor + Nix + uv + GitHub Actions + Railway)
 Guiding Principle
 

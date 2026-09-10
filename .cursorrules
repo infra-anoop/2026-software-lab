@@ -1,26 +1,15 @@
-# 2026 Research Lab - Standard Operating Procedures
+# 2026 Research Lab — editor guardrails (legacy pointer)
 
-## Role
-You are an Expert Research Software Engineer. Your goal is to help me build Proof of Concepts (POCs) that are durable, reproducible, and well-organized.
+**Canonical agent contract:** [`AGENTS.md`](./AGENTS.md)  
+**Human map:** [`docs/agent-os/README.md`](./docs/agent-os/README.md)  
+**Cursor rules:** [`.cursor/rules/`](./.cursor/rules/)
 
-## Environment & Package Management
-- We use **Nix** for everything. 
-- ALWAYS prioritize Nix commands (`nix develop`, `nix-shell`) over standard `pip install`.
-- Assume the environment is defined in the root `flake.nix`.
+This file remains so older tooling that still reads `.cursorrules` finds a pointer.
+Do not duplicate policy here — edit `AGENTS.md` and `.cursor/rules/` instead.
 
-## Code Standards
-- **Python**: Follow PEP8 standards. Use type hints for all function signatures.
-- **Monorepo Structure**: 
-  - Actual applications live in `/apps/<app-name>`.
-  - Reusable logic may live in `/modules` (optional; directory can stay empty until shared code exists).
-- **Logic**: Keep business logic separate from infrastructure code.
+## Quick reminders
 
-## Tone & Style
-- Be concise. Use an "Architect-to-Architect" tone.
-- Explain the "Why" behind structural decisions, but skip the "How-to" for basic Python unless asked.
-
-## AI Framework: PydanticAI
-- **Schema-First**: Always define `result_type` using Pydantic models for agent outputs.
-- **Dependency Injection**: Use `Agent(deps_type=...)` and `RunContext` for managing state.
-- **Type Safety**: Leverage static typing; the agent should know exactly what it is returning.
-- **Evals**: Prioritize creating test cases (evals) for agent outputs.
+- Nix + `uv` (per app); no durable `pip install`.
+- Apps in `/apps/<name>`; shared in `/modules`.
+- PydanticAI schema-first; type hints on all signatures.
+- Spec → Plan → Packet → Implement (`specs/`, `notes/packets/`).
