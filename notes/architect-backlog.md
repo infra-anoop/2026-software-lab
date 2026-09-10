@@ -2,7 +2,7 @@
 
 Owned here. Other agents get a scoped prompt; they do not pick from this list unless asked.
 
-Last review: Infisical free-tier layout locked — one project slug `2026-software-lab`, one env `production`; schema vault_refs retargeted. Ops residual: machine identity OIDC + GitHub var + live sync.
+Last review: Section 3 fully closed — all won’t-do / accept residual (A11, A12, A14, A9, A10, A4, A5). A5 ops: deleted zombie Railway project `capable-miracle`.
 
 ## Decisions locked (platform secrets)
 
@@ -14,6 +14,13 @@ Last review: Infisical free-tier layout locked — one project slug `2026-softwa
 | **A23** | Auth to vault: **GitHub OIDC → Infisical** machine identity (prefer no long-lived Infisical token in GitHub). Fail-closed if names ∉ A20 schema. |
 | **A23** | **Fail-safe if provision missing:** sync must refuse when target footprint (project/service/env) does not exist — do not create it in A23. Creation is **A26**. |
 | **Lifecycle** | **Bootstrap** (A26 provision → A23 sync → A24 verify) ≠ **rotate** (A23 only) ≠ **code deploy** (`v*` image pin). Conscious choice to init deploy infra. |
+| **A11** | **`/ready` = OpenAI only.** `*_AUDIT_SECRET` stays optional for ready; unset still 503s `/audit`. Green ready ≠ audits work. Revisit only if platform checks must mean “audit product live.” |
+| **A12** | **Leave hybrid A.** Settings + catalogs for declared/gate knobs; leftover `getenv` in SW agents/prompts/retrieval, Logfire `main.py`, `lab_shared` Supabase client accepted. Boy-scout on touch; no dedicated migration epic. |
+| **A14** | **Keep P6 schema knobs.** No `UNIQUE(run_id,step)`; `runs.status` CHECK stays `running`/`completed`/`failed`; greenfield `IF NOT EXISTS` only (recreate project if incompatible change). |
+| **A9** | **Accept in-memory jobs.** `job_id` ephemeral (restart drops; not shared across replicas). Keep Railway replica count 1 for audit services. Multi-browser concurrency = process-local `JobRunner` (tune queue/concurrency/rate), not a shared queue. |
+| **A10** | **Accept best-effort timeout.** `asyncio.wait_for` → job `timed_out`; in-flight OpenAI may still run. Prefer tuning timeout/iterations/concurrency over cancel plumbing. |
+| **A4** | **Won’t-do / watch.** Keep dual start paths (flake `Cmd` + Railway YAML `start_command`; Railway wins). They match today; fix on drift. No CI equality assert, no single-source rewrite. |
+| **A5** | **Tolerate residual as code; fix zombies in ops.** Pattern A image pin only. No git auto-deploy on lab services. Deleted leftover project `capable-miracle` / `Archived-research-auditor` (source of build-failure emails). Live project remains `2026-software-lab`. |
 
 ## Suggested execution order (remaining)
 
@@ -21,25 +28,13 @@ Work top-down. **Discuss** = lock a product/ops choice before coding. **Straight
 
 | Order | ID | Mode | Order notes |
 |---|---|---|---|
-| 1 | A12 | Discuss | **Migrate all getenv now vs leave hybrid A?** Scope can sprawl |
-| 2 | A11 | Discuss | **Should `/ready` require audit secret?** Changes operator meaning of ready |
-| 3 | A14 | Discuss | UNIQUE(run_id,step)? loosen status CHECK? ALTER story for drift |
-| 4 | A10 | Discuss | How hard to cancel in-flight OpenAI on timeout (cost vs complexity) |
-| 5 | A9 | Discuss | Accept single-instance jobs vs real queue (Redis/DB) — architecture |
-| 6 | A4 | Watch | Only act on drift; YAML≈CMD today |
-| 7 | A5 | Discuss / watch | Tolerate git-connect risk vs spend to disable Railpack — policy |
+| — | *(none)* | — | Section 3 discusses complete. Next work is net-new, not this residual list. |
 
 ## Open — architect / operator
 
 | ID | Item | Why it stays here | Status |
 |---|---|---|---|
-| A4 | YAML start_command vs image CMD | P1 still sends YAML to Railway (Railway wins). YAML now matches flake CMD. Divergence is a prod footgun. | Residual — watch |
-| A5 | Git-connect / Railpack residual | Dashboard can still source-build. toml comments are not a control. CI overwrite is. | Residual — watch |
-| A9 | In-memory jobs | Job ids 404 after restart and across Railway replicas. Accepted P3 leftover until a real queue. | Residual — watch |
-| A10 | Timeout vs in-flight OpenAI | Job `timed_out` may not cancel an already-running LLM call; tokens can still burn. | Residual — watch |
-| A11 | `/ready` vs `/audit` secrets | `/ready` only requires `OPENAI_API_KEY`. `*_AUDIT_SECRET` is YAML **optional**; unset still 503s `/audit`. Green `/ready` ≠ audits work. | Residual — watch |
-| A12 | Settings vs leftover getenv | Catalog helpers are on Settings. Call sites still getenv: SW `llm_settings` / prompts / orchestrator / retrieval; both `main.py` Logfire; `lab_shared` Supabase client. Hybrid A — migrate later. | Residual — watch |
-| A14 | Supabase schema product knobs | P6: no `UNIQUE(run_id,step)`; closed `status` CHECK; greenfield `IF NOT EXISTS`. Live RA/SW persistence proven manually; knobs still product decisions. | Residual — watch |
+| — | *(none)* | Section 3 residuals accepted or closed. | — |
 
 ## Handed to other agents (not tracked as architect work)
 
@@ -80,3 +75,10 @@ Work top-down. **Discuss** = lock a product/ops choice before coding. **Straight
 | A23 | `sync-runtime-secrets.yml` (`workflow_dispatch` only): dry-run → A21 CLI; apply → Railway token + Infisical OIDC (`infisical_oidc_login.py` → `INFISICAL_TOKEN`) or non-preferred `secrets.INFISICAL_TOKEN`; exit 2 on missing footprint. |
 | A24 | `verify_runtime_bootstrap.py` + `verify-runtime-bootstrap.yml`: read-only footprint + required names (YAML ∪ schema); `variables` query names-only; exit 2 footprint miss; mocked tests. |
 | A8 | Won’t-do (2-app lab): offline boot stays default image only. Cmd-check all apps + per-app ship + prod smoke cover the P2 failure mode. |
+| A11 | Won’t-do: `/ready` stays OpenAI-only; `*_AUDIT_SECRET` optional for ready, required for successful `/audit`. First-run “secret not configured” is vault seed/sync, not a ready-probe change. |
+| A12 | Won’t-do: leave Settings/getenv hybrid A; boy-scout on touch; no dedicated migration epic. |
+| A14 | Won’t-do: keep P6 knobs — no UNIQUE(run_id,step); tight status CHECK; greenfield only (recreate if schema must change). |
+| A9 | Won’t-do: accept in-memory `JobRunner`; job_id ephemeral; keep single replica for `/audit`; multi-browser = tune concurrency/queue, not Redis/DB. |
+| A10 | Won’t-do: accept `timed_out` without deep in-flight LLM cancel; tune timeout/iterations/concurrency instead. |
+| A5 | Won’t-do as code epic: Pattern A only; ops deleted zombie project `capable-miracle` (Archived-research-auditor build emails). Live = `2026-software-lab`. |
+| A4 | Won’t-do / watch: dual start paths stay; match by discipline; no CI equality assert until drift actually hurts. |
