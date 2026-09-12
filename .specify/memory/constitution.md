@@ -4,13 +4,14 @@ Non-negotiable principles for every feature and agent run in this monorepo.
 Spec Kit phases (`/speckit-*`) and `AGENTS.md` must respect this document.
 Product-unique choices belong in feature specs — **not** by reinventing process.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-12
+**Version**: 1.1.0 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-12
 
 ## Core Principles
 
 ### I. Spec-Driven Development (NON-NEGOTIABLE)
 
 Non-trivial work follows Spec Kit: **Specify → (Clarify) → Plan → Tasks → Implement**, with human gates at phase boundaries.
+**Plan** means **Architecture + Phased delivery** (see overlay §E)—not tasks-by-another-name.
 Do not implement from chat alone when the change is non-trivial.
 Agents exchange context via **git artifacts** (specs, plans, tasks/packets, PRs) — not human copy/paste as the bus.
 
@@ -74,6 +75,16 @@ Charter/spec keeps stable classes; the catalog grows from test runs (id, severit
 
 Spec Kit `tasks.md` is the default task breakdown.
 For long unattended agent runs, optional lab **packets** (`notes/packets/`) may wrap one or more tasks with owned/forbidden paths and hard DoD — one packet ≈ one branch ≈ one PR when possible.
+
+### E. Plan = Architecture + Phased delivery (architecture is first-class)
+
+`plan.md` is two mandatory parts (see `.specify/templates/overrides/plan.md`):
+
+1. **Architecture** — building blocks, boundaries, data/persistence, APIs/contracts, UI surfaces, major deps/risks. Structure first; not a sprint list.
+2. **Phased delivery** — high-level order toward that architecture (e.g. wireframe → API hookup → MVP), with exit criteria. Phases **reference** architecture; they do not replace it.
+
+**Gate:** Do not run `/speckit-tasks` or implement until a human has approved both parts.  
+Detailed work items belong in `tasks.md` (or optional packets), not as a substitute for Architecture.
 
 ## Stack constraints
 

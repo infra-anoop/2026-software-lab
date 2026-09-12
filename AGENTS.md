@@ -68,8 +68,8 @@ Constitution → Specify → [Clarify] → independent review → Plan → [Chec
 | Constitution | `.specify/memory/constitution.md` | `/speckit-constitution` |
 | Specify | `specs/<###-feature>/spec.md` | `/speckit-specify` (lab override template) |
 | Review | findings → Review locks in spec | `docs/agent-os/SPEC_REVIEW_PROMPT.md` — **before Approved** |
-| Plan | `plan.md` (+ data-model/contracts as needed) | `/speckit-plan` |
-| Tasks | `tasks.md` | `/speckit-tasks` |
+| Plan | `plan.md` — **Architecture + Phased delivery** | `/speckit-plan`; human approves before tasks |
+| Tasks | `tasks.md` | `/speckit-tasks` — only after plan approved |
 | Optional packet | `notes/packets/<id>.md` | Long unattended DoD wrapper |
 | Implement | Branch + PR | `/speckit-implement` |
 

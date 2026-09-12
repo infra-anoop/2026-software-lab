@@ -11,6 +11,7 @@ Lab taste = thin **overlays** in constitution + template overrides — not a sec
                               │
 ┌─────────────────────────────┴───────────────────────────────┐
 │  Lab overlays (stable process — do not re-argue per app)    │
+│  · Plan = Architecture + Phased delivery (arch first-class) │
 │  · Independent spec review brief                            │
 │  · Failable outcomes + extensible acceptance catalog        │
 │  · Optional notes/packets for long background runs          │
@@ -23,7 +24,7 @@ Lab taste = thin **overlays** in constitution + template overrides — not a sec
 | Concept | Where |
 |---------|--------|
 | Constitution | `.specify/memory/constitution.md` |
-| Spec / plan / tasks templates | `.specify/templates/` (+ `overrides/spec.md`) |
+| Spec / plan / tasks templates | `.specify/templates/` (+ `overrides/spec.md`, `overrides/plan.md`) |
 | Slash-style skills | `.cursor/skills/speckit-*` |
 | Spec review brief | `docs/agent-os/SPEC_REVIEW_PROMPT.md` |
 | Acceptance catalog template | `docs/agent-os/acceptance-catalog-template.md` |
@@ -31,11 +32,14 @@ Lab taste = thin **overlays** in constitution + template overrides — not a sec
 
 ## Default loop
 
-1. `/speckit-specify` (or equivalent) → draft spec  
-2. Independent review (fresh session + review brief) → lock findings in spec  
+1. `/speckit-specify` → draft spec  
+2. Independent review → lock findings in spec  
 3. Human marks **Approved** when Blockers cleared  
-4. `/speckit-plan` → `/speckit-tasks` → `/speckit-implement`  
-5. Optional: wrap a task slice in `notes/packets/` for a long background run  
+4. `/speckit-plan` → **Architecture + Phased delivery** (both required; human approves)  
+5. `/speckit-tasks` → `/speckit-implement`  
+6. Optional: `notes/packets/` for a long background slice  
+
+**Plan ≠ task list.** Architecture is first-class inside plan (constitution §E).
 
 ## Product vs process
 
@@ -43,14 +47,14 @@ Lab taste = thin **overlays** in constitution + template overrides — not a sec
 |-----------------------------|-------------------------------|
 | Beachhead, UX, domain rules | Spec Kit phase order |
 | Property lists, research sources | Independent review before approve |
+| Concrete architecture choices | Plan must include Architecture + Phasing |
 | Stack *choices that fit* | Failable outcomes + acceptance catalog |
 | | Cattle/secrets/registry invariants |
 
 ## Legacy notes
 
 - Homemade `specs/_TEMPLATE.md` / `sdd-*` skills are **deprecated**; prefer Spec Kit + overlays.
-- In-flight specs (e.g. `specs/smart-writer-v2/`) may still use older shape until migrated after framework settle.
-- Product locks on Smart Writer V2 are **paused** until you resume product debate on the Spec Kit base.
+- `specs/smart-writer-v2/` is aligned to Spec Kit spec shape + `acceptance.md`; product locks **F2–F7** still open.
 
 ## Upgrade Spec Kit CLI
 
