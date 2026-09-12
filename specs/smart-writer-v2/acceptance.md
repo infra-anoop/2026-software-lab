@@ -28,6 +28,9 @@ Extensible checks for [`spec.md`](./spec.md) Success Criteria. Grow from test ru
 | intake.property_chips_preferred | FR-003b | should | Axis B ambiguity | Prefer editable property ranking over long property interview | human |
 | citation.default_sources_panel | FR-010 | must | grant beachhead, sources exist | Default presentation is sources panel unless user overrides | hybrid |
 | citation.skip_ask_if_no_sources | FR-010a | must | no citable sources in run | Do not force citation-format question | hybrid |
+| chat.free_form_input | FR-016 | must | any user message | No required user-visible Axis/slot forms | hybrid |
+| revise.continuity_default | SC-006 | must | feedback on prior artifact, no restart | New ArtifactVersion linked to prior + feedback; revise path not silent full regen | hybrid |
+| regenerate.explicit | SC-007 | must | user requests start over | Fresh generate path used | hybrid |
 
 ## Change log
 
@@ -40,3 +43,4 @@ Extensible checks for [`spec.md`](./spec.md) Success Criteria. Grow from test ru
 | 2026-09-12 | F5: dual intent (lab dogfood + surface gates); no stack checkbox DoD |
 | 2026-09-12 | F6: dual intake schemas Axis A intent slots + Axis B properties |
 | 2026-09-12 | F7: sources panel default + light override; skip ask if no sources |
+| 2026-09-13 | F8: chat free-form; revise-by-default; regenerate explicit; axes internal |
