@@ -11,8 +11,8 @@ Lab taste = thin **overlays** in constitution + template overrides — not a sec
                               │
 ┌─────────────────────────────┴───────────────────────────────┐
 │  Lab overlays (stable process — do not re-argue per app)    │
+│  · Product review + optional process/lab-vehicle review     │
 │  · Plan = Architecture + Phased delivery (arch first-class) │
-│  · Independent spec review brief                            │
 │  · Failable outcomes + extensible acceptance catalog        │
 │  · Optional notes/packets for long background runs          │
 │  · Cattle / secrets / registry (constitution + AGENTS.md)   │
@@ -26,14 +26,15 @@ Lab taste = thin **overlays** in constitution + template overrides — not a sec
 | Constitution | `.specify/memory/constitution.md` |
 | Spec / plan / tasks templates | `.specify/templates/` (+ `overrides/spec.md`, `overrides/plan.md`) |
 | Slash-style skills | `.cursor/skills/speckit-*` |
-| Spec review brief | `docs/agent-os/SPEC_REVIEW_PROMPT.md` |
+| Spec review brief (product) | `docs/agent-os/SPEC_REVIEW_PROMPT.md` |
+| Spec review brief (process) | `docs/agent-os/PROCESS_REVIEW_PROMPT.md` |
 | Acceptance catalog template | `docs/agent-os/acceptance-catalog-template.md` |
 | Portable summary | `AGENTS.md` |
 
 ## Default loop
 
 1. `/speckit-specify` → draft spec  
-2. Independent review → lock findings in spec  
+2. **Product** review (required) → lock **F-*** findings; optional **process** review → **R-*** (`PROCESS_REVIEW_PROMPT.md`)  
 3. Human marks **Approved** when Blockers cleared  
 4. `/speckit-plan` → **Architecture + Phased delivery** (both required; human approves)  
 5. `/speckit-tasks` → `/speckit-implement`  
@@ -46,7 +47,7 @@ Lab taste = thin **overlays** in constitution + template overrides — not a sec
 | Debate freely (per product) | Do not re-litigate (framework) |
 |-----------------------------|-------------------------------|
 | Beachhead, UX, domain rules | Spec Kit phase order |
-| Property lists, research sources | Independent review before approve |
+| Property lists, research sources | Product review (+ optional process review) |
 | Concrete architecture choices | Plan must include Architecture + Phasing |
 | Stack *choices that fit* | Failable outcomes + acceptance catalog |
 | | Cattle/secrets/registry invariants |

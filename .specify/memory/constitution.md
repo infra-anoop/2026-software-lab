@@ -4,7 +4,7 @@ Non-negotiable principles for every feature and agent run in this monorepo.
 Spec Kit phases (`/speckit-*`) and `AGENTS.md` must respect this document.
 Product-unique choices belong in feature specs — **not** by reinventing process.
 
-**Version**: 1.1.0 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-12
+**Version**: 1.2.0 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-12
 
 ## Core Principles
 
@@ -51,13 +51,15 @@ Learning/stack preferences must **not** be product Ubiquitous acceptance criteri
 
 These are **framework** rules. Customize product content inside them; do not debate whether they exist.
 
-### A. Independent spec review before approve
+### A. Independent reviews before approve (product + process)
 
 After a feature `spec.md` is drafted and before status → **Approved**:
-1. Run an **independent** agent review using `docs/agent-os/SPEC_REVIEW_PROMPT.md` (fresh session).
-2. Triage findings as Blocker / Debate / Later / Nit.
-3. Record locks in the spec’s **Review locks** table (or equivalent) and edit the artifact as locks land.
-4. Human adjudicates Debates; do not treat the reviewer as automatic truth.
+
+1. **Product review (required for non-trivial features):** fresh session + `docs/agent-os/SPEC_REVIEW_PROMPT.md`. Finding IDs prefix **F**.
+2. **Process / lab-vehicle review (optional, recommended for dogfood vehicles):** fresh session + `docs/agent-os/PROCESS_REVIEW_PROMPT.md`. Finding IDs prefix **R**.
+3. Triage all findings as Blocker / Debate / Later / Nit. Record locks in the spec’s **Review locks** table; tag or note `product` vs `process` when helpful.
+4. Edit the artifact as locks land. Human adjudicates Debates — reviewers are not automatic truth; opposing product vs process advice is expected and useful.
+5. Do not re-merge the two roles into one vague “reviewer” brief.
 
 ### B. Failable outcomes (falsifiability)
 

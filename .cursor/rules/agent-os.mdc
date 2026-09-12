@@ -10,7 +10,7 @@ Human map: `docs/agent-os/README.md`.
 
 ## Default loop
 
-1. Spec Kit: specify → (clarify) → **independent review** → plan (**Architecture + Phasing**) → tasks → implement.
+1. Spec Kit: specify → (clarify) → **product review** (+ optional **process** review) → plan (**Architecture + Phasing**) → tasks → implement.
 2. Use `.cursor/skills/speckit-*` (not deprecated `sdd-*`).
 3. Specs need failable outcomes + acceptance catalog pointer (constitution §B–C).
 4. Do not start tasks/implement until plan Architecture + Phased delivery are human-approved (§E).
@@ -20,4 +20,5 @@ Human map: `docs/agent-os/README.md`.
 ## Product vs process
 
 Debate product-unique choices in the feature spec / plan architecture.
-Do **not** re-invent process (review, falsifiability, catalog, plan shape) per app.
+Do **not** re-invent process (dual reviews, falsifiability, catalog, plan shape) per app.
+Keep **product** and **process** reviewers as separate briefs (constitution §A).

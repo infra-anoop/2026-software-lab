@@ -1,7 +1,10 @@
-# Smart Writer V2 — review prompt (pointer)
+# Smart Writer V2 — review prompts (pointers)
 
-**Canonical brief:** [`docs/agent-os/SPEC_REVIEW_PROMPT.md`](../../docs/agent-os/SPEC_REVIEW_PROMPT.md)
+| Role | Brief | Finding IDs |
+|------|--------|-------------|
+| **Product** | [`docs/agent-os/SPEC_REVIEW_PROMPT.md`](../../docs/agent-os/SPEC_REVIEW_PROMPT.md) | **F-*** |
+| **Process** (optional) | [`docs/agent-os/PROCESS_REVIEW_PROMPT.md`](../../docs/agent-os/PROCESS_REVIEW_PROMPT.md) | **R-*** |
 
 `SPEC_PATH` = `specs/smart-writer-v2/spec.md`
 
-Spec is **Spec Kit–shaped**; resume product locks **F2–F7** in the authoring session (F1 already locked).
+**Product locks F1–F7 complete.** Next: human marks **Approved**, then `/speckit-plan`. Optional process review anytime.
