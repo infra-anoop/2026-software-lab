@@ -1,9 +1,11 @@
 # AGENTS.md
 
 Cross-tool agent contract for this monorepo ([agents.md](https://agents.md/) standard).
-Cursor-specific overlays live in `.cursor/rules/` and `.cursor/skills/`.
 
-Human map: `docs/agent-os/README.md`
+**Process base:** [GitHub Spec Kit](https://github.com/github/spec-kit) (installed under `.specify/`).  
+**Constitution (process truth):** `.specify/memory/constitution.md`  
+**Human map:** `docs/agent-os/README.md`  
+**Cursor:** `.cursor/rules/` + Spec Kit skills `.cursor/skills/speckit-*`
 
 ---
 
@@ -16,11 +18,12 @@ Cattle-first Python monorepo for durable POCs.
 | `apps/<id>/` | Applications (registry-driven) |
 | `modules/lab_shared/` | Shared libraries |
 | `deploy/`, `db/`, `scripts/` | Infra / ops |
-| `specs/` | Feature specs (SDD source of truth) |
-| `notes/packets/` | Executable work packets (agent bus) |
+| `specs/` | Feature specs (Spec Kit) |
+| `.specify/` | Spec Kit templates, scripts, constitution |
+| `notes/packets/` | Optional long-run packets (lab overlay on tasks) |
 | `notes/architect-backlog.md` | Locked decisions / won’t-dos |
 
-Registry of truth for apps: `apps/registry.yaml` (+ committed `apps/registry.json`).
+Registry: `apps/registry.yaml` (+ committed `apps/registry.json`).
 
 ---
 
@@ -54,63 +57,52 @@ HTTP app loop: `uv run uvicorn app.entrypoints.http:app --reload --host 0.0.0.0 
 
 ---
 
-## Workflow (Spec-Driven Development)
-
-Standard four phases (GitHub Spec Kit / industry SDD). Humans gate each boundary.
+## Workflow (Spec Kit + lab overlays)
 
 ```text
-Specify → Plan → Tasks/Packets → Implement → Verify (CI/tests)
+Constitution → Specify → [Clarify] → independent review → Plan → [Checklist] → Tasks → [Analyze] → Implement
 ```
 
-| Phase | Artifact | Owner |
-|-------|----------|--------|
-| Specify | `specs/<feature>/spec.md` | Human (+ session agent) |
-| Plan | `specs/<feature>/plan.md` | Session agent; human approves |
-| Tasks | `notes/packets/<id>.md` | Session agent; human launches |
-| Implement | Branch + PR | Background / session agent |
-| Verify | Tests + CI | Automatic; optional review agent |
+| Phase | Artifact / skill | Notes |
+|-------|------------------|--------|
+| Constitution | `.specify/memory/constitution.md` | `/speckit-constitution` |
+| Specify | `specs/<###-feature>/spec.md` | `/speckit-specify` (lab override template) |
+| Review | findings → Review locks in spec | `docs/agent-os/SPEC_REVIEW_PROMPT.md` — **before Approved** |
+| Plan | `plan.md` (+ data-model/contracts as needed) | `/speckit-plan` |
+| Tasks | `tasks.md` | `/speckit-tasks` |
+| Optional packet | `notes/packets/<id>.md` | Long unattended DoD wrapper |
+| Implement | Branch + PR | `/speckit-implement` |
 
 **Rules**
 
-1. Do not implement from chat alone when the change is non-trivial — write or update a spec first.
-2. Agents exchange information via **git artifacts** (specs, packets, PRs). Do not rely on human copy/paste as the bus.
-3. One packet = one branch = one PR when possible.
-4. Stop and escalate on missing decisions, invariant conflicts, or DoD that cannot be met.
-
-Templates: `specs/_TEMPLATE.md`, `notes/packets/_TEMPLATE.md`.
+1. Do not implement from chat alone when the change is non-trivial — spec first.
+2. Git artifacts are the bus (no human copy/paste router).
+3. Specs need **failable outcomes** + **acceptance catalog** (constitution §B–C).
+4. Do not re-argue process per product; debate product-unique choices only.
+5. Stop and escalate on missing decisions, invariant conflicts, or unmet DoD.
 
 ---
 
 ## Invariants (non-negotiable)
 
-1. **Cattle deploy** — no UI-only Railway/config drift; declare in repo.
-2. **Secrets** — names in `deploy/secrets/schema.yaml` + Settings; no new ad-hoc secret reads.
-3. **Registry** — apps exist in `apps/registry.yaml` or they are not apps.
-4. **Locks** — `uv.lock` / `flake.lock` stay committed; no floating installs for durable work.
-5. **Respect locked decisions** in `notes/architect-backlog.md` (won’t-dos included).
+See constitution. Short list:
 
----
-
-## Testing expectations
-
-- Prefer TDD for packet work: failing acceptance tests before implementation when practical.
-- Run the smallest relevant suite before declaring done (`uv run pytest` in the touched app).
-- Do not claim “tests adequate” without listing which tests prove the packet DoD.
+1. Cattle deploy — no UI-only Railway/config drift.
+2. Secrets — schema + Settings; never commit values.
+3. Registry — apps in `apps/registry.yaml` or they are not apps.
+4. Locks — `uv.lock` / `flake.lock` committed.
+5. Respect `notes/architect-backlog.md`.
 
 ---
 
 ## Human role
 
-The human is **governor**, not router:
-
-- Writes / approves specs and invariants.
-- Reviews decisions and high-level patterns.
-- Does not need to mediate agent-to-agent context if artifacts are updated.
+Governor, not router: approve specs/invariants, adjudicate review Debates, review PRs at decision altitude.
 
 ---
 
-## Out of scope for agents unless the packet says so
+## Out of scope for agents unless the packet/task says so
 
 - Force-push, rewriting git history, skipping hooks.
 - Creating vault/runtime footprints without an explicit ops packet.
-- Expanding scope beyond the packet’s Out-of-scope section.
+- Expanding scope beyond task/packet Out-of-scope.

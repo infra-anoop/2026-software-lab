@@ -5,15 +5,19 @@
 | Field | Value |
 |-------|-------|
 | Feature slug | `smart-writer-v2` |
-| Status | **draft** (awaiting human approval) |
+| Status | **draft** — **product locks paused** (framework: Spec Kit install + lab overlays); resume F2+ later |
 | Owner (human) | Lab owner |
 | App id | `smart-writer-v2` (new registry app; not an in-place rewrite of `smart-writer`) |
 | Related | Legacy app `apps/smart-writer` remains runnable; no back-port of V2 → V1 required |
-| Discussion basis | Session coaching locks (A1–D, N1–N14) |
+| Discussion basis | Session coaching locks (A1–D, N1–N14); independent review triage in progress |
+| Review locks | See [Review locks](#review-locks) (F1 locked; F2–F7 paused) |
+| Process base | Spec Kit + `.specify/memory/constitution.md` (do not re-argue process here) |
 
 ## Intent
 
-Smart Writer V2 helps one person produce a **1–3 page**, goal-driven document that is **more researched, more goal-tuned, and more emotionally effective** than a sloppy ChatGPT session. The beachhead use case is **nonprofit grant / donation asks**; the engine is a **general short-form writer**. The product constructs and refines intent (adaptive gap-filling, not a fixed questionnaire), runs **differentiating web research** (plus user uploads/links), and steers prose via a **product-owned closed vocabulary** of ranked properties woven into a prompt program—while still **inferring** an initial ranking from the user’s free-text prompt.
+Smart Writer V2 helps one person produce a **1–3 page**, goal-driven document for **nonprofit grant / donation asks** (beachhead), with a **general short-form** engine underneath. The product constructs and refines intent (adaptive gap-filling, not a fixed questionnaire), runs research over **user materials and the web**, and steers prose via a **product-owned closed vocabulary** of ranked properties woven into a prompt program—while still **inferring** an initial ranking from the user’s free-text prompt.
+
+**Aspirational quality** (not the hard pass/fail bar): drafts that feel more researched, goal-tuned, and emotionally effective than a sloppy ChatGPT session, including occasional “how did it know that?” moments. **Governable success** is defined by the failable outcome classes and the extensible acceptance catalog below—not by literary taste alone.
 
 Secondary intent (lab): use V2 to practice Spec-Driven agentic development and **AI-assisted rich UI** (v0 / Next-style), with learning valued over the cheapest implementation path. LangGraph-style orchestration is acceptable when it fits the multi-step pipeline and remains a mainstream pattern.
 
@@ -28,11 +32,22 @@ Secondary intent (lab): use V2 to practice Spec-Driven agentic development and *
 
 ## Acceptance criteria (EARS-style)
 
-### Product outcomes
+### Product outcomes (failable classes — F1)
+
+Hard gates are **structural / evidence** checks, not “is this beautiful writing.” Emotional impact and “surprise” remain valuable but **aspirational**.
 
 - **Ubiquitous**: The system shall produce drafts targeted at approximately **1–3 pages** unless the user overrides length-related properties.
 - **Ubiquitous**: The system shall support a **grant / donation-ask** beachhead without hard-limiting the engine to that vertical alone.
-- **Ubiquitous**: The system shall combine **grounding** (research-backed specificity) with **emotional / rhetorical effectiveness** (not facts-only and not vibes-only).
+- **Ubiquitous — audience-fit**: WHEN the run has a named funder/recipient and available criteria (upload, link, or retrieved public material), the draft shall include **at least two concrete fit points** tied to those criteria, and shall not rely only on generic nonprofit prose with no named criteria.
+- **Ubiquitous — provenance**: WHEN the draft asserts an org- or funder-specific fact beyond the user’s raw prompt, the system shall attach **checkable provenance** (user material and/or a retrieved source), or omit / mark the claim as uncertain.
+- **Ubiquitous — research-used-or-declared**: WHEN web research is enabled, the draft shall use **at least one non-upload finding** that affects ask, framing, or evidence selection, **or** explicitly state that no useful external signal was found.
+- **Aspirational**: “How did it know that?” specificity and strong emotional/rhetorical effect may guide critique and human review; they are **not** sufficient alone to pass or fail a run.
+
+### Acceptance catalog (separate & extensible — F1)
+
+- **Ubiquitous**: Detailed failable checks shall live in a **versioned acceptance catalog** outside application prompt/orchestrator code (e.g. `specs/smart-writer-v2/acceptance.md` or `apps/smart-writer-v2/evals/…`), so the bar can grow from test runs without rewriting the product story.
+- **Ubiquitous**: The charter keeps **stable outcome classes**; the catalog holds **extensible check instances** (id, severity must/should/aspirational, preconditions, shall-statement, how checked: auto | human | hybrid).
+- Catalog bootstrap and first concrete check ids belong in **plan / packets**; charter approval does not require a full catalog yet.
 
 ### Intake
 
@@ -54,9 +69,9 @@ Secondary intent (lab): use V2 to practice Spec-Driven agentic development and *
 ### Research
 
 - **Ubiquitous**: The system shall accept **user-provided materials** (e.g. links/uploads) **and** perform **web research**.
-- **Ubiquitous**: Web research shall be treated as the primary lever for **differentiated insight** (e.g. funder criteria, past leanings, value alignment; under-covered but citable facts)—not only summarization of the user’s PDF.
-- **Event-driven**: WHEN research completes, the draft shall be able to use findings in a way that a careful reader can recognize as **specific and checkable**, including quiet/non-frontpage facts when relevant.
-- **Example spirit (non-normative):** connect org evidence (“90% effort in Santa Clara County; housed 10 people last year”) to funder criteria found via research; or surface a specific macro fact that is findable but not cliché for the topic.
+- **Ubiquitous**: Research success is **audience-fit and citable specificity** (see product outcome classes)—not novelty trivia for its own sake, and not PDF-only paraphrase claiming to be research.
+- **Event-driven**: WHEN research completes, findings used in the draft shall be **specific and checkable** via the provenance rules above.
+- **Example spirit (non-normative / aspirational):** connect org evidence (“90% effort in Santa Clara County; housed 10 people last year”) to funder criteria; or surface a quiet but findable macro fact. Delightful surprise is welcome; **credible funder-fit without surprise still passes**.
 
 ### Citations / sources presentation
 
@@ -91,17 +106,33 @@ Secondary intent (lab): use V2 to practice Spec-Driven agentic development and *
 
 ## Open questions
 
-Resolved enough for **charter approval**. Remaining items are **plan / implementation**, not blockers to approve intent:
+**Not** fully resolved for approval yet — independent review triage is in progress (see Review locks). Plan/implementation items:
 
-1. **Property vocabulary expansion** — produce a larger closed list at implementation (owner may use a separate session or external LLM); charter seed is enough.
-2. **Exact intake question for citation mode** — copy/options belong in plan/UI spec.
-3. **Research providers / allowlists** — tool choice (search API, browsing, etc.) belongs in `plan.md`.
-4. **Monorepo sharing** — how much to reuse from V1 (`lab_shared`, retry helpers, job runner patterns) vs clean-room inside `smart-writer-v2` belongs in `plan.md`.
-5. **Eval suite** — golden prompts (grant + one non-grant) and “surprise/specificity” rubrics belong in plan/packets.
+1. **Property vocabulary expansion** — larger closed list at implementation; charter seed is enough.
+2. **Exact intake question for citation mode** — copy/options belong in plan/UI spec (may change when F7 locks).
+3. **Research providers / allowlists** — tool choice belongs in `plan.md`.
+4. **Monorepo sharing** — reuse vs clean-room inside `smart-writer-v2` belongs in `plan.md`.
+5. **Acceptance catalog bootstrap** — create catalog file, seed first check ids under the F1 classes, plus golden prompts (grant + one non-grant); belongs in plan/packets.
+
+---
+
+## Review locks
+
+Decisions from independent review triage. Edit this table as each finding locks; then fold substance into Acceptance / Intent above.
+
+| ID | Status | Lock |
+|----|--------|------|
+| **F1** | **locked** | Failable outcome classes (audience-fit, provenance, research-used-or-declared) in charter; surprise/emotion aspirational; detailed checks in a **separate extensible acceptance catalog**, not buried in code/prompts. *(Also promoted to lab constitution §B–C — process, not SW-only.)* |
+| F2 | **paused** | Beachhead vs general primacy — resume after framework settle |
+| F3 | **paused** | Grounding vs property list |
+| F4 | **paused** | Web vs uploads for funder fit |
+| F5 | **paused** | Learning/stack out of product Ubiquitous |
+| F6 | **paused** | Minimal grant intent slots |
+| F7 | **paused** | Citations default + override |
 
 ---
 
 ## Approval
 
-- [ ] Human marks status **approved** (edit this file) when the charter matches intent.
+- [ ] Human marks status **approved** (edit this file) when remaining review locks are done and the charter matches intent.
 - [ ] After approval: draft `plan.md`, then first executable packet—not before.

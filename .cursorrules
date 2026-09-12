@@ -1,15 +1,15 @@
 # 2026 Research Lab — editor guardrails (legacy pointer)
 
 **Canonical agent contract:** [`AGENTS.md`](./AGENTS.md)  
+**Spec Kit constitution:** [`.specify/memory/constitution.md`](./.specify/memory/constitution.md)  
 **Human map:** [`docs/agent-os/README.md`](./docs/agent-os/README.md)  
-**Cursor rules:** [`.cursor/rules/`](./.cursor/rules/)
+**Cursor rules / skills:** [`.cursor/rules/`](./.cursor/rules/) · `speckit-*` skills
 
 This file remains so older tooling that still reads `.cursorrules` finds a pointer.
-Do not duplicate policy here — edit `AGENTS.md` and `.cursor/rules/` instead.
+Do not duplicate policy here.
 
 ## Quick reminders
 
 - Nix + `uv` (per app); no durable `pip install`.
 - Apps in `/apps/<name>`; shared in `/modules`.
-- PydanticAI schema-first; type hints on all signatures.
-- Spec → Plan → Packet → Implement (`specs/`, `notes/packets/`).
+- Process: Spec Kit (`/speckit-*`) + lab overlays (review, falsifiability, acceptance catalog).

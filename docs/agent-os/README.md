@@ -1,65 +1,60 @@
 # Agent OS (this lab)
 
-Thin, product-agnostic harness aligned with industry **Spec-Driven Development (SDD)** and the open **[AGENTS.md](https://agents.md/)** standard.
-
-This is not a proprietary invent. Same shape as GitHub Spec Kit / common 2026 practice:
-
-**Specify → Plan → Tasks → Implement**, with humans gating phase boundaries.
+**Process base = [GitHub Spec Kit](https://github.com/github/spec-kit)** (installed).  
+Lab taste = thin **overlays** in constitution + template overrides — not a second homemade methodology.
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│  Portable core (any coding agent)                           │
-│  AGENTS.md · specs/ · notes/packets/ · architect-backlog    │
+│  Spec Kit (.specify/)                                       │
+│  constitution · templates · scripts · /speckit-* skills     │
 └─────────────────────────────────────────────────────────────┘
                               │
 ┌─────────────────────────────┴───────────────────────────────┐
-│  Cursor adapters (optional, richer loading)                 │
-│  .cursor/rules/*.mdc · .cursor/skills/sdd-*                 │
+│  Lab overlays (stable process — do not re-argue per app)    │
+│  · Independent spec review brief                            │
+│  · Failable outcomes + extensible acceptance catalog        │
+│  · Optional notes/packets for long background runs          │
+│  · Cattle / secrets / registry (constitution + AGENTS.md)   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Mental model (learn once)
+## Learn once
 
-| Concept | What it is | Where |
-|---------|------------|--------|
-| **Constitution** | Durable rules every agent must respect | `AGENTS.md` + `notes/architect-backlog.md` |
-| **Spec** | What/why for a feature (source of truth) | `specs/<feature>/spec.md` |
-| **Plan** | How (tech approach) | `specs/<feature>/plan.md` |
-| **Packet** | Bounded executable unit for one agent run | `notes/packets/<id>.md` |
-| **PR** | Delivery + review surface | git branch |
+| Concept | Where |
+|---------|--------|
+| Constitution | `.specify/memory/constitution.md` |
+| Spec / plan / tasks templates | `.specify/templates/` (+ `overrides/spec.md`) |
+| Slash-style skills | `.cursor/skills/speckit-*` |
+| Spec review brief | `docs/agent-os/SPEC_REVIEW_PROMPT.md` |
+| Acceptance catalog template | `docs/agent-os/acceptance-catalog-template.md` |
+| Portable summary | `AGENTS.md` |
 
-The **shared memory bus** is git. Agents read/write these files; you stop copy/pasting chat between sessions.
+## Default loop
 
-## When to use which phase
+1. `/speckit-specify` (or equivalent) → draft spec  
+2. Independent review (fresh session + review brief) → lock findings in spec  
+3. Human marks **Approved** when Blockers cleared  
+4. `/speckit-plan` → `/speckit-tasks` → `/speckit-implement`  
+5. Optional: wrap a task slice in `notes/packets/` for a long background run  
 
-| Situation | Do this |
-|-----------|---------|
-| New capability / non-trivial change | Spec → Plan → Packet(s) → Implement |
-| Tiny fix (typo, one-liner) | Skip to Implement; still run tests |
-| Decision / won’t-do | Lock in `notes/architect-backlog.md` first |
-| Long unattended run (30–180 min) | Packet with hard DoD + background agent |
+## Product vs process
 
-## Cursor skills (invoke by name)
+| Debate freely (per product) | Do not re-litigate (framework) |
+|-----------------------------|-------------------------------|
+| Beachhead, UX, domain rules | Spec Kit phase order |
+| Property lists, research sources | Independent review before approve |
+| Stack *choices that fit* | Failable outcomes + acceptance catalog |
+| | Cattle/secrets/registry invariants |
 
-| Skill | Use when |
-|-------|----------|
-| `sdd-specify` | Turn a PRD / idea into `specs/.../spec.md` |
-| `sdd-packet` | Turn an approved plan into a work packet |
-| `sdd-implement` | Execute a packet (session or background brief) |
+## Legacy notes
 
-## What stays product-specific
+- Homemade `specs/_TEMPLATE.md` / `sdd-*` skills are **deprecated**; prefer Spec Kit + overlays.
+- In-flight specs (e.g. `specs/smart-writer-v2/`) may still use older shape until migrated after framework settle.
+- Product locks on Smart Writer V2 are **paused** until you resume product debate on the Spec Kit base.
 
-Only thin overlays:
+## Upgrade Spec Kit CLI
 
-- Lab invariants (Nix, uv, secrets schema, registry) in `AGENTS.md` / `.cursor/rules/lab-invariants.mdc`
-- Locked decisions in `notes/architect-backlog.md`
-
-Workflow shape does **not** change when you add a new app.
-
-## Optional later upgrades
-
-- Full [GitHub Spec Kit](https://github.com/github/spec-kit) CLI if you want slash-command automation (`/specify`, `/plan`, `/tasks`, `/implement`)
-- Nested `apps/<id>/AGENTS.md` when an app outgrows root guidance
-- Hooks that auto-run scoped pytest on agent stop
-
-Start lean; add tooling when friction is real.
+```bash
+uv tool install specify-cli   # or: uv tool upgrade specify-cli
+specify version
+```

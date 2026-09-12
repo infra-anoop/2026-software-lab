@@ -1,13 +1,11 @@
 # Specs
 
-Feature specifications for Spec-Driven Development. Source of truth for *what* and *why*.
+Feature specifications via **GitHub Spec Kit**.
 
-```text
-specs/
-  _TEMPLATE.md
-  <feature-slug>/
-    spec.md      # required
-    plan.md      # after Specify is approved
-```
+- Official / override templates: `.specify/templates/` and `.specify/templates/overrides/spec.md`
+- Constitution: `.specify/memory/constitution.md`
+- Create features with `/speckit-specify` (Cursor skill `speckit-specify`)
+- After draft: independent review — `docs/agent-os/SPEC_REVIEW_PROMPT.md`
+- Acceptance catalog: `docs/agent-os/acceptance-catalog-template.md` → `specs/<feature>/acceptance.md`
 
-Start from `_TEMPLATE.md`. Do not invent a parallel docs tree for the same feature unless the app already has design docs — then link them from `spec.md` instead of duplicating.
+`specs/_TEMPLATE.md` is **deprecated** (kept only so old links do not 404).
