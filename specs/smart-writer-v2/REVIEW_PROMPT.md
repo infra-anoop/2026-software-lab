@@ -7,4 +7,4 @@
 
 `SPEC_PATH` = `specs/smart-writer-v2/spec.md`
 
-**Product locks F1–F8 complete** (incl. chat/revise continuity). Next: human **Approved**, then `/speckit-plan`. Optional process review anytime.
+**Spec Approved** (F1–F8 + R1–R9). Next: `/speckit-plan`. Report: [`PROCESS_REVIEW.md`](./PROCESS_REVIEW.md).

@@ -4,13 +4,13 @@
 
 **Created**: 2026-09-10
 
-**Status**: Draft — **F1–F8** product locks in place — ready for human **Approved** (optional process review still available)
+**Status**: **Approved** — F1–F8 + R1–R9 adjudicated. Next: `/speckit-plan` (Architecture + Phased delivery).
 
-**Input**: Lab coaching locks (A1–D, N1–N14) + independent **product** review triage; app id `smart-writer-v2` (new registry app; V1 `smart-writer` remains legacy)
+**Input**: Independent **product** (F*) + **process** (R*) review triage; app id `smart-writer-v2` (new registry app; V1 `smart-writer` remains legacy). Pre-spec coaching ids A1–D / N1–N14 are **superseded** by F1–F8 (R3) — not cited as binding input.
 
-**Process**: Spec Kit + `.specify/memory/constitution.md` — do not re-argue process here.
+**Process**: Spec Kit + `.specify/memory/constitution.md` — do not re-argue process here. Process review artifact: [`PROCESS_REVIEW.md`](./PROCESS_REVIEW.md).
 
-**Lab dual intent (F5):** This feature is a **dogfood vehicle** for Agent OS / Spec Kit learning (meta product). The **surface product** is a grant/donation short-form writer (F2 primacy). Surface pass/fail = F1–F4 style outcomes. Journey/stack prefs belong in Plan/Assumptions — not as surface Ubiquitous gates. Optional **process review**: `docs/agent-os/PROCESS_REVIEW_PROMPT.md`.
+**Lab dual intent (F5/R2):** Dogfood vehicle for Agent OS / Spec Kit. **Surface** pass/fail = F1–F4 / SC-001–007. **Lab** success for this loop = human plan/PR adjudication (not harness SC classes). Journey/stack prefs → Plan/Assumptions only.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -197,6 +197,8 @@ As a general short-form writer, I want the same engine for other 1–3 page goal
 - **Machine critique cycle** (optional): Writer↔assessor-style loops if used in plan — distinct from **human revise** (F8).
 - **Acceptance check result** (later): Catalog id × run outcome for evals.
 
+For SC-006/007: revise vs generate MUST be distinguishable in run/artifact metadata (exact fields → plan).
+
 ## Success Criteria *(mandatory)*
 
 Hard gates are **structural / evidence** checks, not literary taste. (F1 locked.)
@@ -224,7 +226,7 @@ Charter keeps stable classes; catalog grows from test runs.
 
 ## Review locks *(mandatory before Approved)*
 
-Briefs: product [`SPEC_REVIEW_PROMPT.md`](../../docs/agent-os/SPEC_REVIEW_PROMPT.md) (**F-***); optional process [`PROCESS_REVIEW_PROMPT.md`](../../docs/agent-os/PROCESS_REVIEW_PROMPT.md) (**R-***).
+Briefs: product [`SPEC_REVIEW_PROMPT.md`](../../docs/agent-os/SPEC_REVIEW_PROMPT.md) (**F-***); process [`PROCESS_REVIEW_PROMPT.md`](../../docs/agent-os/PROCESS_REVIEW_PROMPT.md) (**R-***). Report: [`PROCESS_REVIEW.md`](./PROCESS_REVIEW.md).
 
 | ID | Status | Lock |
 |----|--------|------|
@@ -236,6 +238,15 @@ Briefs: product [`SPEC_REVIEW_PROMPT.md`](../../docs/agent-os/SPEC_REVIEW_PROMPT
 | **F6** | **locked** | **Internal** intake state: intent slots + property steering; interleaved Q&A for holes only; **A before B** internally; users never required to know axis names. |
 | **F7** | **locked** | **Default = sources panel** for grant beachhead; **one light override** (inline / footnotes / panel / combo). Skip citation UX ask when no sources. Provenance (SC-003) independent of display mode. |
 | **F8** | **locked** | **Chat loop:** free-form user messages; complete outputs; internal schema inferred (axes not user-facing). **Revise-by-default** on feedback (continuity); explicit **regenerate** for fresh generate. Q&A interleaved as specific questions when needed. |
+| **R1** | **accepted** | Dual intent / anti-cargo-cult stance is correct; do not add stack prefs as SC. |
+| **R2** | **locked** | Lab success for this dogfood loop = **human plan/PR adjudication only** — no harness SC classes. Surface falsifiability remains SC-001–007. |
+| **R3** | **locked** | Coaching locks A1–D / N1–N14 **superseded** by F1–F8; opaque citation dropped from Input. |
+| **R4** | **accepted** | Keep product catalog; thin **auto** subset + further SC hygiene → plan/tasks (not Approve blocker). |
+| **R5** | **deferred** | Open Architecture forks (jobs, ArtifactVersion/revise, preview gate, app boundary, etc.) are **required plan decisions** — not optional research. No spec rewrite. |
+| **R6** | **deferred** | MVP DoD bus = Spec Kit **`tasks.md`**; thin `notes/packets/` only if a later slice is long/unattended — confirm in plan Phasing. |
+| **R7** | **locked** | Process R* triage **required for this dogfood vehicle** before Approved; global template stays optional for non-dogfood features. |
+| **R8** | **accepted** | Spec Kit shape sufficient; SC-001 soft length remains human (F1). |
+| **R9** | **locked** | Agent OS README feature status kept in sync with spec locks. |
 
 **Status → Approved only after Blockers/Debates from review are resolved or explicitly accepted.**
 
@@ -245,7 +256,10 @@ Briefs: product [`SPEC_REVIEW_PROMPT.md`](../../docs/agent-os/SPEC_REVIEW_PROMPT
 - Users can supply funder URLs/PDFs for serious grant asks; web alone is allowed but not the only path to fit.
 - Property vocabulary will grow at implementation; seed list is enough for spec approval.
 - Lab learning (v0/Next UI, LangGraph-when-fit, Spec Kit loop) is a **first-class lab/journey goal** and preferred Plan posture when it fits — **not** a surface-product Ubiquitous fail condition (F5).
-- Optional process/lab-vehicle review may be run later via `PROCESS_REVIEW_PROMPT.md`; product review continues with **F** locks.
+- **Lab measurement (R2):** Lab success is judged by human plan/PR adjudication and keeping Spec Kit rails — **not** by harness SC classes. Catalog `auto` checks / optional harness lint may grow later in plan/tasks.
+- **Catalog automation (R4):** Thin auto-candidate checks (e.g. revise vs generate distinguishable) named in plan MVP exit criteria; not required to invent a full auto suite before Approve.
+- **MVP DoD bus (R6):** Spec Kit `tasks.md` for v2.0 MVP; packets optional later for long unattended slices.
+- Process review for this dogfood vehicle is filed and **human-adjudicated** (`PROCESS_REVIEW.md`); global template remains optional for non-dogfood features (R7).
 - Iterative improvement via chat feedback is the **normal** path; cold full regen is opt-in (F8).
 - Cattle/secrets/registry invariants apply (`AGENTS.md` / constitution).
 - Cost/latency matter but are not primary vs learning + product quality on this journey.
@@ -258,20 +272,21 @@ Briefs: product [`SPEC_REVIEW_PROMPT.md`](../../docs/agent-os/SPEC_REVIEW_PROMPT
 - Finalizing full property vocabulary in this document.
 - Multi-vertical packaging as separate apps.
 - Access to truly secret / non-public information.
+- Instrumenting lab success via harness SC classes in this feature’s surface Ubiquitous set (R2).
 
-## Open questions (plan / locks)
+## Open questions (plan Architecture prompts)
 
-1. Optional: run **process** review (`PROCESS_REVIEW_PROMPT.md`) before or after Approved.
-2. Property vocabulary expansion — implementation.
-3. Research providers / allowlists — `plan.md`.
-4. Monorepo sharing vs clean-room in `smart-writer-v2` — `plan.md`.
-5. Golden prompts (grant + non-grant) + catalog growth — plan/tasks.
-6. Exact citation UI control placement — plan/UI.
-7. Revise vs generate prompt/graph details, version UX, turn/cost caps — `plan.md`.
+1. Property vocabulary expansion — implementation.
+2. Research providers / allowlists — `plan.md`.
+3. Monorepo sharing vs clean-room in `smart-writer-v2` — `plan.md`.
+4. Golden prompts (grant + non-grant) + catalog growth / thin auto subset — plan/tasks.
+5. Exact citation UI control placement — plan/UI.
+6. Revise vs generate prompt/graph details, version UX, turn/cost caps — `plan.md`.
+7. Preview gate design; jobs model — `plan.md`.
 
 ## Approval
 
 - [x] Product review locks F1–F8 done.
-- [ ] Optional process review (R-*) triaged if run.
-- [ ] Human sets **Status: Approved**.
+- [x] Process review R1–R9 human-adjudicated (R7 required for this dogfood vehicle).
+- [x] Human sets **Status: Approved**.
 - [ ] Then `/speckit-plan` (Architecture + Phased delivery) — **not** tasks/implement before plan approval (constitution §E).
