@@ -30,8 +30,21 @@ Logical model for MVP (in-memory OK). Field names are contract-facing; storage m
 | producing_mode | `generate` \| `revise` | **Required for SC-006/007** |
 | body | string | Complete user-visible draft |
 | citation_mode | `panel` \| `inline` \| `footnotes` \| `combo` | Default `panel` when sources exist (F7) |
-| source_ids | list[string] | Provenance attachments |
+| source_ids | list[string] | All sources referenced |
+| claims | list[ClaimProvenance] | **P4** — claim-level provenance |
+| materials_bundle_ids | list[string] | F4 materials side |
+| web_bundle_ids | list[string] | F4 web side |
+| web_signal | `used` \| `none_declared` \| `disabled` | SC-004 |
 | created_at | datetime | |
+
+## ClaimProvenance *(P4)*
+
+| Field | Type | Notes |
+|-------|------|-------|
+| claim_id | string | |
+| excerpt | string | Quote or span from `body` (org/funder-specific assertion) |
+| source_id | string \| null | Set when grounded |
+| status | `grounded` \| `uncertain` | `uncertain` ⇒ omit or mark in prose; null source_id |
 
 ## InternalRunState
 
@@ -64,6 +77,7 @@ Invisible; updated from free-form inference (FR-017). Never required as user-fac
 |-------|------|-------|
 | source_id | string | |
 | kind | `user_material` \| `web` | F4 roles |
+| bundle | `materials` \| `web` | Which retrieval façade produced it |
 | uri | string \| null | |
 | title | string \| null | |
 | excerpt | string \| null | |
@@ -108,4 +122,5 @@ user message
 - `mode=revise` ⇒ `parent_artifact_id` is non-null and exists in conversation.
 - `mode=generate` ⇒ `parent_artifact_id` is null on the new artifact.
 - Writing assistant turns that are not clarify MUST include a complete `body` (FR-018).
-- Do not expose intent slot / axis names in assistant clarify copy (FR-021).
+- Do not expose intent slot / axis names in assistant clarify copy (FR-021 / **P5**).
+- Grant + missing intent slots ⇒ clarify only; never enqueue generate/revise (**P5**).

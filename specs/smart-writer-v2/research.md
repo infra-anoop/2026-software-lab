@@ -1,7 +1,50 @@
 # Research — smart-writer-v2
 
 Decisions resolving spec Open questions and Architecture forks (R5).  
-Format: Decision / Rationale / Alternatives.
+Format aligned with [`research-template.md`](../../docs/agent-os/research-template.md) / [`STACK_POSTURE.md`](../../docs/agent-os/STACK_POSTURE.md).  
+**P* adjudication in progress** — rows updated as locks land.
+
+---
+
+## Block: Topology & runtime custody
+
+- **Decision:** **P1 (b)** — Vercel (Next UI + BFF) + Railway FastAPI worker; browser never holds preview secret.
+- **Rationale:** STACK_POSTURE managed UI host + safe secret custody; teaches modern split without putting spend key in the client.
+- **Pattern source:** none (explicitly not “in-tree web under one Python process”).
+- **Alternatives considered:** (a) Next BFF on same Railway-style host; (c) no Next in P1 (SSR/HTML); (d) FastAPI serves static Next export — **rejected** for v2.0 MVP in favor of Vercel UI host.
+
+---
+
+## Block: Jobs / orchestration (runtime)
+
+- **Decision:** MVP **in-process `lab_shared.jobs.JobRunner`** (A9-class residual: restart/multi-instance loss documented) executing a **LangGraph `StateGraph` (P3)**.
+- **Rationale:** P2 learning-scope cut on *managed* queues; P3 takes the observable-graph lesson on the worker.
+- **Pattern source:** `modules/lab_shared` JobRunner; V1 LangGraph usage as pattern only.
+- **Alternatives considered:** Inngest, Trigger.dev, Temporal, LangGraph Platform checkpointer — **Deferred** (post-MVP). Linear-only pipeline — **rejected** for P1 (P3 lock A).
+
+### LangGraph P1 nodes (generate)
+
+`infer` → `materials` → `web` → `write` → `provenance`  
+Revise: may skip or narrow `materials`/`web`; always produces new `ArtifactVersion` with `parent_artifact_id`.
+
+## Block: Search / retrieval
+
+- **Decision:** MVP **Tavily** when key set; else noop + SC-004 declare path. URL extract for user materials first-class (F4). **P4:** retrieval façade emits **materials_bundle** vs **web_bundle**; artifacts carry **ClaimProvenance** (excerpt → source_id | uncertain).
+- **Rationale:** Beachhead grounding bet needs claim-level checks, not sources-bag theater.
+- **Pattern source:** V1 EvidenceBundle ideas as pattern only.
+- **Alternatives considered:** Firecrawl / Jina / vendor web tools — **Deferred**. Artifact-level `sources[]` only — **rejected** for MVP (P4 lock 1).
+
+## Block: Clarify gate (product fidelity)
+
+- **Decision:** **P5** — Grant missing intent slots ⇒ `type=clarify` only in P1; NL questions; no default slot-id leakage; P1 must-clarify fixture.
+- **Rationale:** FR-003a / F6; don’t defer the gate to “harden.”
+- **Pattern source:** none.
+- **Alternatives considered:** Soft MVP (rich-prompt skip clarify until P2) — **rejected**.
+
+- **Decision:** MVP **POST + poll** job status via BFF.
+- **Rationale:** Matches worker JobRunner; simpler than streaming for first vertical.
+- **Pattern source:** V1 job poll pattern (via BFF, not browser secret).
+- **Alternatives considered:** Vercel AI SDK / `useChat` / SSE streaming — **Deferred** (fits Vercel host; pull in when UX latency is the lesson).
 
 ---
 
@@ -77,13 +120,9 @@ Format: Decision / Rationale / Alternatives.
 
 ## R8. Seed property vocabulary
 
-**Decision:** Closed seed (implementation may extend):  
-`factual` (tone/emphasis only — F3), `persuasive`, `concise`, `warm`, `formal`, `humorous` (grant default de-emphasized/off — F3), `specific`, `urgent`.  
-Ranking inferred from free-form; optional chips.
-
-**Rationale:** Enough to exercise FR-004–006 without finalizing full taxonomy (OOS).
-
-**Alternatives:** Empty list until runtime (steering vacuous); huge ontology (gold-plate).
+- **Decision (single list — P7):** `factual` (tone only — F3), `persuasive`, `concise`, `warm`, `formal`, `humorous` (grant default off — F3), `specific`, `urgent`. Ranking inferred from free-form; optional chips. No label drift across docs.
+- **Rationale:** Enough for FR-004–006 without full taxonomy (OOS).
+- **Alternatives:** Empty list (vacuous) / huge ontology (gold-plate) — rejected.
 
 ---
 

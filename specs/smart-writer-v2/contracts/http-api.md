@@ -40,19 +40,18 @@ Request:
 
 Response (one of):
 
-**Clarify (sync):**
+**Clarify (sync) — grant slots incomplete (P5):**
 
 ```json
 {
   "type": "clarify",
-  "assistant_message": { "message_id": "...", "text": "..." },
-  "missing_hints": ["whom", "ask"]
+  "assistant_message": { "message_id": "...", "text": "..." }
 }
 ```
 
-(`missing_hints` optional/internal — UI should prefer natural-language question text only.)
+Natural-language questions only. Do **not** include `missing_hints` / slot ids in the default client payload (FR-021).
 
-**Job accepted:**
+**Job accepted** — only when grant intent slots are complete (or non-grant path):
 
 ```json
 {
@@ -76,7 +75,11 @@ Response (one of):
     "producing_mode": "generate | revise",
     "body": "...",
     "citation_mode": "panel",
-    "sources": []
+    "sources": [],
+    "claims": [
+      { "claim_id": "...", "excerpt": "...", "source_id": "...", "status": "grounded" }
+    ],
+    "web_signal": "used | none_declared | disabled"
   }
 }
 ```
@@ -87,15 +90,18 @@ Response (one of):
 |------|------|
 | 401 | Bad/missing audit secret |
 | 404 | Unknown conversation/job/artifact |
-| 409 | `revise` requested but no parent artifact |
+| 409 | `revise` without parent artifact; **or** attempt to enqueue grant write while intent slots incomplete (should have been `clarify`) |
 | 422 | Validation |
 | 429 | Rate limit |
 | 503 | Secret unset / queue overloaded |
 
-## Auto-check hooks (R4)
+## Auto-check hooks (R4 / P4)
 
 Contract tests should assert:
 
 1. Successful revise job → `mode=revise` and `artifact.parent_artifact_id` non-null.
 2. Successful generate/regenerate → `mode=generate` and `parent_artifact_id` null.
 3. Protected routes reject wrong secret.
+4. Successful grant artifact with org/funder claims → each such claim in `claims[]` has `status=grounded`+`source_id` or `status=uncertain` (SC-003 shape).
+5. When web enabled and no useful web hits → `web_signal=none_declared` (SC-004 shape).
+6. Grant turn with empty Whom/Ask (fixture) → `type=clarify`, no `job_id` (P5).

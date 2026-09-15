@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-10
 
-**Status**: **Approved** — F1–F8 + R1–R9 adjudicated. Plan drafted (`plan.md`) — awaiting human Architecture + Phasing approval.
+**Status**: **Approved** — F1–F8 + R1–R9; plan Architecture + Phasing **Approved** (P1–P8). Next: `/speckit-tasks`.
 
 **Input**: Independent **product** (F*) + **process** (R*) review triage; app id `smart-writer-v2` (new registry app; V1 `smart-writer` remains legacy). Pre-spec coaching ids A1–D / N1–N14 are **superseded** by F1–F8 (R3) — not cited as binding input.
 
@@ -289,5 +289,6 @@ Briefs: product [`SPEC_REVIEW_PROMPT.md`](../../docs/agent-os/SPEC_REVIEW_PROMPT
 - [x] Product review locks F1–F8 done.
 - [x] Process review R1–R9 human-adjudicated (R7 required for this dogfood vehicle).
 - [x] Human sets **Status: Approved**.
-- [ ] Human approves **plan.md** Architecture + Phased delivery.
+- [x] Plan Architecture review (**P-***) triaged — see `PLAN_REVIEW.md`.
+- [x] Human approves **plan.md** Architecture + Phased delivery.
 - [ ] Then `/speckit-tasks` — **not** implement before plan approval (constitution §E).
