@@ -7,4 +7,4 @@
 
 `SPEC_PATH` = `specs/smart-writer-v2/spec.md`
 
-**Spec Approved** (F1–F8 + R1–R9). Next: `/speckit-plan`. Report: [`PROCESS_REVIEW.md`](./PROCESS_REVIEW.md).
+**Spec Approved** (F1–F8 + R1–R9). Plan drafted — human must approve Architecture + Phasing before `/speckit-tasks`.

@@ -55,7 +55,7 @@ Lab taste = thin **overlays** in constitution + template overrides — not a sec
 ## Legacy notes
 
 - Homemade `specs/_TEMPLATE.md` / `sdd-*` skills are **deprecated**; prefer Spec Kit + overlays.
-- `specs/smart-writer-v2/` is Spec Kit–shaped + `acceptance.md`; **Approved** (F1–F8, R1–R9) — next `/speckit-plan`.
+- `specs/smart-writer-v2/` **Approved** spec; `plan.md` drafted — awaiting human Architecture + Phasing approval.
 
 ## Upgrade Spec Kit CLI
 
