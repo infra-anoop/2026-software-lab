@@ -56,15 +56,15 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 1. **Setup**: Run `.specify/scripts/bash/setup-plan.sh --json` from repo root and parse JSON for FEATURE_SPEC, IMPL_PLAN, FEATURE_DIR, BRANCH. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
-2. **Load context**: Read FEATURE_SPEC and `.specify/memory/constitution.md`. Load IMPL_PLAN template (already copied).
+2. **Load context**: Read FEATURE_SPEC and `.specify/memory/constitution.md`. Load IMPL_PLAN template (already copied). **Also read** (lab): `docs/agent-os/STACK_POSTURE.md`, `docs/agent-os/PLAN_AUTHORING_GATES.md`, `docs/agent-os/research-template.md`.
 
 3. **Execute plan workflow**: Follow the structure in IMPL_PLAN template to:
    - Fill Technical Context (mark unknowns as "NEEDS CLARIFICATION")
    - Fill Constitution Check section from constitution
    - Evaluate gates (ERROR if violations unjustified)
-   - Phase 0: Generate research.md (resolve all NEEDS CLARIFICATION)
-   - Phase 1: Generate data-model.md, contracts/, quickstart.md
-   - Re-evaluate Constitution Check post-design
+   - Phase 0: Generate `research.md` from **research-template.md** shape; resolve all NEEDS CLARIFICATION; satisfy PLAN_AUTHORING_GATES
+   - Phase 1: Generate data-model.md, contracts/, quickstart.md; fill **Topology & runtime custody** if UI + protected API
+   - Re-evaluate Constitution Check + PLAN_AUTHORING_GATES post-design (**ERROR** if unmet — fix or escalate; do not soft-complete)
 
 ## Mandatory Post-Execution Hooks
 
@@ -105,6 +105,17 @@ Check if `.specify/extensions.yml` exists in the project root.
 
 Command ends after Phase 1 design. Report branch, IMPL_PLAN path, and generated artifacts.
 
+**Lab overlay — authoring gates (mandatory):** Before claiming complete, verify `docs/agent-os/PLAN_AUTHORING_GATES.md`. If any rule fails, list gaps and **do not** report success — fix artifacts or escalate to the human.
+
+**Lab overlay — review:** After a valid draft, remind the human that **Plan Architecture review** is recommended for non-trivial / first-of-kind plans: fresh session + `docs/agent-os/PLAN_REVIEW_PROMPT.md` (**P-***; Architecture-heavy incl. Learning/SOTA fit per `STACK_POSTURE.md`, Phasing-light). Do not start `/speckit-tasks` until human plan approval (after P* triage when review is run).
+
+## Done When
+
+- [ ] Plan workflow executed and design artifacts generated
+- [ ] PLAN_AUTHORING_GATES satisfied (or human escalated with listed gaps)
+- [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above
+- [ ] Completion reported to user with branch, plan path, and generated artifacts
+
 ## Phases
 
 ### Phase 0: Outline & Research
@@ -123,16 +134,13 @@ Command ends after Phase 1 design. Report branch, IMPL_PLAN path, and generated 
      Task: "Find best practices for {tech} in {domain}"
    ```
 
-3. **Consolidate findings** in `research.md` using format:
-   - Decision: [what was chosen]
-   - Rationale: [why chosen]
-   - Alternatives considered: [what else evaluated]
+3. **Consolidate findings** in `research.md` using **`docs/agent-os/research-template.md`** shape (Decision / Rationale / Pattern source / Alternatives per major block). Satisfy `PLAN_AUTHORING_GATES.md`.
 
-**Output**: research.md with all NEEDS CLARIFICATION resolved
+**Output**: research.md with all NEEDS CLARIFICATION resolved and authoring gates met
 
 ### Phase 1: Design & Contracts
 
-**Prerequisites:** `research.md` complete
+**Prerequisites:** `research.md` complete **and** PLAN_AUTHORING_GATES satisfied (or escalated)
 
 1. **Extract entities from feature spec** → `data-model.md`:
    - Entity name, fields, relationships
@@ -158,9 +166,4 @@ Command ends after Phase 1 design. Report branch, IMPL_PLAN path, and generated 
 
 - Use absolute paths for filesystem operations; use project-relative paths for references in documentation
 - ERROR on gate failures or unresolved clarifications
-
-## Done When
-
-- [ ] Plan workflow executed and design artifacts generated
-- [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above
-- [ ] Completion reported to user with branch, plan path, and generated artifacts
+- ERROR on PLAN_AUTHORING_GATES failures (lab) — do not soft-complete the plan draft

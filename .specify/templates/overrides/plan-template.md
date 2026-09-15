@@ -8,6 +8,8 @@
 Do **not** run `/speckit-tasks` or implement until both sections are human-approved.  
 Phasing references architecture; it does not replace it.
 
+**Plan Architecture review:** After this draft exists, recommended (non-trivial / first-of-kind): fresh session + `docs/agent-os/PLAN_REVIEW_PROMPT.md` (**P-***; Architecture-heavy incl. Learning/SOTA fit, Phasing-light). See `docs/agent-os/STACK_POSTURE.md`. Deposit `PLAN_REVIEW.md`; triage before human approval.
+
 ## Summary
 
 [Extract from feature spec: primary requirement + technical approach]
@@ -17,6 +19,7 @@ Phasing references architecture; it does not replace it.
 <!--
   Building blocks and boundaries. Not a task list.
   Keep technology-agnostic where possible; name concrete choices when locked.
+  For each major block, research.md must list Alternatives (STACK_POSTURE).
 -->
 
 ### System building blocks
@@ -32,6 +35,18 @@ Phasing references architecture; it does not replace it.
 | Block | Owns | Does not own |
 |-------|------|--------------|
 | … | … | … |
+
+### Topology & runtime custody *(mandatory if browser UI + protected API)*
+
+<!--
+  Folder layout is NOT topology. Lock before tasks.
+  See docs/agent-os/PLAN_AUTHORING_GATES.md rule 5.
+-->
+
+- **Runtimes / hosts**: [e.g. Next on Vercel + FastAPI worker on Railway | single FastAPI serves UI | two registry apps]
+- **How UI calls API**: [BFF server routes | same-origin | browser→API — last requires justifying secret custody]
+- **Preview / spend secret custody**: [who holds it; browser must not]
+- **Cattle manifests**: [which git paths declare each runtime]
 
 ### Data & persistence
 
@@ -93,10 +108,15 @@ Phasing references architecture; it does not replace it.
 *GATE: Must pass before tasks/implement. Re-check after architecture edits.*
 
 - [ ] Architecture section complete (blocks, boundaries, data, APIs/UI as applicable)
+- [ ] Topology & runtime custody locked if UI + protected API (PLAN_AUTHORING_GATES)
 - [ ] Phased delivery present with MVP and exit criteria
+- [ ] `research.md` alternatives per major block (STACK_POSTURE) — sibling-only alts = fail
+- [ ] Orchestrator P1 lock (named nodes **or** linear + migrate trigger — not “when fit” alone)
+- [ ] Plan Architecture review (P*) triaged if run — or explicitly skipped with reason
 - [ ] No tasks/implement started before human approval of this plan
 - [ ] Secrets/registry/cattle rules respected
 - [ ] Learning/stack prefs not smuggled as product gates
+- [ ] PLAN_AUTHORING_GATES satisfied (or escalated to human — do not soft-complete)
 
 ## Project Structure
 
@@ -105,11 +125,12 @@ Phasing references architecture; it does not replace it.
 ```text
 specs/[###-feature]/
 ├── plan.md              # This file
-├── research.md          # Optional
+├── research.md          # Required: use docs/agent-os/research-template.md shape
 ├── data-model.md        # Optional / from plan
 ├── quickstart.md        # Optional
 ├── contracts/           # Optional
 ├── acceptance.md        # Lab: extensible checks
+├── PLAN_REVIEW.md       # Optional: P* deposit
 └── tasks.md             # After plan approved (/speckit-tasks)
 ```
 

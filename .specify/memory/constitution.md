@@ -4,7 +4,7 @@ Non-negotiable principles for every feature and agent run in this monorepo.
 Spec Kit phases (`/speckit-*`) and `AGENTS.md` must respect this document.
 Product-unique choices belong in feature specs — **not** by reinventing process.
 
-**Version**: 1.2.0 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-12
+**Version**: 1.3.2 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-15
 
 ## Core Principles
 
@@ -47,6 +47,12 @@ LangGraph and similar mainstream tools are acceptable when they fit the pipeline
 **Unwanted**: using a pattern solely because it is trendy, or solely because it is familiar when it is a misfit.
 Learning/stack preferences must **not** be product Ubiquitous acceptance criteria that block a correct product.
 
+At **plan** time, make those preferences **visible as Architecture exploration**: see `docs/agent-os/STACK_POSTURE.md` and **hard authoring gates** in `docs/agent-os/PLAN_AUTHORING_GATES.md`.  
+`research.md` MUST use the lab research shape (`docs/agent-os/research-template.md`): Decision / Rationale / Alternatives (≥1 non-sibling SOTA/managed/OSS or explicit defer) per major block — including **UI host** and **topology/secret custody**.  
+**Sibling-app pattern reuse is not exploration.** Clean-room app id ≠ clean-room topology.  
+`/speckit-plan` agents MUST ERROR (fix or escalate) if PLAN_AUTHORING_GATES fail — soft “reminders” are insufficient.  
+Plan Architecture review (**P-***) stress-tests that exploration — it does **not** replace §A process review and does **not** invent product SCs for stack brands.
+
 ## Lab process overlays (stable — do not re-argue per product)
 
 These are **framework** rules. Customize product content inside them; do not debate whether they exist.
@@ -85,8 +91,15 @@ For long unattended agent runs, optional lab **packets** (`notes/packets/`) may 
 1. **Architecture** — building blocks, boundaries, data/persistence, APIs/contracts, UI surfaces, major deps/risks. Structure first; not a sprint list.
 2. **Phased delivery** — high-level order toward that architecture (e.g. wireframe → API hookup → MVP), with exit criteria. Phases **reference** architecture; they do not replace it.
 
-**Gate:** Do not run `/speckit-tasks` or implement until a human has approved both parts.  
+**Independent Architecture review (recommended for non-trivial / first-of-kind plans):** after `/speckit-plan` drafts the plan and **before** human plan approval / `/speckit-tasks`, run a fresh session with `docs/agent-os/PLAN_REVIEW_PROMPT.md`. Finding IDs prefix **P**. Weight **Architecture heavy** (including **Learning / SOTA fit** per `STACK_POSTURE.md`), **Phasing light**. Do not re-run §A process review. Do not re-litigate F*/R* unless the plan contradicts them. Deposit report under the feature dir (e.g. `PLAN_REVIEW.md`); human adjudicates Blockers/Debates; record locks on the plan. Skip or shorten when Architecture is a thin follow-on to an already-reviewed shape.
+
+**Gate:** Do not run `/speckit-tasks` or implement until a human has approved both Architecture and Phased delivery (after P* triage when review was run).  
 Detailed work items belong in `tasks.md` (or optional packets), not as a substitute for Architecture.
+
+### F. Progressive HITL (governor altitude)
+
+Human adjudication is mandatory at **high-altitude** gates: spec Debates (F*/R*) and plan Architecture Debates (P*).  
+Downstream (tasks, implement, routine PR nits), the lab **may** use agent review with **agentic adjudication** for Nit/Later under an explicit policy (e.g. auto-accept authoring-agent recommendations) while still escalating Blockers/Debates. Goal: reduce human-as-router without removing human judgment where structure and product bets are set.
 
 ## Stack constraints
 

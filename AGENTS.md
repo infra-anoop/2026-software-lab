@@ -60,15 +60,16 @@ HTTP app loop: `uv run uvicorn app.entrypoints.http:app --reload --host 0.0.0.0 
 ## Workflow (Spec Kit + lab overlays)
 
 ```text
-Constitution → Specify → [Clarify] → independent review → Plan → [Checklist] → Tasks → [Analyze] → Implement
+Constitution → Specify → [Clarify] → independent review → Plan → [Plan Architecture review] → Tasks → [Analyze] → Implement
 ```
 
 | Phase | Artifact / skill | Notes |
 |-------|------------------|--------|
 | Constitution | `.specify/memory/constitution.md` | `/speckit-constitution` |
 | Specify | `specs/<###-feature>/spec.md` | `/speckit-specify` (lab override template) |
-| Review | Product: `SPEC_REVIEW_PROMPT.md` (**F-***); optional Process: `PROCESS_REVIEW_PROMPT.md` (**R-***) | Before Approved |
-| Plan | `plan.md` — **Architecture + Phased delivery** | `/speckit-plan`; human approves before tasks |
+| Spec review | Product **F-***; optional Process **R-*** | Before Approved |
+| Plan | `plan.md` — **Architecture + Phased delivery** | `/speckit-plan` |
+| Plan review | Architecture **P-*** (`PLAN_REVIEW_PROMPT.md` + `STACK_POSTURE.md`) | Arch-heavy incl. SOTA/alternatives; phasing-light; before plan approval |
 | Tasks | `tasks.md` | `/speckit-tasks` — only after plan approved |
 | Optional packet | `notes/packets/<id>.md` | Long unattended DoD wrapper |
 | Implement | Branch + PR | `/speckit-implement` |
@@ -80,6 +81,8 @@ Constitution → Specify → [Clarify] → independent review → Plan → [Chec
 3. Specs need **failable outcomes** + **acceptance catalog** (constitution §B–C).
 4. Do not re-argue process per product; debate product-unique choices only.
 5. Stop and escalate on missing decisions, invariant conflicts, or unmet DoD.
+6. Human adjudicates Debates at spec and Architecture; progressive HITL may auto-accept Nit/Later later (§F).
+7. `/speckit-plan` must satisfy `PLAN_AUTHORING_GATES.md` (fail closed) — sibling topology reuse without SOTA alternatives is an ERROR.
 
 ---
 
@@ -97,7 +100,7 @@ See constitution. Short list:
 
 ## Human role
 
-Governor, not router: approve specs/invariants, adjudicate review Debates, review PRs at decision altitude.
+Governor, not router: approve specs/invariants, adjudicate review Debates (F*/R*/P* at altitude), review PRs at decision altitude. Downstream Nit/Later may be agent-adjudicated under explicit policy (constitution §F).
 
 ---
 
