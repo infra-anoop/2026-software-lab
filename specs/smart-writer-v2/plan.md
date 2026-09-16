@@ -128,7 +128,7 @@ Build new registry app `smart-writer-v2`: a **chat-first** short-form writer wit
 - [x] Orchestrator P1 lock (LangGraph named nodes — P3)
 - [x] Plan Architecture review (P*) triaged (P1–P8)
 - [x] Human approved Architecture + Phased delivery
-- [ ] `/speckit-tasks` / implement not started until after this approval *(next)*
+- [x] `/speckit-tasks` generated (`tasks.md`) — T* when contract tests exist, then implement
 - [x] Secrets/registry/cattle rules respected (names in schema; BFF custody — P1)
 - [x] Learning/stack prefs not smuggled as product gates (F5/R1/R2)
 - [x] PLAN_AUTHORING_GATES posture addressed via P* locks (topology + non-sibling alts)
@@ -137,7 +137,7 @@ Build new registry app `smart-writer-v2`: a **chat-first** short-form writer wit
 
 - [x] P1–P8 human-adjudicated
 - [x] Human approves **Architecture + Phased delivery** (this plan)
-- [ ] Then `/speckit-tasks` (tests required) → T* review when contract/auto tests exist → implement.
+- [x] Then `/speckit-tasks` (tests required) → T* review when contract/auto tests exist → implement.
 
 ## Project Structure
 
