@@ -86,3 +86,30 @@ applications:
         - modules/lab_shared
       depends_on: []
     owner: null
+
+  - id: smart-writer-v2
+    title: Smart Writer V2
+    path: apps/smart-writer-v2
+    python:
+      project_name: smart-writer-v2
+      uv:
+        sync_dev_args:
+          - --group
+          - dev
+    oci:
+      image_name: smart-writer-v2
+    capabilities:
+      container: true
+      cli: true
+      http_server: true
+    ship:
+      publish_container: true
+    deploy:
+      enabled: true
+      railway:
+        service_name: smart-writer-v2
+    ci:
+      watch_paths:
+        - modules/lab_shared
+      depends_on: []
+    owner: null

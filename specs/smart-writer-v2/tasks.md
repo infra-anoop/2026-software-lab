@@ -17,12 +17,12 @@
 
 **Purpose**: Registry app + Next shell + secret **names** (plan P0)
 
-- [ ] T001 Create directory layout `apps/smart-writer-v2/app/`, `apps/smart-writer-v2/tests/`, `apps/smart-writer-v2/web/` per `specs/smart-writer-v2/plan.md` Project Structure
-- [ ] T002 Add `apps/smart-writer-v2/pyproject.toml` (Python >=3.12,<3.13; FastAPI, pydantic-settings, pydantic-ai, langgraph, httpx, lab-shared editable path `../../modules/lab_shared`; pytest/ruff dev group) and `uv.lock` via `cd apps/smart-writer-v2 && uv lock`
-- [ ] T003 Register `id: smart-writer-v2` in `apps/registry.yaml` (path `apps/smart-writer-v2`, http_server, railway `service_name: smart-writer-v2`, ci watch `modules/lab_shared`) and regenerate `apps/registry.json` with `uv run scripts/validate_app_registry.py --write-json`
-- [ ] T004 [P] Add secret **names** `SMART_WRITER_V2_AUDIT_SECRET`, `OPENAI_API_KEY`, `TAVILY_API_KEY`, `LOGFIRE_TOKEN` for app `smart-writer-v2` in `deploy/secrets/schema.yaml` (never commit values)
-- [ ] T005 [P] Scaffold Next.js App Router in `apps/smart-writer-v2/web/package.json` and `apps/smart-writer-v2/web/app/layout.tsx` (no `NEXT_PUBLIC_*` for audit secret)
-- [ ] T006 [P] Add Railway cattle stub `deploy/railway/production/smart-writer-v2.yml` mirroring `deploy/railway/production/smart-writer.yml` with service name `smart-writer-v2`
+- [x] T001 Create directory layout `apps/smart-writer-v2/app/`, `apps/smart-writer-v2/tests/`, `apps/smart-writer-v2/web/` per `specs/smart-writer-v2/plan.md` Project Structure
+- [x] T002 Add `apps/smart-writer-v2/pyproject.toml` (Python >=3.12,<3.13; FastAPI, pydantic-settings, pydantic-ai, langgraph, httpx, lab-shared editable path `../../modules/lab_shared`; pytest/ruff dev group) and `uv.lock` via `cd apps/smart-writer-v2 && uv lock`
+- [x] T003 Register `id: smart-writer-v2` in `apps/registry.yaml` (path `apps/smart-writer-v2`, http_server, railway `service_name: smart-writer-v2`, ci watch `modules/lab_shared`) and regenerate `apps/registry.json` with `uv run scripts/validate_app_registry.py --write-json`
+- [x] T004 [P] Add secret **names** `SMART_WRITER_V2_AUDIT_SECRET`, `OPENAI_API_KEY`, `TAVILY_API_KEY`, `LOGFIRE_TOKEN` for app `smart-writer-v2` in `deploy/secrets/schema.yaml` (never commit values)
+- [x] T005 [P] Scaffold Next.js App Router in `apps/smart-writer-v2/web/package.json` and `apps/smart-writer-v2/web/app/layout.tsx` (no `NEXT_PUBLIC_*` for audit secret)
+- [x] T006 [P] Add Railway cattle stub `deploy/railway/production/smart-writer-v2.yml` mirroring `deploy/railway/production/smart-writer.yml` with service name `smart-writer-v2`
 
 **Checkpoint**: `uv sync --locked` works in app dir; registry lists the app
 
@@ -34,15 +34,15 @@
 
 **⚠️ CRITICAL**: No user story work until this phase is complete
 
-- [ ] T007 Implement Settings `ALL_ENV_NAMES` in `apps/smart-writer-v2/app/config.py` including `SMART_WRITER_V2_AUDIT_SECRET` (required for mutating routes), `OPENAI_API_KEY`, optional `TAVILY_API_KEY`/`LOGFIRE_TOKEN`
-- [ ] T008 Add FastAPI app with `GET /health` (public) and `GET /ready` (OpenAI key present, no upstream call) in `apps/smart-writer-v2/app/entrypoints/http.py`
-- [ ] T009 Implement preview-gate dependency in `apps/smart-writer-v2/app/entrypoints/http.py`: header `X-Audit-Secret`; missing/wrong → 401; unset env on protected routes → 503
-- [ ] T010 Wire `lab_shared.jobs.JobRunner` lifespan (start/stop) on the FastAPI app in `apps/smart-writer-v2/app/entrypoints/http.py`
-- [ ] T011 Implement in-memory store in `apps/smart-writer-v2/app/store.py` for `Conversation` (`conversation_id` uuid), `Message` (`role` user|assistant|system), `InternalRunState` per `specs/smart-writer-v2/data-model.md`: `intent_slots` object Who/Whom/Ask/WhyFunder/Evidence as `who`/`whom`/`ask`/`why_funder`/`evidence` strings | null; `property_ranking` list[string] ordered closed vocabulary ids (empty until T049); `humor_enabled` bool Grant default false/off (F3); `web_research_enabled` bool Default true for beachhead unless user disables; `materials` list[MaterialRef] (`uri` string, `label` string | null, `kind` `link` | `upload`); `citation_mode_pref` `panel` | `inline` | `footnotes` | `combo` | null Light override; `last_artifact_id` string | null Head of revise chain
-- [ ] T012 Add `POST /v1/conversations` (protected) returning `{ conversation_id }` in `apps/smart-writer-v2/app/entrypoints/http.py`
-- [ ] T013 Add Vercel BFF route `apps/smart-writer-v2/web/app/api/proxy/[...path]/route.ts` that reads `SMART_WRITER_V2_AUDIT_SECRET` from **server** env only and forwards to FastAPI (browser must never send the secret)
-- [ ] T014 Add scaffold smoke `apps/smart-writer-v2/tests/unit/test_health.py` asserting `GET /health` returns 200 (not a T\* gate)
-- [ ] T015 Add contract test `apps/smart-writer-v2/tests/contract/test_preview_gate.py` asserting protected `POST /v1/conversations` rejects wrong/missing `X-Audit-Secret` with 401 (contracts/http-api.md hook 3) — must FAIL until T009/T012 exist; T\* not required for this hook alone if US1 suite not yet written
+- [x] T007 Implement Settings `ALL_ENV_NAMES` in `apps/smart-writer-v2/app/config.py` including `SMART_WRITER_V2_AUDIT_SECRET` (required for mutating routes), `OPENAI_API_KEY`, optional `TAVILY_API_KEY`/`LOGFIRE_TOKEN`
+- [x] T008 Add FastAPI app with `GET /health` (public) and `GET /ready` (OpenAI key present, no upstream call) in `apps/smart-writer-v2/app/entrypoints/http.py`
+- [x] T009 Implement preview-gate dependency in `apps/smart-writer-v2/app/entrypoints/http.py`: header `X-Audit-Secret`; missing/wrong → 401; unset env on protected routes → 503
+- [x] T010 Wire `lab_shared.jobs.JobRunner` lifespan (start/stop) on the FastAPI app in `apps/smart-writer-v2/app/entrypoints/http.py`
+- [x] T011 Implement in-memory store in `apps/smart-writer-v2/app/store.py` for `Conversation` (`conversation_id` uuid), `Message` (`role` user|assistant|system), `InternalRunState` per `specs/smart-writer-v2/data-model.md`: `intent_slots` object Who/Whom/Ask/WhyFunder/Evidence as `who`/`whom`/`ask`/`why_funder`/`evidence` strings | null; `property_ranking` list[string] ordered closed vocabulary ids (empty until T049); `humor_enabled` bool Grant default false/off (F3); `web_research_enabled` bool Default true for beachhead unless user disables; `materials` list[MaterialRef] (`uri` string, `label` string | null, `kind` `link` | `upload`); `citation_mode_pref` `panel` | `inline` | `footnotes` | `combo` | null Light override; `last_artifact_id` string | null Head of revise chain
+- [x] T012 Add `POST /v1/conversations` (protected) returning `{ conversation_id }` in `apps/smart-writer-v2/app/entrypoints/http.py`
+- [x] T013 Add Vercel BFF route `apps/smart-writer-v2/web/app/api/proxy/[...path]/route.ts` that reads `SMART_WRITER_V2_AUDIT_SECRET` from **server** env only and forwards to FastAPI (browser must never send the secret)
+- [x] T014 Add scaffold smoke `apps/smart-writer-v2/tests/unit/test_health.py` asserting `GET /health` returns 200 (not a T\* gate)
+- [x] T015 Add contract test `apps/smart-writer-v2/tests/contract/test_preview_gate.py` asserting protected `POST /v1/conversations` rejects wrong/missing `X-Audit-Secret` with 401 (contracts/http-api.md hook 3) — must FAIL until T009/T012 exist; T\* not required for this hook alone if US1 suite not yet written
 
 **Checkpoint**: Foundation ready — stories may start
 
@@ -56,10 +56,10 @@
 
 ### Tests for User Story 1 *(required — write FIRST, must FAIL)*
 
-- [ ] T016 [P] [US1] Contract test generate success: `mode=generate`, `artifact.parent_artifact_id` null, `producing_mode=generate`, complete `body` in `apps/smart-writer-v2/tests/contract/test_generate_job.py` (http-api.md hook 2)
-- [ ] T017 [P] [US1] Contract test grant artifact `claims[]`: each org/funder claim `status=grounded` with `source_id` or `status=uncertain` with null `source_id` in `apps/smart-writer-v2/tests/contract/test_claim_provenance.py` (hook 4; catalog `claim.provenance` structural)
-- [ ] T018 [P] [US1] Contract test web enabled + empty Tavily/noop → `web_signal=none_declared` in `apps/smart-writer-v2/tests/contract/test_web_signal.py` (hook 5; catalog `research.used_or_declared` structural)
-- [ ] T019 [P] [US1] Contract test grant default `humor_enabled` is false on InternalRunState / job snapshot in `apps/smart-writer-v2/tests/contract/test_grant_humor_default.py` (catalog `grant.default_humor_low` structural)
+- [x] T016 [P] [US1] Contract test generate success: `mode=generate`, `artifact.parent_artifact_id` null, `producing_mode=generate`, complete `body` in `apps/smart-writer-v2/tests/contract/test_generate_job.py` (http-api.md hook 2)
+- [x] T017 [P] [US1] Contract test grant artifact `claims[]`: each org/funder claim `status=grounded` with `source_id` or `status=uncertain` with null `source_id` in `apps/smart-writer-v2/tests/contract/test_claim_provenance.py` (hook 4; catalog `claim.provenance` structural)
+- [x] T018 [P] [US1] Contract test web enabled + empty Tavily/noop → `web_signal=none_declared` in `apps/smart-writer-v2/tests/contract/test_web_signal.py` (hook 5; catalog `research.used_or_declared` structural)
+- [x] T019 [P] [US1] Contract test grant default `humor_enabled` is false on InternalRunState / job snapshot in `apps/smart-writer-v2/tests/contract/test_grant_humor_default.py` (catalog `grant.default_humor_low` structural)
 - [ ] T020 [US1] Independent test review **T\*** of T016–T019 (+ T015 if not already reviewed) per `docs/agent-os/TEST_REVIEW_PROMPT.md`; deposit `specs/smart-writer-v2/TEST_REVIEW.md`; resolve T\* Blockers before T021+
 
 ### Implementation for User Story 1

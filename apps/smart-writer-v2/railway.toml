@@ -1,0 +1,6 @@
+# This is not a Railway builder config.
+# Production runtime is the Nix OCI image on GHCR, applied by
+# .github/workflows/deploy.yml (digest + start command from
+# deploy/railway/<environment>/<app_id>.yml).
+#
+# Do not add [build] or builder = "RAILPACK".

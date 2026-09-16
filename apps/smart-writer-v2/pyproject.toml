@@ -1,0 +1,35 @@
+[project]
+name = "smart-writer-v2"
+version = "0.1.0"
+description = "Chat-first short-form writer (grant beachhead); FastAPI job worker"
+requires-python = ">=3.12,<3.13"
+
+dependencies = [
+  "httpx>=0.27,<0.29",
+  "pydantic>=2.11.9,<2.12",
+  "pydantic-settings>=2.9,<3",
+  "pydantic-ai-slim[openai]>=1.59,<2",
+  "langgraph>=1.0.6,<1.1",
+  "fastapi>=0.115,<1",
+  "uvicorn[standard]>=0.32,<1",
+  "lab-shared",
+]
+
+[dependency-groups]
+dev = [
+  "ruff>=0.8",
+  "pytest>=8",
+  "pytest-asyncio>=0.24,<1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.uv]
+managed = true
+package = false
+
+[tool.uv.sources]
+lab-shared = { path = "../../modules/lab_shared", editable = true }
