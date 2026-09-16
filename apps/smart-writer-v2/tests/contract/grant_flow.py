@@ -52,7 +52,11 @@ def post_grant_turn(client: TestClient, conversation_id: str) -> Any:
 
 
 def wait_job_success(client: TestClient, job_id: str, timeout_sec: float = 8.0) -> dict[str, Any]:
-    """Poll GET /v1/jobs/{job_id} until succeeded or timeout."""
+    """Poll GET /v1/jobs/{job_id} until succeeded or timeout.
+
+    8s is enough while the route 404s (scaffold-red). After T028, raise this or
+    inject a deterministic executor — do not stub the graph to the assertion JSON.
+    """
     deadline = time.monotonic() + timeout_sec
     last_text = ""
     while time.monotonic() < deadline:

@@ -1,38 +1,33 @@
-"""Grant artifact claim provenance shape (hook 4; catalog claim.provenance structural)."""
+"""Grant artifact claim provenance (hook 4; catalog claim.provenance structural)."""
 
 from __future__ import annotations
 
-import pytest
 from fastapi.testclient import TestClient
 
-from app.config import get_settings
-from app.entrypoints.http import app
-from tests.contract.grant_flow import SECRET, submit_grant_and_wait
-
-
-@pytest.fixture
-def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
-    monkeypatch.setenv("SMART_WRITER_V2_AUDIT_SECRET", SECRET)
-    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-fake")
-    monkeypatch.delenv("TAVILY_API_KEY", raising=False)
-    get_settings.cache_clear()
-    with TestClient(app) as test_client:
-        yield test_client
-    get_settings.cache_clear()
+from tests.contract.grant_flow import submit_grant_and_wait
 
 
 def test_grant_claims_are_grounded_or_uncertain(client: TestClient) -> None:
-    """Each org/funder claim is grounded+source_id or uncertain with null source_id."""
+    """Grounded source_id resolves in sources[]; excerpt is a substring of body."""
     _conversation_id, _accepted, job = submit_grant_and_wait(client)
-    claims = job["artifact"]["claims"]
+    artifact = job["artifact"]
+    body = artifact["body"]
+    assert isinstance(body, str)
+    sources = artifact["sources"]
+    assert isinstance(sources, list)
+    source_ids = {row["source_id"] for row in sources}
+    claims = artifact["claims"]
     assert isinstance(claims, list)
-    assert len(claims) >= 1, "grant fixture asserts org/funder facts; claims[] must not be empty"
+    assert len(claims) >= 1, "this fixture includes materials beyond the prompt; claims[] must not be empty"
     for claim in claims:
         status = claim["status"]
         source_id = claim.get("source_id")
+        excerpt = claim.get("excerpt")
+        assert isinstance(excerpt, str) and excerpt.strip() != "", claim
+        assert excerpt in body, claim
         assert status in {"grounded", "uncertain"}, claim
         if status == "grounded":
             assert isinstance(source_id, str) and source_id.strip() != "", claim
+            assert source_id in source_ids, claim
         else:
             assert source_id is None, claim
-        assert isinstance(claim.get("excerpt"), str) and claim["excerpt"].strip() != ""

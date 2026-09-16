@@ -56,11 +56,11 @@
 
 ### Tests for User Story 1 *(required — write FIRST, must FAIL)*
 
-- [x] T016 [P] [US1] Contract test generate success: `mode=generate`, `artifact.parent_artifact_id` null, `producing_mode=generate`, complete `body` in `apps/smart-writer-v2/tests/contract/test_generate_job.py` (http-api.md hook 2)
-- [x] T017 [P] [US1] Contract test grant artifact `claims[]`: each org/funder claim `status=grounded` with `source_id` or `status=uncertain` with null `source_id` in `apps/smart-writer-v2/tests/contract/test_claim_provenance.py` (hook 4; catalog `claim.provenance` structural)
+- [x] T016 [P] [US1] Contract test generate success: `mode=generate`, `artifact.parent_artifact_id` JSON null (key present), `producing_mode=generate`, complete `body`; if `sources` nonempty then `citation_mode=panel` in `apps/smart-writer-v2/tests/contract/test_generate_job.py` (http-api.md hook 2; T3 lock)
+- [x] T017 [P] [US1] Contract test grant artifact `claims[]`: nonempty on this materials fixture; each claim `excerpt` ⊆ `body`; `grounded` `source_id` ∈ `artifact.sources[].source_id` or `uncertain` with null `source_id` in `apps/smart-writer-v2/tests/contract/test_claim_provenance.py` (hook 4; T1 lock)
 - [x] T018 [P] [US1] Contract test web enabled + empty Tavily/noop → `web_signal=none_declared` in `apps/smart-writer-v2/tests/contract/test_web_signal.py` (hook 5; catalog `research.used_or_declared` structural)
-- [x] T019 [P] [US1] Contract test grant default `humor_enabled` is false on InternalRunState / job snapshot in `apps/smart-writer-v2/tests/contract/test_grant_humor_default.py` (catalog `grant.default_humor_low` structural)
-- [ ] T020 [US1] Independent test review **T\*** of T016–T019 (+ T015 if not already reviewed) per `docs/agent-os/TEST_REVIEW_PROMPT.md`; deposit `specs/smart-writer-v2/TEST_REVIEW.md`; resolve T\* Blockers before T021+
+- [x] T019 [P] [US1] Contract test grant default `humor_enabled` is false on **job snapshot** (`GET /v1/jobs/{id}`), not conversation `run_state`, in `apps/smart-writer-v2/tests/contract/test_grant_humor_default.py` (catalog `grant.default_humor_low`; T2 lock)
+- [x] T020 [US1] Independent test review **T\*** of T016–T019 (+ T015 if not already reviewed) per `docs/agent-os/TEST_REVIEW_PROMPT.md`; deposit `specs/smart-writer-v2/TEST_REVIEW.md`; resolve T\* Blockers before T021+
 
 ### Implementation for User Story 1
 

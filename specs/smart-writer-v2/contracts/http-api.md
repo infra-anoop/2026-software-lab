@@ -69,13 +69,16 @@ Natural-language questions only. Do **not** include `missing_hints` / slot ids i
   "job_id": "...",
   "status": "succeeded",
   "mode": "generate | revise",
+  "humor_enabled": false,
   "artifact": {
     "artifact_id": "...",
     "parent_artifact_id": null,
     "producing_mode": "generate | revise",
     "body": "...",
     "citation_mode": "panel",
-    "sources": [],
+    "sources": [
+      { "source_id": "...", "kind": "user_material | web", "bundle": "materials | web" }
+    ],
     "claims": [
       { "claim_id": "...", "excerpt": "...", "source_id": "...", "status": "grounded" }
     ],
@@ -83,6 +86,12 @@ Natural-language questions only. Do **not** include `missing_hints` / slot ids i
   }
 }
 ```
+
+`humor_enabled` is a **job-snapshot** boolean (grant default `false` unless the user enabled humor). Do **not** dump `InternalRunState` / intent slots on `GET /v1/conversations` to satisfy this field.
+
+When `artifact.sources` is nonempty and the turn did not override `citation_mode`, `citation_mode` MUST be `panel` (F7).
+
+Grounded claims: `source_id` MUST equal some `artifact.sources[].source_id`; `excerpt` MUST be a substring of `artifact.body`. Uncertain claims: `source_id` is JSON `null`.
 
 ## Errors
 
@@ -100,8 +109,8 @@ Natural-language questions only. Do **not** include `missing_hints` / slot ids i
 Contract tests should assert:
 
 1. Successful revise job → `mode=revise` and `artifact.parent_artifact_id` non-null.
-2. Successful generate/regenerate → `mode=generate` and `parent_artifact_id` null.
+2. Successful generate/regenerate → `mode=generate` and `parent_artifact_id` JSON `null` (key present). When `sources` nonempty and the turn did not override citation mode → `citation_mode=panel`.
 3. Protected routes reject wrong secret.
-4. Successful grant artifact with org/funder claims → each such claim in `claims[]` has `status=grounded`+`source_id` or `status=uncertain` (SC-003 shape).
-5. When web enabled and no useful web hits → `web_signal=none_declared` (SC-004 shape).
+4. Successful grant artifact with org/funder claims → each such claim in `claims[]` has `status=grounded`+`source_id` that exists on `artifact.sources[]`, or `status=uncertain` with null `source_id`; `excerpt` is a substring of `body` (SC-003 shape).
+5. When web enabled and no useful web hits → `web_signal=none_declared` (SC-004 shape). Not `disabled` on that fixture.
 6. Grant turn with empty Whom/Ask (fixture) → `type=clarify`, no `job_id` (P5).
