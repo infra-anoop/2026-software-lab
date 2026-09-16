@@ -38,7 +38,7 @@
 - [ ] T008 Add FastAPI app with `GET /health` (public) and `GET /ready` (OpenAI key present, no upstream call) in `apps/smart-writer-v2/app/entrypoints/http.py`
 - [ ] T009 Implement preview-gate dependency in `apps/smart-writer-v2/app/entrypoints/http.py`: header `X-Audit-Secret`; missing/wrong → 401; unset env on protected routes → 503
 - [ ] T010 Wire `lab_shared.jobs.JobRunner` lifespan (start/stop) on the FastAPI app in `apps/smart-writer-v2/app/entrypoints/http.py`
-- [ ] T011 Implement in-memory store in `apps/smart-writer-v2/app/store.py` for `Conversation` (`conversation_id` uuid), `Message` (`role` user|assistant|system), `InternalRunState` (`humor_enabled` bool default false; `intent_slots` who/whom/ask/why_funder/evidence nullable strings; `last_artifact_id` nullable)
+- [ ] T011 Implement in-memory store in `apps/smart-writer-v2/app/store.py` for `Conversation` (`conversation_id` uuid), `Message` (`role` user|assistant|system), `InternalRunState` per `specs/smart-writer-v2/data-model.md`: `intent_slots` object Who/Whom/Ask/WhyFunder/Evidence as `who`/`whom`/`ask`/`why_funder`/`evidence` strings | null; `property_ranking` list[string] ordered closed vocabulary ids (empty until T049); `humor_enabled` bool Grant default false/off (F3); `web_research_enabled` bool Default true for beachhead unless user disables; `materials` list[MaterialRef] (`uri` string, `label` string | null, `kind` `link` | `upload`); `citation_mode_pref` `panel` | `inline` | `footnotes` | `combo` | null Light override; `last_artifact_id` string | null Head of revise chain
 - [ ] T012 Add `POST /v1/conversations` (protected) returning `{ conversation_id }` in `apps/smart-writer-v2/app/entrypoints/http.py`
 - [ ] T013 Add Vercel BFF route `apps/smart-writer-v2/web/app/api/proxy/[...path]/route.ts` that reads `SMART_WRITER_V2_AUDIT_SECRET` from **server** env only and forwards to FastAPI (browser must never send the secret)
 - [ ] T014 Add scaffold smoke `apps/smart-writer-v2/tests/unit/test_health.py` asserting `GET /health` returns 200 (not a T\* gate)
@@ -64,14 +64,16 @@
 
 ### Implementation for User Story 1
 
-- [ ] T021 [P] [US1] Add Pydantic models `ArtifactVersion` (`parent_artifact_id` nullable; `producing_mode` generate|revise; `citation_mode` panel|inline|footnotes|combo default panel; `claims` list; `web_signal` used|none_declared|disabled), `ClaimProvenance` (`status` grounded|uncertain), `SourceRecord` (`kind` user_material|web; `bundle` materials|web) in `apps/smart-writer-v2/app/models.py`
+**⚠️ CRITICAL (I1 / P5):** **T028 is blocked on T043.** Do **not** enqueue generate from `POST .../messages` until the US3 turn router exists (T039–T041 red + T\* T041, then T042–T043). T016–T027 and T029 (tests, models, graph, prompts, citation default) may proceed; T030 after T028.
+
+- [ ] T021 [P] [US1] Add Pydantic models in `apps/smart-writer-v2/app/models.py` per `specs/smart-writer-v2/data-model.md`: `ArtifactVersion` (`parent_artifact_id` string | null Set on **revise**; null on fresh **generate**; `producing_mode` `generate` | `revise`; `citation_mode` `panel` | `inline` | `footnotes` | `combo` Default `panel` when sources exist (F7); `source_ids` list[string]; `claims` list[ClaimProvenance]; `materials_bundle_ids` list[string] F4 materials side; `web_bundle_ids` list[string] F4 web side; `web_signal` `used` | `none_declared` | `disabled` SC-004), `ClaimProvenance` (`status` `grounded` | `uncertain`; `uncertain` ⇒ omit or mark in prose; null `source_id`), `SourceRecord` (`kind` `user_material` | `web`; `bundle` `materials` | `web`)
 - [ ] T022 [P] [US1] Add seed property vocabulary list `factual`,`persuasive`,`concise`,`warm`,`formal`,`humorous`,`specific`,`urgent` in `apps/smart-writer-v2/app/properties.py` (research.md R8; `factual` tone-only)
 - [ ] T023 [US1] Implement URL materials fetch (SSRF/size limits — P7) in `apps/smart-writer-v2/app/retrieval/url_fetch.py`
 - [ ] T024 [US1] Implement retrieval façade emitting `materials_bundle` vs `web_bundle` in `apps/smart-writer-v2/app/retrieval/bundles.py`
 - [ ] T025 [US1] Implement Tavily optional search (no key → empty bundle) in `apps/smart-writer-v2/app/retrieval/tavily.py`
 - [ ] T026 [US1] Implement LangGraph generate `StateGraph` nodes infer → materials → web → write → provenance in `apps/smart-writer-v2/app/orchestrator/generate_graph.py` with PydanticAI `result_type` per node in `apps/smart-writer-v2/app/agents/`
 - [ ] T027 [US1] Add versioned prompt program grant defaults (humor off) in `apps/smart-writer-v2/app/prompts/programs/grant_default/`
-- [ ] T028 [US1] Enqueue generate jobs from `POST /v1/conversations/{id}/messages` when grant intent slots filled; `GET /v1/jobs/{job_id}` success shape per `specs/smart-writer-v2/contracts/http-api.md` in `apps/smart-writer-v2/app/entrypoints/http.py`
+- [ ] T028 [US1] **Blocked on T043.** Enqueue generate jobs from `POST /v1/conversations/{id}/messages` only when grant intent slots who/whom/ask/why_funder/evidence are all filled; if any missing, do **not** enqueue (P5 — T043 returns `type=clarify`, no `job_id`); `GET /v1/jobs/{job_id}` success shape per `specs/smart-writer-v2/contracts/http-api.md` in `apps/smart-writer-v2/app/entrypoints/http.py`
 - [ ] T029 [US1] Default `citation_mode=panel` when sources exist on artifact in `apps/smart-writer-v2/app/orchestrator/generate_graph.py`
 - [ ] T030 [US1] Chat UI generate + artifact pane + sources panel (poll via BFF, no client audit secret) in `apps/smart-writer-v2/web/app/page.tsx`
 
@@ -118,7 +120,7 @@
 ### Implementation for User Story 3
 
 - [ ] T042 [US3] Infer/update intent slots from free-form text in `apps/smart-writer-v2/app/agents/infer_state.py` (PydanticAI `result_type`)
-- [ ] T043 [US3] Turn router: grant + any of who/whom/ask/why_funder/evidence missing → clarify sync response, never enqueue job, in `apps/smart-writer-v2/app/entrypoints/http.py`
+- [ ] T043 [US3] Turn router (**hard blocker for T028**): grant + any of who/whom/ask/why_funder/evidence missing → clarify sync response, never enqueue job, in `apps/smart-writer-v2/app/entrypoints/http.py`
 - [ ] T044 [US3] NL-only clarify copy (no axis/slot names) in `apps/smart-writer-v2/app/agents/clarify.py`
 - [ ] T045 [US3] Render clarify messages in chat thread in `apps/smart-writer-v2/web/app/page.tsx`
 
@@ -207,16 +209,17 @@
 ```text
 Phase 1 Setup
     → Phase 2 Foundational (blocks all stories)
-        → US1 (generate + provenance)  [MVP]
-        → US2 (revise/regenerate)      [MVP]
-        → US3 (clarify-before-write)   [MVP — P5]
-        → US5 (bundle roles)           [MVP overlap]
-        → US4 (property chips/weave)   [plan P2]
-        → US6 (non-grant smoke)        [plan P2]
+        → US1 tests + models/graph T016–T027  [MVP]
+        → US3 clarify-before-write T039–T045  [MVP — P5; MUST before T028]
+        → US1 enqueue + UI T028–T030          [MVP; blocked on T043]
+        → US2 (revise/regenerate)             [MVP]
+        → US5 (bundle roles)                  [MVP overlap]
+        → US4 (property chips/weave)          [plan P2]
+        → US6 (non-grant smoke)               [plan P2]
         → Polish
 ```
 
-US3 should land **before** treating US1 grant golden path as done if slots can be empty; implement order **US3 then US1 generate enqueue** is allowed if T043 exists before T028 — if T028 is coded first, it MUST still refuse missing slots (T039). **Recommended execution: T039–T045 (US3) immediately after Foundational if doing one MVP slice, or implement T043 in the same PR as T028.**
+**MUST (I1 / P5):** T028 MUST NOT start until T043 is done. After Foundational, US1 contract tests T016–T020 and impl T021–T027 may run in parallel with writing US3 tests T039–T041, but **T039–T041 + T041 T\* + T042–T043 before T028**. Do not “enqueue first and add clarify later.”
 
 Story completion for MVP (plan P1): **US1 + US2 + US3 + US5**. US4 chips + US6 = plan P2.
 
@@ -228,7 +231,9 @@ Story completion for MVP (plan P1): **US1 + US2 + US3 + US5**. US4 chips + US6 =
 T016, T017, T018, T019  [P] together
 then T020 T* review (sequential)
 then T021, T022 [P]
-then T023–T030 sequential where they share graphs/http.py
+then T023–T027 (graph/prompts; may overlap US3 tests)
+then T039–T041 [P] + T041 T* + T042–T043  **before T028**
+then T028–T030
 ```
 
 ### User Story 2 tests
@@ -245,8 +250,8 @@ then T035–T038
 
 1. Phase 1 Setup  
 2. Phase 2 Foundational  
-3. US3 clarify gate **or** US1 with T043 behavior in enqueue  
-4. US1 generate + provenance + UI poll  
+3. US1 tests/models/graph (T016–T027) **and** US3 clarify (T039–T045); **T043 before T028**  
+4. US1 enqueue + UI poll (T028–T030)  
 5. US2 revise/regenerate  
 6. US5 bundle ids  
 7. **STOP** — T\* done for those contract files; hybrid/human catalog (audience-fit, length, surprise) remain human  
