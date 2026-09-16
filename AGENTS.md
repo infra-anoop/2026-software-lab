@@ -60,7 +60,7 @@ HTTP app loop: `uv run uvicorn app.entrypoints.http:app --reload --host 0.0.0.0 
 ## Workflow (Spec Kit + lab overlays)
 
 ```text
-Constitution → Specify → [Clarify] → independent review → Plan → [Plan Architecture review] → Tasks → [Analyze] → Implement
+Constitution → Specify → [Clarify] → independent review → Plan → [Plan Architecture review] → Tasks → [failing tests + T* review] → Implement
 ```
 
 | Phase | Artifact / skill | Notes |
@@ -70,9 +70,10 @@ Constitution → Specify → [Clarify] → independent review → Plan → [Plan
 | Spec review | Product **F-***; optional Process **R-*** | Before Approved |
 | Plan | `plan.md` — **Architecture + Phased delivery** | `/speckit-plan` |
 | Plan review | Architecture **P-*** (`PLAN_REVIEW_PROMPT.md` + `STACK_POSTURE.md`) | Arch-heavy incl. SOTA/alternatives; phasing-light; before plan approval |
-| Tasks | `tasks.md` | `/speckit-tasks` — only after plan approved |
+| Tasks | `tasks.md` | `/speckit-tasks` — after plan approved; tests **required** for executable apps |
+| Test review | **T-*** (`TEST_REVIEW_PROMPT.md`) | After contract/catalog-auto tests exist (red); before matching impl |
 | Optional packet | `notes/packets/<id>.md` | Long unattended DoD wrapper |
-| Implement | Branch + PR | `/speckit-implement` |
+| Implement | Branch + PR | `/speckit-implement` — TDD order; T* Blockers resolved |
 
 **Rules**
 
@@ -83,6 +84,7 @@ Constitution → Specify → [Clarify] → independent review → Plan → [Plan
 5. Stop and escalate on missing decisions, invariant conflicts, or unmet DoD.
 6. Human adjudicates Debates at spec and Architecture; progressive HITL may auto-accept Nit/Later later (§F).
 7. `/speckit-plan` must satisfy `PLAN_AUTHORING_GATES.md` (fail closed) — sibling topology reuse without SOTA alternatives is an ERROR.
+8. Executable apps: failing contract/catalog-auto tests before matching impl; T* review when those tests exist (constitution §V).
 
 ---
 

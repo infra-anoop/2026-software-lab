@@ -4,7 +4,7 @@ Non-negotiable principles for every feature and agent run in this monorepo.
 Spec Kit phases (`/speckit-*`) and `AGENTS.md` must respect this document.
 Product-unique choices belong in feature specs — **not** by reinventing process.
 
-**Version**: 1.3.2 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-15
+**Version**: 1.4.0 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-16
 
 ## Core Principles
 
@@ -35,11 +35,15 @@ No new ad-hoc `getenv` for durable knobs without schema/Settings.
 
 ### V. Test-First for Executable Work
 
-Prefer failing acceptance tests before implementation when practical.
-Packet/task DoD must name commands/tests that prove done.
-Do not claim “tests adequate” without listing which checks prove the DoD.
-Honor locked decisions / won’t-dos in `notes/architect-backlog.md`.
+For **executable apps** (registry applications with HTTP/jobs/UI), failing tests come **before** matching implementation. This is **not optional**.
 
+- `/speckit-tasks` MUST emit contract-test and catalog-auto test tasks from `contracts/` auto-check hooks and `acceptance.md` rows with `how: auto`. Do not invent pytest for `how: human` rows.
+- Tests MUST fail (red) before product code for that slice. Implementer agents must not write tests that only mirror code they are about to add.
+- **Independent test review (T*):** after contract/catalog-auto tests exist, fresh session + `docs/agent-os/TEST_REVIEW_PROMPT.md` before implementing that slice. Skip when the only work is scaffold with no such tests. Deposit `TEST_REVIEW.md`. Human adjudicates T* Debates; Nit/Later may be agent-adjudicated (§F).
+- Packet/task DoD must name commands/tests that prove done. Do not claim “tests adequate” without listing which checks prove the DoD.
+- Honor locked decisions / won’t-dos in `notes/architect-backlog.md`.
+
+Upstream Spec Kit marks tests optional for generic/non-software features. **This lab overrides that** via `.specify/templates/overrides/tasks-template.md` and the `speckit-tasks` skill.
 ### VI. Learning Journey over Premature Cheapness
 
 This lab optimizes for **internalizing SOTA patterns**, not minimum ceremony for enterprise cost-cutting.
@@ -98,8 +102,9 @@ Detailed work items belong in `tasks.md` (or optional packets), not as a substit
 
 ### F. Progressive HITL (governor altitude)
 
-Human adjudication is mandatory at **high-altitude** gates: spec Debates (F*/R*) and plan Architecture Debates (P*).  
-Downstream (tasks, implement, routine PR nits), the lab **may** use agent review with **agentic adjudication** for Nit/Later under an explicit policy (e.g. auto-accept authoring-agent recommendations) while still escalating Blockers/Debates. Goal: reduce human-as-router without removing human judgment where structure and product bets are set.
+Human adjudication is mandatory at **high-altitude** gates: spec Debates (F*/R*), plan Architecture Debates (P*), and test-suite Debates (T*) that would let implement start against a wrong lock.
+
+Downstream (routine unit tests, implement nits, PR nits), the lab **may** use agent review with **agentic adjudication** for Nit/Later under an explicit policy while still escalating Blockers/Debates. Goal: reduce human-as-router without removing human judgment where structure, product bets, and **DoD tests** are set.
 
 ## Stack constraints
 

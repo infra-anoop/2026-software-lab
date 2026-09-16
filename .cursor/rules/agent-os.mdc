@@ -10,7 +10,7 @@ Human map: `docs/agent-os/README.md`.
 
 ## Default loop
 
-1. Spec Kit: specify → (clarify) → **product review** (+ optional **process** review) → plan (**Architecture + Phasing**) → **plan Architecture review (P*)** → tasks → implement.
+1. Spec Kit: specify → (clarify) → **product review** (+ optional **process** review) → plan (**Architecture + Phasing**) → **plan Architecture review (P*)** → tasks → **failing contract/auto tests + T* review** → implement.
 2. Use `.cursor/skills/speckit-*` (not deprecated `sdd-*`).
 3. Specs need failable outcomes + acceptance catalog pointer (constitution §B–C).
 4. Do not start tasks/implement until plan Architecture + Phased delivery are human-approved (§E), after P* triage when review was run.
@@ -24,4 +24,5 @@ Do **not** re-invent process (reviews, falsifiability, catalog, plan shape) per 
 Keep **product**, **process**, and **plan Architecture** reviewers as separate briefs (constitution §A / §E).
 Plan review is **architecture-weighted, phasing-light** (`PLAN_REVIEW_PROMPT.md`) and must exercise **Learning / SOTA fit** (`STACK_POSTURE.md`) without stack-as-product-SC.
 Plan **authoring** must fail closed on `PLAN_AUTHORING_GATES.md` (topology, non-sibling alternatives, orchestrator lock) — soft reminders are insufficient.
-Progressive HITL: human Debates at spec + Architecture; lighter downstream (§F).
+Executable apps: tests are **required** before matching impl; independent **T*** review of contract/catalog-auto tests (`TEST_REVIEW_PROMPT.md`) — not optional Spec Kit stock.
+Progressive HITL: human Debates at spec + Architecture + T* Debates; lighter downstream (§F).

@@ -9,6 +9,7 @@ alwaysApply: false
 - Type hints on all function signatures (PEP8).
 - PydanticAI: schema-first `result_type`; inject deps via `deps_type` + `RunContext`.
 - Keep business logic out of `entrypoints/` and infra scripts.
-- Prefer failing unit/contract tests before implementation when executing a packet.
+- Write failing **contract / catalog-auto** tests before matching implementation (constitution §V). Do not fake `how: human` catalog rows as pytest.
+- After those tests exist: independent **T*** review (`TEST_REVIEW_PROMPT.md`) before product code for that slice.
 - Shared code belongs in `modules/lab_shared` only when used by more than one app.
 - Run from app dir: `uv run pytest`, `uv run ruff check app/`.

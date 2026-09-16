@@ -137,7 +137,7 @@ Build new registry app `smart-writer-v2`: a **chat-first** short-form writer wit
 
 - [x] P1–P8 human-adjudicated
 - [x] Human approves **Architecture + Phased delivery** (this plan)
-- [ ] Then `/speckit-tasks`
+- [ ] Then `/speckit-tasks` (tests required) → T* review when contract/auto tests exist → implement.
 
 ## Project Structure
 
