@@ -105,5 +105,29 @@ class InMemoryStore:
         """Return internal run state or None."""
         return self._run_state.get(conversation_id)
 
+    def add_message(
+        self,
+        conversation_id: str,
+        role: MessageRole,
+        text: str,
+    ) -> Message:
+        """Append a message and bump conversation updated_at."""
+        conversation = self._conversations[conversation_id]
+        message = Message(
+            message_id=str(uuid4()),
+            conversation_id=conversation_id,
+            role=role,
+            text=text,
+            created_at=utc_now_iso(),
+        )
+        conversation.messages.append(message)
+        conversation.updated_at = message.created_at
+        return message
+
+    def set_intent_slots(self, conversation_id: str, slots: IntentSlots) -> None:
+        """Replace intent slots on run state."""
+        state = self._run_state[conversation_id]
+        state.intent_slots = slots
+
 
 STORE = InMemoryStore()

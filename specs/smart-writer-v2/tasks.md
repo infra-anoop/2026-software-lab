@@ -119,8 +119,8 @@
 
 ### Implementation for User Story 3
 
-- [ ] T042 [US3] Infer/update intent slots from free-form text in `apps/smart-writer-v2/app/agents/infer_state.py` (PydanticAI `result_type`)
-- [ ] T043 [US3] Turn router (**hard blocker for T028**): grant + any of who/whom/ask/why_funder/evidence missing → clarify sync response, never enqueue job, in `apps/smart-writer-v2/app/entrypoints/http.py`
+- [x] T042 [US3] Infer/update intent slots from free-form text in `apps/smart-writer-v2/app/agents/infer_state.py` (PydanticAI `result_type`)
+- [x] T043 [US3] Turn router (**hard blocker for T028**): grant + any of who/whom/ask/why_funder/evidence missing → clarify sync response, never enqueue job, in `apps/smart-writer-v2/app/entrypoints/http.py`
 - [ ] T044 [US3] NL-only clarify copy (no axis/slot names) in `apps/smart-writer-v2/app/agents/clarify.py`
 - [ ] T045 [US3] Render clarify messages in chat thread in `apps/smart-writer-v2/web/app/page.tsx`
 
