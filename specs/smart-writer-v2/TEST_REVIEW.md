@@ -684,3 +684,124 @@ Feature-local lock: human accepted architect recs for T29–T31 (this slice). Ni
 | **T34** | **accepted (Nit)** | `web_signal` enum then `== disabled`; keep list→set equality. |
 
 Tests edited to match. **T056–T057 may start.**
+
+---
+
+# Independent test review — US6 / T058 (non-grant smoke)
+
+**Reviewer role:** Independent test reviewer (did not write these tests; no loyalty to their wording)  
+**Brief:** `docs/agent-os/TEST_REVIEW_PROMPT.md` (constitution §V)  
+**Feature:** `specs/smart-writer-v2/`  
+**Slice:** T059 — T* of T058 only (US6, F2 / SC-005 / `engine.nongrant_smoke`)  
+**Commit:** `1cf48da` — Add red US6 contract: non-grant prompts must enqueue, not grant-clarify. (Packet `2ef28cc`.)  
+**Date:** 2026-09-17  
+
+**Scope files**
+
+| Task | File |
+|------|------|
+| T058 | `apps/smart-writer-v2/tests/contract/test_nongrant_smoke.py` |
+| shared | `apps/smart-writer-v2/tests/contract/grant_flow.py` (`NONGRANT_PROMPT` only) |
+| contrast | US3 `test_clarify_before_write.py` / `test_clarify_no_slot_leak.py` (not re-reviewed) |
+
+**Out of scope this session:** T016–T057 except as contrast (grant clarify must stay). Do not start T060. Do not rewrite spec/plan. Do not write product code. Prior T1–T34 stay locked (especially **T2**: no InternalRunState dump; **T6**: `parent_artifact_id` key present; **T9–T11**: P5 grant fixtures). Catalog `how: auto` stays T061.
+
+**Pytest (app venv, independently re-run 2026-09-17, at/after `1cf48da`):**
+
+| Test | Result | Fail locus |
+|------|--------|------------|
+| `test_nongrant_prompt_completes_without_grant_slots` | **FAIL** | `type == "job_accepted"` — got `"clarify"` (grant slot questions) |
+| `test_empty_whom_ask_is_clarify_without_job` | **PASS** | — |
+| `test_whom_ask_filled_why_empty_is_clarify_without_job` | **PASS** | — |
+| `test_clarify_payload_omits_missing_hints` | **PASS** | — |
+
+Fail is after HTTP 200, on the lock field — not 404 / ImportError. Catalog row stays **hybrid**; no `acceptance.md` `how: auto` rows yet (T061 / plan P2).
+
+---
+
+### A. Executive verdict
+
+**Approve tests with minor edits**
+
+T058 hits the public messages contract with a distinct composting/blog fixture, does not stub the graph, and is red today because the P5 missing-slot gate still treats every turn as a grant run. That is honest red for the distinctive shall (contract: job accepted when grant slots complete **or** non-grant path; spec F6: Axis A N/A or thinner on non-grant smoke).
+
+It would **not** fail closed on SC-005’s “same engine” / T060’s “same graphs,” nor on a real beachhead classifier. `NONGRANT_PROMPT` includes the substring “not a grant or donation ask.” A router regex of that clause greens T058 while a two-page explainer without the disclaimer still clarifies. Hook 2’s `parent_artifact_id` key-present-null (T6, locked on T016) is absent here. A canned generate body already exists; routing around materials/web/provenance still passes.
+
+Do not start T060 until Debates **T35–T37** are human-adjudicated (constitution §F). Do not green T058 by adding a grant/non-grant flag to `MessageTurnIn`. Do not disable P5 globally (US3 must stay). Do not pytest 1–3 page length or blog-not-grant prose.
+
+---
+
+### B. Findings table
+
+| ID | Severity | Lens | Locus | Finding | Suggested resolution |
+|----|----------|------|-------|---------|----------------------|
+| **T35** | **Debate** | Wrong-thing / lock fidelity | `NONGRANT_PROMPT`; T060; FR-017; T30 analog | Steelman: a two-page explainer that is “a blog post, not a grant or donation ask” is a clear non-grant fixture. Fail on `type=clarify` is the grants-only hard fail SC-005 names. Attack: the distinctive tokens are `"not a grant"` / `"blog post"`. T060 lives in `http.py` and can `if "not a grant" in text.lower(): skip missing_grant_slots`. Spec independent test is a **non-grant 1–3 page prompt**, not a prompt that disclaims grant. F6: Axis A N/A **or thinner** — no named `is_grant_beachhead` seam (slots/ranking/web already have deterministic HTTP infer). Filling dummy slots (“N/A”) also greens job_accepted without skipping the must-ask. Adding `grant_run` to `MessageTurnIn` is T17/T30 schema creep. | Keep composting as the fixture. Drop the disclaimer **or** add one POST without it (not a 5× matrix). Matching impl: deterministic infer seam called from POST **before** the missing-slot gate (same pattern as `extract_intent_slots` / `infer_web_research_enabled`). Do **not** regex only in the router. Do **not** add a client flag. Do **not** dump beachhead on GET conversation (T2). |
+| **T36** | **Debate** | Lock fidelity / SNR | `test_nongrant_smoke.py`; hook 2; T6; US6 independent test; T060 “same graphs” | Steelman: catalog shall is smoke complete without grants-only hard fail — not SC-002/003/004 as an equal bar (F2). `job_accepted` + `mode=generate` + nonempty `body` is the right observation layer. Attack: US6 independent test is the **same** intake/steer/research/draft path; T060 says same graphs. Test never asserts `"parent_artifact_id" in accepted` and JSON `null` (T6 locked on T016). `payload.get("mode")` missing-key fails; `job_id` only needs truthy. Canned `_run_generate_without_llm` already returns generate+body. Skip materials/web/provenance, or stamp `web_signal` absent: T058 still greens. F3 grounding remains a pipeline invariant; SC-003’s *when* (org/funder fact) is N/A here — do not force `claims[]`. | Assert hook 2: `parent_artifact_id` key present and `null` on accepted **and** artifact (copy T016). Optional structural same-engine: `web_signal in {used, none_declared, disabled}` then `== "none_declared"` on this Tavily-unset / empty-materials fixture (T4/T018 class — landmine if research is skipped or labeled `disabled`). Do **not** pytest length (human SC-001) or blog-shaped prose (hybrid; grant-default canned body may still look like a grant). Do not inspect `JobRunner` / graph node names (F5). |
+| **T37** | **Debate** | Lock fidelity / F2 | T058 vs T039/T11; F2 grant primacy; “all five missing ⇒ non-grant” | Steelman: packet + this re-run show US3 still **PASS**. Killing P5 to enqueue always would red T039/T11. That split is the right suite landmine; this file should not re-assert grant clarify. Attack: the cheapest T060 that keeps US3 green is **if `missing_grant_slots` is all five, skip the gate**. Composting extracts zero slots → enqueue. `EMPTY_WHOM_ASK` has Who+Evidence → still clarify. A grant-shaped turn with no extractor tokens (“Write a fundraising letter for our work”) then skips P5. F2: when goals conflict, **grant wins** — unknown should default to grant/clarify, not to smoke. T058 cannot see that miss. Inverse: a conservative unknown→grant classifier fails this composting fixture unless the disclaimer/regex (T35) saves it. | Keep T039/T11 as the P5 landmine; do not duplicate them here. Lock T060 classification: explicit non-grant / Axis A N/A — **not** “all five empty.” Unknown/grant-shaped stays P5. After T060, re-check T039/T11 still fail-closed on `type=clarify` / no artifact. |
+| **T38** | **Strength** | Red-first / scope | T058 vs T016 vs T039; T2 | Fail locus is `type=clarify` vs `job_accepted` after 200, not ImportError/404. `NONGRANT_PROMPT` is not `GRANT_PROMPT` and not `EMPTY_WHOM_ASK`. Public HTTP; no LangGraph/Tavily stub; no GET ranking/slots dump. Length, audience-fit, and “reads like a blog” are correctly not pytested. | Keep the three-fixture split and the no-graph-stub rule. Do not stub `_execute_job` to `{type: job_accepted}`. After infer seam exists, T039 must still fail if grant-empty enqueues. |
+| **T39** | Later | Scope | `acceptance.md` `engine.nongrant_smoke`; T061 | Row is **hybrid** / `should` / smoke under F2. T058 claims structural only. No `how: auto` yet (plan P2 / T061). Packet correctly leaves auto out of this T*. | Do not mark this row `auto` in this slice. T061 may pick a **must** structural row (plan example: revise/regenerate), not necessarily smoke. |
+| **T40** | Nit | SNR | `post_followup_turn`; `job_id`; first-turn helper | First turn uses the follow-up helper (`materials: []`, `client_intent=auto`) — contract-legal, name is misleading. `"job_id"` only asserted truthy. 8s poll is already documented as scaffold-ok while jobs are canned. | Dedicated `post_nongrant_turn` optional. Assert `"job_id" in payload` and truthy. Leave 8s until a live LLM path exists. |
+
+Minimum count met. Debates: T35, T36, T37. Strength: T38.
+
+Correctly **not** pytested (do not fake): SC-001 length (human); blog-not-grant prose quality; SC-002 fit points (N/A without funder/criteria); `intake.axis_a_before_b` (grant run *when*); `chat.free_form_input` form-UX; LangGraph-as-product-SC (F5); catalog `how: human` rows.
+
+---
+
+### C. Adversarial positions (required)
+
+1. **Position: these tests would go green while a spec lock fails** — strongest case
+
+   In `post_message`, if `"not a grant" in body.text.lower()` (or `missing == all five slot ids`): skip `missing_grant_slots` and enqueue. Do not add an infer function. Do not change generate. T058 goes green. T039/T11 stay green. Canned generate still returns nonempty `body`.
+
+   SC-005’s independent test (any non-grant 1–3 page prompt on the **same** path) fails for a composting explainer without the disclaimer. FR-017 infer-from-free-form is a substring. F2 unknown→grant loses: token-poor fundraising copy enqueues. T060 “same graphs” can no-op. Pytest is green.
+
+   *What would have to be true for the suite to be right anyway:* this slice only claimed the HTTP or-non-grant-path sentence; same-engine/research stay T016/T018; P5 stays T039; smoke is one golden string — **if** T35 forbids router-regex and T37 forbids all-five-empty as the classifier.
+
+2. **Position: these tests over-constrain implementation / test the wrong layer** — strongest case
+
+   Requiring `web_signal` / provenance on a **should**/smoke row fights F2 (not an equal bar) and duplicates T018. A named `is_grant_beachhead` seam is a second classifier beside `extract_intent_slots`; “all five empty” *is* Axis A N/A and would green T058 without new API. Dropping “not a grant” from the fixture removes the only user-stated beachhead signal FR-017 can latch. Hook 2 `parent_artifact_id` already lives on T016; copying it here is four files, one integration. GET `last_artifact_id` couples smoke to snapshot shape.
+
+   *What would have to be true for the suite to be right anyway:* job_accepted+body is the structural half of hybrid `engine.nongrant_smoke`; T039 is sufficient F2 protection; T6 parent-id copy is cheap in-layer; the disclaimer is allowed as the free-form disable analog to T054’s “do not use web.”
+
+---
+
+### D. Catalog / contract coverage map
+
+| Catalog id or contract hook | Test file / name | Can fail today? | Gap |
+|-----------------------------|------------------|-----------------|-----|
+| Contract — job accepted when grant slots complete **or non-grant path** | `test_nongrant_smoke.py::test_nongrant_prompt_completes_without_grant_slots` | **yes** (`type=clarify`) | Magic-phrase fixture (T35). No infer seam |
+| Hook 2 — generate `mode=generate`, `parent_artifact_id` JSON null | T058 `mode=generate` only | **yes, partial** | Key-present-null missing (T36). T016 still owns grant generate |
+| Hook 6 / P5 — grant empty Whom/Ask → clarify | T039 (contrast, not re-reviewed) | **yes** (still PASS on lock) | T058 must not break this (T37) |
+| T11 — Who+Whom+Ask, Why/Evidence empty → clarify | T039 sibling | **yes** (PASS) | All-five-empty heuristic would not hit this fixture (T37) |
+| `engine.nongrant_smoke` (hybrid, structural) | T058 job_accepted + body | **yes** (`clarify`) | “Same engine” / research path unobserved (T36). Hybrid remainder = human |
+| F6 Axis A N/A on non-grant | T058 skip must-ask (implied) | **yes** (clarify) | Dummy slot-fill also greens (T35) |
+| F2 grant primacy when conflict | none in T058 | **no** | Relies on T039 remaining in the suite (T37) |
+| SC-001 length on this fixture | none | n/a | Correctly not pytest (human) |
+| SC-003/004 / claims / web on non-grant | none required | n/a | Optional enum `web_signal` only if T36 locked; do not force claims |
+| `grant.intent_slots_complete` (hybrid) | T039, not T058 | n/a | *when* = grant beachhead run |
+| Any `how: auto` catalog row | none | n/a | Still zero; T061 later (T39) |
+| T2 — no run_state dump | T058 job JSON only | n/a | Do not observe beachhead/slots on GET conversation |
+
+---
+
+### E. Edit list
+
+- `grant_flow.py` `NONGRANT_PROMPT`: drop “not a grant or donation ask” **or** add a second POST that is only the explainer sentence (T35).
+- `test_nongrant_smoke.py`: `"parent_artifact_id" in accepted and accepted["parent_artifact_id"] is None`; same on `artifact` (T36 / T6).
+- `test_nongrant_smoke.py`: `"job_id" in payload` and truthy; keep `type == "job_accepted"`, `mode == "generate"`, nonempty `body`.
+- `test_nongrant_smoke.py` (if T36 locked): `web_signal in {used, none_declared, disabled}` then `== "none_declared"` on this fixture; do not require `claims[]`.
+- Infer seam (if T35 locked): helper on the composting text → not a grant beachhead; `POST .../messages` calls it before `missing_grant_slots`. No GET dump; no new POST field.
+- Do **not** add `grant_run` / `skip_intent_slots` to `MessageTurnIn`.
+- Do **not** pytest length, blog prose, or stub `_execute_job` / LangGraph to the assertion JSON.
+- After T060: T039/T11 remain clarify + no artifact; T016 still generate on filled grant.
+
+---
+
+### F. Questions for the human (max 3)
+
+1. **T35:** Must T060 be a deterministic infer seam (and the fixture work without “not a grant”), or is fixture-string handling in the router allowed for this smoke row?
+2. **T36:** Before T060, must T058 assert hook 2 `parent_artifact_id` (and optional `web_signal=none_declared`), or is `job_accepted` + nonempty generate `body` enough for hybrid `engine.nongrant_smoke`?
+3. **T37:** Must unknown/token-poor copy default to **grant/P5** (F2), forbidding “all five slots empty ⇒ skip Axis A,” or is all-empty an accepted Axis A N/A implementation?
+
+Implementer: do not start T060 until T35–T37 are accepted or the tests are edited. Nit/Later (T39–T40) may be agent-adjudicated (§F). Do not implement non-grant by extending the messages request body. Do not weaken T039 to green T058.
