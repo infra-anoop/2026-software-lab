@@ -129,5 +129,10 @@ class InMemoryStore:
         state = self._run_state[conversation_id]
         state.intent_slots = slots
 
+    def set_last_artifact_id(self, conversation_id: str, artifact_id: str) -> None:
+        """Point the conversation at the latest ArtifactVersion (T028)."""
+        state = self._run_state[conversation_id]
+        state.last_artifact_id = artifact_id
+
 
 STORE = InMemoryStore()

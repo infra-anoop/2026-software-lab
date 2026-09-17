@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from app.models import MaterialRef, SourceRecord
 from app.retrieval.tavily import tavily_search
-from app.retrieval.url_fetch import fetch_url_text
+from app.retrieval.url_fetch import FetchBudget, fetch_url_text
 
 
 def _now() -> str:
@@ -23,11 +23,15 @@ class BundleResult:
     web: list[SourceRecord] = field(default_factory=list)
 
 
-async def collect_materials_bundle(materials: list[MaterialRef]) -> list[SourceRecord]:
+async def collect_materials_bundle(
+    materials: list[MaterialRef],
+    *,
+    budget: FetchBudget | None = None,
+) -> list[SourceRecord]:
     """Fetch user links into materials-side SourceRecords."""
     out: list[SourceRecord] = []
     for ref in materials:
-        fetched = await fetch_url_text(ref.uri)
+        fetched = await fetch_url_text(ref.uri, budget=budget)
         sid = f"mat_{uuid4().hex[:10]}"
         if fetched is None:
             out.append(
@@ -86,9 +90,10 @@ async def collect_bundles(
     *,
     search_query: str,
     web_research_enabled: bool,
+    fetch_budget: FetchBudget | None = None,
 ) -> BundleResult:
     """Run materials fetch always; web search only when enabled."""
-    material_records = await collect_materials_bundle(materials)
+    material_records = await collect_materials_bundle(materials, budget=fetch_budget)
     web_records: list[SourceRecord] = []
     if web_research_enabled:
         web_records = await collect_web_bundle(search_query)

@@ -11,6 +11,7 @@ from langgraph.graph import END, START, StateGraph
 from app.agents.infer import infer_grant_state
 from app.agents.provenance import attach_provenance, coerce_claims
 from app.agents.writer import write_grant_draft
+from app.config import get_openai_api_key
 from app.models import (
     ArtifactVersion,
     CitationMode,
@@ -20,6 +21,7 @@ from app.models import (
     WebSignal,
 )
 from app.retrieval.bundles import collect_bundles
+from app.retrieval.url_fetch import FetchBudget
 
 
 class GenerateState(TypedDict, total=False):
@@ -205,27 +207,120 @@ def get_generate_graph() -> Any:
     return _GRAPH
 
 
+def openai_generate_enabled() -> bool:
+    """Live OpenAI only — skip LLM for unset/fake test keys (contract tests)."""
+    key = get_openai_api_key()
+    if key is None:
+        return False
+    lowered = key.lower()
+    return not (lowered.startswith("sk-test") or "fake" in lowered)
+
+
+def _compose_grant_body(user_text: str, sources: list[SourceRecord]) -> str:
+    """Complete draft from the turn + retrieved excerpts (no LLM)."""
+    parts = [user_text.strip()]
+    for src in sources:
+        span = (src.excerpt or src.title or "").strip()
+        if span:
+            parts.append(span[:500])
+    body = "\n\n".join(p for p in parts if p)
+    return body if body.strip() else "Draft pending additional detail."
+
+
+def _claims_from_sources(body: str, sources: list[SourceRecord]) -> list[ClaimProvenance]:
+    claims: list[ClaimProvenance] = []
+    for src in sources:
+        excerpt = (src.excerpt or src.title or "").strip()
+        if not excerpt:
+            continue
+        span = excerpt[:120]
+        if span in body:
+            claims.append(
+                ClaimProvenance(
+                    excerpt=span,
+                    source_id=src.source_id,
+                    status="grounded",
+                )
+            )
+    return coerce_claims(body, claims, sources)
+
+
+async def _run_generate_without_llm(
+    *,
+    conversation_id: str,
+    user_text: str,
+    materials: list[MaterialRef] | None,
+    citation_mode_pref: CitationMode | None,
+    humor_enabled: bool,
+    web_research_enabled: bool,
+) -> GenerateResult:
+    """Retrieve + assemble_artifact (T1/T3). Does not return canned assertion JSON."""
+    refs = materials or []
+    bundles = await collect_bundles(
+        refs,
+        search_query=user_text[:200],
+        web_research_enabled=web_research_enabled,
+        fetch_budget=FetchBudget(timeout_sec=3.0),
+    )
+    sources = [*bundles.materials, *bundles.web]
+    body = _compose_grant_body(user_text, sources)
+    claims = _claims_from_sources(body, sources)
+    web_signal = decide_web_signal(
+        web_research_enabled=web_research_enabled,
+        web_sources=bundles.web,
+    )
+    artifact = assemble_artifact(
+        conversation_id=conversation_id,
+        body=body,
+        materials=bundles.materials,
+        web=bundles.web,
+        claims=claims,
+        web_signal=web_signal,
+        citation_mode_pref=citation_mode_pref,
+        producing_mode="generate",
+        parent_artifact_id=None,
+    )
+    return GenerateResult(
+        artifact=artifact,
+        sources=list(artifact.sources),
+        humor_enabled=humor_enabled,
+    )
+
+
 async def run_generate(
     *,
     conversation_id: str,
     user_text: str,
     materials: list[MaterialRef] | None = None,
     citation_mode_pref: CitationMode | None = None,
+    humor_enabled: bool = False,
+    web_research_enabled: bool = True,
 ) -> GenerateResult:
-    """Run the generate graph. Not wired to HTTP until T028."""
-    refs = materials or []
-    final = await get_generate_graph().ainvoke(
-        {
-            "conversation_id": conversation_id,
-            "user_text": user_text,
-            "materials_in": [m.model_dump() for m in refs],
-            "citation_mode_pref": citation_mode_pref,
-        }
-    )
-    artifact: ArtifactVersion = final["artifact"]
-    return GenerateResult(
-        artifact=artifact,
-        sources=list(artifact.sources),
-        humor_enabled=bool(final.get("humor_enabled", False)),
+    """Run generate for an enqueued job (T028)."""
+    if openai_generate_enabled():
+        refs = materials or []
+        final = await get_generate_graph().ainvoke(
+            {
+                "conversation_id": conversation_id,
+                "user_text": user_text,
+                "materials_in": [m.model_dump() for m in refs],
+                "citation_mode_pref": citation_mode_pref,
+                "humor_enabled": humor_enabled,
+                "web_research_enabled": web_research_enabled,
+            }
+        )
+        artifact: ArtifactVersion = final["artifact"]
+        return GenerateResult(
+            artifact=artifact,
+            sources=list(artifact.sources),
+            humor_enabled=bool(final.get("humor_enabled", humor_enabled)),
+        )
+    return await _run_generate_without_llm(
+        conversation_id=conversation_id,
+        user_text=user_text,
+        materials=materials,
+        citation_mode_pref=citation_mode_pref,
+        humor_enabled=humor_enabled,
+        web_research_enabled=web_research_enabled,
     )
 

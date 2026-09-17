@@ -73,7 +73,7 @@
 - [x] T025 [US1] Implement Tavily optional search (no key → empty bundle) in `apps/smart-writer-v2/app/retrieval/tavily.py`
 - [x] T026 [US1] Implement LangGraph generate `StateGraph` nodes infer → materials → web → write → provenance in `apps/smart-writer-v2/app/orchestrator/generate_graph.py` with PydanticAI `result_type` per node in `apps/smart-writer-v2/app/agents/`
 - [x] T027 [US1] Add versioned prompt program grant defaults (humor off) in `apps/smart-writer-v2/app/prompts/programs/grant_default/`
-- [ ] T028 [US1] **Blocked on T043.** Enqueue generate jobs from `POST /v1/conversations/{id}/messages` only when grant intent slots who/whom/ask/why_funder/evidence are all filled; if any missing, do **not** enqueue (P5 — T043 returns `type=clarify`, no `job_id`); `GET /v1/jobs/{job_id}` success shape per `specs/smart-writer-v2/contracts/http-api.md` in `apps/smart-writer-v2/app/entrypoints/http.py`
+- [x] T028 [US1] **Blocked on T043.** Enqueue generate jobs from `POST /v1/conversations/{id}/messages` only when grant intent slots who/whom/ask/why_funder/evidence are all filled; if any missing, do **not** enqueue (P5 — T043 returns `type=clarify`, no `job_id`); `GET /v1/jobs/{job_id}` success shape per `specs/smart-writer-v2/contracts/http-api.md` in `apps/smart-writer-v2/app/entrypoints/http.py`
 - [ ] T029 [US1] Default `citation_mode=panel` when sources exist on artifact in `apps/smart-writer-v2/app/orchestrator/generate_graph.py`
 - [ ] T030 [US1] Chat UI generate + artifact pane + sources panel (poll via BFF, no client audit secret) in `apps/smart-writer-v2/web/app/page.tsx`
 

@@ -4,8 +4,9 @@ Endpoints:
   GET  /health                          — liveness (public)
   GET  /ready                           — OPENAI_API_KEY present; no upstream call
   POST /v1/conversations                — create conversation (preview gate)
-  POST /v1/conversations/{id}/messages  — turn router (clarify; no enqueue yet)
-  GET  /v1/conversations/{id}           — snapshot (no ArtifactVersion on clarify)
+  POST /v1/conversations/{id}/messages  — clarify or enqueue generate
+  GET  /v1/conversations/{id}           — snapshot (last_artifact_id)
+  GET  /v1/jobs/{job_id}                — job snapshot
 """
 
 from __future__ import annotations
@@ -14,9 +15,9 @@ import hmac
 from contextlib import asynccontextmanager
 from typing import Any, Literal
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
-from lab_shared.jobs import JobRunner
+from lab_shared.jobs import JobRunner, QueueFullError
 from pydantic import BaseModel, Field
 
 from app.agents.infer_state import (
@@ -32,14 +33,37 @@ from app.config import (
     get_job_timeout_sec,
     get_openai_api_key,
 )
+from app.models import MaterialRef as ModelMaterialRef
+from app.orchestrator.generate_graph import run_generate
 from app.store import STORE, MaterialRef, Message
 
 AUDIT_SECRET_HEADER = "X-Audit-Secret"
 
 
 async def _execute_job(payload: dict[str, Any]) -> dict[str, Any]:
-    """Placeholder until generate/revise graphs (US1)."""
-    return {"ok": True, "payload": payload}
+    """Run generate and persist last_artifact_id (T028)."""
+    conversation_id = str(payload["conversation_id"])
+    raw_materials = payload.get("materials") or []
+    refs = [
+        ModelMaterialRef(uri=str(item["uri"]), label=item.get("label"), kind="link")
+        for item in raw_materials
+        if item.get("uri")
+    ]
+    result = await run_generate(
+        conversation_id=conversation_id,
+        user_text=str(payload.get("user_text") or ""),
+        materials=refs,
+        citation_mode_pref=payload.get("citation_mode_pref"),
+        humor_enabled=bool(payload.get("humor_enabled", False)),
+        web_research_enabled=bool(payload.get("web_research_enabled", True)),
+    )
+    artifact = result["artifact"]
+    STORE.set_last_artifact_id(conversation_id, artifact.artifact_id)
+    STORE.add_message(conversation_id, "assistant", artifact.body)
+    return {
+        "humor_enabled": result["humor_enabled"],
+        "artifact": artifact.model_dump(),
+    }
 
 
 @asynccontextmanager
@@ -113,6 +137,15 @@ class ClarifyTurnOut(BaseModel):
 
     type: Literal["clarify"] = "clarify"
     assistant_message: AssistantMessageOut
+
+
+class JobAcceptedOut(BaseModel):
+    """Slots complete → enqueue generate (T028)."""
+
+    type: Literal["job_accepted"] = "job_accepted"
+    job_id: str
+    mode: Literal["generate", "revise"]
+    parent_artifact_id: str | None = None
 
 
 class ConversationMessageOut(BaseModel):
@@ -192,9 +225,10 @@ def get_conversation(
 def post_message(
     conversation_id: str,
     body: MessageTurnIn,
+    request: Request,
     _: None = Depends(require_preview_secret),
-) -> ClarifyTurnOut:
-    """Turn router: grant + missing slots → clarify; never enqueue (T043)."""
+) -> ClarifyTurnOut | JobAcceptedOut:
+    """Turn router: missing slots → clarify; else enqueue generate (T028)."""
     _require_conversation(conversation_id)
     state = STORE.get_run_state(conversation_id)
     assert state is not None
@@ -216,8 +250,55 @@ def post_message(
                 text=assistant.text,
             )
         )
-    # Slots complete: generate enqueue is T028 — do not start a job.
-    raise HTTPException(
-        status_code=501,
-        detail="Generate enqueue is not available until T028",
+    runner: JobRunner = request.app.state.job_runner
+    try:
+        job = runner.enqueue(
+            {
+                "conversation_id": conversation_id,
+                "user_text": body.text,
+                "mode": "generate",
+                "parent_artifact_id": None,
+                "materials": [
+                    {"uri": ref.uri, "label": ref.label} for ref in state.materials
+                ],
+                "citation_mode_pref": state.citation_mode_pref,
+                "humor_enabled": state.humor_enabled,
+                "web_research_enabled": state.web_research_enabled,
+            }
+        )
+    except QueueFullError as exc:
+        raise HTTPException(status_code=503, detail="Job queue is full") from exc
+    return JobAcceptedOut(
+        job_id=job.job_id,
+        mode="generate",
+        parent_artifact_id=None,
     )
+
+
+@app.get("/v1/jobs/{job_id}")
+def get_job(
+    job_id: str,
+    request: Request,
+    _: None = Depends(require_preview_secret),
+) -> dict[str, Any]:
+    """Job snapshot. Success shape matches http-api.md (T2 humor on job, T1 claims)."""
+    runner: JobRunner = request.app.state.job_runner
+    job = runner.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    mode = job.payload.get("mode") or "generate"
+    if job.status != "succeeded":
+        return {
+            "job_id": job.job_id,
+            "status": job.status,
+            "mode": mode,
+            "error": job.error,
+        }
+    result = job.result if isinstance(job.result, dict) else {}
+    return {
+        "job_id": job.job_id,
+        "status": "succeeded",
+        "mode": mode,
+        "humor_enabled": result.get("humor_enabled", False),
+        "artifact": result["artifact"],
+    }
