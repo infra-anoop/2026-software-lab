@@ -7,6 +7,7 @@ turns should fail (red).
 
 from __future__ import annotations
 
+import re
 import time
 from typing import Any
 
@@ -35,6 +36,18 @@ EMPTY_WHOM_ASK_PROMPT = (
     "gained at least one grade level."
 )
 
+# Who + Whom + Ask filled; Why-funder and Evidence absent (T11 — not a funder+$amount-only gate).
+WHOM_ASK_FILLED_WHY_EMPTY_PROMPT = (
+    "Literacy Partners (our org) is asking the Ford Foundation for $50,000 "
+    "for adult literacy in NYC."
+)
+
+# FR-021 / T9: structured labels only. English "ask" / "whom" in questions is allowed.
+_STRUCTURED_LABEL_RE = re.compile(
+    r"(?i)(\baxis\b|\baxis_[ab]\b|\bintent_slots\b|\bwhy_funder\b|"
+    r"\bmissing_hints\b|\bwhom:)"
+)
+
 
 def create_conversation(client: TestClient) -> str:
     """POST /v1/conversations and return conversation_id."""
@@ -45,18 +58,57 @@ def create_conversation(client: TestClient) -> str:
     return conversation_id
 
 
-def post_empty_whom_ask_turn(client: TestClient, conversation_id: str) -> Any:
-    """POST a grant-ish turn with Whom and Ask empty (P5 must-clarify fixture)."""
+def _post_turn(client: TestClient, conversation_id: str, text: str) -> Any:
+    """POST /messages with client_intent=auto and no citation override."""
     return client.post(
         f"/v1/conversations/{conversation_id}/messages",
         headers=AUTH,
         json={
-            "text": EMPTY_WHOM_ASK_PROMPT,
+            "text": text,
             "client_intent": "auto",
             "citation_mode": None,
             "materials": [],
         },
     )
+
+
+def post_empty_whom_ask_turn(client: TestClient, conversation_id: str) -> Any:
+    """POST a grant-ish turn with Whom and Ask empty (P5 must-clarify fixture)."""
+    return _post_turn(client, conversation_id, EMPTY_WHOM_ASK_PROMPT)
+
+
+def post_whom_ask_filled_why_empty_turn(client: TestClient, conversation_id: str) -> Any:
+    """POST Who+Whom+Ask filled, Why/Evidence empty (T11)."""
+    return _post_turn(client, conversation_id, WHOM_ASK_FILLED_WHY_EMPTY_PROMPT)
+
+
+def assert_clarify_no_artifact(
+    client: TestClient,
+    conversation_id: str,
+    response: Any,
+) -> dict[str, Any]:
+    """Clarify payload + GET snapshot has no ArtifactVersion (T9/T10/T15)."""
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload.get("type") == "clarify"
+    assert payload.get("job_id") is None
+    assistant = payload["assistant_message"]
+    assert "message_id" in assistant
+    text = assistant["text"]
+    assert isinstance(text, str) and text.strip() != ""
+    assert _STRUCTURED_LABEL_RE.search(text) is None, text
+    snapshot_response = client.get(
+        f"/v1/conversations/{conversation_id}",
+        headers=AUTH,
+    )
+    assert snapshot_response.status_code == 200, snapshot_response.text
+    snapshot = snapshot_response.json()
+    assert "last_artifact_id" in snapshot
+    assert snapshot["last_artifact_id"] is None
+    for key in ("artifact", "latest_artifact"):
+        value = snapshot.get(key)
+        assert value in (None, {}), snapshot
+    return payload
 
 
 def post_grant_turn(client: TestClient, conversation_id: str) -> Any:

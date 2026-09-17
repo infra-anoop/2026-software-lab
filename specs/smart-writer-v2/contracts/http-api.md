@@ -49,7 +49,7 @@ Response (one of):
 }
 ```
 
-Natural-language questions only. Do **not** include `missing_hints` / slot ids in the default client payload (FR-021).
+Natural-language questions only. Do **not** include `missing_hints` / slot ids in the default client payload (FR-021). `job_id` MUST be absent or JSON `null`. English `ask`/`whom` in questions is allowed; do **not** use structured labels (`Axis`, `intent_slots`, `why_funder`, `missing_hints`, `Whom:`). After clarify, `GET /v1/conversations/{id}` has `last_artifact_id` JSON `null` (no ArtifactVersion) — **T9/T10**.
 
 **Job accepted** — only when grant intent slots are complete (or non-grant path):
 
@@ -113,4 +113,4 @@ Contract tests should assert:
 3. Protected routes reject wrong secret.
 4. Successful grant artifact with org/funder claims → each such claim in `claims[]` has `status=grounded`+`source_id` that exists on `artifact.sources[]`, or `status=uncertain` with null `source_id`; `excerpt` is a substring of `body` (SC-003 shape).
 5. When web enabled and no useful web hits → `web_signal=none_declared` (SC-004 shape). Not `disabled` on that fixture.
-6. Grant turn with empty Whom/Ask (fixture) → `type=clarify`, no `job_id` (P5).
+6. Grant turn with empty Whom/Ask (fixture) → `type=clarify`; `job_id` absent or JSON `null`; `GET /v1/conversations/{id}` `last_artifact_id` JSON `null` (P5 / T10). Assistant text has no structured slot/axis labels (T9). A second fixture with Who+Whom+Ask filled and Why or Evidence empty must still clarify (T11).

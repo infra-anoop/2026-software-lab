@@ -115,7 +115,7 @@
 
 - [x] T039 [P] [US3] Contract test grant turn with empty whom/ask → `type=clarify`, no `job_id`, assistant `text` has no tokens `whom`/`ask`/`Axis` as slot labels in `apps/smart-writer-v2/tests/contract/test_clarify_before_write.py` (hook 6; catalog `grant.intent_slots_complete` structural)
 - [x] T040 [P] [US3] Contract test default clarify payload omits `missing_hints` in `apps/smart-writer-v2/tests/contract/test_clarify_no_slot_leak.py` (FR-021)
-- [ ] T041 [US3] Independent **T\*** review of T039–T040; append `specs/smart-writer-v2/TEST_REVIEW.md`; Blockers before T042
+- [x] T041 [US3] Independent **T\*** review of T039–T040; append `specs/smart-writer-v2/TEST_REVIEW.md`; Blockers before T042
 
 ### Implementation for User Story 3
 
