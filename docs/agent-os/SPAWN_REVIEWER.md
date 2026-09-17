@@ -33,10 +33,12 @@ T*: only after contract / `acceptance.md` `how: auto` tests exist (red). Skip sc
 
 4. Tell the human only: reviewer spawned, packet path, where the report will land. Do **not** paste the brief.
 5. When the report exists, **stop** for human Debate adjudication (constitution §F). Do not start matching implementation until Debates lock (Nit/Later may be agent-closed under §F).
+6. After Debate locks are **recorded in the review file**, **resume** the next unblocked slice (matching impl or next tests). Do **not** ask “what next” / “keep going.” The reviewer stops; the implementer does not wait for a new implement command.
 
 ## MUST NOT
 
 - Ask the human to copy/paste F*/R*/P*/T* briefs into a new session.
+- Ask the human which task to do next after a lock or a finished slice.
 - Continue the authoring/implementer thread as the reviewer (same agent grading its own work).
 - Dump `InternalRunState` or rewrite spec/plan to “make review easier.”
 

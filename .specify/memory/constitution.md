@@ -4,7 +4,7 @@ Non-negotiable principles for every feature and agent run in this monorepo.
 Spec Kit phases (`/speckit-*`) and `AGENTS.md` must respect this document.
 Product-unique choices belong in feature specs — **not** by reinventing process.
 
-**Version**: 1.4.1 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-17
+**Version**: 1.4.2 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-17
 
 ## Core Principles
 
@@ -105,6 +105,8 @@ Detailed work items belong in `tasks.md` (or optional packets), not as a substit
 ### F. Progressive HITL (governor altitude)
 
 Human adjudication is mandatory at **high-altitude** gates: spec Debates (F*/R*), plan Architecture Debates (P*), and test-suite Debates (T*) that would let implement start against a wrong lock.
+
+After `tasks.md` is the approved breakdown, `/speckit-implement` **continues** until the next T* Debate or the MVP/checkpoint named in `tasks.md`. Do **not** ask the human what is next. Spawn T* per `SPAWN_REVIEWER.md`; after Debates are recorded in `TEST_REVIEW.md`, resume matching implementation. The implementer **may write application code**. Extra workers only for `[P]` tasks on different files or an explicit long implement packet — not a second orchestrator methodology.
 
 Downstream (routine unit tests, implement nits, PR nits), the lab **may** use agent review with **agentic adjudication** for Nit/Later under an explicit policy while still escalating Blockers/Debates. Goal: reduce human-as-router without removing human judgment where structure, product bets, and **DoD tests** are set.
 

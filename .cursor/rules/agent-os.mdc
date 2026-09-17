@@ -15,7 +15,8 @@ Human map: `docs/agent-os/README.md`.
 3. Specs need failable outcomes + acceptance catalog pointer (constitution §B–C).
 4. Do not start tasks/implement until plan Architecture + Phased delivery are human-approved (§E), after P* triage when review was run.
 5. Exchange context via git artifacts; do not ask the human to copy/paste between agents. Independent reviews are **spawned** (`docs/agent-os/SPAWN_REVIEWER.md`); never paste F*/R*/P*/T* briefs into the human chat.
-6. Escalate only for missing decisions, invariant conflicts, or unblockable DoD.
+6. Escalate only for missing decisions, invariant conflicts, or unblockable DoD. Do **not** ask what is next.
+7. After T* Debates are recorded in `TEST_REVIEW.md`, resume matching impl. Stop at the MVP/checkpoint in `tasks.md`. Implementer may write app code; extra workers only for `[P]` on different files or a long packet.
 
 ## Product vs process vs architecture
 

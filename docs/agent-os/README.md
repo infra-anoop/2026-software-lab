@@ -70,6 +70,7 @@ Lab taste = thin **overlays** in constitution + template overrides — not a sec
 
 | Version | Note |
 |---------|------|
+| 1.4.2 | Implement continues after T* lock; no “what next”; stop at tasks.md MVP checkpoint; extra workers only for [P]/long packet |
 | 1.4.1 | Spawn reviewers from git packets (`SPAWN_REVIEWER.md`); do not paste briefs to the human |
 | 1.4.0 | §V test-first required for executable apps; T* test review overlay |
 | 1.3.2 | PLAN_AUTHORING_GATES; topology section; research template; fail-closed plan authoring |

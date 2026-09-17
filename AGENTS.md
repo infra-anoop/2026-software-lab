@@ -82,10 +82,10 @@ Constitution → Specify → [Clarify] → independent review → Plan → [Plan
 2. Git artifacts are the bus (no human copy/paste router). Independent reviews (F*/R*/P*/T*) are **spawned** from a git packet (`docs/agent-os/SPAWN_REVIEWER.md`); do **not** ask the human to paste a brief.
 3. Specs need **failable outcomes** + **acceptance catalog** (constitution §B–C).
 4. Do not re-argue process per product; debate product-unique choices only.
-5. Stop and escalate on missing decisions, invariant conflicts, or unmet DoD.
-6. Human adjudicates Debates at spec and Architecture; progressive HITL may auto-accept Nit/Later later (§F).
+5. Stop and escalate on missing decisions, invariant conflicts, or unmet DoD. Do **not** ask what task is next.
+6. Human adjudicates Debates at spec, Architecture, and T*; after locks are in the review file, implement **resumes** (§F). Nit/Later may be agent-adjudicated.
 7. `/speckit-plan` must satisfy `PLAN_AUTHORING_GATES.md` (fail closed) — sibling topology reuse without SOTA alternatives is an ERROR.
-8. Executable apps: failing contract/catalog-auto tests before matching impl; T* review when those tests exist (constitution §V).
+8. Executable apps: failing contract/catalog-auto tests before matching impl; **spawn** T* when those tests exist; after lock, continue (constitution §V / §F).
 
 ---
 
@@ -103,7 +103,7 @@ See constitution. Short list:
 
 ## Human role
 
-Governor, not router: approve specs/invariants, adjudicate review Debates (F*/R*/P*/T* at altitude), review PRs at decision altitude. Do **not** paste review briefs between agents. Downstream Nit/Later may be agent-adjudicated under explicit policy (constitution §F).
+Governor, not router: approve specs/invariants, adjudicate review Debates (F*/R*/P*/T* at altitude), review PRs at decision altitude. Do **not** paste review briefs between agents. After you lock Debates, agents resume without a new “keep going.” Downstream Nit/Later may be agent-adjudicated under explicit policy (constitution §F).
 
 ---
 

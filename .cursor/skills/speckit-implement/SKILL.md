@@ -54,6 +54,15 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 ## Outline
 
+**Lab overlay — implement loop (constitution §F). Fail closed; do not skip.**
+
+- **You may write product code.** Do not become an orchestrator-only parent. Do not require an implement packet per task.
+- **Schedule** from `tasks.md` **Dependencies & Execution Order** and MUST lines, not from T-number sequence alone.
+- **T\***: when red contract/catalog-auto tests for a slice exist, spawn per `docs/agent-os/SPAWN_REVIEWER.md`. Human-facing text = packet path + deposit path. Then **stop**. After Debates are recorded in `TEST_REVIEW.md`, resume matching impl **without asking**.
+- **Extra workers:** only `[P]` tasks on **different files**, or an explicit long implement packet (`notes/packets/_TEMPLATE.md`). Sequential slices stay in this session.
+- **Human chat:** Debates, missing decisions, invariant conflicts, unblockable DoD. Git commit is the progress bus. Do not ask what is next. Do not paste briefs.
+- **End:** stop at the MVP / checkpoint named in `tasks.md`. Do not start later plan phases unless the human or an implement packet already scoped them.
+
 1. Run `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks` from repo root and parse FEATURE_DIR and AVAILABLE_DOCS list. All paths must be absolute. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
 2. **Check checklists status** (if FEATURE_DIR/checklists/ exists):
@@ -153,7 +162,7 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **Phase-by-phase execution**: Complete each phase before moving to the next
    - **Respect dependencies**: Run sequential tasks in order, parallel tasks [P] can run together
    - **Follow TDD approach**: Execute test tasks before their corresponding implementation tasks. Tests must be **red** before product code for that slice.
-   - **Lab test review:** When contract tests or `acceptance.md` `how: auto` tests exist, do **not** implement matching product code until `FEATURE_DIR/TEST_REVIEW.md` exists and T* Blockers are resolved or accepted. **Spawn** the reviewer per `docs/agent-os/SPAWN_REVIEWER.md` (review packet + `TEST_REVIEW_PROMPT.md`). Do **not** ask the human to paste the brief. Skip this gate for scaffold-only (no contract/auto tests yet). Nit/Later may be agent-adjudicated (§F).
+   - **Lab test review:** When contract tests or `acceptance.md` `how: auto` tests exist, do **not** implement matching product code until `FEATURE_DIR/TEST_REVIEW.md` exists and T* Blockers are resolved or accepted. **Spawn** the reviewer per `docs/agent-os/SPAWN_REVIEWER.md` (review packet + `TEST_REVIEW_PROMPT.md`). Do **not** ask the human to paste the brief. After locks are in `TEST_REVIEW.md`, **continue** matching impl. Skip this gate for scaffold-only (no contract/auto tests yet). Nit/Later may be agent-adjudicated (§F).
    - **File-based coordination**: Tasks affecting the same files must run sequentially
    - **Validation checkpoints**: Verify each phase completion before proceeding
 
@@ -165,11 +174,10 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **Polish and validation**: Unit tests, performance optimization, documentation
 
 8. Progress tracking and error handling:
-   - Report progress after each completed task
+   - Commit/push is the progress bus (lab overlay). Do **not** ask the human what is next after a finished slice.
    - Halt execution if any non-parallel task fails
    - For parallel tasks [P], continue with successful tasks, report failed ones
-   - Provide clear error messages with context for debugging
-   - Suggest next steps if implementation cannot proceed
+   - Escalate only for missing decisions, invariant conflicts, or unblockable DoD
    - **IMPORTANT** For completed tasks, make sure to mark the task off as [X] in the tasks file.
 
 9. Completion validation:
@@ -221,7 +229,8 @@ Report final status with summary of completed work.
 
 ## Done When
 
-- [ ] All tasks in tasks.md completed and marked `[X]`
-- [ ] Implementation validated against specification, plan, and test coverage
+- [ ] Tasks in the **MVP/checkpoint** named in tasks.md completed and marked `[X]` (not necessarily every later-phase task)
+- [ ] Implementation validated against specification, plan, and test coverage for that checkpoint
 - [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above
 - [ ] Completion reported to user with summary of completed work
+- [ ] If a T* gate is open: review spawned or Debates awaiting human — not “what next”
