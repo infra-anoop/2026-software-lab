@@ -7,7 +7,7 @@ Lab cattle already exists. This packet **wires `smart-writer-v2` onto it**. Not 
 | Field | Value |
 |-------|-------|
 | Packet id | `2026-09-17-swv2-railway-bootstrap` |
-| Status | in_progress |
+| Status | done |
 | Feature / spec | `specs/smart-writer-v2/` (T006 done; T066 docs; T067 Vercel **out**) |
 | Branch | current (`main` OK — no new factory) |
 | Agent mode | session |
@@ -92,8 +92,8 @@ Railway service `smart-writer-v2` in project `2026-software-lab` runs the GHCR d
 - [x] Railway service exists (A26 apply if it did not) — created `35df644b-93d4-4685-adb8-3ebff89077cb`
 - [x] Infisical has `OPENAI_API_KEY` synced; `SMART_WRITER_V2_AUDIT_SECRET` skipped (not in vault)
 - [x] GHCR image `smart-writer-v2` pushed; Railway digest-pinned (`sha256:4eaa26de4f018dfa081f3eaac15c61ecf93c8e10c0c23038b2a61341adcc9a67`)
-- [ ] `smoke-test.yml` `GET /health` 200 — **blocked** until public domain exists (A26 now creates `serviceDomain` on apply)
-- [ ] This packet `Status` → `done` (or `blocked` with the HITL reason)
+- [x] `smoke-test.yml` `GET /health` 200 — `https://smart-writer-v2-production.up.railway.app/health` → `{"ok":true}` ([35183326809](https://github.com/infra-anoop/2026-software-lab/actions/runs/35183326809))
+- [x] This packet `Status` → `done`
 
 ## Out of scope
 
@@ -123,4 +123,4 @@ Railway service `smart-writer-v2` in project `2026-software-lab` runs the GHCR d
   - `uv run pytest scripts/test_provision_runtime.py` 19 passed
 - Open questions for human:
   - Seed Infisical `SMART_WRITER_V2_AUDIT_SECRET` when you want mutating `/v1` on Railway (optional for `/health`)
-- Next agent step: push A26 domain ensure → re-apply provision → re-smoke.
+- Next agent step: Lane A US6 T058 (red tests) → spawn T059. Cattle finish line met.
