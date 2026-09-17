@@ -51,6 +51,7 @@ class InternalRunState:
     materials: list[MaterialRef] = field(default_factory=list)
     citation_mode_pref: CitationMode | None = None
     last_artifact_id: str | None = None
+    grant_beachhead: bool = True
 
 
 @dataclass
@@ -142,6 +143,11 @@ class InMemoryStore:
         """T030: store disable flag. Not exposed on GET conversation."""
         state = self._run_state[conversation_id]
         state.web_research_enabled = enabled
+
+    def set_grant_beachhead(self, conversation_id: str, enabled: bool) -> None:
+        """T060: grant vs non-grant smoke. Not exposed on GET conversation (T2)."""
+        state = self._run_state[conversation_id]
+        state.grant_beachhead = enabled
 
     def set_last_artifact_id(self, conversation_id: str, artifact_id: str) -> None:
         """Point the conversation at the latest ArtifactVersion (T028)."""

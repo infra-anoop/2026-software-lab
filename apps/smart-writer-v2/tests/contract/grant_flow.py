@@ -55,9 +55,9 @@ WHOM_ASK_FILLED_WHY_EMPTY_PROMPT = (
 )
 
 # US6 / T058: non-grant short-form — must not require Axis A grant slots (SC-005 smoke).
+# T35: no “not a grant” disclaimer (infer seam must classify explainer/blog without it).
 NONGRANT_PROMPT = (
-    "Write a two-page explainer on backyard composting for apartment dwellers. "
-    "This is a blog post, not a grant or donation ask."
+    "Write a two-page explainer on backyard composting for apartment dwellers."
 )
 
 # FR-021 / T9: structured labels only. English "ask" / "whom" in questions is allowed.
@@ -98,6 +98,11 @@ def post_empty_whom_ask_turn(client: TestClient, conversation_id: str) -> Any:
 def post_whom_ask_filled_why_empty_turn(client: TestClient, conversation_id: str) -> Any:
     """POST Who+Whom+Ask filled, Why/Evidence empty (T11)."""
     return _post_turn(client, conversation_id, WHOM_ASK_FILLED_WHY_EMPTY_PROMPT)
+
+
+def post_nongrant_turn(client: TestClient, conversation_id: str) -> Any:
+    """POST the US6 composting explainer (T040 / T058)."""
+    return _post_turn(client, conversation_id, NONGRANT_PROMPT)
 
 
 def assert_clarify_no_artifact(

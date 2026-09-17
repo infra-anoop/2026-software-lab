@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import BaseModel
 from pydantic_ai import Agent
@@ -172,3 +173,37 @@ _DISABLE_WEB_RE = re.compile(
 def infer_web_research_enabled(text: str) -> bool:
     """Default on; explicit skip → False. Factual-low must not match (F3 / T24)."""
     return _DISABLE_WEB_RE.search(text) is None
+
+
+BeachheadKind = Literal["grant", "nongrant", "unknown"]
+
+# F2: grant-positive wins over genre. Unknown stays grant (T37).
+_GRANT_POSITIVE_RE = re.compile(
+    r"\b(grant|donation|donate|funder|foundation|fundraising)\b"
+    r"|asking the\b"
+    r"|\$[\d,]",
+    flags=re.IGNORECASE,
+)
+_NONGGRANT_GENRE_RE = re.compile(
+    r"\b(blog(?:\s+post)?|explainer|how-to|howto)\b",
+    flags=re.IGNORECASE,
+)
+
+
+def classify_grant_beachhead(text: str) -> BeachheadKind:
+    """Deterministic beachhead class. Not emptiness of intent slots (T35/T37)."""
+    if _GRANT_POSITIVE_RE.search(text):
+        return "grant"
+    if _NONGGRANT_GENRE_RE.search(text):
+        return "nongrant"
+    return "unknown"
+
+
+def next_grant_beachhead(current: bool, text: str) -> bool:
+    """Store flag: nongrant → False; grant-positive → True; unknown keeps current."""
+    kind = classify_grant_beachhead(text)
+    if kind == "nongrant":
+        return False
+    if kind == "grant":
+        return True
+    return current

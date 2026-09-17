@@ -27,6 +27,7 @@ from app.agents.infer_state import (
     infer_web_research_enabled,
     merge_intent_slots,
     missing_grant_slots,
+    next_grant_beachhead,
 )
 from app.config import (
     DEFAULT_JOB_CONCURRENCY,
@@ -251,7 +252,7 @@ def post_message(
     request: Request,
     _: None = Depends(require_preview_secret),
 ) -> ClarifyTurnOut | JobAcceptedOut:
-    """Turn router: missing slots → clarify; else enqueue generate (T028)."""
+    """Turn router: grant + missing slots → clarify; non-grant skips Axis A (T060)."""
     _require_conversation(conversation_id)
     state = STORE.get_run_state(conversation_id)
     assert state is not None
@@ -271,8 +272,12 @@ def post_message(
         conversation_id,
         infer_web_research_enabled(body.text),
     )
+    STORE.set_grant_beachhead(
+        conversation_id,
+        next_grant_beachhead(state.grant_beachhead, body.text),
+    )
     missing = missing_grant_slots(merged)
-    if missing:
+    if state.grant_beachhead and missing:
         text = clarify_text_for_turn(missing, ranking)
         assistant = STORE.add_message(conversation_id, "assistant", text)
         return ClarifyTurnOut(

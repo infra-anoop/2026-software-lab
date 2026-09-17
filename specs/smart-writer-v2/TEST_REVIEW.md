@@ -805,3 +805,20 @@ Correctly **not** pytested (do not fake): SC-001 length (human); blog-not-grant 
 3. **T37:** Must unknown/token-poor copy default to **grant/P5** (F2), forbidding “all five slots empty ⇒ skip Axis A,” or is all-empty an accepted Axis A N/A implementation?
 
 Implementer: do not start T060 until T35–T37 are accepted or the tests are edited. Nit/Later (T39–T40) may be agent-adjudicated (§F). Do not implement non-grant by extending the messages request body. Do not weaken T039 to green T058.
+
+---
+
+## Adjudication — US6 (2026-09-17)
+
+Feature-local lock: human accepted architect recs for T35–T37. Nit/Later agent-closed.
+
+| ID | Status | Lock |
+|----|--------|------|
+| **T35** | **locked** | Deterministic infer seam (`classify_grant_beachhead` / `next_grant_beachhead`) called from POST **before** `missing_grant_slots`. Composting fixture **without** “not a grant” disclaimer. No router-only regex, no `MessageTurnIn` flag, no GET dump (T2). |
+| **T36** | **locked** | Hook 2: `parent_artifact_id` key present and JSON `null` on accepted **and** artifact. `web_signal in {used, none_declared, disabled}` then `== none_declared` on this empty-materials / Tavily-unset fixture. Do not pytest length or blog prose. |
+| **T37** | **locked** | Unknown / token-poor copy stays **grant/P5**. Forbid “all five slots empty ⇒ skip Axis A.” Grant-positive tokens win over genre (F2). After T060, T039/T11 remain clarify + no artifact. |
+| **T38** | **strength** | Keep three-fixture split and no-graph-stub. |
+| **T39** | **accepted (Later)** | Leave `engine.nongrant_smoke` hybrid; T061 is a different row. |
+| **T40** | **accepted (Nit)** | Dedicated `post_nongrant_turn`; assert `"job_id" in payload` and truthy. |
+
+Tests edited to match. **T060 may start.**
