@@ -667,3 +667,20 @@ Correctly **not** pytested (do not fake): `research.prefer_criteria_over_trivia`
 3. **T31:** On the disable fixture, must materials still appear (F4 first-class when web is off), or is `web_signal=disabled` + no `bundle=web` enough?
 
 Implementer: do not start T056 until T29–T31 are accepted or the tests are edited. Nit/Later (T33–T34) may be agent-adjudicated (§F). Do not implement disable by extending the messages request body. Do not fake prefer-criteria-over-trivia as pytest.
+
+---
+
+## Adjudication — US5 (2026-09-17)
+
+Feature-local lock: human accepted architect recs for T29–T31 (this slice). Nit/Later agent-closed.
+
+| ID | Status | Lock |
+|----|--------|------|
+| **T29** | **locked** | T053 stays a T021 landmine (set-equality). Bind materials `kind=user_material` and GRANT_MATERIALS URI. T053 PASS is not T056 DoD. Do not pytest trivia/fit. |
+| **T30** | **locked** | Disable web via deterministic infer → `InternalRunState.web_research_enabled=False`, called from POST before enqueue (like slots/ranking). Do **not** add the flag to `MessageTurnIn`. Do not dump on GET conversation. Do not regex only inside generate. T056 consumes the store bool. |
+| **T31** | **locked** | Disable fixture: ≥1 materials row (`kind=user_material`) + `web_bundle_ids == []` (key present) + no `kind=web` + `web_signal=disabled`. |
+| **T32** | **strength** | Keep T018 vs T054 split and no-graph-stub. |
+| **T33** | **accepted (Later)** | T057 already on `MessageTurnIn`; writer F4 sentence is hybrid/human remainder. Re-check T018 ≠ `disabled` after T030. |
+| **T34** | **accepted (Nit)** | `web_signal` enum then `== disabled`; keep list→set equality. |
+
+Tests edited to match. **T056–T057 may start.**

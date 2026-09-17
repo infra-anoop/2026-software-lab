@@ -9,6 +9,8 @@ def weave_property_ranking(program_text: str, ranking: list[str]) -> str:
     extra = (
         "Closed property ranking (preference order): "
         f"{ids}. Do not invent property labels. "
-        "factual is tone/emphasis only; do not disable research or provenance."
+        "factual is tone/emphasis only; do not disable research or provenance. "
+        "Prefer materials_bundle for funder criteria and org evidence; "
+        "web_bundle is differentiating public signal, not novelty trivia."
     )
     return f"{program_text.rstrip()}\n\n{extra}\n"

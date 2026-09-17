@@ -161,12 +161,12 @@
 
 - [x] T053 [P] [US5] Contract test artifact `materials_bundle_ids` vs `web_bundle_ids` populated from `SourceRecord.bundle` in `apps/smart-writer-v2/tests/contract/test_bundle_roles.py` (F4 structural)
 - [x] T054 [P] [US5] Reuse/extend `test_web_signal.py` for `web_research_enabled=false` → `web_signal=disabled` in `apps/smart-writer-v2/tests/contract/test_web_disabled.py`
-- [ ] T055 [US5] Independent **T\*** review of T053–T054; append `TEST_REVIEW.md`; Blockers before T056
+- [x] T055 [US5] Independent **T\*** review of T053–T054; append `TEST_REVIEW.md`; Blockers before T056
 
 ### Implementation for User Story 5
 
-- [ ] T056 [US5] Ensure generate/revise graphs set bundle ids and F4 preference in writer context (materials criteria over web trivia) in `apps/smart-writer-v2/app/orchestrator/generate_graph.py` and `apps/smart-writer-v2/app/prompts/programs/grant_default/`
-- [ ] T057 [US5] Accept `materials: [{ uri, label }]` on `POST .../messages` (`kind=link`) in `apps/smart-writer-v2/app/entrypoints/http.py` (file upload deferred P7/P3)
+- [x] T056 [US5] Ensure generate/revise graphs set bundle ids and F4 preference in writer context (materials criteria over web trivia) in `apps/smart-writer-v2/app/orchestrator/generate_graph.py` and `apps/smart-writer-v2/app/prompts/programs/grant_default/`
+- [x] T057 [US5] Accept `materials: [{ uri, label }]` on `POST .../messages` (`kind=link`) in `apps/smart-writer-v2/app/entrypoints/http.py` (file upload deferred P7/P3)
 
 **Checkpoint**: F4 roles visible in artifact JSON; SC-004 structural auto green
 

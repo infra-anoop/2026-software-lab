@@ -12,11 +12,12 @@ from tests.contract.grant_flow import (
     wait_job_success,
 )
 
+_WEB_SIGNALS = frozenset({"used", "none_declared", "disabled"})
 _DISABLE_WEB_PROMPT = GRANT_PROMPT + " Do not use web research."
 
 
 def test_web_research_disabled_declares_disabled(client: TestClient) -> None:
-    """User disables web → web_signal is disabled, not none_declared."""
+    """User disables web → disabled signal; materials stay; no web bundle."""
     conversation_id = create_conversation(client)
     response = client.post(
         f"/v1/conversations/{conversation_id}/messages",
@@ -32,7 +33,14 @@ def test_web_research_disabled_declares_disabled(client: TestClient) -> None:
     accepted = response.json()
     assert accepted.get("type") == "job_accepted"
     job = wait_job_success(client, accepted["job_id"])
-    signal = job["artifact"]["web_signal"]
+    artifact = job["artifact"]
+    signal = artifact["web_signal"]
+    assert signal in _WEB_SIGNALS
     assert signal == "disabled"
-    sources = job["artifact"]["sources"]
+    assert "web_bundle_ids" in artifact
+    assert artifact["web_bundle_ids"] == []
+    sources = artifact["sources"]
+    assert isinstance(sources, list)
+    assert any(row.get("kind") == "user_material" for row in sources), sources
+    assert all(row.get("kind") != "web" for row in sources)
     assert all(row.get("bundle") != "web" for row in sources)

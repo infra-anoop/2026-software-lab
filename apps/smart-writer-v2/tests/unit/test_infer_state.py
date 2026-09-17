@@ -5,12 +5,14 @@ from __future__ import annotations
 from app.agents.clarify import clarify_text_for_missing
 from app.agents.infer_state import (
     extract_intent_slots,
+    infer_web_research_enabled,
     merge_intent_slots,
     missing_grant_slots,
 )
 from app.store import IntentSlots
 from tests.contract.grant_flow import (
     EMPTY_WHOM_ASK_PROMPT,
+    FACTUAL_LOW_PROMPT,
     GRANT_PROMPT,
     WHOM_ASK_FILLED_WHY_EMPTY_PROMPT,
 )
@@ -50,3 +52,9 @@ def test_clarify_copy_has_no_structured_labels() -> None:
     assert "axis" not in lowered
     assert "whom:" not in lowered
     assert "missing_hints" not in lowered
+
+
+def test_infer_web_research_defaults_on_and_disable_phrase_offs() -> None:
+    assert infer_web_research_enabled(GRANT_PROMPT) is True
+    assert infer_web_research_enabled(FACTUAL_LOW_PROMPT) is True
+    assert infer_web_research_enabled(GRANT_PROMPT + " Do not use web research.") is False

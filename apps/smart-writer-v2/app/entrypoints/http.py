@@ -24,6 +24,7 @@ from app.agents.clarify import clarify_text_for_turn
 from app.agents.infer_state import (
     extract_intent_slots,
     infer_property_ranking,
+    infer_web_research_enabled,
     merge_intent_slots,
     missing_grant_slots,
 )
@@ -266,6 +267,10 @@ def post_message(
     if inferred_rank:
         STORE.set_property_ranking(conversation_id, inferred_rank)
     ranking = list(state.property_ranking)
+    STORE.set_web_research_enabled(
+        conversation_id,
+        infer_web_research_enabled(body.text),
+    )
     missing = missing_grant_slots(merged)
     if missing:
         text = clarify_text_for_turn(missing, ranking)

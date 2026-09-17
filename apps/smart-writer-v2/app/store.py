@@ -138,6 +138,11 @@ class InMemoryStore:
         state = self._run_state[conversation_id]
         state.property_ranking = list(ranking)
 
+    def set_web_research_enabled(self, conversation_id: str, enabled: bool) -> None:
+        """T030: store disable flag. Not exposed on GET conversation."""
+        state = self._run_state[conversation_id]
+        state.web_research_enabled = enabled
+
     def set_last_artifact_id(self, conversation_id: str, artifact_id: str) -> None:
         """Point the conversation at the latest ArtifactVersion (T028)."""
         state = self._run_state[conversation_id]

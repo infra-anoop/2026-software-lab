@@ -161,3 +161,14 @@ def infer_property_ranking(text: str) -> list[str]:
             found = [item for item in found if item != name]
             found.append(name)
     return filter_closed_ranking(found)
+
+
+_DISABLE_WEB_RE = re.compile(
+    r"do not use web research|don't use web research|skip web (?:search|research)|no web research",
+    flags=re.IGNORECASE,
+)
+
+
+def infer_web_research_enabled(text: str) -> bool:
+    """Default on; explicit skip → False. Factual-low must not match (F3 / T24)."""
+    return _DISABLE_WEB_RE.search(text) is None

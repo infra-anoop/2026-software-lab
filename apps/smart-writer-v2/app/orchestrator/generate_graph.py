@@ -99,9 +99,11 @@ async def _node_infer(state: GenerateState) -> dict[str, Any]:
     labels = [str(m.get("label") or m.get("uri") or "") for m in state.get("materials_in") or []]
     inferred = await infer_grant_state(state["user_text"], labels)
     ranking = list(inferred.property_ranking or state.get("property_ranking") or [])
+    # T030: HTTP store/payload is source of truth for disable (canned tests never hit LLM).
+    web_enabled = bool(state.get("web_research_enabled", True))
     return {
         "humor_enabled": inferred.humor_enabled,
-        "web_research_enabled": inferred.web_research_enabled,
+        "web_research_enabled": web_enabled,
         "property_ranking": ranking,
         "search_query": inferred.search_query,
     }
