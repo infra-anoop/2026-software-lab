@@ -29,6 +29,18 @@ GRANT_MATERIALS = [
     {"uri": "https://example.org/ford-education-criteria", "label": "Ford education criteria"},
 ]
 
+# US4 / T046: closed ids plus invented labels that must not leak (R8).
+RANKING_CLOSED_PROMPT = (
+    GRANT_PROMPT
+    + " Keep it warm, persuasive, and urgent. Also make it emotional and visionary."
+)
+
+# US4 / T024+T047: factual present and not first; retrieval must stay on.
+FACTUAL_LOW_PROMPT = (
+    GRANT_PROMPT
+    + " Prefer a warm, persuasive tone rather than dry and factual. Rank factual last."
+)
+
 # Who + some evidence; Whom (funder) and Ask (amount/request) absent — P5 / hook 6.
 EMPTY_WHOM_ASK_PROMPT = (
     "We're Literacy Partners, a NYC adult literacy nonprofit. "

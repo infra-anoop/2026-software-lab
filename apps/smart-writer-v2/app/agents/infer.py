@@ -6,6 +6,7 @@ from functools import lru_cache
 
 from pydantic_ai import Agent
 
+from app.agents.infer_state import infer_property_ranking
 from app.models import InferOutput
 from app.prompts.loader import load_role_prompt
 from app.properties import filter_closed_ranking
@@ -28,7 +29,9 @@ async def infer_grant_state(user_text: str, material_labels: list[str]) -> Infer
     prompt = f"User message:\n{user_text}\n\nMaterial labels: {labels}"
     result = await _infer_agent().run(prompt)
     out = result.output
-    ranking = filter_closed_ranking(out.property_ranking)
+    ranking = filter_closed_ranking(out.property_ranking) or infer_property_ranking(
+        user_text
+    )
     humor = bool(out.humor_enabled)
     lowered = user_text.lower()
     if not any(tok in lowered for tok in ("humor", "funny", "joke", "witty")):

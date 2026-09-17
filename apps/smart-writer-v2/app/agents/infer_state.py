@@ -13,6 +13,7 @@ from functools import lru_cache
 from pydantic import BaseModel
 from pydantic_ai import Agent
 
+from app.properties import SEED_PROPERTIES, filter_closed_ranking
 from app.store import IntentSlots
 
 SLOT_ORDER: tuple[str, ...] = ("who", "whom", "ask", "why_funder", "evidence")
@@ -145,9 +146,18 @@ def missing_grant_slots(slots: IntentSlots) -> list[str]:
 
 
 def infer_property_ranking(text: str) -> list[str]:
-    """Closed property ranking from free-form text (T049 fills this).
-
-    Empty until inference exists so T046 can fail on the lock, not ImportError.
-    """
-    del text
-    return []
+    """Closed property ranking from free-form text (T049). Invented labels drop."""
+    found: list[str] = []
+    seen: set[str] = set()
+    allowed = frozenset(SEED_PROPERTIES)
+    for token in re.findall(r"[A-Za-z]+", text.lower()):
+        if token in allowed and token not in seen:
+            seen.add(token)
+            found.append(token)
+    last = re.search(r"rank\s+([A-Za-z]+)\s+last", text, flags=re.IGNORECASE)
+    if last:
+        name = last.group(1).lower()
+        if name in allowed:
+            found = [item for item in found if item != name]
+            found.append(name)
+    return filter_closed_ranking(found)

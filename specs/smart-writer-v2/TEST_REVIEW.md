@@ -412,3 +412,139 @@ Feature-local lock: human accepted reviewer recs for T16–T18 (this slice). Nit
 | **T22** | **accepted (Nit)** | Nonempty revise `body` included in T18. |
 
 Tests edited to match. **T035–T038 may start.**
+
+---
+
+# Independent test review — US4 / T046–T047 (closed ranking / factual ≠ grounding off)
+
+**Reviewer role:** Independent test reviewer (did not write these tests; no loyalty to their wording)  
+**Brief:** `docs/agent-os/TEST_REVIEW_PROMPT.md` (constitution §V)  
+**Feature:** `specs/smart-writer-v2/`  
+**Slice:** T048 — T* of T046–T047 only (US4, FR-004/005, F3 / FR-006a)  
+**Commit:** `104ae27` — Add red US4 tests for closed ranking and factual-not-grounding-off.  
+**Date:** 2026-09-16  
+
+**Scope files**
+
+| Task | File |
+|------|------|
+| T046 | `apps/smart-writer-v2/tests/contract/test_property_ranking_closed.py` |
+| T047 | `apps/smart-writer-v2/tests/contract/test_factual_not_grounding_off.py` |
+| seam | `apps/smart-writer-v2/app/agents/infer_state.py` (`infer_property_ranking` returns `[]` until T049) |
+
+**Out of scope this session:** T016–T045 except as contrast. Do not start T049. Do not rewrite spec/plan. Do not write product code. Prior T1–T22 stay locked (especially **T2**: ranking is internal; do not dump `InternalRunState` on GET conversation). T050–T051 chips / weave-into-prose stay hybrid/human.
+
+**Pytest (app venv, at `104ae27`):**
+
+| Test | Result | Fail locus |
+|------|--------|------------|
+| `test_inferred_ranking_only_closed_ids` | **FAIL** | `assert ranking` — got `[]` (stub, not ImportError) |
+| `test_factual_low_still_runs_materials_and_web` | **PASS** | canned `_run_generate_without_llm` already grounds |
+
+No `acceptance.md` `how: auto` rows yet (T061 / plan P2). Catalog rows in play are hybrid: `claim.provenance` / `research.used_or_declared` (F3 notes), `grant.default_humor_low`, `intake.property_chips_preferred` (human).
+
+---
+
+### A. Executive verdict
+
+**Approve tests with minor edits**
+
+T046 is honest red: it imports the T049 seam and fails because the stub returns `[]`, not because the name is missing. It encodes FR-004’s closed-id clamp and R8’s dropped labels (`emotional`, `visionary`) without dumping ranking on GET conversation (T2). T047 observes F3 on the public job snapshot (`web_signal`, materials bundle, `claims[]`) and does not fake chips or weave.
+
+They would **not** fail closed on FR-005. `return list(SEED_PROPERTIES)` or `filter_closed_ranking(text.split())` greens T046 while ignoring free-form ranking. T047 is already green (T032-class landmine) and never asserts that `factual` was ranked last — the F3 *when* is untested. Generate’s LLM infer node (`infer.py` + `filter_closed_ranking`) is a different function than T046’s stub; the canned HTTP path never calls `infer_property_ranking`. T049 can satisfy pytest as dead code.
+
+Do not start T049 until Debates **T23–T25** are human-adjudicated (constitution §F). Do not green T046 by putting `property_ranking` on GET conversation.
+
+---
+
+### B. Findings table
+
+| ID | Severity | Lens | Locus | Finding | Suggested resolution |
+|----|----------|------|-------|---------|----------------------|
+| **T23** | **Debate** | Wrong-thing / lock fidelity | `test_property_ranking_closed.py`; FR-004; FR-005; `filter_closed_ranking` | Steelman: nonempty list, membership in `SEED_PROPERTIES`, uniqueness, and invented ids absent is the closed-vocab clamp (FR-004 / R8). Empty-list fail is the right red. Attack: the fixture names closed ids (`warm`, `persuasive`, `urgent`) plus invented (`emotional`, `visionary`). None of the named closed ids are required. `return ["factual"]`, `return list(SEED_PROPERTIES)`, or `filter_closed_ranking(_RANKING_PROMPT.lower().split())` all go green. That is a token/allowlist filter, not inference of a ranking from free-form (FR-005). Existing `tests/unit/test_properties.py` already covers `filter_closed_ranking`. | Require the fixture’s named closed ids to appear (`warm`, `persuasive`, `urgent` ⊆ ranking). Keep invented-absent. Do **not** require exact permutation (LLM/synonym flake). Optional second fixture: invented-only prose → no `emotional`/`visionary`. |
+| **T24** | **Debate** | Red-first honesty / SNR | `test_factual_not_grounding_off.py`; F3; FR-006a; catalog `claim.provenance` / `research.used_or_declared` | Steelman: F3 is “factual low ⇏ retrieval off.” Public `web_signal != disabled` + materials bundle + `claims[]` is the right observation layer (not graph internals). Comment admits T032-style landmine. Attack: test **PASSED** at review. Canned generate already grounds with default `web_research_enabled=True` and never reads ranking. Prompt says “Rank factual last” but ranking is never observed. T049 can skip inference, skip store, skip any factual→retrieval coupling: T047 stays green. Duplicate of T017 (`claims>=1`) + T018 (`!= disabled`) with extra ignored prose. Landmine only fires if someone later writes the bug; it is not an independently red gate for T049. | Keep T047 as a **T049 landmine** (like T16/T032) **only if** a unit/seam test observes factual-last (or factual present and not first) on `_FACTUAL_LOW_PROMPT` without GET-dumping state. After T049, T047 must fail if `web_signal == "disabled"` on this fixture. Do not pytest tone/prose. |
+| **T25** | **Debate** | Wrong-thing / T2 | T046 seam vs `app/agents/infer.py`; T049 store; GET conversation (T2) | Steelman: tasks.md names `infer_property_ranking` in `infer_state.py`; testing that function avoids T2. Attack: LLM generate already infers `property_ranking` via `infer_grant_state` + `filter_closed_ranking`. Canned `_run_generate_without_llm` has no ranking parameter. HTTP enqueue passes store `web_research_enabled` / `humor_enabled` and never calls `infer_property_ranking`. T049’s “store on `InternalRunState`” is untested. Filling the stub greens T046 while the live graph/store ignore it. Observing ranking on GET conversation would **violate T2**. Job snapshot has no ranking field (and should not grow one just for this test). | Keep T046 on the function (T2). T049 DoD must **call** that function from the deterministic infer path used by HTTP (same pattern as `extract_intent_slots`) and write `InternalRunState.property_ranking` — code review / a store unit that does not go through GET conversation. Do not add `property_ranking` to `ConversationSnapshotOut`. `infer.py` should clamp via the same closed helper, not a second untested list. |
+| **T26** | **Strength** | Red-first / scope | T046 vs T047; T2; T050–T051 | T046 fails on `[]`, not ImportError. Invented labels are the R8 drop, not a random string. T047 uses public HTTP + job JSON; no LangGraph/Tavily stub. Chips UX and weave-into-prose are correctly not pytested. GRANT_PROMPT itself contains no seed-property tokens, so the T046 suffix is the only closed-id bait (good fixture split vs T016). | Keep empty-list stub until T049. Keep no GET ranking. Do not stub `_execute_job` to ranking JSON. |
+| **T27** | Later | SNR | T047 vs T017/T018 | T047’s `claims>=1`, materials `bundle`, and `web_signal != disabled` are US1 structural asserts. They do not become F3-specific until ranking is factual-low. `signal in {used, none_declared, disabled}` then `!= disabled` is weaker than T018’s `== none_declared` on the Tavily-unset path (allows `used` with empty web). | After T24: keep materials/web observation; drop redundant claims-shape if T017 still owns it; on this fixture `!= disabled` is the F3 lock, not `== none_declared`. |
+| **T28** | Nit | SNR | T046 path `tests/contract/` | File is a unit test of an internal function living under contract/. US1–US3 contract files hit HTTP. Not a lock miss. | Leave it, or move next to `tests/unit/test_infer_state.py`. Do not “fix” by POSTing ranking onto GET conversation. |
+
+Minimum count met. Debates: T23, T24, T25. Strength: T26.
+
+Correctly **not** pytested (do not fake): T050 weave-into-prompt-program (hybrid/human); T051 chips UX (`intake.property_chips_preferred` is `how: human`); “prose is warmer”; FR-006b humor profile (T019 / T2); LangGraph-as-product-SC (F5).
+
+---
+
+### C. Adversarial positions (required)
+
+1. **Position: these tests would go green while a spec lock fails** — strongest case
+
+   Implement `infer_property_ranking` as `return list(SEED_PROPERTIES)` or `filter_closed_ranking(text.split())`. Do not store ranking. Do not call the function from HTTP or `run_generate`. T046 goes green. T047 already passes. `infer.py` can still emit an unclamped LLM list on the OpenAI path; canned path never ranks.
+
+   FR-005 (infer ranking from free-form) fails. F3’s *when* (factual ranked low) never happens, so FR-006a is unexercised. US4 independent test “free-form prompt updates internal ranking” fails. Pytest is green.
+
+   *What would have to be true for the suite to be right anyway:* T046 is only the FR-004 clamp; FR-005/weave stay T050/human; T047 is a regression landmine not a T049 red gate — **if** T23 requires named closed ids from the fixture and T25 requires the HTTP infer path to call that function without GET-dumping state.
+
+2. **Position: these tests over-constrain implementation / test the wrong layer** — strongest case
+
+   T046 pins a helper the P3 infer node does not use (`infer_grant_state` already returns `property_ranking`). Requiring `{warm, persuasive, urgent}` ⊆ ranking forbids synonym-only inference (“keep it kind and pressing” with no seed tokens). A second factual-last unit test (T24) plus T047 HTTP is two layers for one F3 sentence. Demanding store observation without a public field pushes ranking onto GET conversation and fights T2. Exact order asserts would flake.
+
+   *What would have to be true for the suite to be right anyway:* tasks.md’s `infer_property_ranking` is the deterministic HTTP seam (like `extract_intent_slots`); named-id ⊆ ranking is the structural half of FR-005; T2 stays “no ranking on GET conversation”; T047 remains a landmine, not a second red gate.
+
+---
+
+### D. Catalog / contract coverage map
+
+| Catalog id or contract hook | Test file / name | Can fail today? | Gap |
+|-----------------------------|------------------|-----------------|-----|
+| FR-004 closed vocabulary ids | `test_property_ranking_closed.py::test_inferred_ranking_only_closed_ids` | **yes** (`[]`) | Invented-absent only if implementer emits them; constant seed list passes (T23) |
+| FR-005 infer ranking from free-form | T046 nonempty closed list | **yes, weak** | Named closed ids from fixture unrequired; order untested (correctly not exact perm) |
+| F3 / FR-006a factual = tone only | `test_factual_not_grounding_off.py::test_factual_low_still_runs_materials_and_web` | **no** (PASS) | WHEN factual-last unobserved (T24). Landmine only |
+| Hook 4 / `claim.provenance` (hybrid) | T047 `len(claims)>=1` | no (PASS) | Duplicate T017; not F3-specific (T27) |
+| Hook 5 / `research.used_or_declared` | T047 `web_signal != disabled` | no (PASS) | Weaker than T018 `== none_declared` (T27) |
+| T049 persist `InternalRunState.property_ranking` | **none** | **no** | Must not use GET conversation (T2 / T25) |
+| P3 infer node `infer_grant_state` | **none** (T046 hits a different function) | n/a | Dual seam (T25) |
+| `intake.property_chips_preferred` (human) | none | n/a | Correctly not pytest (T051) |
+| FR-006 weave into prompt program | none | n/a | Correctly not pytest (T050) |
+| `grant.default_humor_low` | T019 (not this slice) | n/a | T2 still: job snapshot only |
+| Hook 2 generate job | T047 enqueue | no (already generate) | Not a US4 lock |
+| Any `how: auto` catalog row | none | n/a | Still zero; T061 later |
+
+---
+
+### E. Edit list
+
+- `test_property_ranking_closed.py`: assert `{"warm", "persuasive", "urgent"} <= set(ranking)` in addition to closed-only / unique / invented-absent.
+- `test_property_ranking_closed.py` (if T24 locked here): `_FACTUAL_LOW_PROMPT` → `factual in ranking` and ranking[0] != `"factual"` (or last); still no GET dump.
+- `test_property_ranking_closed.py` (optional): invented-only suffix without closed tokens → ranking has no `emotional`/`visionary`.
+- `test_factual_not_grounding_off.py`: keep as T049 landmine; document that after ranking exists this file must fail on `web_signal == "disabled"`.
+- Do **not** add `property_ranking` / `run_state` to GET `/v1/conversations/{id}` (T2).
+- Do **not** pytest chips (T051) or weave/prose (T050).
+- Do **not** stub `_execute_job` / LangGraph to a ranking payload.
+- After T049: re-check T046 fails on invented ids / missing named closed ids; T047 fails if factual-low disables web.
+
+---
+
+### F. Questions for the human (max 3)
+
+1. **T23:** Must T046 require the fixture’s named closed ids (`warm`, `persuasive`, `urgent`) to appear, or is nonempty closed-only (invented-absent) enough for FR-004 before T049?
+2. **T24:** May T047 stay green as a T049 landmine (T16/T032), or must a seam test observe factual-last ranking before T049 — knowing T047 cannot fail closed on F3 today?
+3. **T25:** Is `infer_property_ranking` the HTTP/store infer seam T049 must wire (without GET-dumping ranking), or is greening the function enough while `infer.py` / canned generate stay separate?
+
+Implementer: do not start T049 until T23–T25 are accepted or the tests are edited. Nit/Later (T27–T28) may be agent-adjudicated (§F). Do not implement ranking visibility by extending GET conversation. T050–T051 remain out of this T* gate.
+
+---
+
+## Adjudication — US4 (2026-09-16)
+
+Feature-local lock: human accepted architect recs for T23–T25 (this slice). Nit/Later agent-closed.
+
+| ID | Status | Lock |
+|----|--------|------|
+| **T23** | **locked** | T046 requires `{warm, persuasive, urgent} ⊆ ranking`. Keep invented-absent (`emotional`, `visionary`). Do not require exact order. |
+| **T24** | **locked** | T047 stays a T049 landmine (allowed green). Seam test on `FACTUAL_LOW_PROMPT`: `factual` in ranking and not first. After T049, T047 must fail if `web_signal == "disabled"`. Do not pytest tone. |
+| **T25** | **locked** | `infer_property_ranking` is the HTTP/store seam (like `extract_intent_slots`). T049 must call it and write `InternalRunState.property_ranking`. Do **not** add ranking to GET conversation (T2). Greening the stub as dead code is not DoD. |
+| **T26** | **strength** | Keep empty-list-until-T049; keep no GET ranking; no `_execute_job` stub. |
+| **T27** | **accepted (Later)** | T047 F3 lock is `web_signal != disabled`; `== none_declared` stays T018. |
+| **T28** | **accepted (Nit)** | Leave T046 under `tests/contract/`. Do not move it onto GET conversation. |
+
+Tests edited to match. **T049–T052 may start.**

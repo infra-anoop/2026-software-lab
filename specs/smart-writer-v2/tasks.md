@@ -138,14 +138,14 @@
 
 - [x] T046 [P] [US4] Contract/unit test inferred ranking only uses closed ids from `apps/smart-writer-v2/app/properties.py` in `apps/smart-writer-v2/tests/contract/test_property_ranking_closed.py`
 - [x] T047 [P] [US4] Test `factual` low still runs web/materials nodes (grounding invariant) in `apps/smart-writer-v2/tests/contract/test_factual_not_grounding_off.py`
-- [ ] T048 [US4] Independent **T\*** review of T046–T047 if those files exist; append `TEST_REVIEW.md`; Blockers before T049
+- [x] T048 [US4] Independent **T\*** review of T046–T047 if those files exist; append `TEST_REVIEW.md`; Blockers before T049
 
 ### Implementation for User Story 4
 
-- [ ] T049 [US4] Infer property ranking from free-form in `apps/smart-writer-v2/app/agents/infer_state.py` and store `property_ranking` on `InternalRunState` in `apps/smart-writer-v2/app/store.py`
-- [ ] T050 [US4] Weave ranking into writer prompt program in `apps/smart-writer-v2/app/prompts/render.py`
-- [ ] T051 [US4] Optional property chips (correction only; free-form primary) in `apps/smart-writer-v2/web/app/components/PropertyChips.tsx`
-- [ ] T052 [US4] Prioritize intent-slot questions before property clarifiers when both incomplete (FR-003c) in `apps/smart-writer-v2/app/agents/clarify.py`
+- [x] T049 [US4] Infer property ranking from free-form in `apps/smart-writer-v2/app/agents/infer_state.py` and store `property_ranking` on `InternalRunState` in `apps/smart-writer-v2/app/store.py`
+- [x] T050 [US4] Weave ranking into writer prompt program in `apps/smart-writer-v2/app/prompts/render.py`
+- [x] T051 [US4] Optional property chips (correction only; free-form primary) in `apps/smart-writer-v2/web/app/components/PropertyChips.tsx`
+- [x] T052 [US4] Prioritize intent-slot questions before property clarifiers when both incomplete (FR-003c) in `apps/smart-writer-v2/app/agents/clarify.py`
 
 **Checkpoint**: Steering works without inventing property labels; grounding still on
 
@@ -159,8 +159,8 @@
 
 ### Tests for User Story 5 *(required — FIRST, must FAIL)*
 
-- [ ] T053 [P] [US5] Contract test artifact `materials_bundle_ids` vs `web_bundle_ids` populated from `SourceRecord.bundle` in `apps/smart-writer-v2/tests/contract/test_bundle_roles.py` (F4 structural)
-- [ ] T054 [P] [US5] Reuse/extend `test_web_signal.py` for `web_research_enabled=false` → `web_signal=disabled` in `apps/smart-writer-v2/tests/contract/test_web_disabled.py`
+- [x] T053 [P] [US5] Contract test artifact `materials_bundle_ids` vs `web_bundle_ids` populated from `SourceRecord.bundle` in `apps/smart-writer-v2/tests/contract/test_bundle_roles.py` (F4 structural)
+- [x] T054 [P] [US5] Reuse/extend `test_web_signal.py` for `web_research_enabled=false` → `web_signal=disabled` in `apps/smart-writer-v2/tests/contract/test_web_disabled.py`
 - [ ] T055 [US5] Independent **T\*** review of T053–T054; append `TEST_REVIEW.md`; Blockers before T056
 
 ### Implementation for User Story 5

@@ -2,6 +2,8 @@
 
 import { FormEvent, useCallback, useState } from "react";
 
+import { PropertyChips } from "./components/PropertyChips";
+
 type ChatMessage = {
   role: "user" | "assistant";
   text: string;
@@ -175,6 +177,12 @@ export default function Page() {
               placeholder="Write a message…"
               rows={4}
               disabled={busy}
+            />
+            <PropertyChips
+              disabled={busy}
+              onPick={(id) =>
+                setDraft((prev) => (prev.trim() ? `${prev.trim()} ${id}` : id))
+              }
             />
             <button type="submit" disabled={busy || !draft.trim()}>
               {busy ? "Working…" : "Send"}

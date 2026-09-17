@@ -84,6 +84,28 @@ body {
   cursor: not-allowed;
 }
 
+.chips {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.chip-row button {
+  background: #243044;
+  color: #d5e4ff;
+  border: 1px solid #334155;
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
 .empty,
 .status {
   color: #9aa8b5;

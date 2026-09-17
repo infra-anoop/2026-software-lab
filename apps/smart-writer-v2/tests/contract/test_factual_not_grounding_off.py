@@ -6,21 +6,16 @@ from fastapi.testclient import TestClient
 
 from tests.contract.grant_flow import (
     AUTH,
+    FACTUAL_LOW_PROMPT,
     GRANT_MATERIALS,
-    GRANT_PROMPT,
     create_conversation,
     wait_job_success,
 )
 
 _WEB_SIGNALS = frozenset({"used", "none_declared", "disabled"})
 
-# Filled slots (not P5) + explicit de-emphasis of factual. T049 must not treat
-# this as web_research_enabled=False. Expected green until someone wrongly
-# gates retrieval on ranking — then this file must fail (T032-style landmine).
-_FACTUAL_LOW_PROMPT = (
-    GRANT_PROMPT
-    + " Prefer a warm, persuasive tone rather than dry and factual. Rank factual last."
-)
+# T24 lock: T049 landmine (like T032). After ranking exists this file MUST fail
+# if web_signal == "disabled". Do not pytest tone. F3 lock is != disabled (T27).
 
 
 def test_factual_low_still_runs_materials_and_web(client: TestClient) -> None:
@@ -30,7 +25,7 @@ def test_factual_low_still_runs_materials_and_web(client: TestClient) -> None:
         f"/v1/conversations/{conversation_id}/messages",
         headers=AUTH,
         json={
-            "text": _FACTUAL_LOW_PROMPT,
+            "text": FACTUAL_LOW_PROMPT,
             "client_intent": "auto",
             "citation_mode": None,
             "materials": GRANT_MATERIALS,

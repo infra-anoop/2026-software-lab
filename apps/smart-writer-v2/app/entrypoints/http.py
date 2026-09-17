@@ -20,9 +20,10 @@ from fastapi.responses import JSONResponse
 from lab_shared.jobs import JobRunner, QueueFullError
 from pydantic import BaseModel, Field
 
-from app.agents.clarify import clarify_text_for_missing
+from app.agents.clarify import clarify_text_for_turn
 from app.agents.infer_state import (
     extract_intent_slots,
+    infer_property_ranking,
     merge_intent_slots,
     missing_grant_slots,
 )
@@ -76,6 +77,7 @@ async def _execute_job(payload: dict[str, Any]) -> dict[str, Any]:
             citation_mode_pref=payload.get("citation_mode_pref"),
             humor_enabled=bool(payload.get("humor_enabled", False)),
             web_research_enabled=bool(payload.get("web_research_enabled", True)),
+            property_ranking=list(payload.get("property_ranking") or []),
         )
     artifact = result["artifact"]
     STORE.save_artifact(conversation_id, artifact)
@@ -260,9 +262,13 @@ def post_message(
     inferred = extract_intent_slots(body.text)
     merged = merge_intent_slots(state.intent_slots, inferred)
     STORE.set_intent_slots(conversation_id, merged)
+    inferred_rank = infer_property_ranking(body.text)
+    if inferred_rank:
+        STORE.set_property_ranking(conversation_id, inferred_rank)
+    ranking = list(state.property_ranking)
     missing = missing_grant_slots(merged)
     if missing:
-        text = clarify_text_for_missing(missing)
+        text = clarify_text_for_turn(missing, ranking)
         assistant = STORE.add_message(conversation_id, "assistant", text)
         return ClarifyTurnOut(
             assistant_message=AssistantMessageOut(
@@ -299,6 +305,7 @@ def post_message(
                 "citation_mode_pref": state.citation_mode_pref,
                 "humor_enabled": state.humor_enabled,
                 "web_research_enabled": state.web_research_enabled,
+                "property_ranking": ranking,
             }
         )
     except QueueFullError as exc:
