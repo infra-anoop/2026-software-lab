@@ -142,3 +142,12 @@ def missing_grant_slots(slots: IntentSlots) -> list[str]:
         if not _clip(getattr(slots, name)):
             missing.append(name)
     return missing
+
+
+def infer_property_ranking(text: str) -> list[str]:
+    """Closed property ranking from free-form text (T049 fills this).
+
+    Empty until inference exists so T046 can fail on the lock, not ImportError.
+    """
+    del text
+    return []

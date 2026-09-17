@@ -136,8 +136,8 @@
 
 ### Tests for User Story 4 *(required — FIRST, must FAIL)*
 
-- [ ] T046 [P] [US4] Contract/unit test inferred ranking only uses closed ids from `apps/smart-writer-v2/app/properties.py` in `apps/smart-writer-v2/tests/contract/test_property_ranking_closed.py`
-- [ ] T047 [P] [US4] Test `factual` low still runs web/materials nodes (grounding invariant) in `apps/smart-writer-v2/tests/contract/test_factual_not_grounding_off.py`
+- [x] T046 [P] [US4] Contract/unit test inferred ranking only uses closed ids from `apps/smart-writer-v2/app/properties.py` in `apps/smart-writer-v2/tests/contract/test_property_ranking_closed.py`
+- [x] T047 [P] [US4] Test `factual` low still runs web/materials nodes (grounding invariant) in `apps/smart-writer-v2/tests/contract/test_factual_not_grounding_off.py`
 - [ ] T048 [US4] Independent **T\*** review of T046–T047 if those files exist; append `TEST_REVIEW.md`; Blockers before T049
 
 ### Implementation for User Story 4
