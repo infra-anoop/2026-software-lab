@@ -5,9 +5,9 @@ Lab overlay on Spec Kit (constitution §A). **Process reviewer** — not the pro
 Use after a feature `spec.md` is drafted (often in parallel with or after product review).  
 **Optional per feature** when the human wants a pure process true-north pass; recommended for dogfood / harness-learning vehicles.
 
-Paste everything below the line into a **new** agent session (do not continue the authoring or product-review thread).
+Launch per [`SPAWN_REVIEWER.md`](./SPAWN_REVIEWER.md): write a review packet, **spawn** a subagent, do **not** ask the human to paste this brief.
 
-Replace `SPEC_PATH` with the feature spec path.
+Replace `SPEC_PATH` in the packet (and below) with the feature spec path.
 
 ---
 

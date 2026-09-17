@@ -4,7 +4,7 @@ Non-negotiable principles for every feature and agent run in this monorepo.
 Spec Kit phases (`/speckit-*`) and `AGENTS.md` must respect this document.
 Product-unique choices belong in feature specs — **not** by reinventing process.
 
-**Version**: 1.4.0 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-16
+**Version**: 1.4.1 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-17
 
 ## Core Principles
 
@@ -14,6 +14,7 @@ Non-trivial work follows Spec Kit: **Specify → (Clarify) → Plan → Tasks �
 **Plan** means **Architecture + Phased delivery** (see overlay §E)—not tasks-by-another-name.
 Do not implement from chat alone when the change is non-trivial.
 Agents exchange context via **git artifacts** (specs, plans, tasks/packets, PRs) — not human copy/paste as the bus.
+Independent reviews (F*/R*/P*/T*) are **spawned** from a git packet plus the named brief (`docs/agent-os/SPAWN_REVIEWER.md`). Do **not** ask the human to paste a brief into a new chat.
 
 ### II. Cattle-First Reproducibility
 
@@ -39,7 +40,7 @@ For **executable apps** (registry applications with HTTP/jobs/UI), failing tests
 
 - `/speckit-tasks` MUST emit contract-test and catalog-auto test tasks from `contracts/` auto-check hooks and `acceptance.md` rows with `how: auto`. Do not invent pytest for `how: human` rows.
 - Tests MUST fail (red) before product code for that slice. Implementer agents must not write tests that only mirror code they are about to add.
-- **Independent test review (T*):** after contract/catalog-auto tests exist, fresh session + `docs/agent-os/TEST_REVIEW_PROMPT.md` before implementing that slice. Skip when the only work is scaffold with no such tests. Deposit `TEST_REVIEW.md`. Human adjudicates T* Debates; Nit/Later may be agent-adjudicated (§F).
+- **Independent test review (T*):** after contract/catalog-auto tests exist, the implementer writes a review packet and **spawns** a reviewer (`docs/agent-os/SPAWN_REVIEWER.md` + `TEST_REVIEW_PROMPT.md`) before implementing that slice. Skip when the only work is scaffold with no such tests. Deposit `TEST_REVIEW.md`. Human adjudicates T* Debates; Nit/Later may be agent-adjudicated (§F). Do **not** ask the human to paste the brief.
 - Packet/task DoD must name commands/tests that prove done. Do not claim “tests adequate” without listing which checks prove the DoD.
 - Honor locked decisions / won’t-dos in `notes/architect-backlog.md`.
 
@@ -65,8 +66,8 @@ These are **framework** rules. Customize product content inside them; do not deb
 
 After a feature `spec.md` is drafted and before status → **Approved**:
 
-1. **Product review (required for non-trivial features):** fresh session + `docs/agent-os/SPEC_REVIEW_PROMPT.md`. Finding IDs prefix **F**.
-2. **Process / lab-vehicle review (optional, recommended for dogfood vehicles):** fresh session + `docs/agent-os/PROCESS_REVIEW_PROMPT.md`. Finding IDs prefix **R**.
+1. **Product review (required for non-trivial features):** spawn per `docs/agent-os/SPAWN_REVIEWER.md` + `docs/agent-os/SPEC_REVIEW_PROMPT.md`. Finding IDs prefix **F**.
+2. **Process / lab-vehicle review (optional, recommended for dogfood vehicles):** spawn per `SPAWN_REVIEWER.md` + `docs/agent-os/PROCESS_REVIEW_PROMPT.md`. Finding IDs prefix **R**.
 3. Triage all findings as Blocker / Debate / Later / Nit. Record locks in the spec’s **Review locks** table; tag or note `product` vs `process` when helpful.
 4. Edit the artifact as locks land. Human adjudicates Debates — reviewers are not automatic truth; opposing product vs process advice is expected and useful.
 5. Do not re-merge the two roles into one vague “reviewer” brief.
@@ -87,6 +88,7 @@ Charter/spec keeps stable classes; the catalog grows from test runs (id, severit
 
 Spec Kit `tasks.md` is the default task breakdown.
 For long unattended agent runs, optional lab **packets** (`notes/packets/`) may wrap one or more tasks with owned/forbidden paths and hard DoD — one packet ≈ one branch ≈ one PR when possible.
+**Review packets** (`notes/packets/_REVIEW_TEMPLATE.md`) are required at F*/R*/P*/T* gates so a spawned reviewer can pick up marching orders from git (`SPAWN_REVIEWER.md`). They are not optional session notes.
 
 ### E. Plan = Architecture + Phased delivery (architecture is first-class)
 
@@ -95,7 +97,7 @@ For long unattended agent runs, optional lab **packets** (`notes/packets/`) may 
 1. **Architecture** — building blocks, boundaries, data/persistence, APIs/contracts, UI surfaces, major deps/risks. Structure first; not a sprint list.
 2. **Phased delivery** — high-level order toward that architecture (e.g. wireframe → API hookup → MVP), with exit criteria. Phases **reference** architecture; they do not replace it.
 
-**Independent Architecture review (recommended for non-trivial / first-of-kind plans):** after `/speckit-plan` drafts the plan and **before** human plan approval / `/speckit-tasks`, run a fresh session with `docs/agent-os/PLAN_REVIEW_PROMPT.md`. Finding IDs prefix **P**. Weight **Architecture heavy** (including **Learning / SOTA fit** per `STACK_POSTURE.md`), **Phasing light**. Do not re-run §A process review. Do not re-litigate F*/R* unless the plan contradicts them. Deposit report under the feature dir (e.g. `PLAN_REVIEW.md`); human adjudicates Blockers/Debates; record locks on the plan. Skip or shorten when Architecture is a thin follow-on to an already-reviewed shape.
+**Independent Architecture review (recommended for non-trivial / first-of-kind plans):** after `/speckit-plan` drafts the plan and **before** human plan approval / `/speckit-tasks`, spawn a reviewer per `docs/agent-os/SPAWN_REVIEWER.md` with `docs/agent-os/PLAN_REVIEW_PROMPT.md`. Finding IDs prefix **P**. Weight **Architecture heavy** (including **Learning / SOTA fit** per `STACK_POSTURE.md`), **Phasing light**. Do not re-run §A process review. Do not re-litigate F*/R* unless the plan contradicts them. Deposit report under the feature dir (e.g. `PLAN_REVIEW.md`); human adjudicates Blockers/Debates; record locks on the plan. Skip or shorten when Architecture is a thin follow-on to an already-reviewed shape. Do **not** ask the human to paste the brief.
 
 **Gate:** Do not run `/speckit-tasks` or implement until a human has approved both Architecture and Phased delivery (after P* triage when review was run).  
 Detailed work items belong in `tasks.md` (or optional packets), not as a substitute for Architecture.

@@ -273,7 +273,7 @@ Report completion to the user with:
 - `SPECIFY_FEATURE_DIRECTORY` — the feature directory path
 - `SPEC_FILE` — the spec file path
 - Checklist results summary
-- Readiness for the next phase (`/speckit-clarify` or `/speckit-plan`)
+- Readiness for the next phase: **spawn** product review (and optional process review) per `docs/agent-os/SPAWN_REVIEWER.md`; do **not** ask the human to paste briefs. Then `/speckit-clarify` or `/speckit-plan` after Debates lock.
 
 **NOTE:** Branch creation is handled by the `before_specify` hook (git extension). Spec directory and file creation are always handled by this core command.
 

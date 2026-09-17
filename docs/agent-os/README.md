@@ -34,6 +34,7 @@ Lab taste = thin **overlays** in constitution + template overrides — not a sec
 | Spec review brief (process) | `docs/agent-os/PROCESS_REVIEW_PROMPT.md` |
 | Plan review brief (architecture) | `docs/agent-os/PLAN_REVIEW_PROMPT.md` |
 | Test review brief (contract/auto) | `docs/agent-os/TEST_REVIEW_PROMPT.md` |
+| Spawn reviewers (no human paste) | `docs/agent-os/SPAWN_REVIEWER.md` |
 | Lab stack exploration posture | `docs/agent-os/STACK_POSTURE.md` |
 | Plan authoring gates (hard) | `docs/agent-os/PLAN_AUTHORING_GATES.md` |
 | Research template | `docs/agent-os/research-template.md` |
@@ -43,14 +44,14 @@ Lab taste = thin **overlays** in constitution + template overrides — not a sec
 ## Default loop
 
 1. `/speckit-specify` → draft spec  
-2. **Product** review (required) → lock **F-***; optional **process** review → **R-*** (`PROCESS_REVIEW_PROMPT.md`)  
-3. Human marks **Approved** when Blockers cleared  
+2. **Product** review (required) — **spawn** (`SPAWN_REVIEWER.md`) → lock **F-***; optional **process** review → **R-***  
+3. Human marks **Approved** when Blockers cleared (Debates only; do not paste briefs)  
 4. `/speckit-plan` → **Architecture + Phased delivery**  
-5. **Plan Architecture** review (recommended for non-trivial / first-of-kind) → lock **P-*** (`PLAN_REVIEW_PROMPT.md` + `STACK_POSTURE.md`; arch-heavy incl. SOTA/alternatives, phasing-light)  
+5. **Plan Architecture** review (recommended for non-trivial / first-of-kind) — **spawn** → lock **P-***  
 6. Human approves plan Architecture + Phasing  
 7. `/speckit-tasks` (test tasks **required** for executable apps)  
-8. Write failing contract/catalog-auto tests → **test review (T*)** when those tests exist → `/speckit-implement`  
-9. Optional: `notes/packets/` for a long background slice  
+8. Write failing contract/catalog-auto tests → **spawn T*** (`SPAWN_REVIEWER.md`) when those tests exist → `/speckit-implement`
+9. Optional: implement `notes/packets/` for a long background slice; **required:** review packets at F*/R*/P*/T*
 
 **Plan ≠ task list.** Architecture is first-class inside plan (constitution §E).  
 **Progressive HITL:** human adjudicates Debates at spec + Architecture; later stages may auto-accept Nit/Later under explicit policy (§F).
@@ -69,6 +70,7 @@ Lab taste = thin **overlays** in constitution + template overrides — not a sec
 
 | Version | Note |
 |---------|------|
+| 1.4.1 | Spawn reviewers from git packets (`SPAWN_REVIEWER.md`); do not paste briefs to the human |
 | 1.4.0 | §V test-first required for executable apps; T* test review overlay |
 | 1.3.2 | PLAN_AUTHORING_GATES; topology section; research template; fail-closed plan authoring |
 | 1.3.1 | VI + STACK_POSTURE; P* Learning/SOTA fit lens |

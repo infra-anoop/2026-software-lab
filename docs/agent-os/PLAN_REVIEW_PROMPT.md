@@ -11,9 +11,9 @@ Use after `/speckit-plan` has drafted `plan.md` (Architecture + Phased delivery)
 Do **not** re-run process/lab-vehicle review (R*) — that already happened at spec time when required.  
 Do **not** re-litigate product locks (F*) unless the plan **contradicts** them.
 
-Paste everything below the line into a **new** agent session (do not continue the plan-authoring thread).
+Launch per [`SPAWN_REVIEWER.md`](./SPAWN_REVIEWER.md): write a review packet, **spawn** a subagent, do **not** ask the human to paste this brief.
 
-Replace `PLAN_PATH` / `SPEC_PATH` with the feature paths.
+Replace `PLAN_PATH` / `SPEC_PATH` in the packet (and below) with the feature paths.
 
 ---
 

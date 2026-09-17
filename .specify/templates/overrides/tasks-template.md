@@ -11,7 +11,7 @@ description: "Task list template for feature implementation"
 
 **Tests (lab overlay — constitution §V):** For **executable apps** (registry app, HTTP API, jobs, UI BFF), test tasks are **REQUIRED**, not optional. Map `contracts/` auto-check hooks and `acceptance.md` rows with `how: auto` into failing tests **before** matching implementation. Human/hybrid catalog rows do **not** become fake pytest. Docs-only / non-executable work may omit tests.
 
-After contract/catalog-auto tests exist (red), independent review: `docs/agent-os/TEST_REVIEW_PROMPT.md` (**T-***). Do not review scaffold-only (`/health`) with no contract tests. Then implement.
+After contract/catalog-auto tests exist (red), independent T* review: spawn per `docs/agent-os/SPAWN_REVIEWER.md` + `TEST_REVIEW_PROMPT.md` (**T-***). Do **not** ask the human to paste the brief. Do not review scaffold-only (`/health`) with no contract tests. Then implement.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -86,7 +86,7 @@ Examples of foundational tasks (adjust based on your project):
 
 - [ ] T010 [P] [US1] Contract test for [endpoint / hook] in tests/contract/test_[name].py
 - [ ] T011 [P] [US1] Catalog-auto or integration test for [user journey] in tests/integration/test_[name].py
-- [ ] T011a [US1] Independent test review (T*) if contract/auto tests landed — `TEST_REVIEW_PROMPT.md` — before implementation tasks below
+- [ ] T011a [US1] Independent test review (T*) if contract/auto tests landed — spawn per `SPAWN_REVIEWER.md` — before implementation tasks below
 
 ### Implementation for User Story 1
 

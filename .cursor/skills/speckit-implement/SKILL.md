@@ -153,7 +153,7 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **Phase-by-phase execution**: Complete each phase before moving to the next
    - **Respect dependencies**: Run sequential tasks in order, parallel tasks [P] can run together
    - **Follow TDD approach**: Execute test tasks before their corresponding implementation tasks. Tests must be **red** before product code for that slice.
-   - **Lab test review:** When contract tests or `acceptance.md` `how: auto` tests exist, do **not** implement matching product code until `FEATURE_DIR/TEST_REVIEW.md` exists and T* Blockers are resolved or accepted (`docs/agent-os/TEST_REVIEW_PROMPT.md`). Skip this gate for scaffold-only (no contract/auto tests yet). Nit/Later may be agent-adjudicated (§F).
+   - **Lab test review:** When contract tests or `acceptance.md` `how: auto` tests exist, do **not** implement matching product code until `FEATURE_DIR/TEST_REVIEW.md` exists and T* Blockers are resolved or accepted. **Spawn** the reviewer per `docs/agent-os/SPAWN_REVIEWER.md` (review packet + `TEST_REVIEW_PROMPT.md`). Do **not** ask the human to paste the brief. Skip this gate for scaffold-only (no contract/auto tests yet). Nit/Later may be agent-adjudicated (§F).
    - **File-based coordination**: Tasks affecting the same files must run sequentially
    - **Validation checkpoints**: Verify each phase completion before proceeding
 

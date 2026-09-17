@@ -10,9 +10,9 @@ Use after failing **contract tests** and **`acceptance.md` `how: auto` tests** e
 - **Heavy:** Do the tests encode **Approved spec locks + plan contracts** (and fail for the right reason)?
 - **Light:** Style, extra unit tests, coverage percentages.
 
-Paste everything below the line into a **new** agent session (do not continue the implementer thread).
+Launch per [`SPAWN_REVIEWER.md`](./SPAWN_REVIEWER.md): write a review packet, **spawn** a subagent, do **not** ask the human to paste this brief.
 
-Replace `FEATURE_DIR` with the feature path.
+Replace `FEATURE_DIR` in the packet (and below) with the feature path.
 
 ---
 

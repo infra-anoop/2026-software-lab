@@ -8,7 +8,7 @@
 Do **not** run `/speckit-tasks` or implement until both sections are human-approved.  
 Phasing references architecture; it does not replace it.
 
-**Plan Architecture review:** After this draft exists, recommended (non-trivial / first-of-kind): fresh session + `docs/agent-os/PLAN_REVIEW_PROMPT.md` (**P-***; Architecture-heavy incl. Learning/SOTA fit, Phasing-light). See `docs/agent-os/STACK_POSTURE.md`. Deposit `PLAN_REVIEW.md`; triage before human approval.
+**Plan Architecture review:** After this draft exists, recommended (non-trivial / first-of-kind): spawn per `docs/agent-os/SPAWN_REVIEWER.md` + `docs/agent-os/PLAN_REVIEW_PROMPT.md` (**P-***; Architecture-heavy incl. Learning/SOTA fit, Phasing-light). See `docs/agent-os/STACK_POSTURE.md`. Deposit `PLAN_REVIEW.md`; triage before human approval. Do **not** paste the brief into the human chat.
 
 ## Summary
 

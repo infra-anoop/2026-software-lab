@@ -265,7 +265,7 @@ then T035–T038
 
 - [P] = different files, no incomplete deps  
 - Verify contract tests **fail** before impl of that slice  
-- After T016–T019 exist and are red: paste `TEST_REVIEW_PROMPT.md` in a **new** session (`FEATURE_DIR=specs/smart-writer-v2/`)  
+- After T016–T019 exist and are red: **spawn** T* per `docs/agent-os/SPAWN_REVIEWER.md` (`FEATURE_DIR=specs/smart-writer-v2/`). Do **not** paste the brief into the human chat.  
 - Do not pytest `length.target_1_3_pages`, `delight.surprise`, or `research.prefer_criteria_over_trivia` as auto  
 - Commit after each logical group  
 

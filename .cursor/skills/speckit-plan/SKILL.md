@@ -107,7 +107,7 @@ Command ends after Phase 1 design. Report branch, IMPL_PLAN path, and generated 
 
 **Lab overlay — authoring gates (mandatory):** Before claiming complete, verify `docs/agent-os/PLAN_AUTHORING_GATES.md`. If any rule fails, list gaps and **do not** report success — fix artifacts or escalate to the human.
 
-**Lab overlay — review:** After a valid draft, remind the human that **Plan Architecture review** is recommended for non-trivial / first-of-kind plans: fresh session + `docs/agent-os/PLAN_REVIEW_PROMPT.md` (**P-***; Architecture-heavy incl. Learning/SOTA fit per `STACK_POSTURE.md`, Phasing-light). Do not start `/speckit-tasks` until human plan approval (after P* triage when review is run).
+**Lab overlay — review:** After a valid draft, **spawn** Plan Architecture review per `docs/agent-os/SPAWN_REVIEWER.md` + `docs/agent-os/PLAN_REVIEW_PROMPT.md` (**P-***; Architecture-heavy incl. Learning/SOTA fit per `STACK_POSTURE.md`, Phasing-light). Do **not** ask the human to paste the brief. Do not start `/speckit-tasks` until human plan approval (after P* triage when review is run).
 
 ## Done When
 

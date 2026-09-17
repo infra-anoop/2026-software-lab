@@ -144,7 +144,7 @@ The tasks.md should be immediately executable - each task must be specific enoug
 
 Do **not** generate fake auto tests for `how: human` catalog rows.
 
-After those test tasks exist in `tasks.md`, Completion Report MUST remind: when tests are written and red, run independent `docs/agent-os/TEST_REVIEW_PROMPT.md` (**T-***) before implementing that slice. Skip T* review until contract/auto tests exist (P0 scaffold is not a review gate).
+After those test tasks exist in `tasks.md`, Completion Report MUST remind: when tests are written and red, **spawn** T* per `docs/agent-os/SPAWN_REVIEWER.md` (review packet + `TEST_REVIEW_PROMPT.md`) before implementing that slice. Do **not** ask the human to paste the brief. Skip T* review until contract/auto tests exist (P0 scaffold is not a review gate).
 
 ### Checklist Format (REQUIRED)
 

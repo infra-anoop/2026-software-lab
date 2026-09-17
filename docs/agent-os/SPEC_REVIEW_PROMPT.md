@@ -5,9 +5,9 @@ Lab overlay on Spec Kit (constitution §A). **Product reviewer** — not the pro
 Use after a feature `spec.md` is drafted, before Approved.  
 Companion brief (optional / recommended for dogfood vehicles): `docs/agent-os/PROCESS_REVIEW_PROMPT.md`.
 
-Paste everything below the line into a **new** agent session (do not continue the authoring thread).
+Launch per [`SPAWN_REVIEWER.md`](./SPAWN_REVIEWER.md): write a review packet, **spawn** a subagent, do **not** ask the human to paste this brief.
 
-Replace `SPEC_PATH` with the feature spec path (e.g. `specs/001-my-feature/spec.md`).
+Replace `SPEC_PATH` in the packet (and below) with the feature spec path (e.g. `specs/001-my-feature/spec.md`).
 
 ---
 
