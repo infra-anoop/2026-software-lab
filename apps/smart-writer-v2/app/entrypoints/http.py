@@ -35,30 +35,50 @@ from app.config import (
 )
 from app.models import MaterialRef as ModelMaterialRef
 from app.orchestrator.generate_graph import run_generate
+from app.orchestrator.revise_graph import run_revise
+from app.orchestrator.turn_mode import (
+    ReviseWithoutParentError,
+    require_revise_parent,
+    resolve_write_mode,
+)
 from app.store import STORE, MaterialRef, Message
 
 AUDIT_SECRET_HEADER = "X-Audit-Secret"
 
 
 async def _execute_job(payload: dict[str, Any]) -> dict[str, Any]:
-    """Run generate and persist last_artifact_id (T028)."""
+    """Run generate or revise and persist the ArtifactVersion (T028/T037)."""
     conversation_id = str(payload["conversation_id"])
-    raw_materials = payload.get("materials") or []
-    refs = [
-        ModelMaterialRef(uri=str(item["uri"]), label=item.get("label"), kind="link")
-        for item in raw_materials
-        if item.get("uri")
-    ]
-    result = await run_generate(
-        conversation_id=conversation_id,
-        user_text=str(payload.get("user_text") or ""),
-        materials=refs,
-        citation_mode_pref=payload.get("citation_mode_pref"),
-        humor_enabled=bool(payload.get("humor_enabled", False)),
-        web_research_enabled=bool(payload.get("web_research_enabled", True)),
-    )
+    mode = str(payload.get("mode") or "generate")
+    if mode == "revise":
+        parent_id = payload.get("parent_artifact_id")
+        parent = STORE.get_artifact(str(parent_id)) if parent_id else None
+        if parent is None:
+            raise ReviseWithoutParentError("revise parent missing at execute")
+        result = await run_revise(
+            conversation_id=conversation_id,
+            feedback=str(payload.get("user_text") or ""),
+            parent=parent,
+            citation_mode_pref=payload.get("citation_mode_pref"),
+            humor_enabled=bool(payload.get("humor_enabled", False)),
+        )
+    else:
+        raw_materials = payload.get("materials") or []
+        refs = [
+            ModelMaterialRef(uri=str(item["uri"]), label=item.get("label"), kind="link")
+            for item in raw_materials
+            if item.get("uri")
+        ]
+        result = await run_generate(
+            conversation_id=conversation_id,
+            user_text=str(payload.get("user_text") or ""),
+            materials=refs,
+            citation_mode_pref=payload.get("citation_mode_pref"),
+            humor_enabled=bool(payload.get("humor_enabled", False)),
+            web_research_enabled=bool(payload.get("web_research_enabled", True)),
+        )
     artifact = result["artifact"]
-    STORE.set_last_artifact_id(conversation_id, artifact.artifact_id)
+    STORE.save_artifact(conversation_id, artifact)
     STORE.add_message(conversation_id, "assistant", artifact.body)
     return {
         "humor_enabled": result["humor_enabled"],
@@ -250,14 +270,29 @@ def post_message(
                 text=assistant.text,
             )
         )
+    mode, parent_id = resolve_write_mode(
+        client_intent=body.client_intent,
+        last_artifact_id=state.last_artifact_id,
+    )
+    if mode == "revise":
+        try:
+            parent_id = require_revise_parent(
+                parent_id,
+                parent_exists=STORE.get_artifact(parent_id or "") is not None,
+            )
+        except ReviseWithoutParentError as exc:
+            raise HTTPException(
+                status_code=409,
+                detail="revise requires an existing parent artifact",
+            ) from exc
     runner: JobRunner = request.app.state.job_runner
     try:
         job = runner.enqueue(
             {
                 "conversation_id": conversation_id,
                 "user_text": body.text,
-                "mode": "generate",
-                "parent_artifact_id": None,
+                "mode": mode,
+                "parent_artifact_id": parent_id,
                 "materials": [
                     {"uri": ref.uri, "label": ref.label} for ref in state.materials
                 ],
@@ -270,8 +305,8 @@ def post_message(
         raise HTTPException(status_code=503, detail="Job queue is full") from exc
     return JobAcceptedOut(
         job_id=job.job_id,
-        mode="generate",
-        parent_artifact_id=None,
+        mode=mode,
+        parent_artifact_id=parent_id,
     )
 
 

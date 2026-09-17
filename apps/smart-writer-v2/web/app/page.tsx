@@ -19,6 +19,8 @@ type ArtifactView = {
   artifact_id: string;
   body: string;
   citation_mode?: string;
+  producing_mode?: string;
+  parent_artifact_id?: string | null;
   sources?: SourceRow[];
   web_signal?: string;
 };
@@ -41,6 +43,7 @@ export default function Page() {
   const [artifact, setArtifact] = useState<ArtifactView | null>(null);
   const [status, setStatus] = useState<string>("");
   const [busy, setBusy] = useState(false);
+  const [intent, setIntent] = useState<"auto" | "regenerate">("auto");
 
   const ensureConversation = useCallback(async (): Promise<string> => {
     if (conversationId) {
@@ -100,7 +103,7 @@ export default function Page() {
         method: "POST",
         body: JSON.stringify({
           text,
-          client_intent: "auto",
+          client_intent: intent,
           citation_mode: null,
           materials,
         }),
@@ -131,6 +134,7 @@ export default function Page() {
       setStatus("error");
       setMessages((prev) => [...prev, { role: "assistant", text: message }]);
     } finally {
+      setIntent("auto");
       setBusy(false);
     }
   }
@@ -175,11 +179,29 @@ export default function Page() {
             <button type="submit" disabled={busy || !draft.trim()}>
               {busy ? "Working…" : "Send"}
             </button>
+            <button
+              type="button"
+              disabled={busy || !artifact}
+              onClick={() => setIntent("regenerate")}
+            >
+              Start over (next send)
+            </button>
+            {intent === "regenerate" ? (
+              <p className="status">Next send starts a fresh generate.</p>
+            ) : null}
             {status ? <p className="status">{status}</p> : null}
           </form>
         </section>
         <aside className="pane" aria-label="Draft and sources">
           <h2>Draft</h2>
+          {artifact ? (
+            <p className="status">
+              {artifact.producing_mode ?? "generate"} {artifact.artifact_id.slice(0, 8)}
+              {artifact.parent_artifact_id
+                ? ` ← ${artifact.parent_artifact_id.slice(0, 8)}`
+                : " (new)"}
+            </p>
+          ) : null}
           {artifact?.body ? <pre className="body">{artifact.body}</pre> : <p className="empty">No draft yet.</p>}
           {artifact?.citation_mode === "panel" || sources.length > 0 ? (
             <div>

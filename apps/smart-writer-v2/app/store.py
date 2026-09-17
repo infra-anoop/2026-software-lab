@@ -7,6 +7,8 @@ from datetime import UTC, datetime
 from typing import Literal
 from uuid import uuid4
 
+from app.models import ArtifactVersion
+
 CitationMode = Literal["panel", "inline", "footnotes", "combo"]
 MessageRole = Literal["user", "assistant", "system"]
 MaterialKind = Literal["link", "upload"]
@@ -78,11 +80,13 @@ class InMemoryStore:
     def __init__(self) -> None:
         self._conversations: dict[str, Conversation] = {}
         self._run_state: dict[str, InternalRunState] = {}
+        self._artifacts: dict[str, ArtifactVersion] = {}
 
     def reset(self) -> None:
         """Drop all conversations (tests)."""
         self._conversations.clear()
         self._run_state.clear()
+        self._artifacts.clear()
 
     def create_conversation(self) -> Conversation:
         """Allocate a conversation and default InternalRunState."""
@@ -133,6 +137,15 @@ class InMemoryStore:
         """Point the conversation at the latest ArtifactVersion (T028)."""
         state = self._run_state[conversation_id]
         state.last_artifact_id = artifact_id
+
+    def save_artifact(self, conversation_id: str, artifact: ArtifactVersion) -> None:
+        """Persist ArtifactVersion and move last_artifact_id (T037)."""
+        self._artifacts[artifact.artifact_id] = artifact
+        self.set_last_artifact_id(conversation_id, artifact.artifact_id)
+
+    def get_artifact(self, artifact_id: str) -> ArtifactVersion | None:
+        """Return a stored artifact or None."""
+        return self._artifacts.get(artifact_id)
 
 
 STORE = InMemoryStore()

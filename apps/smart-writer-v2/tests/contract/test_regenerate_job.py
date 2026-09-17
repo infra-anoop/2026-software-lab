@@ -1,4 +1,4 @@
-"""Explicit regenerate is a fresh generate (http-api.md hook 2)."""
+"""Explicit regenerate is a fresh generate (http-api.md hook 2; T16 landmine)."""
 
 from __future__ import annotations
 
@@ -12,12 +12,17 @@ from tests.contract.grant_flow import (
 
 
 def test_regenerate_is_generate_with_null_parent(client: TestClient) -> None:
-    """client_intent=regenerate → mode=generate, parent_artifact_id JSON null."""
-    conversation_id, _accepted, _first = submit_grant_and_wait(client)
+    """client_intent=regenerate → mode=generate, new chain head, parent JSON null.
+
+    Expected green until auto-follow-up is revise (T036). Then this must fail
+    if regenerate is routed like auto.
+    """
+    conversation_id, _accepted, first = submit_grant_and_wait(client)
+    first_id = first["artifact"]["artifact_id"]
     response = post_followup_turn(
         client,
         conversation_id,
-        "Start over with a fresh draft.",
+        "Please write another complete draft.",
         client_intent="regenerate",
     )
     assert response.status_code in {200, 202}, response.text
@@ -32,3 +37,4 @@ def test_regenerate_is_generate_with_null_parent(client: TestClient) -> None:
     assert artifact["producing_mode"] == "generate"
     assert "parent_artifact_id" in artifact
     assert artifact["parent_artifact_id"] is None
+    assert artifact["artifact_id"] != first_id

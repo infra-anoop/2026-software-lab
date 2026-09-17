@@ -268,3 +268,147 @@ Feature-local lock: human accepted reviewer recs for T9–T11 (this slice). Nit/
 | **T15** | **accepted (Nit)** | Require `message_id` on `assistant_message`; `job_id` null is OK (T10). |
 
 Tests/contract edited to match. **T042–T043 may start** after this deposit (T028 still blocked on T043).
+
+---
+
+# Independent test review — US2 / T031–T033 (revise / regenerate)
+
+**Reviewer role:** Independent test reviewer (did not write these tests; no loyalty to their wording)  
+**Brief:** `docs/agent-os/TEST_REVIEW_PROMPT.md` (constitution §V)  
+**Feature:** `specs/smart-writer-v2/`  
+**Slice:** T034 — T* of T031–T033 only (US2, F8 / SC-006 / SC-007)  
+**Commit:** `198d493` — Ship grant chat UI and red US2 revise contract tests.  
+**Date:** 2026-09-16  
+
+**Scope files**
+
+| Task | File |
+|------|------|
+| T031 | `apps/smart-writer-v2/tests/contract/test_revise_job.py` |
+| T032 | `apps/smart-writer-v2/tests/contract/test_regenerate_job.py` |
+| T033 | `apps/smart-writer-v2/tests/contract/test_revise_without_parent.py` |
+| shared | `apps/smart-writer-v2/tests/contract/grant_flow.py` (`post_followup_turn`) |
+
+**Out of scope this session:** T016–T019, T039–T040 except as filled-slot / generate contrast. Do not start T035. Do not rewrite spec/plan. Do not write product code. US1 findings T1–T8 and US3 findings T9–T15 stay locked.
+
+**Pytest (app venv, 2026-09-16, at/after `198d493`):** T028 is already in. First generate succeeds (canned, ~0.6s).
+
+| Test | Result | Fail locus |
+|------|--------|------------|
+| `test_feedback_after_generate_is_revise_with_parent` | **FAIL** | `accepted["mode"] == "revise"` — got `"generate"` |
+| `test_regenerate_is_generate_with_null_parent` | **PASS** | — |
+| `test_revise_without_parent_returns_409` | **FAIL** | `status_code == 409` — got `200` `job_accepted` `mode=generate` |
+
+T031 fails for the lock it claims (follow-up auto is still generate). T032 does **not** fail. T033 fails because a first filled-slot turn generates — which is the spec edge, not a missing 409 router. `MessageTurnIn` has no `parent_artifact_id`; Pydantic drops `extra={"parent_artifact_id": "does-not-exist"}`.
+
+`revise.continuity_default` and `regenerate.explicit` remain **hybrid**. No `acceptance.md` `how: auto` rows yet (T061 / plan P2).
+
+---
+
+### A. Executive verdict
+
+**Approve tests with minor edits**
+
+T031 hits the public messages contract after a real generate, asserts hook 1 (`mode=revise`, `parent_artifact_id` equal to the first artifact, `producing_mode=revise`), and is red today because T028 still hard-codes generate. That is honest red, not a 404.
+
+T032 is the same helper with `client_intent=regenerate` and is **already green**: everything is generate, so “regenerate is generate, parent null” cannot fail closed on SC-007 until auto-revise exists. T033 injects a non-contract request field on a **new** conversation; 200 generate is what FR/edge “no prior artifact → generate” requires. Greening T033 by adding `parent_artifact_id` to `MessageTurnIn` would violate `http-api.md`.
+
+Do not start T035 until Debates **T16–T18** are human-adjudicated (constitution §F). Do not “fix” T033 by extending the POST body. Do not stub `revise_graph` to the assertion JSON.
+
+---
+
+### B. Findings table
+
+| ID | Severity | Lens | Locus | Finding | Suggested resolution |
+|----|----------|------|-------|---------|----------------------|
+| **T16** | **Debate** | Red-first honesty | `test_regenerate_job.py`; hook 2; catalog `regenerate.explicit`; FR-020; T036 | Steelman: regenerate after a generate **is** mode=generate / parent JSON null; T032 asserts both accepted and artifact, keys present (T6 lock). Attack: T028 already returns that shape for every filled-slot turn. T032 **passed** at review. SC-007 is distinguishable-from-**revise**, not “still generate.” T036 “`regenerate` forces generate” is untested until auto-followups become revise: an implementer can ship T035+T037, skip the regenerate exception, and T032 stays green. NL `"Start over…"` plus the flag also fails to isolate `client_intent` (the contract lock) from parsing. | Keep T032 as the **contrast landmine** for T036, not as an independently red gate. After auto→revise exists, T032 must fail if regenerate is routed like auto. Do not pytest NL “start over” as a second router. Assert `artifact_id` ≠ first generate id (new chain head). |
+| **T17** | **Debate** | Wrong-thing / lock fidelity | `test_revise_without_parent.py`; http-api 409 row; spec edge “no prior → generate”; data-model `mode=revise` ⇒ parent exists | Steelman: T033 asked for 409 on revise without parent; error table names that case; test asserts not `job_accepted` and no `job_id`. Attack: POST body in the contract is `text` / `client_intent` / `citation_mode` / `materials` only. Fixture is a **first** `GRANT_PROMPT` turn with a ghost `parent_artifact_id`. Extra is ignored; server correctly generates (200). Spec edge is generate, **not** 409. There is no public way to select `mode=revise` with a missing parent (`client_intent` is `auto\|regenerate`). 409 is an internal enqueue invariant (stale `last_artifact_id`, or a bug). This test cannot go green without polluting `MessageTurnIn` or mutating the store. | Do **not** add `parent_artifact_id` to the client schema. Drop or rewrite: either (a) unit-test the enqueue helper when `mode=revise` and parent missing/unknown → 409, not this HTTP file; or (b) HTTP: no `last_artifact_id` + `client_intent=auto` + filled slots → **generate**, not 409 (would be green today — not a US2 red gate). Keep 409 in the error table for the race/stale-parent path. |
+| **T18** | **Debate** | Lock fidelity | `test_revise_job.py`; FR-019; SC-006; catalog `revise.continuity_default`; P3/T035 | Steelman: hook 1 is `mode=revise` + non-null parent; T031 binds parent to the **first** `artifact_id` (stronger than “non-null”) and checks job `producing_mode`. Attack: `assemble_artifact(..., producing_mode="revise", parent_artifact_id=parent)` already exists on the generate graph. Stamp a full re-generate, ignore feedback, skip a revise graph: T031 greens. Catalog shall is “linked to prior **+ feedback**; **not silent full regen**.” Test never GETs `last_artifact_id`, never requires `artifact_id` ≠ parent, never requires nonempty `body` (T016 does). Hybrid remainder (prose improved) must not be faked; “new ArtifactVersion is head of chain” is structural and untested. | Public contract only: new `artifact_id` ≠ `parent_id`; GET `/v1/conversations/{id}` `last_artifact_id` equals the new id. Keep nonempty `body`. Do **not** pytest body≠parent-body or feedback n-grams (human/hybrid). Do not inspect `JobRunner` / graph state for “prior in context.” |
+| **T19** | **Strength** | Red-first / SNR | T031 vs T032; `grant_flow.py` | Same public HTTP helper; no LangGraph/Tavily stub. Filled `GRANT_PROMPT` then a **different** follow-up text. T031 fails on `mode`, not missing import / 404. T032 uses `client_intent=regenerate` and requires `parent_artifact_id` **in** the JSON as null. That split is the right US2 fixture design once revise exists. | Keep no-graph-stub. Do not make T032 red by stubbing generate to fail. Do not merge T031/T032 into one test that hides the regenerate miss. |
+| **T20** | Later | Red-first honesty / SNR | T031 vs T032 vs T033 | Three files are not three independent reds. T031 is the only lock-specific fail. T032 is green. T033 is 200-on-first-generate. After T036, re-check: T031 fails on `mode`/parent if auto stays generate; T032 fails on `mode`/parent if regenerate is treated as auto-revise. | Expected until T036. Treat T032 PASS in this T* as a finding (T16), not as US2 DoD. |
+| **T21** | Later | Lock fidelity / scope | T032; hook 2 panel clause; P5 + regenerate | Hook 2 also: nonempty `sources` + no citation override → `citation_mode=panel` (T3, locked on T016). T032 omits it; a regenerate path could drop panel. `client_intent=regenerate` with **empty** slots is still a write in this slice (slots already filled from generate). P5 “never enqueue if incomplete” on a cold regenerate remains untested. | Leave panel on T016 unless regenerate grows its own assemble. Empty-slot regenerate → T039/P5, not this file. |
+| **T22** | Nit | SNR | T031 vs T016 `body`; T031 `accepted.get("type")` | US2 scenario 1 / FR-018: writing artifacts are complete. T016 asserts nonempty `body`; T031 does not — a `body: ""` revise would pass. `accepted.get("type")` fails closed if the key is missing (`None != "job_accepted"`). | Copy T016’s nonempty `body` assert onto the revise artifact. Type check is fine. |
+
+Minimum count met. Debates: T16, T17, T18. Strength: T19.
+
+Correctly **not** pytested (do not fake): “draft improved” / feedback woven into prose (hybrid/human); T038 regenerate control + version indicator (Next); `chat.free_form_input` form-UX; catalog `how: human` rows; LangGraph-as-product-SC (F5).
+
+---
+
+### C. Adversarial positions (required)
+
+1. **Position: these tests would go green while a spec lock fails** — strongest case
+
+   Keep T028 enqueue-always-generate. Implement T035 as `assemble_artifact(producing_mode="revise", parent_artifact_id=last)` on the **generate** graph with only the new user text. T031 goes green. T032 is already green. Leave T033 red, or 409 iff the client sent `parent_artifact_id` (schema creep).
+
+   FR-019 / F8 “prior output + feedback in context, not silent full re-initialize” fails. SC-006 “new ArtifactVersion linked to previous **and that feedback**” fails if `last_artifact_id` is not moved and the body is a cold regen. SC-007 is unused. Catalog `revise.continuity_default` fails. Tests that matter for T035 pass.
+
+   *What would have to be true for the suite to be right anyway:* this slice only claimed hook 1 JSON + hook 2 regenerate shape; “not silent regen” stays human; T032 is a landmine for T036 not a current red; 409 is a later race — **if** T18 observes new id + `last_artifact_id` and T17 is not greened via `MessageTurnIn`.
+
+2. **Position: these tests over-constrain implementation / test the wrong layer** — strongest case
+
+   T033 forces a request field the contract omits; `extra=forbid` would 422 a spec-correct first generate. Demanding GET `last_artifact_id` (T18) couples US2 tests to snapshot shape already used by T010/T10 — fine — but requiring a distinct HTTP 409 for “no parent” fights the spec edge that that turn is generate. Making T032 fail today requires a fake revise path or a broken generate. Body-diff vs parent body is an LLM flake. Three POSTs through one helper are one integration.
+
+   *What would have to be true for the suite to be right anyway:* 409 is a public contract row that must be hit from HTTP; `parent_artifact_id` on POST is an allowed extension; T032 must be red before T035 (deadlock); snapshot head-of-chain is in-layer (GET conversation already contracted).
+
+---
+
+### D. Catalog / contract coverage map
+
+| Catalog id or contract hook | Test file / name | Can fail today? | Gap |
+|-----------------------------|------------------|-----------------|-----|
+| Hook 1 — revise `mode` + `artifact.parent_artifact_id` non-null | `test_revise_job.py::test_feedback_after_generate_is_revise_with_parent` | **yes** (`mode=generate`) | Parent bound to first id (good). No new-id / `last_artifact_id` / nonempty body (T18, T22) |
+| Hook 2 — generate/regenerate `mode=generate`, parent JSON null | `test_regenerate_job.py::test_regenerate_is_generate_with_null_parent` | **no** (PASS; vacuous) | Not distinct-from-revise until T036 (T16). No panel clause (T21). T016 still owns fresh generate |
+| 409 — revise without parent | `test_revise_without_parent.py::test_revise_without_parent_returns_409` | **yes, wrong reason** (200 generate) | Extra field not in contract; first-turn generate is spec-correct (T17) |
+| Spec edge — no prior artifact → generate | **inverted by T033** | n/a | Would pass today as generate; not a red US2 test |
+| `revise.continuity_default` (hybrid, structural) | T031 parent link | yes (`mode`) | “+ feedback / not silent full regen” untested (T18) |
+| `regenerate.explicit` (hybrid, structural) | T032 | **no** | Green by T028 default (T16) |
+| FR-019 prior output + feedback in context | none as observation | **no** | Hybrid/human prose; structural half = T18 |
+| FR-018 complete body on revise | none on T031 | **no** | T016 only (T22) |
+| FR-020 / T036 regenerate forces generate | T032 | not until revise exists | Flag vs NL not isolated (T16) |
+| `chat.free_form_input` (hybrid) | free-form follow-up text | n/a | Correctly not faking forms |
+| T038 UI regenerate control / version indicator | none | n/a | Next/`web/`; not this suite |
+| P5 regenerate + empty slots | none | n/a | Later (T21); filled generate first |
+| Any `how: auto` catalog row | none | n/a | Still zero; T061 later (may mark `revise.continuity_default`) |
+| Hook 2 panel when sources nonempty | T016 (not T032) | yes (US1) | Regenerated artifact untested (T21) |
+
+---
+
+### E. Edit list
+
+- `test_revise_job.py`: after success, `artifact["artifact_id"] != parent_id`; GET conversation `last_artifact_id` equals the new id (key present).
+- `test_revise_job.py`: nonempty `artifact.body` (copy T016).
+- `test_regenerate_job.py`: `artifact["artifact_id"] !=` first generate id; document that this file is expected-green until auto-revise exists, then must fail if regenerate routes to revise.
+- `test_revise_without_parent.py`: **do not** send `parent_artifact_id` on POST. Either delete the HTTP test or move 409 to a helper unit test (`mode=revise` + missing/unknown parent). Do not change `MessageTurnIn`.
+- Do **not** stub `revise_graph` / `_execute_job` to `{mode: revise, parent_artifact_id: ...}`.
+- After T036: confirm T031 fails on `mode`/parent if auto stays generate; T032 fails on `mode`/parent if regenerate revises.
+- Defer: `citation_mode=panel` on regenerate (T016); empty-slot regenerate (P5); UI T038.
+- Poll 8s remains scaffold-ok while jobs are canned; raise when revise actually calls the LLM.
+
+---
+
+### F. Questions for the human (max 3)
+
+1. **T16:** May T032 stay green until T036 (contrast landmine), or must regenerate be independently red before T035 — knowing that requires a fake revise path?
+2. **T17:** Drop/move the HTTP 409 test (no `parent_artifact_id` on POST), or extend the contract so clients can name a parent? Spec edge is no-parent → generate.
+3. **T18:** Before T035, must T031 observe new `artifact_id` + GET `last_artifact_id`, or is hook-1 `mode`+parent-id enough for hybrid `revise.continuity_default`?
+
+Implementer: do not start T035 until T16–T18 are accepted or the tests are edited. Nit/Later (T20–T22) may be agent-adjudicated (§F). Do not implement 409 by adding `parent_artifact_id` to the messages request body.
+
+---
+
+## Adjudication — US2 (2026-09-16)
+
+Feature-local lock: human accepted reviewer recs for T16–T18 (this slice). Nit/Later agent-closed.
+
+| ID | Status | Lock |
+|----|--------|------|
+| **T16** | **locked** | T032 is a T036 landmine: allowed green until auto→revise exists; then must fail if regenerate routes like auto. New `artifact_id` ≠ first generate. Do not pytest NL “start over.” |
+| **T17** | **locked** | Do **not** add `parent_artifact_id` to `MessageTurnIn`. Drop HTTP 409-on-first-turn test. 409 = enqueue helper when `mode=revise` and parent missing/unknown (unit). Spec edge: no prior → generate. |
+| **T18** | **locked** | T031: new `artifact_id` ≠ parent; GET conversation `last_artifact_id` equals the new id; nonempty `body`. Do not pytest prose diffs. |
+| **T19** | **strength** | Keep T031 vs T032 public-HTTP split and no-graph-stub. |
+| **T20** | **accepted (Later)** | After T036, re-check T032 fails if regenerate revises. |
+| **T21** | **accepted (Later)** | Panel on regenerate stays T016; empty-slot regenerate stays P5. |
+| **T22** | **accepted (Nit)** | Nonempty revise `body` included in T18. |
+
+Tests edited to match. **T035–T038 may start.**

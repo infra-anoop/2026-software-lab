@@ -91,15 +91,15 @@
 
 - [x] T031 [P] [US2] Contract test successful revise: job `mode=revise`, `artifact.parent_artifact_id` non-null, `producing_mode=revise` in `apps/smart-writer-v2/tests/contract/test_revise_job.py` (hook 1; catalog `revise.continuity_default` structural)
 - [x] T032 [P] [US2] Contract test `client_intent=regenerate` → `mode=generate`, `parent_artifact_id` null in `apps/smart-writer-v2/tests/contract/test_regenerate_job.py` (hook 2; catalog `regenerate.explicit`)
-- [x] T033 [P] [US2] Contract test revise without parent → 409 in `apps/smart-writer-v2/tests/contract/test_revise_without_parent.py`
-- [ ] T034 [US2] Independent **T\*** review of T031–T033; append to `specs/smart-writer-v2/TEST_REVIEW.md`; Blockers before T035
+- [x] T033 [P] [US2] Contract test revise without parent → 409 in `apps/smart-writer-v2/tests/unit/test_revise_parent.py` (T17: helper, not POST `parent_artifact_id`)
+- [x] T034 [US2] Independent **T\*** review of T031–T033; append to `specs/smart-writer-v2/TEST_REVIEW.md`; Blockers before T035
 
 ### Implementation for User Story 2
 
-- [ ] T035 [US2] Implement LangGraph revise graph (may skip/narrow materials/web; prior artifact + feedback in state) in `apps/smart-writer-v2/app/orchestrator/revise_graph.py`
-- [ ] T036 [US2] Route `client_intent=auto` to revise when `last_artifact_id` set in `apps/smart-writer-v2/app/entrypoints/http.py`; `regenerate` forces generate
-- [ ] T037 [US2] Persist new `ArtifactVersion` linked to parent + feedback message in `apps/smart-writer-v2/app/store.py`
-- [ ] T038 [US2] UI regenerate/start-over control and version indicator in `apps/smart-writer-v2/web/app/page.tsx` (BFF poll)
+- [x] T035 [US2] Implement LangGraph revise graph (may skip/narrow materials/web; prior artifact + feedback in state) in `apps/smart-writer-v2/app/orchestrator/revise_graph.py`
+- [x] T036 [US2] Route `client_intent=auto` to revise when `last_artifact_id` set in `apps/smart-writer-v2/app/entrypoints/http.py`; `regenerate` forces generate
+- [x] T037 [US2] Persist new `ArtifactVersion` linked to parent + feedback message in `apps/smart-writer-v2/app/store.py`
+- [x] T038 [US2] UI regenerate/start-over control and version indicator in `apps/smart-writer-v2/web/app/page.tsx` (BFF poll)
 
 **Checkpoint**: US1 + US2 independently testable
 
