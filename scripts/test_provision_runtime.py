@@ -158,12 +158,13 @@ def _edges(nodes: list[dict[str, Any]]) -> dict[str, Any]:
 class FakeGraphql:
     """Minimal GraphQL stub for ensure create / exists paths."""
 
-    def __init__(self, *, mode: str) -> None:
+    def __init__(self, *, mode: str, has_domain: bool | None = None) -> None:
         self.mode = mode
         self.calls: list[tuple[str, dict[str, Any] | None]] = []
         self._created_project = False
         self._created_env = False
         self._created_service = False
+        self._has_domain = (mode == "exists") if has_domain is None else has_domain
 
     def execute(self, query: str, variables: dict[str, Any] | None = None) -> dict[str, Any]:
         self.calls.append((query, variables))
@@ -177,6 +178,7 @@ class FakeGraphql:
                             {"name": "projectCreate"},
                             {"name": "environmentCreate"},
                             {"name": "serviceCreate"},
+                            {"name": "serviceDomainCreate"},
                         ]
                     }
                 }
@@ -257,6 +259,17 @@ class FakeGraphql:
                 ]
             return {"data": {"project": {"services": _edges(services)}}}
 
+        if "serviceDomainCreate" in q:
+            self._has_domain = True
+            return {
+                "data": {
+                    "serviceDomainCreate": {
+                        "id": "dom-1",
+                        "domain": "research-auditor.up.railway.app",
+                    }
+                }
+            }
+
         if "serviceCreate" in q:
             self._created_service = True
             env_id = (variables or {}).get("input", {}).get("environmentId", "env-prod")
@@ -267,6 +280,28 @@ class FakeGraphql:
                         "name": "research-auditor",
                         "serviceInstances": _edges([{"environmentId": env_id}]),
                     }
+                }
+            }
+
+        if "serviceDomains" in q:
+            if self._has_domain:
+                return {
+                    "data": {
+                        "domains": {
+                            "serviceDomains": [
+                                {
+                                    "id": "dom-1",
+                                    "domain": "research-auditor.up.railway.app",
+                                    "suffix": ".up.railway.app",
+                                }
+                            ],
+                            "customDomains": [],
+                        }
+                    }
+                }
+            return {
+                "data": {
+                    "domains": {"serviceDomains": [], "customDomains": []}
                 }
             }
 
@@ -289,6 +324,9 @@ def test_ensure_already_exists() -> None:
     assert result.project_created is False
     assert result.environment_created is False
     assert result.service_created is False
+    assert result.domain_created is False
+    assert result.public_domain == "research-auditor.up.railway.app"
+    assert not any("serviceDomainCreate" in c[0] for c in fake.calls)
     assert not any("Create" in c[0] for c in fake.calls if "projectCreate" in c[0])
 
 
@@ -310,6 +348,9 @@ def test_ensure_create_path() -> None:
     # production often comes with projectCreate; may or may not count as created
     assert any("projectCreate" in c[0] for c in fake.calls)
     assert any("serviceCreate" in c[0] for c in fake.calls)
+    assert any("serviceDomainCreate" in c[0] for c in fake.calls)
+    assert result.domain_created is True
+    assert result.public_domain == "research-auditor.up.railway.app"
 
 
 def test_ensure_workspace_zero_fails() -> None:
@@ -381,6 +422,22 @@ def test_apply_uses_provisioner(
     assert "test-token-not-logged" not in out
     err = capsys.readouterr().err
     assert "test-token-not-logged" not in err
+
+
+def test_ensure_creates_domain_when_service_exists() -> None:
+    fake = FakeGraphql(mode="exists", has_domain=False)
+    provisioner = pr.RailwayProvisioner(client=fake)
+    result = provisioner.ensure(
+        pr.FootprintNames(
+            project_name="2026-software-lab",
+            service_name="research-auditor",
+            environment_name="production",
+        )
+    )
+    assert result.service_created is False
+    assert result.domain_created is True
+    assert result.public_domain == "research-auditor.up.railway.app"
+    assert any("serviceDomainCreate" in c[0] for c in fake.calls)
 
 
 def test_mutation_probe_fail_closed() -> None:

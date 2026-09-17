@@ -1,4 +1,4 @@
-# Provision Railway runtime footprint (project / environment / service).
+# Provision Railway runtime footprint (project / environment / service / public domain).
 #
 # Conscious bootstrap only — workflow_dispatch (or local CLI).
 # Not on push, PR, or v* ship. Secrets sync = A23; image pin = deploy.yml.

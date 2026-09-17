@@ -6,7 +6,7 @@
 #   "pyyaml>=6",
 # ]
 # ///
-"""Ensure Railway project / environment / service footprint from deploy YAML.
+"""Ensure Railway project / environment / service / public domain from deploy YAML.
 
 Manual bootstrap only (local CLI or workflow_dispatch). Not part of v* ship.
 
@@ -40,6 +40,16 @@ API_URL = rgql.RAILWAY_API_URL
 PROJECT_CREATE_CANDIDATES = ("projectCreate",)
 ENVIRONMENT_CREATE_CANDIDATES = ("environmentCreate",)
 SERVICE_CREATE_CANDIDATES = ("serviceCreate",)
+DOMAIN_CREATE_CANDIDATES = ("serviceDomainCreate",)
+DOMAINS_QUERY = (
+    "query Domains($projectId: String!, $environmentId: String!, $serviceId: String!) { "
+    "domains(projectId: $projectId, environmentId: $environmentId, serviceId: $serviceId) { "
+    "serviceDomains { id domain suffix } customDomains { id domain } } }"
+)
+DOMAIN_CREATE_MUTATION = (
+    "mutation ServiceDomainCreate($input: ServiceDomainCreateInput!) { "
+    "serviceDomainCreate(input: $input) { id domain } }"
+)
 
 
 class ProvisionError(Exception):
@@ -65,6 +75,8 @@ class EnsureResult:
     project_created: bool
     environment_created: bool
     service_created: bool
+    domain_created: bool
+    public_domain: str | None
 
 
 @runtime_checkable
@@ -82,7 +94,7 @@ class RuntimeProvisioner(Protocol):
     """Thin boundary for a later Vercel provisioner (A26: Railway only)."""
 
     def ensure(self, names: FootprintNames) -> EnsureResult:
-        """Idempotent ensure of project → environment → service."""
+        """Idempotent ensure of project → environment → service → public domain."""
 
 
 def _err(msg: str) -> None:
@@ -257,6 +269,11 @@ class RailwayProvisioner:
             service_id,
             created_this_run=service_created,
         )
+        public_domain, domain_created = self._ensure_service_domain(
+            project_id,
+            environment_id,
+            service_id,
+        )
         return EnsureResult(
             project_id=project_id,
             environment_id=environment_id,
@@ -264,6 +281,8 @@ class RailwayProvisioner:
             project_created=project_created,
             environment_created=environment_created,
             service_created=service_created,
+            domain_created=domain_created,
+            public_domain=public_domain,
         )
 
     def _mutation_field_names(self) -> frozenset[str]:
@@ -498,6 +517,77 @@ class RailwayProvisioner:
             "fail closed"
         )
 
+    def _list_public_hosts(
+        self,
+        project_id: str,
+        environment_id: str,
+        service_id: str,
+    ) -> list[str]:
+        """Railway *.railway.app plus custom domains (same query as smoke-test.yml)."""
+        body = self._client.execute(
+            DOMAINS_QUERY,
+            {
+                "projectId": project_id,
+                "environmentId": environment_id,
+                "serviceId": service_id,
+            },
+        )
+        domains = (body.get("data") or {}).get("domains") or {}
+        if not isinstance(domains, dict):
+            return []
+        hosts: list[str] = []
+        custom = domains.get("customDomains")
+        if isinstance(custom, list):
+            for item in custom:
+                if isinstance(item, dict) and isinstance(item.get("domain"), str) and item["domain"]:
+                    hosts.append(item["domain"])
+        service_domains = domains.get("serviceDomains")
+        if isinstance(service_domains, list):
+            for item in service_domains:
+                if not isinstance(item, dict):
+                    continue
+                domain = item.get("domain")
+                suffix = item.get("suffix")
+                if not isinstance(domain, str) or not domain:
+                    continue
+                if isinstance(suffix, str) and suffix and suffix not in domain:
+                    hosts.append(f"{domain}{suffix}")
+                else:
+                    hosts.append(domain)
+        return hosts
+
+    def _ensure_service_domain(
+        self,
+        project_id: str,
+        environment_id: str,
+        service_id: str,
+    ) -> tuple[str, bool]:
+        existing = self._list_public_hosts(project_id, environment_id, service_id)
+        if existing:
+            return existing[0], False
+
+        mutation = self._pick_mutation(DOMAIN_CREATE_CANDIDATES, kind="service domain")
+        body = self._client.execute(
+            DOMAIN_CREATE_MUTATION if mutation == "serviceDomainCreate" else (
+                f"mutation ($input: ServiceDomainCreateInput!) {{ "
+                f"{mutation}(input: $input) {{ id domain }} }}"
+            ),
+            {
+                "input": {
+                    "environmentId": environment_id,
+                    "serviceId": service_id,
+                }
+            },
+        )
+        created = (body.get("data") or {}).get(mutation)
+        domain = created.get("domain") if isinstance(created, dict) else None
+        if not isinstance(domain, str) or not domain:
+            raise ProvisionError(
+                "service domain create returned no domain "
+                f"(service {service_id})"
+            )
+        return domain, True
+
 
 class VercelProvisioner:
     """Stub second backend — not implemented in A26."""
@@ -534,13 +624,18 @@ def print_ensure_result(names: FootprintNames, result: EnsureResult) -> None:
         f"  service:     {names.service_name} id={result.service_id} "
         f"({_flag(result.service_created)})"
     )
+    domain = result.public_domain or "(none)"
+    print(
+        f"  domain:      {domain} "
+        f"({_flag(result.domain_created)})"
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Ensure Railway project/environment/service from "
-            "deploy/railway/<environment>/<app_id>.yml. "
+            "Ensure Railway project/environment/service and a public "
+            "service domain from deploy/railway/<environment>/<app_id>.yml. "
             "Auth: RAILWAY_WORKSPACE_TOKEN (preferred) or RAILWAY_TOKEN. "
             "Workspace for project create: auto-resolve when the token sees "
             "exactly one workspace (fail closed on 0/N)."

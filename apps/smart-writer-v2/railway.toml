@@ -3,4 +3,10 @@
 # .github/workflows/deploy.yml (digest + start command from
 # deploy/railway/<environment>/<app_id>.yml).
 #
-# Do not add [build] or builder = "RAILPACK".
+# Do not add [build] or builder = "RAILPACK". That re-creates a
+# second production factory (git-connect source build).
+#
+# Image start is uvicorn only (Python deps are baked at image build).
+# The command lives in deploy/railway/<environment>/<app_id>.yml.
+#
+# See deploy/railway/README.md.

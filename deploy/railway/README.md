@@ -48,7 +48,8 @@ Nix + GHCR is the only production factory. Railway is a runtime. If a service is
 deploy/railway/
 ├── production/
 │   ├── research-auditor.yml   # production service + GHCR image mapping
-│   └── smart-writer.yml
+│   ├── smart-writer.yml
+│   └── smart-writer-v2.yml
 ├── staging/
 │   └── research-auditor.yml   # manual / preview only (see below)
 └── README.md
@@ -60,14 +61,17 @@ deploy/railway/
 
 ## Staging / preview (asymmetric today)
 
-**Staging is supported only for `research-auditor`.** There is no `deploy/railway/staging/smart-writer.yml` and no Railway staging target wired for smart-writer yet.
+**Staging is supported only for `research-auditor`.** There is no `deploy/railway/staging/smart-writer.yml` or `smart-writer-v2.yml`, and no Railway staging target wired for those apps yet.
 
 | App | Production | Staging |
 |---|---|---|
 | `research-auditor` | ✅ | ✅ (`research-auditor-staging`) |
 | `smart-writer` | ✅ | ❌ not configured |
+| `smart-writer-v2` | ✅ YAML in git; **service bootstrap** is `notes/packets/2026-09-17-swv2-railway-bootstrap.md` | ❌ not configured |
 
-Manual `workflow_dispatch` with `environment=staging` and `app_id=smart-writer` will fail at config lookup with a clear error (`Missing config: deploy/railway/staging/smart-writer.yml`). Use `environment=production` for smart-writer until a preview Railway service exists.
+Manual `workflow_dispatch` with `environment=staging` and `app_id=smart-writer` or `smart-writer-v2` will fail at config lookup with a clear error (`Missing config: deploy/railway/staging/<app_id>.yml`). Use `environment=production` until a preview Railway service exists.
+
+**One-app ship:** do not `git tag v*` to publish V2 alone — a `v*` tag ships every `publish_container` app. Use `workflow_dispatch` on `ship-registry.yml` / `deploy.yml` / `smoke-test.yml` with `app_id=smart-writer-v2` (see the bootstrap packet).
 
 Automated tag releases (`v*`) deploy **production only** for all apps with `deploy.enabled`. Future *preview* deployment is tracked separately (see comment block in `.github/workflows/ci-cd-pipeline.yml` and `notes/todo.md`).
 
@@ -110,7 +114,7 @@ gh workflow run smoke-test.yml \
 ## Adding a new app
 
 1. Add the app to `apps/registry.yaml` and run `uv run scripts/validate_app_registry.py --write-json`.
-2. Add `deploy/railway/production/<app_id>.yml` (and Railway service + GHCR wiring).
+2. Add `deploy/railway/production/<app_id>.yml` (and Railway service + **public service domain** + GHCR wiring). `provision-runtime.yml` apply is idempotent: project → env → service → `serviceDomainCreate` if smoke would see empty domains.
 3. Ensure `flake.nix` already builds `container-<app_id>` for that id.
 4. Do **not** add a Railpack `[build]` to `apps/<id>/railway.toml`.
 
@@ -140,18 +144,17 @@ Secrets are **not** stored in GitHub Actions or in this repo. GitHub deploy secr
 
 This is **not** a user login. Anyone with the shared secret can enqueue jobs and read outputs (drafts/verdicts). The HTML form stores the value in `sessionStorage` and sends it from JavaScript — convenience, not confidentiality against someone who loaded the page.
 
-| | Research Auditor | Smart Writer |
-|---|---|---|
-| Header | `X-Audit-Secret` | `X-Audit-Secret` |
-| Env (Railway Variables UI, never git) | `RESEARCH_AUDITOR_AUDIT_SECRET` | `SMART_WRITER_AUDIT_SECRET` |
-| Unset / blank | POST `/audit` and GET `/jobs` → **503** | same |
-| Wrong / missing header | **401** | same |
-| HTTP `max_iterations` | server cap **8** (422 if client sends 99) | same; do not raise |
-| POST `/audit` rate limit | 5/min per process (env override) | same |
+| | Research Auditor | Smart Writer (V1) | Smart Writer V2 |
+|---|---|---|---|
+| Header | `X-Audit-Secret` | `X-Audit-Secret` | `X-Audit-Secret` |
+| Env (Railway Variables / Infisical, never git) | `RESEARCH_AUDITOR_AUDIT_SECRET` | `SMART_WRITER_AUDIT_SECRET` | `SMART_WRITER_V2_AUDIT_SECRET` |
+| Unset / blank | POST `/audit` and GET `/jobs` → **503** | same | mutating `/v1/*` and jobs → **503** |
+| Wrong / missing header | **401** | **401** | **401** |
+| Browser | HTML + `sessionStorage` | HTML + `sessionStorage` | Next BFF holds the secret (no `NEXT_PUBLIC_*`) |
 
 `GET /`, `/health`, `/ready`, `/docs` stay unauthenticated. CLI is **not** the public cost control (Research Auditor CLI hardcodes 8; Smart Writer `--max-iterations` is flag-driven).
 
-Set the secret in the Railway service Variables UI. Listing the name under `env.optional` does not inject a value.
+Set the secret via Infisical (A23 `sync-runtime-secrets.yml`) or the Railway service Variables UI. Listing the name under `env.optional` does not inject a value.
 
 ```bash
 # Enqueue (202 + job_id). Poll GET /jobs/{id} with the same header.
@@ -164,5 +167,5 @@ curl -sS "$RAILWAY_URL/jobs/JOB_ID" \
   -H "X-Audit-Secret: $AUDIT_SECRET"
 ```
 
-There is no 1Password/Vault integration. Env vars on the Railway service remain the injection mechanism. CI (`scripts/validate_deploy_env.py`) fails if a `deploy.enabled` app has an empty `env.required` or if YAML names are not in that app’s Settings catalog.
+Application secrets live in Infisical Cloud (schema in `deploy/secrets/schema.yaml`); A23 syncs names into Railway env. GitHub Actions holds Railway tokens, not app keys. CI (`scripts/validate_deploy_env.py`) fails if a `deploy.enabled` app has an empty `env.required` or if YAML names are not in that app’s Settings catalog.
 

@@ -198,7 +198,7 @@
 - [ ] T063 [P] Turn/cost cap Settings in `apps/smart-writer-v2/app/config.py` (P7)
 - [ ] T064 [P] Logfire init from `LOGFIRE_TOKEN` in `apps/smart-writer-v2/app/obs.py` (P7)
 - [ ] T065 Citation override control (inline/footnotes/panel/combo) and skip ask if no sources in `apps/smart-writer-v2/web/app/components/CitationMode.tsx` (F7; after MVP)
-- [ ] T066 Document restart/in-memory loss and local run in `specs/smart-writer-v2/quickstart.md` and `apps/smart-writer-v2/README.md`
+- [x] T066 Document restart/in-memory loss and local run in `specs/smart-writer-v2/quickstart.md` and `apps/smart-writer-v2/README.md`
 - [ ] T067 [P] Vercel cattle pointer: git-declared env names for BFF (no UI-only secret) in `deploy/` adapter stub or `apps/smart-writer-v2/web/README.md` (P1 A21)
 - [ ] T068 `cd apps/smart-writer-v2 && uv run ruff check app/ tests/` and `uv run pytest` green for contract suite
 
