@@ -1,7 +1,8 @@
-"""Shared HTTP helpers for US1 grant-generate contract tests.
+"""Shared HTTP helpers for grant contract tests.
 
 These helpers call the public contract only. They do not stub the LangGraph
-or Tavily. Until T028 exists, POST .../messages should fail (red).
+or Tavily. Until POST .../messages exists (T043 clarify / T028 enqueue),
+turns should fail (red).
 """
 
 from __future__ import annotations
@@ -27,6 +28,13 @@ GRANT_MATERIALS = [
     {"uri": "https://example.org/ford-education-criteria", "label": "Ford education criteria"},
 ]
 
+# Who + some evidence; Whom (funder) and Ask (amount/request) absent — P5 / hook 6.
+EMPTY_WHOM_ASK_PROMPT = (
+    "We're Literacy Partners, a NYC adult literacy nonprofit. "
+    "Please help us with a draft. Our 2024 program report shows 400 adults "
+    "gained at least one grade level."
+)
+
 
 def create_conversation(client: TestClient) -> str:
     """POST /v1/conversations and return conversation_id."""
@@ -35,6 +43,20 @@ def create_conversation(client: TestClient) -> str:
     conversation_id = response.json()["conversation_id"]
     assert isinstance(conversation_id, str) and conversation_id
     return conversation_id
+
+
+def post_empty_whom_ask_turn(client: TestClient, conversation_id: str) -> Any:
+    """POST a grant-ish turn with Whom and Ask empty (P5 must-clarify fixture)."""
+    return client.post(
+        f"/v1/conversations/{conversation_id}/messages",
+        headers=AUTH,
+        json={
+            "text": EMPTY_WHOM_ASK_PROMPT,
+            "client_intent": "auto",
+            "citation_mode": None,
+            "materials": [],
+        },
+    )
 
 
 def post_grant_turn(client: TestClient, conversation_id: str) -> Any:
