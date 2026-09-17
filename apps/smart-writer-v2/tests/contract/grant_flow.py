@@ -54,6 +54,12 @@ WHOM_ASK_FILLED_WHY_EMPTY_PROMPT = (
     "for adult literacy in NYC."
 )
 
+# US6 / T058: non-grant short-form — must not require Axis A grant slots (SC-005 smoke).
+NONGRANT_PROMPT = (
+    "Write a two-page explainer on backyard composting for apartment dwellers. "
+    "This is a blog post, not a grant or donation ask."
+)
+
 # FR-021 / T9: structured labels only. English "ask" / "whom" in questions is allowed.
 _STRUCTURED_LABEL_RE = re.compile(
     r"(?i)(\baxis\b|\baxis_[ab]\b|\bintent_slots\b|\bwhy_funder\b|"

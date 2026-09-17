@@ -180,7 +180,7 @@
 
 ### Tests for User Story 6 *(required — FIRST, must FAIL)*
 
-- [ ] T058 [P] [US6] Contract/integration test non-grant prompt completes job without requiring grant intent slots in `apps/smart-writer-v2/tests/contract/test_nongrant_smoke.py` (catalog `engine.nongrant_smoke` structural)
+- [x] T058 [P] [US6] Contract/integration test non-grant prompt completes job without requiring grant intent slots in `apps/smart-writer-v2/tests/contract/test_nongrant_smoke.py` (catalog `engine.nongrant_smoke` structural)
 - [ ] T059 [US6] Independent **T\*** review of T058; append `TEST_REVIEW.md`; Blockers before T060
 
 ### Implementation for User Story 6
