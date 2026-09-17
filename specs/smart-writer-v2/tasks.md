@@ -74,8 +74,8 @@
 - [x] T026 [US1] Implement LangGraph generate `StateGraph` nodes infer → materials → web → write → provenance in `apps/smart-writer-v2/app/orchestrator/generate_graph.py` with PydanticAI `result_type` per node in `apps/smart-writer-v2/app/agents/`
 - [x] T027 [US1] Add versioned prompt program grant defaults (humor off) in `apps/smart-writer-v2/app/prompts/programs/grant_default/`
 - [x] T028 [US1] **Blocked on T043.** Enqueue generate jobs from `POST /v1/conversations/{id}/messages` only when grant intent slots who/whom/ask/why_funder/evidence are all filled; if any missing, do **not** enqueue (P5 — T043 returns `type=clarify`, no `job_id`); `GET /v1/jobs/{job_id}` success shape per `specs/smart-writer-v2/contracts/http-api.md` in `apps/smart-writer-v2/app/entrypoints/http.py`
-- [ ] T029 [US1] Default `citation_mode=panel` when sources exist on artifact in `apps/smart-writer-v2/app/orchestrator/generate_graph.py`
-- [ ] T030 [US1] Chat UI generate + artifact pane + sources panel (poll via BFF, no client audit secret) in `apps/smart-writer-v2/web/app/page.tsx`
+- [x] T029 [US1] Default `citation_mode=panel` when sources exist on artifact in `apps/smart-writer-v2/app/orchestrator/generate_graph.py`
+- [x] T030 [US1] Chat UI generate + artifact pane + sources panel (poll via BFF, no client audit secret) in `apps/smart-writer-v2/web/app/page.tsx`
 
 **Checkpoint**: US1 independently testable (generate + provenance shape + humor default)
 
@@ -89,9 +89,9 @@
 
 ### Tests for User Story 2 *(required — FIRST, must FAIL)*
 
-- [ ] T031 [P] [US2] Contract test successful revise: job `mode=revise`, `artifact.parent_artifact_id` non-null, `producing_mode=revise` in `apps/smart-writer-v2/tests/contract/test_revise_job.py` (hook 1; catalog `revise.continuity_default` structural)
-- [ ] T032 [P] [US2] Contract test `client_intent=regenerate` → `mode=generate`, `parent_artifact_id` null in `apps/smart-writer-v2/tests/contract/test_regenerate_job.py` (hook 2; catalog `regenerate.explicit`)
-- [ ] T033 [P] [US2] Contract test revise without parent → 409 in `apps/smart-writer-v2/tests/contract/test_revise_without_parent.py`
+- [x] T031 [P] [US2] Contract test successful revise: job `mode=revise`, `artifact.parent_artifact_id` non-null, `producing_mode=revise` in `apps/smart-writer-v2/tests/contract/test_revise_job.py` (hook 1; catalog `revise.continuity_default` structural)
+- [x] T032 [P] [US2] Contract test `client_intent=regenerate` → `mode=generate`, `parent_artifact_id` null in `apps/smart-writer-v2/tests/contract/test_regenerate_job.py` (hook 2; catalog `regenerate.explicit`)
+- [x] T033 [P] [US2] Contract test revise without parent → 409 in `apps/smart-writer-v2/tests/contract/test_revise_without_parent.py`
 - [ ] T034 [US2] Independent **T\*** review of T031–T033; append to `specs/smart-writer-v2/TEST_REVIEW.md`; Blockers before T035
 
 ### Implementation for User Story 2
@@ -121,8 +121,8 @@
 
 - [x] T042 [US3] Infer/update intent slots from free-form text in `apps/smart-writer-v2/app/agents/infer_state.py` (PydanticAI `result_type`)
 - [x] T043 [US3] Turn router (**hard blocker for T028**): grant + any of who/whom/ask/why_funder/evidence missing → clarify sync response, never enqueue job, in `apps/smart-writer-v2/app/entrypoints/http.py`
-- [ ] T044 [US3] NL-only clarify copy (no axis/slot names) in `apps/smart-writer-v2/app/agents/clarify.py`
-- [ ] T045 [US3] Render clarify messages in chat thread in `apps/smart-writer-v2/web/app/page.tsx`
+- [x] T044 [US3] NL-only clarify copy (no axis/slot names) in `apps/smart-writer-v2/app/agents/clarify.py`
+- [x] T045 [US3] Render clarify messages in chat thread in `apps/smart-writer-v2/web/app/page.tsx`
 
 **Checkpoint**: Clarify-before-write fixture green; US1 generate still works when slots filled
 

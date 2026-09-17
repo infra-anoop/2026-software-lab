@@ -1,0 +1,100 @@
+html,
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  background: #0f1419;
+  color: #e8eef4;
+}
+
+.shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.top h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.4rem;
+}
+
+.top p {
+  margin: 0 0 1rem;
+  color: #9aa8b5;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem);
+  gap: 1rem;
+}
+
+.thread,
+.pane {
+  background: #1a222c;
+  border-radius: 10px;
+  padding: 1rem;
+  min-height: 24rem;
+}
+
+.bubble {
+  margin-bottom: 0.75rem;
+}
+
+.bubble pre,
+.body {
+  white-space: pre-wrap;
+  font-family: inherit;
+  margin: 0.25rem 0 0;
+}
+
+.bubble.user {
+  color: #d5e4ff;
+}
+
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.composer input,
+.composer textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: #0f1419;
+  color: inherit;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 0.5rem;
+}
+
+.composer button {
+  align-self: flex-start;
+  background: #3b82f6;
+  color: white;
+  border: 0;
+  border-radius: 6px;
+  padding: 0.45rem 0.9rem;
+  cursor: pointer;
+}
+
+.composer button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.empty,
+.status {
+  color: #9aa8b5;
+}
+
+.sources {
+  padding-left: 1.1rem;
+}
+
+@media (max-width: 800px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

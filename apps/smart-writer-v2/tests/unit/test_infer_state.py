@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from app.agents.clarify import clarify_text_for_missing
 from app.agents.infer_state import (
-    clarify_text_for_missing,
     extract_intent_slots,
     merge_intent_slots,
     missing_grant_slots,

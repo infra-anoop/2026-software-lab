@@ -20,8 +20,8 @@ from fastapi.responses import JSONResponse
 from lab_shared.jobs import JobRunner, QueueFullError
 from pydantic import BaseModel, Field
 
+from app.agents.clarify import clarify_text_for_missing
 from app.agents.infer_state import (
-    clarify_text_for_missing,
     extract_intent_slots,
     merge_intent_slots,
     missing_grant_slots,

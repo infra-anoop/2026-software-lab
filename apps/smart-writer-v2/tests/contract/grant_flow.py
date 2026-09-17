@@ -125,6 +125,30 @@ def post_grant_turn(client: TestClient, conversation_id: str) -> Any:
     )
 
 
+def post_followup_turn(
+    client: TestClient,
+    conversation_id: str,
+    text: str,
+    *,
+    client_intent: str = "auto",
+    extra: dict[str, Any] | None = None,
+) -> Any:
+    """POST a later turn (feedback / regenerate / extra contract fields)."""
+    payload: dict[str, Any] = {
+        "text": text,
+        "client_intent": client_intent,
+        "citation_mode": None,
+        "materials": [],
+    }
+    if extra:
+        payload.update(extra)
+    return client.post(
+        f"/v1/conversations/{conversation_id}/messages",
+        headers=AUTH,
+        json=payload,
+    )
+
+
 def wait_job_success(client: TestClient, job_id: str, timeout_sec: float = 8.0) -> dict[str, Any]:
     """Poll GET /v1/jobs/{job_id} until succeeded or timeout.
 
