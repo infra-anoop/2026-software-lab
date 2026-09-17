@@ -81,6 +81,12 @@ def get_audit_secret() -> str | None:
     return raw or None
 
 
+def get_tavily_api_key() -> str | None:
+    """Return TAVILY_API_KEY or None."""
+    raw = _settings_str("TAVILY_API_KEY")
+    return raw or None
+
+
 def get_job_timeout_sec() -> float | None:
     """Wall-clock seconds for in-process jobs; ``None`` means no server-side timeout."""
     return DEFAULT_JOB_TIMEOUT_SEC

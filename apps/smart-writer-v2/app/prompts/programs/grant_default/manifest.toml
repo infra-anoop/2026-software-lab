@@ -1,0 +1,3 @@
+program_id = "grant_default"
+version = "0.1.0"
+# Grant beachhead: humor off unless the user explicitly enables it (F3 / FR-006b).
