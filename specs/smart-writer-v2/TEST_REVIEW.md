@@ -548,3 +548,122 @@ Feature-local lock: human accepted architect recs for T23–T25 (this slice). Ni
 | **T28** | **accepted (Nit)** | Leave T046 under `tests/contract/`. Do not move it onto GET conversation. |
 
 Tests edited to match. **T049–T052 may start.**
+
+---
+
+# Independent test review — US5 / T053–T054 (bundle roles / web disabled)
+
+**Reviewer role:** Independent test reviewer (did not write these tests; no loyalty to their wording)  
+**Brief:** `docs/agent-os/TEST_REVIEW_PROMPT.md` (constitution §V)  
+**Feature:** `specs/smart-writer-v2/`  
+**Slice:** T055 — T* of T053–T054 only (US5, F4 / FR-007a/b, SC-004)  
+**Commit:** `f25f2d9` — tests under review (packet `427cbfb` / `a07b542`)  
+**Date:** 2026-09-17  
+
+**Scope files**
+
+| Task | File |
+|------|------|
+| T053 | `apps/smart-writer-v2/tests/contract/test_bundle_roles.py` |
+| T054 | `apps/smart-writer-v2/tests/contract/test_web_disabled.py` |
+| contrast | `apps/smart-writer-v2/tests/contract/test_web_signal.py` (T018 / hook 5; not re-reviewed) |
+| shared | `apps/smart-writer-v2/tests/contract/grant_flow.py` (`GRANT_PROMPT`, `GRANT_MATERIALS`) |
+
+**Out of scope this session:** T016–T052 except as contrast. Do not start T056–T057. Do not rewrite spec/plan. Do not write product code. Prior T1–T28 stay locked (especially **T2**: no InternalRunState dump; **T4**: T018 is `none_declared` not `disabled`; **T24**: factual-low must not disable web). Prefer-criteria-over-trivia stays hybrid/human.
+
+**Pytest (app venv, independently re-run 2026-09-17, at/after `f25f2d9`):**
+
+| Test | Result | Fail locus |
+|------|--------|------------|
+| `test_bundle_ids_match_source_record_bundle` | **PASS** | — |
+| `test_web_research_disabled_declares_disabled` | **FAIL** | `signal == "disabled"` — got `"none_declared"` |
+
+T053 is already green. T054 fails on the lock field after a succeeded job (not 404 / ImportError). Catalog rows stay **hybrid**; no `acceptance.md` `how: auto` rows yet (T061 / plan P2).
+
+---
+
+### A. Executive verdict
+
+**Approve tests with minor edits**
+
+T054 hits the public messages contract with a distinct disable-web prompt, observes job `web_signal` (not GET conversation), and is red today because canned generate still runs with store `web_research_enabled=True` (Tavily unset → `none_declared`). That is honest red, and it is the T4 contrast T018 cannot supply.
+
+T053 is **not** a red gate for T056. `assemble_artifact` already copies `materials_bundle_ids` / `web_bundle_ids` from the same `SourceRecord.bundle` partition the test recomputes; GRANT_MATERIALS already produces ≥1 materials row. Set-equality of two derived views of `sources[]` would stay green while F4 roles (`kind`, submitted URI, criteria-vs-trivia) fail.
+
+Do not start T056 until Debates **T29–T31** are human-adjudicated (constitution §F). Do not green T054 by adding `web_research_enabled` to `MessageTurnIn`. Do not pytest `research.prefer_criteria_over_trivia`.
+
+---
+
+### B. Findings table
+
+| ID | Severity | Lens | Locus | Finding | Suggested resolution |
+|----|----------|------|-------|---------|----------------------|
+| **T29** | **Debate** | Red-first / tautology | `test_bundle_roles.py`; F4; P4; T021/T024; T056 | Steelman: P4 said SC-003/004 hook bundle fields, not merely nonempty `sources[]`. Test requires both id lists present, set-equal to `sources[]` partitioned by `bundle`, and `len(materials_bundle_ids) ≥ 1` on the GRANT_MATERIALS fixture. Public HTTP; no graph stub. Attack: **PASSED** at review. `assemble_artifact` already sets those lists from the materials/web arguments T024 stamps `bundle="materials"\|"web"`. The test is DRY of that helper: a dummy materials row, `return list(SEED)`-class constant ids, or `kind=web` tagged `bundle=materials` all green it. Submitted URI is never bound. FR-007a/b (materials = criteria/org evidence; web = differentiating signal; prefer criteria over trivia) are untested — correctly not auto for trivia, which means **T056’s writer-context shall has no failing test**. Constitution §V: bundle-id product code for this slice already shipped in US1. | Keep set-equality as a **T021 landmine** (must fail if lists diverge from `sources[].bundle`). Bind F4 structure: materials rows `kind == "user_material"` and `uri` equals the GRANT_MATERIALS URI (fetch-fail path keeps the request URI today). Do **not** treat T053 PASS as T056 DoD. Do not pytest fit-point prose / trivia preference. |
+| **T30** | **Debate** | Wrong-thing / lock fidelity | `test_web_disabled.py`; data-model `web_research_enabled`; FR-017; T056 vs infer; T2 | Steelman: user disables web → `web_signal=disabled` not `none_declared`; no `bundle=web` rows. Observes job JSON. Fail locus is the lock, not a missing route. Attack: POST contract is `text` / `client_intent` / `citation_mode` / `materials` only. Store default is `True`. Canned `_run_generate_without_llm` never reads “Do not use web research.” LLM `infer.txt` says skip when asked; contract tests do not run that agent. Unit `decide_web_signal(False) == "disabled"` is **already green**. T056 DoD is “graphs set bundle ids and F4 preference in writer context” — **not** infer/store the disable flag. Implementers will (a) regex the fixture string inside generate without writing `InternalRunState.web_research_enabled`, or (b) extend `MessageTurnIn` (T17-class). A substring theater also fights T047/T24 (factual-low must not disable). | Keep T054 HTTP: `web_signal == "disabled"` on this fixture. Matching impl is a **deterministic infer seam** (same pattern as `extract_intent_slots` / `infer_property_ranking`) that sets store `web_research_enabled=False` from the disable prompt, called from `POST .../messages` **before** enqueue. Do **not** add `web_research_enabled` to `MessageTurnIn`. Do **not** dump the flag on GET conversation (T2). T056 may consume the store bool (already passed into `run_generate`); greening T054 is not “add a writer instruction.” |
+| **T31** | **Debate** | Lock fidelity / SNR | T054 vs F4 / FR-007; T053 | Steelman: `all(bundle != "web")` is stronger than status-200 and catches leftover Tavily rows if someone only relabels `web_signal`. Attack: skip **all** retrieval, stamp `web_signal=disabled`, empty `sources[]` → T054 greens while FR-007 materials-first-class fails. Relabel web hits `bundle=materials` → T054 greens and T053 on the *other* fixture still passes. `web_bundle_ids` is never asserted `== []` here. US5 independent test (tasks.md) is “bundles attached; web unused → declare” — unused-declare is T018; T054 is the disabled complement, and it does not require materials still attached. | On the disable fixture: ≥1 materials row (`kind=user_material`, GRANT_MATERIALS URI) **and** `web_bundle_ids == []` (key present) **and** no `kind=web`. Keep `web_signal == "disabled"`. Do not require live Tavily. |
+| **T32** | **Strength** | Red-first / scope | T054 vs T018; T2; catalog human row | T054 fails on `web_signal` after job success, not ImportError/404. Disable prompt is **not** `GRANT_PROMPT` alone — T018 stays `none_declared` on the enabled noop fixture (T4). Public HTTP only; no LangGraph/Tavily stub; no GET ranking/slots dump. `research.prefer_criteria_over_trivia` is correctly not pytested. | Keep the T018 vs T054 split and the no-graph-stub rule. Do not stub `_execute_job` to `{web_signal: disabled}`. After infer seam exists, T018 must still fail if enabled+empty is labeled `disabled`. |
+| **T33** | Later | Scope / SNR | T053 vs T057; T056 writer; T018 | `MessageTurnIn.materials` already exists; T053 PASS does not gate T057. Writer already injects an F4 preference sentence on the LLM path; canned generate never calls it. T053/T054 cannot fail closed on that sentence (and must not — hybrid/human). | Leave T057 as “already accepted or confirm URI still round-trips” after T29. T056 prompt-program edits are code review / human catalog, not this T*. After T030, re-check T018 ≠ `disabled`. |
+| **T34** | Nit | SNR | T054 vs T047 enum; T053 `set()` | T047 asserts enum membership then `!= disabled`. T054 uses `== "disabled"` only (missing key → KeyError, fail-closed). `set(materials_bundle_ids)` drops duplicates/order the data model allows as `list`. | Optional: `web_signal in {used, none_declared, disabled}` then `== disabled`. Keep list→set equality; do not require order. |
+
+Minimum count met. Debates: T29, T30, T31. Strength: T32.
+
+Correctly **not** pytested (do not fake): `research.prefer_criteria_over_trivia` (human); SC-002 ≥2 fit points from materials (hybrid/human); “web finding affects ask/framing” prose; file upload (P7); LangGraph-as-product-SC (F5).
+
+---
+
+### C. Adversarial positions (required)
+
+1. **Position: these tests would go green while a spec lock fails** — strongest case
+
+   Leave `assemble_artifact` as US1. T053 stays green. In canned generate, if `"do not use web" in user_text.lower()`: set `web_signal=disabled` and drop `bundle=web` rows (or never search). Do not write `InternalRunState.web_research_enabled=False`. Do not change writer/prompt so materials criteria outrank web trivia. Relabel any remaining hits `bundle=materials`. T054 goes green. T018 still sees the default prompt.
+
+   F4 / FR-007a/b fail (roles are tags, not jobs). FR-017/store disable fails (next turn still searches). Catalog `research.used_or_declared` is the wrong `when` if the flag never flipped. T056 can no-op. Pytest is green.
+
+   *What would have to be true for the suite to be right anyway:* T053 is only JSON partition consistency (US1 leftover); trivia/fit stay human; T054 is allowed to special-case the fixture string as the disable signal — **if** T29 binds `kind`+URI, T30 writes the store flag via a named infer seam (not generate regex), and T31 keeps materials on when web is off.
+
+2. **Position: these tests over-constrain implementation / test the wrong layer** — strongest case
+
+   T053 retests `assemble_artifact` under `tests/contract/` (T28-class). Binding fetch URI flakes if the fetch façade rewrites the final URL. T054’s English fixture is prompt theater: FR-017 is the LLM infer node (`infer.txt` already states the shall); a second canned regex duplicates T049-style token matching and will miss “skip Tavily” / “offline only.” Requiring materials-still-present (T31) couples the disable path to URL fetch. Unit `decide_web_signal(False)` already encodes SC-004’s disabled arm. T056 cannot green T054 without infer work the task list does not name — deadlock if T* forbids T056 until T054 is red-for-the-right-reason.
+
+   *What would have to be true for the suite to be right anyway:* contract tests run without OpenAI (canned path must infer disable like slots/ranking); GRANT_MATERIALS URI is stable on fetch-fail; `decide_web_signal` unit is not a substitute for HTTP store→job; T056 consumes the flag, a small infer helper is in-slice even if tasks.md titled the work “bundle ids.”
+
+---
+
+### D. Catalog / contract coverage map
+
+| Catalog id or contract hook | Test file / name | Can fail today? | Gap |
+|-----------------------------|------------------|-----------------|-----|
+| P4 / F4 — `materials_bundle_ids` vs `web_bundle_ids` from `SourceRecord.bundle` | `test_bundle_roles.py::test_bundle_ids_match_source_record_bundle` | **no** (PASS) | Derived partition of `sources[]` (T29). No `kind` / URI bind |
+| Hook 5 — web enabled, empty search → `none_declared` | T018 `test_web_signal.py` (contrast) | yes (green on lock) | T4 locked; T054 must not break this |
+| SC-004 complement — `web_research_enabled=false` → `web_signal=disabled` | `test_web_disabled.py::test_web_research_disabled_declares_disabled` | **yes** (`none_declared`) | NL fixture; no store/infer seam (T30). No materials-still-on (T31) |
+| `research.used_or_declared` (hybrid; **when** web enabled) | T018, not T054 | n/a for T054 | Disabled path is outside this row’s `when` |
+| `research.prefer_criteria_over_trivia` (human) | none | n/a | Correctly not pytest (packet / F4 remainder) |
+| `beachhead.audience_fit_min` prefer materials (hybrid) | none as auto | n/a | Correctly not faked |
+| FR-007 accept materials on POST | T053 `len(materials_bundle_ids) ≥ 1` | **no** (PASS) | T057 already in `MessageTurnIn` (T33) |
+| FR-007a/b roles in writer context | none | **no** | T056 prompt; hybrid/human (T33) |
+| T2 — no run_state dump | T053/T054 job JSON only | n/a | Do not observe disable on GET conversation |
+| Unit `decide_web_signal(False)` | `tests/unit/test_generate_assemble.py` | **no** (PASS) | Not a T054 substitute (T30) |
+| Any `how: auto` catalog row | none | n/a | Still zero; T061 later |
+
+---
+
+### E. Edit list
+
+- `test_bundle_roles.py`: materials rows `kind == "user_material"`; at least one `uri` equals `GRANT_MATERIALS[0]["uri"]`; keep set-equality + keys present + `len ≥ 1`.
+- `test_bundle_roles.py`: document T053 as already-green T021 landmine — T056 DoD is not “make this pass.”
+- `test_web_disabled.py`: keep `web_signal == "disabled"`; add `web_bundle_ids == []` (key present); ≥1 materials `kind=user_material`; no `kind=web`.
+- Infer seam (if T30 locked): helper on `_DISABLE_WEB_PROMPT` → `web_research_enabled is False`; `POST .../messages` must call it into the store (no GET dump; no new POST field).
+- Do **not** add `web_research_enabled` to `MessageTurnIn`.
+- Do **not** pytest trivia-vs-criteria prose or stub `_execute_job` / Tavily to the assertion JSON.
+- After T030/T056: T018 remains `none_declared` on the enabled noop fixture; T047 remains `!= disabled` on factual-low.
+- Defer: `used` with nonempty web bundle (live Tavily); uploads (P7); T057 if URI bind (T29) already proves links.
+
+---
+
+### F. Questions for the human (max 3)
+
+1. **T29:** May T053 stay green as a T021 landmine (set-equality only), or must it bind `kind` + GRANT_MATERIALS URI before T056 — knowing bundle-id product code already exists?
+2. **T30:** Must T054’s matching impl be a deterministic infer→store seam (like T049), or is fixture-string handling inside generate allowed? Must T056 wait on that seam even though tasks.md names graph/writer, not infer?
+3. **T31:** On the disable fixture, must materials still appear (F4 first-class when web is off), or is `web_signal=disabled` + no `bundle=web` enough?
+
+Implementer: do not start T056 until T29–T31 are accepted or the tests are edited. Nit/Later (T33–T34) may be agent-adjudicated (§F). Do not implement disable by extending the messages request body. Do not fake prefer-criteria-over-trivia as pytest.
