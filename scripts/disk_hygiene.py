@@ -7,6 +7,10 @@
 
 Default is ``--dry-run`` (print plan). ``--apply`` runs reclaim — used by
 verify-source and the Codespace postStartCommand.
+
+Codespace postStart invokes this with system ``python3`` (not ``uv run``):
+``uv`` is only on PATH inside ``nix develop``, so a uv-based postStart never
+ran and disk filled until rebuild.
 """
 from __future__ import annotations
 
@@ -40,8 +44,9 @@ ACTIONS: tuple[HygieneAction, ...] = (
     ),
     HygieneAction(
         id="docker-prune",
-        argv=("docker", "system", "prune", "-f"),
-        summary="Remove unused Docker containers/networks/images (docker system prune -f)",
+        # -a: unused images (not only dangling) — nested/rebuild leftovers
+        argv=("docker", "system", "prune", "-af"),
+        summary="Remove unused Docker data (docker system prune -af)",
         tool="docker",
     ),
 )
@@ -58,6 +63,25 @@ def resolve_tool(tool: str, path_env: str | None = None) -> str | None:
                 return str(candidate)
         return None
     return shutil.which(tool)
+
+
+def docker_daemon_ready(
+    docker_bin: str,
+    *,
+    runner: Callable[..., Any] | None = None,
+) -> bool:
+    """True when ``docker info`` can talk to a running daemon."""
+    run = runner or subprocess.run
+    try:
+        completed = run(
+            [docker_bin, "info"],
+            check=False,
+            capture_output=True,
+            timeout=60,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return int(getattr(completed, "returncode", 1)) == 0
 
 
 def plan_actions(
@@ -88,6 +112,12 @@ def run_apply(
     for action, binary in planned:
         if binary is None:
             print(f"skip {action.id}: `{action.tool}` not on PATH")
+            continue
+        if action.id == "docker-prune" and not docker_daemon_ready(binary, runner=run):
+            print(
+                f"skip {action.id}: docker CLI present but daemon unreachable "
+                "(no socket / DinD not ready)"
+            )
             continue
         cmd = [binary, *action.argv[1:]]
         print(f"apply {action.id}: {' '.join(cmd)}")
@@ -122,6 +152,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=None,
         help="Override PATH when resolving tools (tests / constrained shells)",
     )
+    parser.add_argument(
+        "--best-effort",
+        action="store_true",
+        help="After --apply, always exit 0 (Codespace postStart; CI should omit)",
+    )
     args = parser.parse_args(list(argv) if argv is not None else None)
 
     apply = args.mode == "apply"
@@ -130,14 +165,23 @@ def main(argv: Sequence[str] | None = None) -> int:
     print("mode:", args.mode)
 
     for action, binary in planned:
-        status = f"ready ({binary})" if binary else "missing tool"
+        if binary is None:
+            status = "missing tool"
+        elif action.id == "docker-prune" and not docker_daemon_ready(binary):
+            status = f"daemon down ({binary})"
+        else:
+            status = f"ready ({binary})"
         print(f"- [{action.id}] {action.summary} — {status}")
 
     if not apply:
         print("dry-run only; re-run with --apply to execute available steps")
         return 0
 
-    return run_apply(planned)
+    code = run_apply(planned)
+    if args.best_effort and code != 0:
+        print(f"best-effort: suppressing exit {code} for lifecycle")
+        return 0
+    return code
 
 
 if __name__ == "__main__":

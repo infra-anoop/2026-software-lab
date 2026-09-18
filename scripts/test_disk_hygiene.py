@@ -44,14 +44,18 @@ def test_apply_allowed_in_ci(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
     monkeypatch.setenv("GITHUB_ACTIONS", "1")
     calls: list[list[str]] = []
 
-    def fake_run(cmd: list[str], check: bool = False):  # noqa: ARG001
+    def fake_run(cmd: list[str], check: bool = False, **_kwargs):  # noqa: ARG001
         calls.append(list(cmd))
         return SimpleNamespace(returncode=0)
 
     monkeypatch.setattr(hygiene.subprocess, "run", fake_run)
     code = hygiene.main(["--apply", "--path", str(tmp_path)])
     assert code == 0
-    assert len(calls) == 2
+    # status probe + nix-gc + apply probe + docker prune
+    assert len(calls) == 4
+    assert calls[1][0].endswith("nix-collect-garbage")
+    prune = calls[3]
+    assert "prune" in prune and "-af" in prune
 
 
 def test_apply_runs_available_tools(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -59,13 +63,52 @@ def test_apply_runs_available_tools(monkeypatch: pytest.MonkeyPatch, tmp_path: P
     _make_fake_bin(tmp_path, "docker")
     calls: list[list[str]] = []
 
-    def fake_run(cmd: list[str], check: bool = False):  # noqa: ARG001
+    def fake_run(cmd: list[str], check: bool = False, **_kwargs):  # noqa: ARG001
         calls.append(list(cmd))
         return SimpleNamespace(returncode=0)
 
     monkeypatch.setattr(hygiene.subprocess, "run", fake_run)
     code = hygiene.main(["--apply", "--path", str(tmp_path)])
     assert code == 0
-    assert len(calls) == 2
-    assert calls[0][0].endswith("nix-collect-garbage")
-    assert calls[1][0].endswith("docker")
+    assert any(c[0].endswith("nix-collect-garbage") for c in calls)
+    prune = next(c for c in calls if "prune" in c)
+    assert prune[0].endswith("docker")
+    assert "-af" in prune
+
+
+def test_apply_skips_docker_when_daemon_down(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _make_fake_bin(tmp_path, "nix-collect-garbage")
+    _make_fake_bin(tmp_path, "docker")
+    calls: list[list[str]] = []
+
+    def fake_run(cmd: list[str], check: bool = False, **_kwargs):  # noqa: ARG001
+        calls.append(list(cmd))
+        if len(cmd) >= 2 and cmd[1] == "info":
+            return SimpleNamespace(returncode=1)
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(hygiene.subprocess, "run", fake_run)
+    code = hygiene.main(["--apply", "--path", str(tmp_path)])
+    assert code == 0
+    assert any(c[0].endswith("nix-collect-garbage") for c in calls)
+    assert not any("prune" in c for c in calls)
+
+
+def test_best_effort_suppresses_nonzero(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _make_fake_bin(tmp_path, "nix-collect-garbage")
+    _make_fake_bin(tmp_path, "docker")
+
+    def fake_run(cmd: list[str], check: bool = False, **_kwargs):  # noqa: ARG001
+        if len(cmd) >= 2 and cmd[1] == "info":
+            return SimpleNamespace(returncode=0)
+        if cmd and str(cmd[0]).endswith("nix-collect-garbage"):
+            return SimpleNamespace(returncode=1)
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(hygiene.subprocess, "run", fake_run)
+    assert hygiene.main(["--apply", "--path", str(tmp_path)]) == 1
+    assert hygiene.main(["--apply", "--best-effort", "--path", str(tmp_path)]) == 0

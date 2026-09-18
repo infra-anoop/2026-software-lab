@@ -50,8 +50,12 @@
     // ───────────────────────────────────────────────────────────────────────
     // SETUP: Warm Nix env; reclaim Nix/Docker disk on each start (Codespace SKU).
     // Bare `nix develop` hangs postCreate — use --command true.
+    // postStart must NOT use `uv run`: uv lives in `nix develop`, not default PATH,
+    // so lifecycle would exit 127 and never reclaim disk (see creation.log).
+    // disk_hygiene.py is a zero-dep script; system Python 3.12 is enough.
+    // --best-effort: reclaim what we can; do not fail Codespace start if DinD/Nix hiccups.
     "postCreateCommand": "nix develop --command true",
-    "postStartCommand": "uv run scripts/disk_hygiene.py --apply",
+    "postStartCommand": "python3 scripts/disk_hygiene.py --apply --best-effort",
 
     "remoteUser": "vscode"
 }
