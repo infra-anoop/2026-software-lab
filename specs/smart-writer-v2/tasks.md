@@ -193,7 +193,7 @@
 
 ## Phase 9: Polish & Cross-Cutting (P7 deferred + cattle)
 
-- [ ] T061 [P] Mark ≥1 catalog row `how: auto` in `specs/smart-writer-v2/acceptance.md` matching a green contract test (plan P2 exit; e.g. `revise.continuity_default` or `regenerate.explicit`)
+- [x] T061 [P] Mark ≥1 catalog row `how: auto` in `specs/smart-writer-v2/acceptance.md` matching a green contract test (plan P2 exit; e.g. `revise.continuity_default` or `regenerate.explicit`)
 - [ ] T062 [P] Rate limit + queue caps (B5-class) in `apps/smart-writer-v2/app/entrypoints/http.py` and tests in `apps/smart-writer-v2/tests/contract/test_rate_limit.py`
 - [ ] T063 [P] Turn/cost cap Settings in `apps/smart-writer-v2/app/config.py` (P7)
 - [ ] T064 [P] Logfire init from `LOGFIRE_TOKEN` in `apps/smart-writer-v2/app/obs.py` (P7)
