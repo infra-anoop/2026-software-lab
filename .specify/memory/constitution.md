@@ -4,7 +4,7 @@ Non-negotiable principles for every feature and agent run in this monorepo.
 Spec Kit phases (`/speckit-*`) and `AGENTS.md` must respect this document.
 Product-unique choices belong in feature specs — **not** by reinventing process.
 
-**Version**: 1.4.2 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-17
+**Version**: 1.4.3 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-18
 
 ## Core Principles
 
@@ -105,6 +105,8 @@ Detailed work items belong in `tasks.md` (or optional packets), not as a substit
 ### F. Progressive HITL (governor altitude)
 
 Human adjudication is mandatory at **high-altitude** gates: spec Debates (F*/R*), plan Architecture Debates (P*), and test-suite Debates (T*) that would let implement start against a wrong lock.
+
+**Human-facing language (NON-NEGOTIABLE in chat):** When speaking to the human, agents MUST use **product / risk / ops** vocabulary (what the user experiences, what could burn money, what needs a vault or account). Finding IDs (F*/R*/P*/T*), task IDs (T0xx), and internal mechanics (`clarify` vs `enqueue`, file paths, Settings knobs) belong in **git artifacts**. Chat Debates are posed as **plain choices** (A vs B) with one-line stakes; the agent records the chosen lock under the ID in the review file. Making the human comb `tasks.md` / `TEST_REVIEW.md` for intermediate terms is a **harness defect** — it recreates human-as-bottleneck.
 
 After `tasks.md` is the approved breakdown, `/speckit-implement` **continues** until the next T* Debate or the MVP/checkpoint named in `tasks.md`. Do **not** ask the human what is next. Spawn T* per `SPAWN_REVIEWER.md`; after Debates are recorded in `TEST_REVIEW.md`, resume matching implementation. The implementer **may write application code**. Extra workers only for `[P]` tasks on different files or an explicit long implement packet — not a second orchestrator methodology.
 

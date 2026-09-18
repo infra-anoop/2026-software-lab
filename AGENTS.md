@@ -103,7 +103,7 @@ See constitution. Short list:
 
 ## Human role
 
-Governor, not router: approve specs/invariants, adjudicate review Debates (F*/R*/P*/T* at altitude), review PRs at decision altitude. Do **not** paste review briefs between agents. After you lock Debates, agents resume without a new “keep going.” Downstream Nit/Later may be agent-adjudicated under explicit policy (constitution §F).
+Governor, not router: approve specs/invariants, adjudicate review Debates at **product/ops altitude**, review PRs at decision altitude. Do **not** paste review briefs between agents. Do **not** need to memorize task IDs (T0xx) or finding IDs (F*/T*) — agents translate Debates into plain choices in chat and record locks in git. After you lock Debates, agents resume without a new “keep going.” Downstream Nit/Later may be agent-adjudicated under explicit policy (constitution §F).
 
 ---
 

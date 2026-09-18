@@ -62,8 +62,17 @@ Do **not** use chat as the task router. Two channels stay separate:
 
 | Channel | For | Not for |
 |---------|-----|---------|
-| **Conversation** | Coaching, trade-offs, locking Debates / product numbers / ops HITL | “What task is next?” / pasting F*/R*/P*/T* briefs |
-| **Git packets** (`notes/packets/`) | DoD, owned paths, spawn prompts, stop conditions, routing | Inventing unlocked numbers or vault seeds |
+| **Conversation** | Coaching, trade-offs, locking Debates / product numbers / ops HITL — in **product language** | “What task is next?” / pasting F*/R*/P*/T* briefs / asking the human to learn T0xx IDs |
+| **Git packets** (`notes/packets/`) | DoD, owned paths, spawn prompts, stop conditions, routing, finding IDs | Inventing unlocked numbers or vault seeds |
+
+### Human-facing altitude
+
+Agents keep intermediate vocabulary (task IDs, finding IDs, `clarify`/`enqueue`, file paths) **in git**. Chat with the human is **governor altitude**:
+
+- Bad: “Lock T41: all POST messages vs enqueue-only.”
+- Good: “Should we rate-limit *every* chat turn (including cheap clarifying questions), or only turns that start an expensive write job? Stakes: abuse vs dogfood friction.”
+
+If the human must open `tasks.md` to understand the question, the agent failed the harness.
 
 Unlocked product numbers and vault seeds are **run killers** for multi-hour agents. Put them in the packet **Governor locks required** table (or Out of scope) before the run starts.
 
@@ -81,6 +90,7 @@ Unlocked product numbers and vault seeds are **run killers** for multi-hour agen
 
 | Version | Note |
 |---------|------|
+| 1.4.3 | §F human-facing language: chat = product/ops choices; IDs stay in git; combing tasks.md for jargon is a harness defect |
 | 1.4.2 | Implement continues after T* lock; no “what next”; stop at tasks.md MVP checkpoint; extra workers only for [P]/long packet |
 | 1.4.1 | Spawn reviewers from git packets (`SPAWN_REVIEWER.md`); do not paste briefs to the human |
 | 1.4.0 | §V test-first required for executable apps; T* test review overlay |

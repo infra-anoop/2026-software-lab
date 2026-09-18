@@ -31,16 +31,18 @@ T*: only after contract / `acceptance.md` `how: auto` tests exist (red). Skip sc
    Stop.
    ```
 
-4. Tell the human only: reviewer spawned, packet path, where the report will land. Do **not** paste the brief.
-5. When the report exists, **stop** for human Debate adjudication (constitution §F). Do not start matching implementation until Debates lock (Nit/Later may be agent-closed under §F).
+4. Tell the human only: reviewer spawned, packet path, where the report will land. Do **not** paste the brief. Do **not** dump finding IDs or task jargon into chat.
+5. When the report exists, **stop** for human Debate adjudication (constitution §F). Present each Debate in chat as **plain product/ops choices** (A vs B + one-line stakes). Keep F*/R*/P*/T* IDs in the review file only. Do not start matching implementation until Debates lock (Nit/Later may be agent-closed under §F).
 6. After Debate locks are **recorded in the review file**, **resume** the next unblocked slice (matching impl or next tests). Do **not** ask “what next” / “keep going.” The reviewer stops; the implementer does not wait for a new implement command.
 
 ## MUST NOT
 
 - Ask the human to copy/paste F*/R*/P*/T* briefs into a new session.
 - Ask the human which task to do next after a lock or a finished slice.
+- Ask the human to read `tasks.md` / `TEST_REVIEW.md` to learn intermediate IDs before deciding.
 - Continue the authoring/implementer thread as the reviewer (same agent grading its own work).
 - Dump `InternalRunState` or rewrite spec/plan to “make review easier.”
+- Brief the human in implementer slang (task IDs, node names, test filenames) when a product-language Debate would do.
 
 ## Isolation bar
 
