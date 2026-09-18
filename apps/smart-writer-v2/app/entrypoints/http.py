@@ -17,7 +17,7 @@ from typing import Any, Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
-from lab_shared.jobs import JobRunner, QueueFullError
+from lab_shared.jobs import JobRunner, QueueFullError, SlidingWindowRateLimiter
 from pydantic import BaseModel, Field
 
 from app.agents.clarify import clarify_text_for_turn
@@ -32,6 +32,7 @@ from app.agents.infer_state import (
 from app.config import (
     DEFAULT_JOB_CONCURRENCY,
     DEFAULT_JOB_QUEUE_MAX,
+    get_audit_rate_limit_per_min,
     get_audit_secret,
     get_job_timeout_sec,
     get_openai_api_key,
@@ -100,6 +101,7 @@ async def lifespan(app: FastAPI):
         queue_max=DEFAULT_JOB_QUEUE_MAX,
     )
     app.state.job_runner = runner
+    app.state.rate_limiter = SlidingWindowRateLimiter()
     await runner.start()
     yield
     await runner.stop()
@@ -253,6 +255,12 @@ def post_message(
     _: None = Depends(require_preview_secret),
 ) -> ClarifyTurnOut | JobAcceptedOut:
     """Turn router: grant + missing slots → clarify; non-grant skips Axis A (T060)."""
+    limiter: SlidingWindowRateLimiter = request.app.state.rate_limiter
+    if not limiter.allow(get_audit_rate_limit_per_min()):
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded; max POST .../messages per minute on this instance.",
+        )
     _require_conversation(conversation_id)
     state = STORE.get_run_state(conversation_id)
     assert state is not None

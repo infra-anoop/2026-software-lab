@@ -18,6 +18,7 @@ REQUIRED_ENV_NAMES: tuple[str, ...] = ("OPENAI_API_KEY",)
 ALL_ENV_NAMES: tuple[str, ...] = (
     "OPENAI_API_KEY",
     "SMART_WRITER_V2_AUDIT_SECRET",
+    "SMART_WRITER_V2_AUDIT_RATE_LIMIT_PER_MIN",
     "TAVILY_API_KEY",
     "LOGFIRE_TOKEN",
 )
@@ -25,6 +26,7 @@ ALL_ENV_NAMES: tuple[str, ...] = (
 DEFAULT_JOB_CONCURRENCY = 1
 DEFAULT_JOB_QUEUE_MAX = 4
 DEFAULT_JOB_TIMEOUT_SEC = 300.0
+DEFAULT_AUDIT_RATE_LIMIT_PER_MIN = 5
 
 
 class _SettingsBase(BaseSettings):
@@ -90,3 +92,15 @@ def get_tavily_api_key() -> str | None:
 def get_job_timeout_sec() -> float | None:
     """Wall-clock seconds for in-process jobs; ``None`` means no server-side timeout."""
     return DEFAULT_JOB_TIMEOUT_SEC
+
+
+def get_audit_rate_limit_per_min() -> int:
+    """POST .../messages sliding-window limit per process (B5; create/GET exempt)."""
+    raw = _settings_str(
+        "SMART_WRITER_V2_AUDIT_RATE_LIMIT_PER_MIN",
+        str(DEFAULT_AUDIT_RATE_LIMIT_PER_MIN),
+    )
+    try:
+        return max(0, int(raw))
+    except ValueError:
+        return DEFAULT_AUDIT_RATE_LIMIT_PER_MIN

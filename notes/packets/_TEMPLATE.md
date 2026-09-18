@@ -45,11 +45,21 @@ Checklist the agent must prove before stopping:
 
 - …
 
+## Governor locks required
+
+List product numbers, vault seeds, host account HITL, or other decisions the agent must **not** invent.
+If a lock is missing, put the task in **Out of scope** or Status `blocked` — do not stall a multi-hour run guessing.
+
+| Lock | Value or `blocked until human` |
+|------|--------------------------------|
+| | |
+
 ## Stop / escalate if
 
 - Missing product/ops decision
 - DoD cannot be met without expanding owned paths
 - Conflict with `notes/architect-backlog.md`
+- A Governor lock row is empty / blocked and the DoD depends on it
 
 ## Handoff notes (agent fills at end)
 

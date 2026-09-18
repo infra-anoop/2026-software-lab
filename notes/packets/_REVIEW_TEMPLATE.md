@@ -48,7 +48,17 @@ Spawn the reviewer per `docs/agent-os/SPAWN_REVIEWER.md`. Do **not** ask the hum
 - Matching product implementation
 - Asking the human to paste this packet or the brief
 
+## Governor locks required
+
+Locks the implementer must treat as closed after adjudication (or mark Debate unresolved).
+Examples: status-code splits, rate-limit scope, numeric caps, “defer P7.”
+
+| Lock | Value or `await Debate` |
+|------|-------------------------|
+| | |
+
 ## Stop / escalate if
 
 - Artifacts under review are missing
 - Brief and packet disagree on deposit path
+- Required Governor lock is still `await Debate` and would force inventing numbers/scope

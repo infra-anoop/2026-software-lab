@@ -822,3 +822,133 @@ Feature-local lock: human accepted architect recs for T35–T37. Nit/Later agent
 | **T40** | **accepted (Nit)** | Dedicated `post_nongrant_turn`; assert `"job_id" in payload` and truthy. |
 
 Tests edited to match. **T060 may start.**
+
+---
+
+## T062 — Rate limit + queue caps (B5-class) — 2026-09-18
+
+**Reviewer role:** Independent test reviewer (did not write these tests; no loyalty to their wording)  
+**Brief:** `docs/agent-os/TEST_REVIEW_PROMPT.md` (constitution §V)  
+**Feature:** `specs/smart-writer-v2/`  
+**Packet:** `notes/packets/2026-09-18-swv2-t062.md`  
+**Commit under review:** `9ad9a2a`  
+**Prior locks:** T1–T40 stay locked. This slice continues at **T41**.
+
+**Scope files**
+
+| Task | File |
+|------|------|
+| T062 | `apps/smart-writer-v2/tests/contract/test_rate_limit.py` |
+
+**Out of scope this session:** T063 turn/cost cap numbers (P7 deferred); T064 Logfire; catalog rows / T061; matching limiter + Settings product code. Do not rewrite spec/plan.
+
+**Pytest (app `.venv`, independently re-run 2026-09-18):**
+
+| Test | Result | Fail locus |
+|------|--------|------------|
+| `test_post_message_429_when_rate_limited` | **FAIL** | `second.status_code == 429` — got 200 `type=clarify` |
+| `test_post_message_503_when_queue_full` | **PASS** | QueueFullError → 503 already wired |
+
+Fail on the 429 lock field after HTTP 200, not ImportError / 404. Queue-full half is already green (distinctness landmine for V1/RA’s 429-for-queue).
+
+---
+
+### A. Executive verdict
+
+**Approve tests with minor edits**
+
+The file’s real job is the contract Errors table: **429 = rate limit**, **503 = queue overloaded** (and secret unset elsewhere). That split is the V2 lock against V1/RA (both map queue-full to 429). The red 429 case fails for the right reason today (no limiter / no Settings knob). The green 503 case is honest regression insurance, not a fake always-green fixture.
+
+They would **not** fail closed on “sliding window” vs a lifetime counter of 1, on Settings/schema wiring of `SMART_WRITER_V2_AUDIT_RATE_LIMIT_PER_MIN`, or on whether the **spend/enqueue** path is capped if only clarify POSTs are limited. The 429 fixture is `EMPTY_WHOM_ASK` → `type=clarify`; V1 B5 rates `POST /audit` (enqueue-only). Spec preview-gate language is unbounded **spend**.
+
+Do not start matching rate-limiter product code until Debates **T41–T42** are human-adjudicated (constitution §F). Do not “fix” red by returning 429 from the clarify branch only while leaving `job_accepted` uncapped. Do not map queue-full to 429 to match V1.
+
+---
+
+### B. Findings table
+
+| ID | Severity | Lens | Locus | Finding | Suggested resolution |
+|----|----------|------|-------|---------|----------------------|
+| **T41** | **Debate** | Lock fidelity / wrong-thing | `test_post_message_429_when_rate_limited`; `EMPTY_WHOM_ASK`; http-api 429; plan B5; spec preview-gate spend | Steelman: every mutating `POST .../messages` burns quota (abuse + any LLM clarify). Limit=1 → second turn 429 is a clean red. Attack: V1/RA B5 rates the **enqueue** route only. Spec Assumptions: preview gate so public URLs cannot unbounded-**spend** model keys. Clarify is sync and may be cheaper; the **grant write** path is the spend. An implementer can `if type would be clarify: count hits` and green this test while `GRANT_PROMPT` / revise enqueue stays unlimited. Inverse: enqueue-only limiter keeps this test red forever and forces clarify into the bucket — may be intended, but it is not what V1 encoded. | Human lock one of: (a) all `POST .../messages` share the limiter (keep clarify fixture; optionally add a twin on `GRANT_PROMPT` → 429 before enqueue), or (b) limiter only on enqueue branch — then rewrite the red test to a filled-slot / job path (stub `_execute_job` like V1 if needed). Do not green by hardcoding second-POST 429 without Settings. |
+| **T42** | **Debate** | SNR / lock fidelity | limit=`1` + `create_conversation`; Settings env name | Steelman: env `SMART_WRITER_V2_AUDIT_RATE_LIMIT_PER_MIN=1` mirrors V1 naming; first message 200 / second 429 is the right observation. Attack: with a **shared** process limiter on all protected POSTs, `POST /v1/conversations` is hit 1 → first `/messages` is already over limit → first assert fails. The test therefore silently requires **messages-scoped** (or create-exempt) limiting. Neither contract nor plan states that. A global middleware that counts create would be B5-shaped and still fail this suite. | Document in test docstring: limiter is per `POST .../messages` (create/GET exempt), **or** raise limit to 2 and assert the third messages POST is 429 if create shares the bucket. Matching impl: follow the locked scope; Settings helper like V1 `get_audit_rate_limit_per_min` (default 5). |
+| **T43** | Later | Red-first / internals | `test_post_message_503_when_queue_full`; `_execute_job`; `DEFAULT_JOB_QUEUE_MAX` | Queue-full → 503 is **already PASS** (product exists). Test patches module `DEFAULT_JOB_QUEUE_MAX` and private `_execute_job` with a 30s sleep, then needs **two** `job_accepted` before 503 because `JobRunner` counts only `status=="queued"` (in-flight excluded). That encodes runner semantics, not only the HTTP mapping. | Keep as regression for contract 503 ≠ 429. Optional harden: `runner.enqueue` raises `QueueFullError` via patch — still assert HTTP 503. Do not re-implement queue handling in T062 product work. |
+| **T44** | **Strength** | Lock fidelity / SNR | both tests; contracts Errors; governor 503 | Distinct fixtures: clarify path for 429 vs grant enqueue path for 503; explicit `!= 429` on the overload case. Locks V2 `http-api.md` against copying RA/V1 queue-full→429. 429 fail locus is status after a real 200 clarify, not ImportError. No Redis / multi-replica fantasy. | Keep the two-status split. Do not collapse queue-full into 429. Do not pytest T063 numeric turn/cost caps here. |
+| **T45** | Nit | SNR | 429/503 asserts | Status-only 429 (no body shape — contract has none; OK). `assert third.status_code != 429` is redundant after `== 503`. First clarify asserts `type==clarify` which couples the rate-limit red to P5 still working — fine as landmine, slightly noisy. | Drop redundant `!= 429` or keep as explicit anti-V1 comment. Optional: `detail` substring only if contract names one (it does not). |
+| **T46** | Later | Red-first honesty | sliding window vs counter | `limit=1` + two POSTs also passes a process-lifetime counter of 1 (no window reset). Governor lock names `SlidingWindowRateLimiter`; HTTP suite cannot see the class without importing app.state. | Accept: contract SNR is status codes. Impl uses `lab_shared.jobs.SlidingWindowRateLimiter` + Settings (packet / A9). Do not add a unit test of monotonic timestamps unless product code already exposes a seam. |
+
+Minimum count met. Debates: T41, T42. Strength: T44.
+
+Correctly **not** pytested (do not fake): T063 turn/cost cap numbers; Redis/shared-queue; multi-replica; catalog `how: auto`; secret-unset 503 (other files); BFF custody of the audit secret.
+
+---
+
+### C. Adversarial positions (required)
+
+1. **Position: these tests would go green while a spec lock fails** — strongest case
+
+   Wire a counter only on the clarify branch (or `if missing_grant_slots: …`). Second empty-whom/ask POST returns 429. Enqueue / revise / regenerate never call `limiter.allow`. Queue-full stays 503. Pytest: 429 red→green, 503 stays green.
+
+   Preview-gate / B5 spend posture fails: public clients can still flood `GRANT_PROMPT` jobs. Spec “unbounded spend” is uncapped. SlidingWindow + Settings can be skipped (hardcoded second clarify → 429).
+
+   *What would have to be true for the suite to be right anyway:* T41 locks “all messages POSTs” or adds an enqueue twin; T42 locks Settings-backed limit; packet’s SlidingWindow is an impl obligation enforced at PR, not by this file.
+
+2. **Position: these tests over-constrain implementation / test the wrong layer** — strongest case
+
+   Forcing clarify into the rate bucket diverges from V1 enqueue-only and may rate-limit cheap sync turns that product wants unbounded for dogfood. Patching `DEFAULT_JOB_QUEUE_MAX` + `_execute_job` couples the 503 test to JobRunner queued-vs-running accounting and private execute name — a `QueueFullError` raise at `enqueue` would lock the HTTP map with less choreography. create_conversation + limit=1 forbids a single shared middleware over all protected POSTs.
+
+   *What would have to be true for the suite to be right anyway:* abuse control on every messages POST is the intentional V2 posture; create stays outside the window; integration fill-the-queue is acceptable A9 documentation; enqueue twin is optional if T41 picks (a).
+
+---
+
+### D. Catalog / contract coverage map
+
+| Catalog id or contract hook | Test file / name | Can fail today? | Gap |
+|-----------------------------|------------------|-----------------|-----|
+| Errors — 429 Rate limit | `test_rate_limit.py::test_post_message_429_when_rate_limited` | **yes** (200 clarify) | Clarify-only subject (T41). Scope vs create (T42). Not sliding-window-proven (T46) |
+| Errors — 503 queue overloaded | `test_rate_limit.py::test_post_message_503_when_queue_full` | **no (already green)** | Distinct from 429 locked; internals-heavy (T43) |
+| Errors — 503 secret unset | not this file | n/a | Other preview-gate tests |
+| Plan — B5 in-process rate + queue caps | both | **partial** | 429 red; 503 green; no Redis asserted (correct) |
+| A9 single replica / in-memory | none (implicit) | n/a | Pattern for impl; not pytest |
+| Governor — queue-full **503** (not V1 429) | 503 test + `!= 429` | **yes if remapped to 429** | Strength T44 |
+| T063 turn/cost caps (P7) | none | n/a | Deferred; out of slice |
+| Any `acceptance.md` `how: auto` row | none | n/a | Not claimed |
+
+---
+
+### E. Edit list
+
+- After T41: either keep clarify 429 **and** add `GRANT_PROMPT` (or stubbed enqueue) second-POST → 429, **or** move the sole 429 fixture onto the enqueue path.
+- After T42: docstring (or limit=2 + third messages POST) stating create/GET are outside the messages bucket — or deliberately share and adjust counts.
+- `test_post_message_503_when_queue_full`: optional `QueueFullError` at enqueue; keep `status_code == 503`.
+- Drop redundant `assert third.status_code != 429` or turn it into a one-line anti-V1 comment.
+- Matching impl (post-lock): `SlidingWindowRateLimiter` on app.state; Settings `SMART_WRITER_V2_AUDIT_RATE_LIMIT_PER_MIN` default **5**; check **before** enqueue/clarify work as locked in T41.
+- Do **not** return 429 for `QueueFullError`.
+- Do **not** add T063 numeric caps or Logfire asserts in this file.
+- Do **not** stub the limiter to always deny except when env=1 (tautology).
+
+---
+
+### F. Questions for the human (max 3)
+
+1. **T41:** Must the rate limit apply to **all** `POST .../messages` (including clarify), **enqueue-only**, or both with an explicit enqueue twin in this file?
+2. **T42:** Is the limiter **messages-scoped** (create exempt) with limit=1 as written, or should create share the window (adjust counts)?
+
+Implementer: do not start T062 rate-limiter product code until T41–T42 are accepted or the tests are edited. Nit/Later (T43, T45, T46) may be agent-adjudicated (§F). Do not map queue-full to 429. Do not implement T063 numbers in this slice.
+
+---
+
+## Adjudication — T062 (2026-09-18)
+
+Feature-local lock: plan-approved harness cut (B5 mutating spend/abuse; queue-full **503**; SlidingWindow; default 5/min) + architect recs for T41–T42. Nit/Later agent-closed.
+
+| ID | Status | Lock |
+|----|--------|------|
+| **T41** | **locked** | Rate limit applies to **all** `POST .../messages` (clarify and enqueue). Keep clarify fixture; **add** enqueue twin (`GRANT_PROMPT` / stubbed `_execute_job`) second-POST → 429 so spend path cannot be skipped. |
+| **T42** | **locked** | Limiter is **messages-scoped** (create + GET exempt). Keep limit=1 as written; docstring states scope. Settings `SMART_WRITER_V2_AUDIT_RATE_LIMIT_PER_MIN` default **5**. |
+| **T43** | **accepted (Later)** | Keep queue-full integration as 503≠429 regression; no re-implement queue in T062. |
+| **T44** | **strength** | Keep two-status split; do not map queue-full to 429. |
+| **T45** | **accepted (Nit)** | Drop redundant `!= 429` or keep as anti-V1 comment. |
+| **T46** | **accepted (Later)** | Impl uses `lab_shared.jobs.SlidingWindowRateLimiter`; no extra window unit test required. |
+
+Tests edited to match. **T062 rate-limiter impl may start.**
+

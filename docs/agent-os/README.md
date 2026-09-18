@@ -56,6 +56,17 @@ Lab taste = thin **overlays** in constitution + template overrides — not a sec
 **Plan ≠ task list.** Architecture is first-class inside plan (constitution §E).  
 **Progressive HITL:** human adjudicates Debates at spec + Architecture; later stages may auto-accept Nit/Later under explicit policy (§F).
 
+## Dual channels (governor vs router)
+
+Do **not** use chat as the task router. Two channels stay separate:
+
+| Channel | For | Not for |
+|---------|-----|---------|
+| **Conversation** | Coaching, trade-offs, locking Debates / product numbers / ops HITL | “What task is next?” / pasting F*/R*/P*/T* briefs |
+| **Git packets** (`notes/packets/`) | DoD, owned paths, spawn prompts, stop conditions, routing | Inventing unlocked numbers or vault seeds |
+
+Unlocked product numbers and vault seeds are **run killers** for multi-hour agents. Put them in the packet **Governor locks required** table (or Out of scope) before the run starts.
+
 ## Product vs process vs architecture
 
 | Debate freely (per product) | Do not re-litigate (framework) |
