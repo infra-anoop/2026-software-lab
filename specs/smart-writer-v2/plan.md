@@ -18,15 +18,15 @@ Governor view — agents keep task IDs in git; humans lock **D\*** in product la
 
 | Goal | Open Decision | Notes |
 |------|---------------|--------|
-| Live worker matches git + mutating API | **D6** then push/ship/deploy | Preview secret not in vault yet |
-| Chat in a production browser | **D5** (+ D6) | Fat Vercel ops; thin README already done |
-| Extra spend caps beyond rate limit | **D2** | Numbers required; else stay deferred |
-| Optional observability | **D3** | Yes this cycle vs leave deferred |
-| Citation format control in UI | **D4** | Modes locked; placement/UX open |
-| File uploads | **D7** | Default: stay deferred |
-| Property labels | **D1** | Already **locked** (ratified seed) |
+| Live worker matches git + mutating API | **D6** waived | Deferred this cycle |
+| Chat in a production browser | **D5** waived | Deferred this cycle |
+| Extra spend caps beyond rate limit | **D2** waived | Deferred this cycle |
+| Optional observability | **D3** waived | Deferred this cycle |
+| Citation format control in UI | **D4** waived | Deferred this cycle |
+| File uploads | **D7** waived | Stay P3 deferred |
+| Property labels | **D1** | **locked** (ratified seed) |
 
-**Execute posture:** autonomous until a `[HITL]` / `[OD:D#]` task; stop; ask in product language; lock the row; resume. Do not invent D2–D7 content.
+**Execute posture:** D2–D7 waived (2026-09-19) — do not implement gated polish/ops; do not invent content. Reopen a row to `open` + lock content before any matching work.
 
 ## Review locks (P*)
 
