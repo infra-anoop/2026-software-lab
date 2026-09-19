@@ -4,7 +4,7 @@ Non-negotiable principles for every feature and agent run in this monorepo.
 Spec Kit phases (`/speckit-*`) and `AGENTS.md` must respect this document.
 Product-unique choices belong in feature specs — **not** by reinventing process.
 
-**Version**: 1.5.0 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-19
+**Version**: 1.5.1 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-19
 
 ## Core Principles
 
@@ -135,6 +135,8 @@ Every deferred interactive detail MUST appear in the feature spec’s **Open Dec
 | who | `human` \| `agent-policy` |
 | before | Which story/phase/task class must not invent this (plain language OK) |
 | status | `open` \| `locked` \| `waived` |
+
+**Status meanings:** `open` = must ask before inventing content; `locked` = content recorded, implement may use it; `waived` = **deferred this cycle** (not forgotten). Before any work that depends on a `waived` row, the agent MUST reopen it to `open`, raise the topic again in product language, and get a lock (or confirm still deferred). Skipping that re-ask is a harness defect.
 
 **Fail closed for implement / tasks:**
 

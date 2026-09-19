@@ -238,7 +238,7 @@ Shape was locked in F*/P* reviews; content below was deferred or invented withou
 | **D6** | Preview secret **name** in schema; mutating `/v1` fail-closed without it | Seed `SMART_WRITER_V2_AUDIT_SECRET` in Infisical (and later Vercel) | human | Before production mutating API / live BFF dogfood | **waived** — deferred this cycle (2026-09-19). Do not run T070. |
 | **D7** | Materials via **links** in MVP; uploads first-class in F4 | Whether file-upload HTTP is in-scope next vs stay P3 deferred | human | Before upload contract/tasks | **waived** — stay P3 deferred (2026-09-19). No upload tasks. |
 
-**Fail closed:** While status is `waived` (deferred), agents MUST NOT implement the gated work and MUST NOT invent content. To unlock later: set status to `open`, lock content with the human, then implement.
+**Fail closed:** While status is `waived` (deferred), agents MUST NOT implement the gated work and MUST NOT invent content. **Defer ≠ drop:** before any matching implementation, the agent MUST reopen the row to `open`, raise the topic again in **product language**, lock content with the human (or confirm still deferred), then proceed. Skipping that re-ask is a harness defect.
 
 ## Review locks *(mandatory before Approved)*
 
