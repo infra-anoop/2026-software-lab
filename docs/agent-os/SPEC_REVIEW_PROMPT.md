@@ -36,7 +36,7 @@ Produce a **second opinion** that helps a human decide whether to **approve** th
 4. **Do** separate opinion from defect: label every item.
 5. Prefer **specific quotes or section references** from the spec over vague critique.
 6. Respect the lab constitution (hobbyist scale, learning journey) unless the spec claims otherwise — don’t review as default enterprise SaaS procurement.
-7. **Do** verify lab process overlays relevant to **product** quality are present: failable outcomes (not mood-only), acceptance catalog pointer. Flag learning/stack prefs only if they are smuggled in as **product** Ubiquitous gates (demote suggestion is fine; do not score the lab journey itself).
+7. **Do** verify lab process overlays relevant to **product** quality are present: failable outcomes (not mood-only), acceptance catalog pointer, and **Open Decisions** (constitution §G) when shape is locked but content is deferred. Flag “non-final / expand at implementation / TBD list” **without** an Open Decisions row as Debate or Blocker. Flag learning/stack prefs only if they are smuggled in as **product** Ubiquitous gates (demote suggestion is fine; do not score the lab journey itself).
 8. Prefix finding IDs with **F** (product). Process findings use **R** in the other brief.
 
 ## Review lenses

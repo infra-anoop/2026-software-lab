@@ -144,6 +144,8 @@ The tasks.md should be immediately executable - each task must be specific enoug
 
 Do **not** generate fake auto tests for `how: human` catalog rows.
 
+**Open Decisions (constitution §G):** Read `spec.md` Open Decisions. For each `who: human` + `status: open` row, emit ≥1 task tagged `[HITL]` or `[OD:D#]` that locks content **before** dependent product work. Use `[POLICY]` for process-only adjudication tasks when useful. Do **not** emit an implementation task that invents open human content.
+
 After those test tasks exist in `tasks.md`, Completion Report MUST remind: when tests are written and red, **spawn** T* per `docs/agent-os/SPAWN_REVIEWER.md` (review packet + `TEST_REVIEW_PROMPT.md`) before implementing that slice. Do **not** ask the human to paste the brief. Skip T* review until contract/auto tests exist (P0 scaffold is not a review gate).
 
 ### Checklist Format (REQUIRED)
@@ -151,7 +153,7 @@ After those test tasks exist in `tasks.md`, Completion Report MUST remind: when 
 Every task MUST strictly follow this format:
 
 ```text
-- [ ] [TaskID] [P?] [Story?] Description with file path
+- [ ] [TaskID] [P?] [HITL|OD:D#|POLICY?] [Story?] Description with file path
 ```
 
 **Format Components**:
@@ -159,7 +161,8 @@ Every task MUST strictly follow this format:
 1. **Checkbox**: ALWAYS start with `- [ ]` (markdown checkbox)
 2. **Task ID**: Sequential number (T001, T002, T003...) in execution order
 3. **[P] marker**: Include ONLY if task is parallelizable (different files, no dependencies on incomplete tasks)
-4. **[Story] label**: REQUIRED for user story phase tasks only
+4. **[HITL] / [OD:D#] / [POLICY]**: Optional pause tags (lab §G / §F) — product lock, Open Decision id, or process policy
+5. **[Story] label**: REQUIRED for user story phase tasks only
    - Format: [US1], [US2], [US3], etc. (maps to user stories from spec.md)
    - Setup phase: NO story label
    - Foundational phase: NO story label

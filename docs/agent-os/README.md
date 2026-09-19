@@ -16,7 +16,8 @@ Lab taste = thin **overlays** in constitution + template overrides — not a sec
 │  · Plan authoring gates (fail-closed; topology + non-sibling alts)   │
 │  · Plan = Architecture + Phased delivery (arch first-class) │
 │  · Test-first for executable apps + independent T* test review      │
-│  · Progressive HITL (human Debates; lighter downstream)     │
+│  · Progressive HITL (product locks human; process policy agent) │
+│  · Open Decisions (shape vs content; fail closed — §G)          │
 │  · Failable outcomes + extensible acceptance catalog        │
 │  · Optional notes/packets for long background runs          │
 │  · Cattle / secrets / registry (constitution + AGENTS.md)   │
@@ -28,7 +29,8 @@ Lab taste = thin **overlays** in constitution + template overrides — not a sec
 | Concept | Where |
 |---------|--------|
 | Constitution | `.specify/memory/constitution.md` |
-| Spec / plan / tasks templates | `.specify/templates/` (+ `overrides/spec.md`, `overrides/plan.md`) |
+| Spec / plan / tasks templates | `.specify/templates/` (+ `overrides/spec.md`, `overrides/plan.md`, `overrides/tasks-template.md`) |
+| Open Decisions (§G) | Spec template section + constitution §G; tasks `[HITL]` / `[OD:D#]` / `[POLICY]` |
 | Slash-style skills | `.cursor/skills/speckit-*` |
 | Spec review brief (product) | `docs/agent-os/SPEC_REVIEW_PROMPT.md` |
 | Spec review brief (process) | `docs/agent-os/PROCESS_REVIEW_PROMPT.md` |
@@ -74,7 +76,9 @@ Agents keep intermediate vocabulary (task IDs, finding IDs, `clarify`/`enqueue`,
 
 If the human must open `tasks.md` to understand the question, the agent failed the harness.
 
-Unlocked product numbers and vault seeds are **run killers** for multi-hour agents. Put them in the packet **Governor locks required** table (or Out of scope) before the run starts.
+**Open Decisions (§G):** deferred product *content* (lists, numbers, enums) with locked *shape* must live in the spec Open Decisions table. Implement fails closed — stop and ask in product language; never invent a seed list to keep the run going.
+
+Unlocked product numbers and vault seeds are **run killers** for multi-hour agents. Put them in Open Decisions and/or the packet **Governor locks required** table (or Out of scope) before the run starts.
 
 ## Product vs process vs architecture
 
@@ -90,6 +94,7 @@ Unlocked product numbers and vault seeds are **run killers** for multi-hour agen
 
 | Version | Note |
 |---------|------|
+| 1.5.0 | §G Open Decisions (shape vs content, fail closed); §F product vs process pauses; tasks `[HITL]`/`[OD]`/`[POLICY]`; T* Debate tags |
 | 1.4.3 | §F human-facing language: chat = product/ops choices; IDs stay in git; combing tasks.md for jargon is a harness defect |
 | 1.4.2 | Implement continues after T* lock; no “what next”; stop at tasks.md MVP checkpoint; extra workers only for [P]/long packet |
 | 1.4.1 | Spawn reviewers from git packets (`SPAWN_REVIEWER.md`); do not paste briefs to the human |

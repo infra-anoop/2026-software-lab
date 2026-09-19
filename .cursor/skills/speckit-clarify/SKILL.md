@@ -123,7 +123,7 @@ Execution steps:
 
    For each category with Partial or Missing status, add a candidate question opportunity unless:
    - Clarification would not materially change implementation or validation strategy
-   - Information is better deferred to planning phase (note internally)
+   - Information is better deferred **as an Open Decision** (constitution §G): add a row to the spec **Open Decisions** table (shape_locked / content_open / who / before / status=open) instead of inventing content or dropping the debt. Prefer this over silent “defer to plan/impl.” Do **not** invent list-like product content (vocabularies, numeric caps, enum UX) to avoid asking.
 
 4. Generate (internally) a prioritized queue of candidate clarification questions (maximum 5). Do NOT output them all at once. Apply these constraints:
     - Maximum of 5 total questions across the whole session.

@@ -4,7 +4,7 @@ Non-negotiable principles for every feature and agent run in this monorepo.
 Spec Kit phases (`/speckit-*`) and `AGENTS.md` must respect this document.
 Product-unique choices belong in feature specs — **not** by reinventing process.
 
-**Version**: 1.4.3 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-18
+**Version**: 1.5.0 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-19
 
 ## Core Principles
 
@@ -104,13 +104,47 @@ Detailed work items belong in `tasks.md` (or optional packets), not as a substit
 
 ### F. Progressive HITL (governor altitude)
 
-Human adjudication is mandatory at **high-altitude** gates: spec Debates (F*/R*), plan Architecture Debates (P*), and test-suite Debates (T*) that would let implement start against a wrong lock.
+Human adjudication is mandatory at **high-altitude** gates: spec Debates (F*/R*), plan Architecture Debates (P*), **Open Decisions** with `who: human` (§G), and test-suite findings that would lock **wrong product behavior** (T* tagged product — see below).
 
-**Human-facing language (NON-NEGOTIABLE in chat):** When speaking to the human, agents MUST use **product / risk / ops** vocabulary (what the user experiences, what could burn money, what needs a vault or account). Finding IDs (F*/R*/P*/T*), task IDs (T0xx), and internal mechanics (`clarify` vs `enqueue`, file paths, Settings knobs) belong in **git artifacts**. Chat Debates are posed as **plain choices** (A vs B) with one-line stakes; the agent records the chosen lock under the ID in the review file. Making the human comb `tasks.md` / `TEST_REVIEW.md` for intermediate terms is a **harness defect** — it recreates human-as-bottleneck.
+**Two pause types (do not conflate):**
 
-After `tasks.md` is the approved breakdown, `/speckit-implement` **continues** until the next T* Debate or the MVP/checkpoint named in `tasks.md`. Do **not** ask the human what is next. Spawn T* per `SPAWN_REVIEWER.md`; after Debates are recorded in `TEST_REVIEW.md`, resume matching implementation. The implementer **may write application code**. Extra workers only for `[P]` tasks on different files or an explicit long implement packet — not a second orchestrator methodology.
+| Type | Examples | Who resolves |
+|------|----------|--------------|
+| **Product lock** | Exact closed vocabulary labels, numeric spend caps, UX preference that changes shalls | Human (plain A/B or short list in chat) |
+| **Process policy** | Test wording/SNR, duplicate coverage, Nit/Later, T* findings that do **not** change a product shall | Agent under explicit policy (accept / reject / edit tests); record in review file |
 
-Downstream (routine unit tests, implement nits, PR nits), the lab **may** use agent review with **agentic adjudication** for Nit/Later under an explicit policy while still escalating Blockers/Debates. Goal: reduce human-as-router without removing human judgment where structure, product bets, and **DoD tests** are set.
+T* reviewers MUST tag each Debate as **product** or **process**. Only **product** Debates (and Blockers) require human adjudication before matching impl. **Process** Debates may be agent-adjudicated like Nit/Later, unless the implementer escalates.
+
+**Human-facing language (NON-NEGOTIABLE in chat):** When speaking to the human, agents MUST use **product / risk / ops** vocabulary (what the user experiences, what could burn money, what needs a vault or account). Finding IDs (F*/R*/P*/T*), task IDs (T0xx), Open Decision ids (`D-*`), and internal mechanics belong in **git artifacts**. Chat Debates / Open Decisions are posed as **plain choices** (A vs B) with one-line stakes; the agent records the lock in the review file or Open Decisions table. Making the human comb `tasks.md` / `TEST_REVIEW.md` for intermediate terms is a **harness defect** — it recreates human-as-bottleneck.
+
+After `tasks.md` is the approved breakdown, `/speckit-implement` **continues** until the next **product** pause (§G Open Decision still `open` with `who: human`, product-tagged T* Debate/Blocker, or the MVP/checkpoint named in `tasks.md`). Do **not** ask the human what is next. Prefer **run until the next product lock** over “front-load every interaction then go dark,” except when a known batch of Open Decisions is already listed for the next checkpoint. Spawn T* per `SPAWN_REVIEWER.md`; after product Debates are recorded locked in `TEST_REVIEW.md`, resume matching implementation. The implementer **may write application code**. Extra workers only for `[P]` tasks on different files or an explicit long implement packet — not a second orchestrator methodology.
+
+Downstream (routine unit tests, implement nits, PR nits, process-tagged T*), the lab **may** use agent review with **agentic adjudication** under explicit policy while still escalating Blockers and **product** Debates. Goal: reduce human-as-router without removing human judgment where structure, product bets, and **DoD tests** are set.
+
+### G. Open Decisions (shape vs content — fail closed)
+
+At **spec** time it is normal to lock **shape** (“closed property vocabulary,” “two intake axes”) while deferring **content** (exact labels, numeric caps). That deferral MUST NOT be silent prose (“non-final; expand at implementation”).
+
+Every deferred interactive detail MUST appear in the feature spec’s **Open Decisions** table (template: `.specify/templates/overrides/spec.md`):
+
+| Column | Meaning |
+|--------|---------|
+| id | Stable id (`D1`, `D2`, …) |
+| shape_locked | What is already decided (testable shape) |
+| content_open | What is still TBD |
+| who | `human` \| `agent-policy` |
+| before | Which story/phase/task class must not invent this (plain language OK) |
+| status | `open` \| `locked` \| `waived` |
+
+**Fail closed for implement / tasks:**
+
+1. `/speckit-clarify` and `/speckit-specify`: when a list-like or numeric detail is wrong for PRD mood, **emit an Open Decision row** (do not drop the debt; do not invent the list).
+2. `/speckit-tasks`: every `who: human` + `status: open` decision MUST produce at least one task tagged **`[HITL]`** (or `[OD:D#]`) that resolves it **before** dependent product work. Tasks that only need process policy use **`[POLICY]`** when useful.
+3. `/speckit-implement` and packets: MUST NOT invent content for `who: human` opens. Stop, pose the Open Decision in **product language**, record the lock in the spec table, then resume. Inventing a seed list / caps / UX enum to “keep going” is a **harness defect** (unauthorized product authorship).
+4. `who: agent-policy` opens may be resolved by the agent under written policy; still record the lock in the table (no silent defaults).
+5. Product reviewers (F*) SHOULD flag “non-final / TBD content” without an Open Decision row as a **Debate** or **Blocker**.
+
+Open Decisions are the bridge between high-altitude spec conversation and long autonomous execute stretches.
 
 ## Stack constraints
 
@@ -124,5 +158,5 @@ Downstream (routine unit tests, implement nits, PR nits), the lab **may** use ag
 
 1. This constitution supersedes informal chat habits when they conflict.
 2. Amendments require editing this file, bumping **Version** / **Last Amended**, and a short note in `docs/agent-os/README.md`.
-3. Feature specs may not waive I–V without an explicit architect-backlog decision.
+3. Feature specs may not waive I–V or §G (Open Decisions fail-closed) without an explicit architect-backlog decision.
 4. `AGENTS.md` is the portable summary; `.specify/memory/constitution.md` is the Spec Kit source of process truth.

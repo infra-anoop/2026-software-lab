@@ -13,11 +13,20 @@ description: "Task list template for feature implementation"
 
 After contract/catalog-auto tests exist (red), independent T* review: spawn per `docs/agent-os/SPAWN_REVIEWER.md` + `TEST_REVIEW_PROMPT.md` (**T-***). Do **not** ask the human to paste the brief. Do not review scaffold-only (`/health`) with no contract tests. Then implement.
 
+**Open Decisions / pause tags (constitution §G / §F):**
+
+- Read `spec.md` **Open Decisions**. Every `who: human` + `status: open` row MUST map to ≥1 task tagged **`[HITL]`** or **`[OD:D#]`** that resolves it before dependent product work.
+- **`[HITL]` / `[OD:D#]`**: product lock — implement stops and asks in product language; does not invent content.
+- **`[POLICY]`**: process policy — agent may accept/reject under written policy (no human router).
+- Untagged tasks: autonomous (still honor T* product Debates/Blockers).
+
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
-## Format: `[ID] [P?] [Story] Description`
+## Format: `[ID] [P?] [HITL|OD:D#|POLICY?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies)
+- **[HITL]** / **[OD:D#]**: Product Open Decision — fail closed until locked
+- **[POLICY]**: Process policy — agent-adjudicable
 - **[Story]**: Which user story this task belongs to (e.g., US1, US2, US3)
 - Include exact file paths in descriptions
 
@@ -182,6 +191,7 @@ Examples of foundational tasks (adjust based on your project):
 
 - Tests MUST be written and FAIL before matching implementation (executable apps)
 - Independent **T*** review after contract/catalog-auto tests land; skip for scaffold-only
+- **[HITL] / [OD:D#]** tasks that lock Open Decisions SHOULD run before dependent product impl for that story (or stop mid-run when reached)
 - Models before services
 - Services before endpoints
 - Core implementation before integration
@@ -246,9 +256,12 @@ With multiple developers:
 ## Notes
 
 - [P] tasks = different files, no dependencies
+- [HITL] / [OD:D#] = product Open Decision; do not invent content while open (constitution §G)
+- [POLICY] = process policy; agent may adjudicate
 - [Story] label maps task to specific user story for traceability
 - Each user story should be independently completable and testable
 - Verify tests fail before implementing
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
+- Avoid: “non-final” content with no Open Decision + no [HITL] task

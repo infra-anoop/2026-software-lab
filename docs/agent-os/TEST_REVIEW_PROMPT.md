@@ -61,6 +61,8 @@ One of: `Approve tests as-is` | `Approve tests with minor edits` | `Do not imple
 |----|----------|------|-------|---------|----------------------|
 | T1 | Blocker / Debate / Later / Nit | … | file or catalog id | … | … |
 
+For every **Debate**, add a tag in Suggested resolution or Finding: **`product`** (changes a shall / user-visible behavior / spend) or **`process`** (SNR, wording, duplicate coverage, test shape without changing product shall). Constitution §F: only **product** Debates + Blockers require human adjudication; **process** Debates may be agent-adjudicated like Nit/Later.
+
 Minimum **4** findings if tests exist. At least **1** Debate. At least **1** strength.
 
 ### C. Adversarial positions (required)
@@ -80,7 +82,7 @@ Each ≤150 words + “what would have to be true for the test suite to be right
 Max 8 bullets: test file + one-line change.
 
 ### F. Questions for the human (max 3)
-Only if a Debate changes whether implement may start.
+Only if a **product** Debate or Blocker changes whether implement may start.
 
 ## Tone
 
@@ -88,4 +90,4 @@ Direct. Skeptical of tautological tests. No filler praise.
 
 ## After review
 
-Deposit `FEATURE_DIR/TEST_REVIEW.md`. Human adjudicates **T-*** Blockers/Debates; Nit/Later may be **agent-adjudicated** (constitution §F). Implementer must not start matching product code until Blockers are resolved or explicitly accepted.
+Deposit `FEATURE_DIR/TEST_REVIEW.md`. Human adjudicates **T-*** Blockers and **product**-tagged Debates; Nit/Later and **process**-tagged Debates may be **agent-adjudicated** (constitution §F). Implementer must not start matching product code until Blockers and product Debates are resolved or explicitly accepted.

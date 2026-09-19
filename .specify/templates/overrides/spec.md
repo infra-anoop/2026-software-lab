@@ -127,6 +127,22 @@ Bootstrap catalog in plan/tasks; grow from test runs.
 
 Template: `docs/agent-os/acceptance-catalog-template.md`
 
+## Open Decisions *(mandatory when shape is locked but content is deferred)*
+
+<!--
+  LAB OVERLAY (constitution §G): Do NOT write “non-final; expand at implementation”
+  without a row here. Spec mood stays PRD-altitude; content debt stays visible.
+  who: human = implement must STOP and ask (product language).
+  who: agent-policy = agent may lock under written policy; still record the value.
+-->
+
+| id | shape_locked | content_open | who | before | status |
+|----|--------------|--------------|-----|--------|--------|
+| D1 | [e.g. closed property vocabulary; two intake axes] | [e.g. exact label list] | human | [e.g. before steering chips / property tests] | open |
+| (add rows or delete placeholder; empty table OK only if nothing deferred) | | | | | |
+
+**Rules:** Inventing `content_open` for `who: human` while `status: open` is forbidden. Lock by filling content + `status: locked` (or `waived` with reason).
+
 ## Review locks *(mandatory before Approved)*
 
 <!--
@@ -143,9 +159,8 @@ Template: `docs/agent-os/acceptance-catalog-template.md`
 ## Assumptions
 
 <!--
-  ACTION REQUIRED: The content in this section represents placeholders.
-  Fill them out with the right assumptions based on reasonable defaults
-  chosen when the feature description did not specify certain details.
+  ACTION REQUIRED: Reasonable defaults when the feature description omitted details.
+  Prefer an Open Decision row over burying deferred product content here.
 -->
 
 - [Assumption about target users, e.g., "Users have stable internet connectivity"]

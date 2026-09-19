@@ -80,12 +80,12 @@ Constitution → Specify → [Clarify] → independent review → Plan → [Plan
 
 1. Do not implement from chat alone when the change is non-trivial — spec first.
 2. Git artifacts are the bus (no human copy/paste router). Independent reviews (F*/R*/P*/T*) are **spawned** from a git packet (`docs/agent-os/SPAWN_REVIEWER.md`); do **not** ask the human to paste a brief.
-3. Specs need **failable outcomes** + **acceptance catalog** (constitution §B–C).
+3. Specs need **failable outcomes** + **acceptance catalog** (constitution §B–C) + **Open Decisions** when shape≠content (§G).
 4. Do not re-argue process per product; debate product-unique choices only.
-5. Stop and escalate on missing decisions, invariant conflicts, or unmet DoD. Do **not** ask what task is next.
-6. Human adjudicates Debates at spec, Architecture, and T*; after locks are in the review file, implement **resumes** (§F). Nit/Later may be agent-adjudicated.
+5. Stop and escalate on missing decisions, invariant conflicts, unmet DoD, or open `who: human` Open Decisions needed by the current slice. Do **not** ask what task is next. Do **not** invent deferred product content.
+6. Human adjudicates product Debates (spec, Architecture, product-tagged T*) and human Open Decisions; after locks are recorded, implement **resumes** (§F–G). Nit/Later and process-tagged T* may be agent-adjudicated.
 7. `/speckit-plan` must satisfy `PLAN_AUTHORING_GATES.md` (fail closed) — sibling topology reuse without SOTA alternatives is an ERROR.
-8. Executable apps: failing contract/catalog-auto tests before matching impl; **spawn** T* when those tests exist; after lock, continue (constitution §V / §F).
+8. Executable apps: failing contract/catalog-auto tests before matching impl; **spawn** T* when those tests exist; after product locks, continue (constitution §V / §F).
 
 ---
 

@@ -131,12 +131,15 @@ Given that feature description, do this:
     5. Generate Functional Requirements
        Each requirement must be testable
        Use reasonable defaults for unspecified details (document assumptions in Assumptions section)
+       When shape is clear but content is list/numeric/enum deferred (wrong mood for PRD Q&A), add an **Open Decisions** row (constitution §G) — do **not** invent the list or write only “non-final; expand at implementation”
     6. Define Success Criteria
        Create measurable, technology-agnostic outcomes
        Include both quantitative metrics (time, performance, volume) and qualitative measures (user satisfaction, task completion)
        Each criterion must be verifiable without implementation details
+       Lab: failable outcome classes + acceptance catalog pointer (overrides/spec.md)
     7. Identify Key Entities (if data involved)
-    8. Return: SUCCESS (spec ready for planning)
+    8. Fill **Open Decisions** table when any deferred content exists (or leave empty with no silent TBD)
+    9. Return: SUCCESS (spec ready for planning)
 
 7. Write the specification to SPEC_FILE using the template structure, replacing placeholders with concrete details derived from the feature description (arguments) while preserving section order and headings.
 
@@ -296,7 +299,8 @@ When creating this spec from a user prompt:
 
 1. **Make informed guesses**: Use context, industry standards, and common patterns to fill gaps
 2. **Document assumptions**: Record reasonable defaults in the Assumptions section
-3. **Limit clarifications**: Maximum 3 [NEEDS CLARIFICATION] markers - use only for critical decisions that:
+3. **Open Decisions**: Prefer a §G table row over inventing deferred product content or burying “TBD” in prose
+4. **Limit clarifications**: Maximum 3 [NEEDS CLARIFICATION] markers - use only for critical decisions that:
    - Significantly impact feature scope or user experience
    - Have multiple reasonable interpretations with different implications
    - Lack any reasonable default

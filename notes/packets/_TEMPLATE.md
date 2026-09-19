@@ -48,6 +48,7 @@ Checklist the agent must prove before stopping:
 ## Governor locks required
 
 List product numbers, vault seeds, host account HITL, or other decisions the agent must **not** invent.
+Prefer linking **Open Decisions** ids from `spec.md` (`D1`, …) when they already exist (constitution §G).
 If a lock is missing, put the task in **Out of scope** or Status `blocked` — do not stall a multi-hour run guessing.
 
 | Lock | Value or `blocked until human` |
