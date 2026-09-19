@@ -18,8 +18,9 @@ Lab taste = thin **overlays** in constitution + template overrides — not a sec
 │  · Test-first for executable apps + independent T* test review      │
 │  · Progressive HITL (product locks human; process policy agent) │
 │  · Open Decisions (shape vs content; fail closed — §G)          │
+│  · Orchestrator / workers (packet + background default — §H)  │
 │  · Failable outcomes + extensible acceptance catalog        │
-│  · Optional notes/packets for long background runs          │
+│  · notes/packets for workers + required review packets        │
 │  · Cattle / secrets / registry (constitution + AGENTS.md)   │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -31,6 +32,8 @@ Lab taste = thin **overlays** in constitution + template overrides — not a sec
 | Constitution | `.specify/memory/constitution.md` |
 | Spec / plan / tasks templates | `.specify/templates/` (+ `overrides/spec.md`, `overrides/plan.md`, `overrides/tasks-template.md`) |
 | Open Decisions (§G) | Spec template section + constitution §G; tasks `[HITL]` / `[OD:D#]` / `[POLICY]` |
+| Spawn reviewers | `docs/agent-os/SPAWN_REVIEWER.md` |
+| Spawn workers (§H) | `docs/agent-os/SPAWN_WORKER.md` + `notes/packets/_WORKER_PROMPT.md` |
 | Slash-style skills | `.cursor/skills/speckit-*` |
 | Spec review brief (product) | `docs/agent-os/SPEC_REVIEW_PROMPT.md` |
 | Spec review brief (process) | `docs/agent-os/PROCESS_REVIEW_PROMPT.md` |
@@ -52,11 +55,12 @@ Lab taste = thin **overlays** in constitution + template overrides — not a sec
 5. **Plan Architecture** review (recommended for non-trivial / first-of-kind) — **spawn** → lock **P-***  
 6. Human approves plan Architecture + Phasing  
 7. `/speckit-tasks` (test tasks **required** for executable apps)  
-8. Write failing contract/catalog-auto tests → **spawn T*** (`SPAWN_REVIEWER.md`) when those tests exist → `/speckit-implement`
-9. Optional: implement `notes/packets/` for a long background slice; **required:** review packets at F*/R*/P*/T*
+8. Write failing contract/catalog-auto tests → **spawn T*** (`SPAWN_REVIEWER.md`) when those tests exist → implement via **packet + worker** (`SPAWN_WORKER.md`; prefer background)
+9. Optional: long ops packets; **required:** review packets at F*/R*/P*/T*
 
 **Plan ≠ task list.** Architecture is first-class inside plan (constitution §E).  
-**Progressive HITL:** human adjudicates Debates at spec + Architecture; later stages may auto-accept Nit/Later under explicit policy (§F).
+**Progressive HITL:** human adjudicates product Debates + Open Decisions; process Nit/Later/process-T* may be agent-adjudicated (§F–G).  
+**§H:** Main chat orchestrates; workers do real work; `[P]` parallelism is automatic from the task graph.
 
 ## Dual channels (governor vs router)
 
@@ -94,6 +98,7 @@ Unlocked product numbers and vault seeds are **run killers** for multi-hour agen
 
 | Version | Note |
 |---------|------|
+| 1.6.0 | §H orchestrator/workers: packet + background worker default; auto `[P]` parallel; tiny-glue exception; `SPAWN_WORKER.md` |
 | 1.5.1 | §G: `waived` = deferred this cycle; must re-ask in product language before later implement |
 | 1.5.0 | §G Open Decisions (shape vs content, fail closed); §F product vs process pauses; tasks `[HITL]`/`[OD]`/`[POLICY]`; T* Debate tags |
 | 1.4.3 | §F human-facing language: chat = product/ops choices; IDs stay in git; combing tasks.md for jargon is a harness defect |

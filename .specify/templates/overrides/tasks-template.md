@@ -265,3 +265,4 @@ With multiple developers:
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
 - Avoid: “non-final” content with no Open Decision + no [HITL] task
+- Non-trivial implement: packet + worker (`SPAWN_WORKER.md`); `[P]` + disjoint paths → parallel workers (§H)

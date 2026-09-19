@@ -11,17 +11,19 @@ One packet → one agent run → one branch → one PR when possible.
 | Status | ready \| in_progress \| blocked \| done |
 | Feature / spec | `specs/<feature>/` |
 | Branch | `packet/<id>` |
-| Agent mode | session \| background |
+| Agent mode | **background** (default) \| session |
+| Spawn | `docs/agent-os/SPAWN_WORKER.md` + `_WORKER_PROMPT.md` |
 
 ## Goal
 
-One sentence.
+One sentence (product altitude OK).
 
 ## Context to read first
 
 - `AGENTS.md`
+- `docs/agent-os/SPAWN_WORKER.md`
 - Spec / plan paths:
-- Locked decisions (IDs):
+- Open Decisions / locked IDs:
 
 ## Owned paths (may edit)
 
@@ -32,6 +34,14 @@ One sentence.
 - `deploy/secrets/` unless listed
 - Other apps unless listed
 
+## Parallelism
+
+| Field | Value |
+|-------|-------|
+| `[P]` tasks in this packet | yes \| no |
+| Disjoint from other in-flight packets? | yes \| no \| n/a |
+
+If yes+yes, main may spawn this worker alongside others. If paths overlap, serial only.
 ## Definition of Done
 
 Checklist the agent must prove before stopping:

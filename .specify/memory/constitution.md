@@ -4,7 +4,7 @@ Non-negotiable principles for every feature and agent run in this monorepo.
 Spec Kit phases (`/speckit-*`) and `AGENTS.md` must respect this document.
 Product-unique choices belong in feature specs — **not** by reinventing process.
 
-**Version**: 1.5.1 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-19
+**Version**: 1.6.0 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-19
 
 ## Core Principles
 
@@ -117,9 +117,31 @@ T* reviewers MUST tag each Debate as **product** or **process**. Only **product*
 
 **Human-facing language (NON-NEGOTIABLE in chat):** When speaking to the human, agents MUST use **product / risk / ops** vocabulary (what the user experiences, what could burn money, what needs a vault or account). Finding IDs (F*/R*/P*/T*), task IDs (T0xx), Open Decision ids (`D-*`), and internal mechanics belong in **git artifacts**. Chat Debates / Open Decisions are posed as **plain choices** (A vs B) with one-line stakes; the agent records the lock in the review file or Open Decisions table. Making the human comb `tasks.md` / `TEST_REVIEW.md` for intermediate terms is a **harness defect** — it recreates human-as-bottleneck.
 
-After `tasks.md` is the approved breakdown, `/speckit-implement` **continues** until the next **product** pause (§G Open Decision still `open` with `who: human`, product-tagged T* Debate/Blocker, or the MVP/checkpoint named in `tasks.md`). Do **not** ask the human what is next. Prefer **run until the next product lock** over “front-load every interaction then go dark,” except when a known batch of Open Decisions is already listed for the next checkpoint. Spawn T* per `SPAWN_REVIEWER.md`; after product Debates are recorded locked in `TEST_REVIEW.md`, resume matching implementation. The implementer **may write application code**. Extra workers only for `[P]` tasks on different files or an explicit long implement packet — not a second orchestrator methodology.
+After `tasks.md` is the approved breakdown, execution proceeds until the next **product** pause (§G Open Decision still `open` with `who: human`, product-tagged T* Debate/Blocker, or the MVP/checkpoint named in `tasks.md`). Do **not** ask the human what is next. Prefer **run until the next product lock** over “front-load every interaction then go dark,” except when a known batch of Open Decisions is already listed for the next checkpoint. Spawn T* per `SPAWN_REVIEWER.md`; after product Debates are recorded locked in `TEST_REVIEW.md`, resume. **Default implement path is packet + worker (§H)** — not the main chat session grinding every file.
 
 Downstream (routine unit tests, implement nits, PR nits, process-tagged T*), the lab **may** use agent review with **agentic adjudication** under explicit policy while still escalating Blockers and **product** Debates. Goal: reduce human-as-router without removing human judgment where structure, product bets, and **DoD tests** are set.
+
+### H. Orchestrator / workers (default offload)
+
+**Roles (NON-NEGOTIABLE bias):**
+
+| Role | Responsibility |
+|------|----------------|
+| **Main session (orchestrator)** | Dialogue with the human at governor altitude; Open Decisions / product Debates; author packets; **spawn** reviewers and workers; triage results; tiny glue only (§H exception) |
+| **Worker** | Real implement/ops work against a packet DoD (`docs/agent-os/SPAWN_WORKER.md`) |
+| **Reviewer** | Independent F*/R*/P*/T* (`SPAWN_REVIEWER.md`) — never the same agent grading its own tests/spec |
+
+**Default:** Non-trivial implement/ops → write/update `notes/packets/<id>.md` → spawn worker (**prefer background**) → main stays free for human dialogue. Do **not** wait for the human to ask “please delegate.”
+
+**Parallelism:** `[P]` tasks with **disjoint** owned paths → harness **MUST** spawn parallel workers (or one worker with an explicit multi-path parallel DoD). Overlapping paths or missing `[P]` → serial. Do **not** ask the human whether parallelism is suitable when the graph is clear.
+
+**Tiny-glue exception:** Main may edit without a worker only for short docs/lock/packet-meta/checkbox work (see `SPAWN_WORKER.md`). If unsure, spawn a worker.
+
+**Anti-theater:** Orchestrator-only sessions that never land DoD in git are a harness defect. Workers produce; main verifies and talks to the human.
+
+**Always-ready pool:** Not required. Spawn-on-demand with a fixed pointer prompt (`notes/packets/_WORKER_PROMPT.md`) is enough. Standing cloud/automation pools are optional later ops.
+
+Open Decisions (§G) and progressive HITL (§F) still apply inside worker packets.
 
 ### G. Open Decisions (shape vs content — fail closed)
 

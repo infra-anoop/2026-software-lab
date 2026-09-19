@@ -2,6 +2,8 @@
 
 Human is **governor, not router**. Asking the human to paste a review brief into a new chat is a harness defect.
 
+For **implement/ops workers** (not reviewers), see [`SPAWN_WORKER.md`](./SPAWN_WORKER.md) (constitution §H).
+
 Session memory of this rule is **not** sufficient. Authoring and implementer agents MUST follow this file.
 
 ## When

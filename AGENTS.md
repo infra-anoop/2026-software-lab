@@ -83,9 +83,10 @@ Constitution → Specify → [Clarify] → independent review → Plan → [Plan
 3. Specs need **failable outcomes** + **acceptance catalog** (constitution §B–C) + **Open Decisions** when shape≠content (§G).
 4. Do not re-argue process per product; debate product-unique choices only.
 5. Stop and escalate on missing decisions, invariant conflicts, unmet DoD, or open `who: human` Open Decisions needed by the current slice. Do **not** ask what task is next. Do **not** invent deferred product content.
-6. Human adjudicates product Debates (spec, Architecture, product-tagged T*) and human Open Decisions; after locks are recorded, implement **resumes** (§F–G). Nit/Later and process-tagged T* may be agent-adjudicated.
+6. Human adjudicates product Debates (spec, Architecture, product-tagged T*) and human Open Decisions; after locks are recorded, work **resumes** (§F–G). Nit/Later and process-tagged T* may be agent-adjudicated.
 7. `/speckit-plan` must satisfy `PLAN_AUTHORING_GATES.md` (fail closed) — sibling topology reuse without SOTA alternatives is an ERROR.
 8. Executable apps: failing contract/catalog-auto tests before matching impl; **spawn** T* when those tests exist; after product locks, continue (constitution §V / §F).
+9. **Orchestrator / workers (§H):** Main session dialogues and spawns; default implement/ops = packet + **background worker** (`SPAWN_WORKER.md`). `[P]` + disjoint paths → parallel workers automatically. Tiny-glue exception only.
 
 ---
 
@@ -103,7 +104,7 @@ See constitution. Short list:
 
 ## Human role
 
-Governor, not router: approve specs/invariants, adjudicate review Debates at **product/ops altitude**, review PRs at decision altitude. Do **not** paste review briefs between agents. Do **not** need to memorize task IDs (T0xx) or finding IDs (F*/T*) — agents translate Debates into plain choices in chat and record locks in git. After you lock Debates, agents resume without a new “keep going.” Downstream Nit/Later may be agent-adjudicated under explicit policy (constitution §F).
+Governor, not router: approve specs/invariants, adjudicate review Debates and Open Decisions at **product/ops altitude**, review PRs at decision altitude. Do **not** paste review briefs between agents. Do **not** need to memorize task IDs or finding IDs — agents translate into plain choices. Do **not** need to decide whether work can run in parallel — the harness uses `[P]` + owned paths. After you lock Debates/Open Decisions, agents resume without a new “keep going.” Downstream Nit/Later may be agent-adjudicated under explicit policy (constitution §F–H).
 
 ---
 

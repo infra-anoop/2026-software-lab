@@ -54,14 +54,17 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 ## Outline
 
-**Lab overlay — implement loop (constitution §F–G). Fail closed; do not skip.**
+**Lab overlay — implement loop (constitution §F–H). Fail closed; do not skip.**
 
-- **You may write product code.** Do not become an orchestrator-only parent. Do not require an implement packet per task.
+- **Main session = orchestrator** (dialogue + packets + spawn). **Default real work = worker** per `docs/agent-os/SPAWN_WORKER.md`. Do **not** wait for the human to ask to delegate.
+- **Default path:** write/update `notes/packets/<id>.md` → spawn worker with `notes/packets/_WORKER_PROMPT.md` pointer → prefer **background** so this chat stays free → triage handoff in product language.
+- **Tiny-glue exception only:** short docs/locks/packet meta (see `SPAWN_WORKER.md`). If unsure → worker.
 - **Schedule** from `tasks.md` **Dependencies & Execution Order** and MUST lines, not from T-number sequence alone.
-- **Open Decisions (§G):** Before a task that depends on deferred content, read `spec.md` Open Decisions. If `who: human` and `status: open`, **STOP** — pose the decision in product language, record the lock in the table, then resume. **Do not invent** lists/numbers/enums. Tasks tagged `[HITL]` / `[OD:D#]` are hard stops. `[POLICY]` may be agent-resolved.
-- **T\***: when red contract/catalog-auto tests for a slice exist, spawn per `docs/agent-os/SPAWN_REVIEWER.md`. Human-facing text = packet path + deposit path. Then **stop** for Blockers and **product**-tagged Debates. After those locks are in `TEST_REVIEW.md`, resume matching impl **without asking**. Process-tagged Debates / Nit/Later may be agent-adjudicated.
-- **Extra workers:** only `[P]` tasks on **different files**, or an explicit long implement packet (`notes/packets/_TEMPLATE.md`). Sequential slices stay in this session.
-- **Human chat:** product Debates, human Open Decisions, missing decisions, invariant conflicts, unblockable DoD — in product language. Git commit is the progress bus. Do not ask what is next. Do not paste briefs.
+- **Parallelism:** `[P]` + disjoint owned paths → spawn parallel workers automatically. Overlap → serial. Do not ask the human if parallel is OK.
+- **Open Decisions (§G):** Before a task that depends on deferred content, read `spec.md` Open Decisions. If `who: human` and `status: open`, **STOP** — pose in product language, record lock, then resume (worker must not invent). `[HITL]` / `[OD:D#]` hard stops. `[POLICY]` may be agent-resolved. `waived` → re-ask before implement.
+- **T\***: when red contract/catalog-auto tests for a slice exist, spawn per `docs/agent-os/SPAWN_REVIEWER.md`. Human-facing text = packet path + deposit path. Then **stop** for Blockers and **product**-tagged Debates. After those locks are in `TEST_REVIEW.md`, resume **without asking**. Process-tagged Debates / Nit/Later may be agent-adjudicated.
+- **Human chat:** product Debates, Open Decisions, missing decisions, invariant conflicts, unblockable DoD — in product language. Git is the bus. Do not ask what is next. Do not paste briefs.
+- **Anti-theater:** workers must land DoD; main verifies. End at MVP/checkpoint in `tasks.md`.
 - **End:** stop at the MVP / checkpoint named in `tasks.md`. Do not start later plan phases unless the human or an implement packet already scoped them.
 
 1. Run `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks` from repo root and parse FEATURE_DIR and AVAILABLE_DOCS list. All paths must be absolute. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").

@@ -14,9 +14,9 @@ Human map: `docs/agent-os/README.md`.
 2. Use `.cursor/skills/speckit-*` (not deprecated `sdd-*`).
 3. Specs need failable outcomes + acceptance catalog pointer (constitution §B–C).
 4. Do not start tasks/implement until plan Architecture + Phased delivery are human-approved (§E), after P* triage when review was run.
-5. Exchange context via git artifacts; do not ask the human to copy/paste between agents. Independent reviews are **spawned** (`docs/agent-os/SPAWN_REVIEWER.md`); never paste F*/R*/P*/T* briefs into the human chat.
+5. Exchange context via git artifacts; do not ask the human to copy/paste between agents. Independent reviews are **spawned** (`docs/agent-os/SPAWN_REVIEWER.md`); workers via `docs/agent-os/SPAWN_WORKER.md`. Never paste F*/R*/P*/T* briefs into the human chat.
 6. Escalate only for missing decisions, invariant conflicts, unblockable DoD, or open `who: human` Open Decisions (§G). Do **not** ask what is next. When escalating, speak **product/ops language** (plain A/B); keep task/finding IDs in git (constitution §F).
-7. After product-tagged T* Debates are recorded in `TEST_REVIEW.md`, resume matching impl. Stop at the MVP/checkpoint in `tasks.md` or the next `[HITL]` / open Open Decision. Implementer may write app code; extra workers only for `[P]` on different files or a long packet.
+7. After product-tagged T* Debates are recorded in `TEST_REVIEW.md`, resume. Stop at the MVP/checkpoint in `tasks.md` or the next `[HITL]` / open Open Decision. **Default implement = packet + background worker (§H)**; `[P]` + disjoint paths → parallel workers. Tiny-glue exception only.
 
 ## Product vs process vs architecture
 
