@@ -10,7 +10,23 @@ Phasing references architecture; it does not replace it.
 
 **Plan Architecture review:** Report [`PLAN_REVIEW.md`](./PLAN_REVIEW.md). Brief: [`PLAN_REVIEW_PROMPT.md`](../../docs/agent-os/PLAN_REVIEW_PROMPT.md). Posture: [`STACK_POSTURE.md`](../../docs/agent-os/STACK_POSTURE.md).
 
-**Status**: **Approved** — Architecture + Phased delivery (P1–P8 adjudicated). Next: `/speckit-tasks`.
+**Status**: **Approved** — Architecture + Phased delivery (P1–P8 adjudicated). Implement through P2 core done; remaining polish/ops gated by **Open Decisions** in [`spec.md`](./spec.md) (§G dogfood).
+
+## Remaining work map (a/b/c/d dogfood)
+
+Governor view — agents keep task IDs in git; humans lock **D\*** in product language.
+
+| Goal | Open Decision | Notes |
+|------|---------------|--------|
+| Live worker matches git + mutating API | **D6** then push/ship/deploy | Preview secret not in vault yet |
+| Chat in a production browser | **D5** (+ D6) | Fat Vercel ops; thin README already done |
+| Extra spend caps beyond rate limit | **D2** | Numbers required; else stay deferred |
+| Optional observability | **D3** | Yes this cycle vs leave deferred |
+| Citation format control in UI | **D4** | Modes locked; placement/UX open |
+| File uploads | **D7** | Default: stay deferred |
+| Property labels | **D1** | Already **locked** (ratified seed) |
+
+**Execute posture:** autonomous until a `[HITL]` / `[OD:D#]` task; stop; ask in product language; lock the row; resume. Do not invent D2–D7 content.
 
 ## Review locks (P*)
 
@@ -22,7 +38,7 @@ Phasing references architecture; it does not replace it.
 | **P4** | **locked** | **Claim-level provenance in MVP:** `ClaimProvenance` (claim span/quote → `source_id` \| `uncertain`). Retrieval emits **materials_bundle** vs **web_bundle**; SC-004 declare when web yields nothing useful. SC-003/004 hook these fields — not merely nonempty `sources[]`. |
 | **P5** | **locked** | **Clarify-before-write in P1:** Grant path with missing Who/Whom/Ask/Why/Evidence ⇒ `type=clarify` only (no generate/revise job). P1 exit includes a must-clarify fixture. Assistant questions are NL-only; do **not** default-expose slot ids (`missing_hints`) to the client. P2 = A-before-B ordering + chips, not “invent clarify.” |
 | **P6** | **accepted** | Strength: clean-room + mode/parent_artifact_id contracts + preview fail-closed + stack-not-as-SC — keep as task-ready bar. |
-| **P7** | **deferred** | SSRF/fetch policy, uploads in HTTP contract, single closed vocab list, Logfire (A25) + `LOGFIRE_TOKEN`, turn/cost cap numbers → tasks/implement; not plan-approval blockers. |
+| **P7** | **deferred** | SSRF/fetch, uploads, Logfire, turn/cost numbers → **Open Decisions D2–D7** in `spec.md` (fail closed; not silent invent) |
 | **P8** | **accepted** | Phasing order OK; P1 includes clarify-before-write exit (P5). |
 
 ## Summary

@@ -144,7 +144,7 @@ As a general short-form writer, I want the same engine for other 1–3 page goal
 - Clarification Q&A turn may be a short question (not a full 1–3 page artifact).
 - Internal intent slots complete from prompt + materials → clarification questions may be zero; steering may still clarify.
 - Missing internal intent slots on grant run → ask before producing the long grant artifact; intent before steering (**internal** order) (F6).
-- Property list not fully enumerated → seed vocabulary enough; expansion at implementation.
+- Property list not fully enumerated → see **Open Decisions** (D1); do not invent labels in chat.
 - Funder named but no criteria materials / no public signal → audience-fit rules may be N/A; research-used-or-declared must still declare no signal if web enabled.
 - Conflicting property ranks → weave coherently; grant default de-emphasizes `humorous` (F3).
 - User ranks `factual` low → grounding/research **still on**; only prose emphasis changes (F3).
@@ -224,6 +224,22 @@ Hard gates are **structural / evidence** checks, not literary taste. (F1 locked.
 Detailed check instances: [`acceptance.md`](./acceptance.md) (extensible; not buried in code/prompts).  
 Charter keeps stable classes; catalog grows from test runs.
 
+## Open Decisions *(constitution §G — dogfood)*
+
+Shape was locked in F*/P* reviews; content below was deferred or invented without a sync. Rows make that debt **fail-closed** for remaining a/b/c/d work.
+
+| id | shape_locked | content_open | who | before | status |
+|----|--------------|--------------|-----|--------|--------|
+| **D1** | Closed property vocabulary; dual intake axes (F6); `factual` = tone only (F3) | Exact label list for v2.0 seed | human | Before changing `app/properties.py` / steering chips beyond the ratified seed | **locked** — ratified post-hoc as shipped seed: `factual`, `persuasive`, `concise`, `warm`, `formal`, `humorous`, `specific`, `urgent` (research R8). Reopen only by flipping status to `open`. |
+| **D2** | Preview gate + rate limit + queue exist (B5/A9); unbounded spend still blocked by secret | Numeric turn/cost caps: max write jobs per conversation, max clarify turns, any HTTP iteration-style cap | human | Before turn/cost Settings work (tasks polish) | **open** |
+| **D3** | `LOGFIRE_TOKEN` named in secrets schema (A25); no product SC for Logfire (F5) | Whether to wire Logfire init this cycle (noop if unset) vs leave deferred | human | Before observability init work | **open** |
+| **D4** | Citation modes = panel / inline / footnotes / combo; default panel when sources exist; skip ask if no sources (F7) | Light control placement/UX in chat (where it lives; never block send when no sources) | human | Before citation override UI | **open** |
+| **D5** | Topology: Vercel UI+BFF + Railway worker (P1); thin env names documented | Whether/when to provision live Vercel + Infisical→Vercel + worker URL (production browser dogfood) | human | Before fat UI-host ops packet | **open** |
+| **D6** | Preview secret **name** in schema; mutating `/v1` fail-closed without it | Seed `SMART_WRITER_V2_AUDIT_SECRET` in Infisical (and later Vercel) | human | Before production mutating API / live BFF dogfood | **open** |
+| **D7** | Materials via **links** in MVP; uploads first-class in F4 | Whether file-upload HTTP is in-scope next vs stay P3 deferred | human | Before upload contract/tasks | **open** (default stay deferred unless prioritized) |
+
+**Fail closed:** Implement must not invent D2–D7 content while `open` + `who: human`. Pose in product language; record the lock here; then resume.
+
 ## Review locks *(mandatory before Approved)*
 
 Briefs: product [`SPEC_REVIEW_PROMPT.md`](../../docs/agent-os/SPEC_REVIEW_PROMPT.md) (**F-***); process [`PROCESS_REVIEW_PROMPT.md`](../../docs/agent-os/PROCESS_REVIEW_PROMPT.md) (**R-***). Report: [`PROCESS_REVIEW.md`](./PROCESS_REVIEW.md).
@@ -254,7 +270,7 @@ Briefs: product [`SPEC_REVIEW_PROMPT.md`](../../docs/agent-os/SPEC_REVIEW_PROMPT
 
 - Hobbyist scale ~10 users (stretch ~100); not enterprise multi-tenant.
 - Users can supply funder URLs/PDFs for serious grant asks; web alone is allowed but not the only path to fit.
-- Property vocabulary will grow at implementation; seed list is enough for spec approval.
+- **Property vocabulary:** see Open Decision **D1** (ratified seed) — do not treat Assumptions as license to invent new labels.
 - Lab learning (v0/Next UI, LangGraph-when-fit, Spec Kit loop) is a **first-class lab/journey goal** and preferred Plan posture when it fits — **not** a surface-product Ubiquitous fail condition (F5).
 - **Lab measurement (R2):** Lab success is judged by human plan/PR adjudication and keeping Spec Kit rails — **not** by harness SC classes. Catalog `auto` checks / optional harness lint may grow later in plan/tasks.
 - **Catalog automation (R4):** Thin auto-candidate checks (e.g. revise vs generate distinguishable) named in plan MVP exit criteria; not required to invent a full auto suite before Approve.
@@ -263,26 +279,28 @@ Briefs: product [`SPEC_REVIEW_PROMPT.md`](../../docs/agent-os/SPEC_REVIEW_PROMPT
 - Iterative improvement via chat feedback is the **normal** path; cold full regen is opt-in (F8).
 - Cattle/secrets/registry invariants apply (`AGENTS.md` / constitution).
 - Cost/latency matter but are not primary vs learning + product quality on this journey.
-- Preview gate required so public URLs cannot unbounded-spend the lab owner’s model keys (exact design → plan).
+- Preview gate required so public URLs cannot unbounded-spend the lab owner’s model keys — secret seed = Open Decision **D6**.
 
 ## Out of scope (v2.0)
 
 - Enterprise: payments, heavy auth, realtime collab, elaborate compliance history products.
 - V1 feature-parity / migrating all users off V1.
-- Finalizing full property vocabulary in this document.
+- Expanding property vocabulary beyond D1 without reopening D1.
 - Multi-vertical packaging as separate apps.
 - Access to truly secret / non-public information.
 - Instrumenting lab success via harness SC classes in this feature’s surface Ubiquitous set (R2).
 
-## Open questions (plan Architecture prompts)
+## Open questions (resolved → Open Decisions / plan)
 
-1. Property vocabulary expansion — implementation.
-2. Research providers / allowlists — `plan.md`.
-3. Monorepo sharing vs clean-room in `smart-writer-v2` — `plan.md`.
-4. Golden prompts (grant + non-grant) + catalog growth / thin auto subset — plan/tasks.
-5. Exact citation UI control placement — plan/UI.
-6. Revise vs generate prompt/graph details, version UX, turn/cost caps — `plan.md`.
-7. Preview gate design; jobs model — `plan.md`.
+Historical prompts; living debt is the **Open Decisions** table above.
+
+1. Property vocabulary → **D1** (locked).
+2. Research providers / allowlists → plan P2 deferred alts (locked learning-scope cut).
+3. Clean-room `smart-writer-v2` → plan (done).
+4. Golden prompts + thin auto → T061 done for ≥1 auto row; hybrid/human remain.
+5. Citation UI control → **D4**.
+6. Turn/cost caps → **D2**; Logfire → **D3**.
+7. Preview gate / jobs → implemented; vault seed → **D6**; fat Vercel → **D5**.
 
 ## Approval
 
@@ -291,4 +309,4 @@ Briefs: product [`SPEC_REVIEW_PROMPT.md`](../../docs/agent-os/SPEC_REVIEW_PROMPT
 - [x] Human sets **Status: Approved**.
 - [x] Plan Architecture review (**P-***) triaged — see `PLAN_REVIEW.md`.
 - [x] Human approves **plan.md** Architecture + Phased delivery.
-- [ ] Then `/speckit-tasks` — **not** implement before plan approval (constitution §E).
+- [x] `/speckit-tasks` + implement through plan P2 core (Open Decisions dogfood for remaining polish/ops).

@@ -193,14 +193,20 @@
 
 ## Phase 9: Polish & Cross-Cutting (P7 deferred + cattle)
 
+**Open Decisions (spec §G):** D2–D7 gate the remaining work. Do not invent numbers/UX/ops while `open`.
+
 - [x] T061 [P] Mark ≥1 catalog row `how: auto` in `specs/smart-writer-v2/acceptance.md` matching a green contract test (plan P2 exit; e.g. `revise.continuity_default` or `regenerate.explicit`)
 - [x] T062 [P] Rate limit + queue caps (B5-class) in `apps/smart-writer-v2/app/entrypoints/http.py` and tests in `apps/smart-writer-v2/tests/contract/test_rate_limit.py`
-- [ ] T063 [P] Turn/cost cap Settings in `apps/smart-writer-v2/app/config.py` (P7)
-- [ ] T064 [P] Logfire init from `LOGFIRE_TOKEN` in `apps/smart-writer-v2/app/obs.py` (P7)
-- [ ] T065 Citation override control (inline/footnotes/panel/combo) and skip ask if no sources in `apps/smart-writer-v2/web/app/components/CitationMode.tsx` (F7; after MVP)
+- [ ] T063 [HITL] [OD:D2] Turn/cost cap Settings in `apps/smart-writer-v2/app/config.py` (P7) — **blocked** until D2 locked
+- [ ] T064 [HITL] [OD:D3] Logfire init from `LOGFIRE_TOKEN` in `apps/smart-writer-v2/app/obs.py` (P7) — **blocked** until D3 locked (yes this cycle / defer)
+- [ ] T065 [HITL] [OD:D4] Citation override control (inline/footnotes/panel/combo) and skip ask if no sources in `apps/smart-writer-v2/web/app/components/CitationMode.tsx` (F7) — **blocked** until D4 locked
 - [x] T066 Document restart/in-memory loss and local run in `specs/smart-writer-v2/quickstart.md` and `apps/smart-writer-v2/README.md`
 - [x] T067 [P] Vercel cattle pointer: git-declared env names for BFF (no UI-only secret) in `deploy/` adapter stub or `apps/smart-writer-v2/web/README.md` (P1 A21)
 - [x] T068 `cd apps/smart-writer-v2 && uv run ruff check app/ tests/` and `uv run pytest` green for contract suite
+- [ ] T069 [HITL] [OD:D5] Fat UI host ops packet (provision Vercel + wire worker URL) — **blocked** until D5 locked; out of thin T067
+- [ ] T070 [HITL] [OD:D6] Human seeds preview secret in Infisical (+ sync) — ops; **blocked** until D6 locked
+
+**D7 (uploads):** no task until D7 prioritized away from deferred.
 
 ---
 
@@ -258,8 +264,9 @@ then T035–T038
 
 ### Incremental
 
-- Plan P2: US4 chips + FR-003c + US6 smoke + T061 auto catalog + T065 citation override  
-- Plan P3: uploads, durable DB, SSE, managed jobs — **out of these tasks unless human prioritizes**
+- Plan P2: US4 chips + FR-003c + US6 smoke + T061 auto catalog + T065 citation override (**gated by D4**)
+- Plan P3: uploads (**D7**), durable DB, SSE, managed jobs — **out unless human prioritizes**
+- Remaining polish/ops: lock Open Decisions D2–D6 in product language, then autonomous `[HITL]` slices
 
 ## Notes
 
@@ -281,5 +288,5 @@ then T035–T038
 | US4 | T046–T052 | 7 |
 | US5 | T053–T057 | 5 |
 | US6 | T058–T060 | 3 |
-| Polish | T061–T068 | 8 |
-| **Total** | T001–T068 | **68** |
+| Polish | T061–T068 + T069–T070 (ops HITL) | 10 |
+| **Total** | T001–T070 | **70** |
