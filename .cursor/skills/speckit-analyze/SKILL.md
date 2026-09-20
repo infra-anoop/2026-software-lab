@@ -102,9 +102,11 @@ Load only the minimal necessary context from each artifact:
 - Parallel markers [P]
 - Referenced file paths
 
+Also load Open Decisions table and `FINISH_BAR.md` if present (lab §G / §G.2).
+
 **From constitution:**
 
-- Load `.specify/memory/constitution.md` for principle validation
+- Load `.specify/memory/constitution.md` for principle validation (include §G / §G.1 / §G.2)
 
 ### 3. Build Semantic Models
 
@@ -153,11 +155,21 @@ Focus on high-signal findings. Limit to 50 findings total; aggregate remainder i
 - Task ordering contradictions (e.g., integration tasks before foundational setup tasks without dependency note)
 - Conflicting requirements (e.g., one requires Next.js while other specifies Vue)
 
+#### G. Open Decisions (lab §G / §G.2 — CRITICAL for implement readiness)
+
+- Any `spec.md` Open Decision with `who: human` and `status: open` → **CRITICAL** (finish-bar lock batch incomplete)
+- Missing `arch_impact` on newly locked rows is MEDIUM (should set on lock)
+
+#### H. Finish-bar deferrals (lab §G.2 — CRITICAL)
+
+- Plan/tasks language that parks finish work (`deferred`, `Later`, `P7`, `optional`, `out of MVP`) while the feature still claims that work for finish/dogfood/MVP-complete → **CRITICAL** until promoted to an Open Decision and inventoried in `FINISH_BAR.md`
+- Missing or incomplete `FINISH_BAR.md` (`Implement unblocked` ≠ yes) when tasks exist and implement is about to start → **CRITICAL**
+
 ### 5. Severity Assignment
 
 Use this heuristic to prioritize findings:
 
-- **CRITICAL**: Violates constitution MUST, missing core spec artifact, or requirement with zero coverage that blocks baseline functionality
+- **CRITICAL**: Violates constitution MUST, missing core spec artifact, requirement with zero coverage that blocks baseline functionality, **open human Open Decisions**, **unresolved finish-bar deferrals**, **FINISH_BAR not unblocked**
 - **HIGH**: Duplicate or conflicting requirement, ambiguous security/performance attribute, untestable acceptance criterion
 - **MEDIUM**: Terminology drift, missing non-functional task coverage, underspecified edge case
 - **LOW**: Style/wording improvements, minor redundancy not affecting execution order
@@ -197,8 +209,9 @@ Output a Markdown report (no file writes) with the following structure:
 At end of report, output a concise Next Actions block:
 
 - If CRITICAL issues exist: Recommend resolving before `/speckit-implement`
-- If only LOW/MEDIUM: User may proceed, but provide improvement suggestions
-- Provide explicit command suggestions: e.g., "Run /speckit-specify with refinement", "Run /speckit-plan to adjust architecture", "Manually edit tasks.md to add coverage for 'performance-metrics'"
+- **Lab §G.2:** If any open human ODs or finish-bar deferrals: recommend completing `FINISH_BAR.md` governor batch (lock or true-waive) before implement; then §G.1 if architecture-affecting
+- If only LOW/MEDIUM: User may proceed after FINISH_BAR unblocked, but provide improvement suggestions
+- Provide explicit command suggestions: e.g., "Run /speckit-specify with refinement", "Run /speckit-plan to adjust architecture", "Manually edit tasks.md…", "Complete FINISH_BAR.md (§G.2)"
 
 ### 8. Offer Remediation
 

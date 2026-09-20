@@ -131,6 +131,7 @@ Output path to generated tasks.md and summary:
 - Suggested MVP scope (typically just User Story 1)
 - Format validation: Confirm ALL tasks follow the checklist format (checkbox, ID, labels, file paths)
 - Lab: confirm test tasks exist for executable apps (or explicit docs-only exception); remind T* review after those tests are written red
+- **Lab §G.2 (NON-NEGOTIABLE):** Do **not** start `/speckit-implement` yet. Next: `/speckit-analyze` → deposit/complete `FINISH_BAR.md` (governor lock batch) → §G.1 if architecture-affecting locks → **then** implement. Tell the human: “Finish-bar lock batch required.”
 
 Context for task generation: $ARGUMENTS
 
@@ -144,7 +145,7 @@ The tasks.md should be immediately executable - each task must be specific enoug
 
 Do **not** generate fake auto tests for `how: human` catalog rows.
 
-**Open Decisions (constitution §G):** Read `spec.md` Open Decisions. For each `who: human` + `status: open` row, emit ≥1 task tagged `[HITL]` or `[OD:D#]` that locks content **before** dependent product work. Use `[POLICY]` for process-only adjudication tasks when useful. Do **not** emit an implementation task that invents open human content.
+**Open Decisions (constitution §G):** Read `spec.md` Open Decisions. For each `who: human` + `status: open` row, emit ≥1 task tagged `[HITL]` or `[OD:D#]` that locks content **before** dependent product work. Use `[POLICY]` for process-only adjudication tasks when useful. Do **not** emit an implementation task that invents open human content. Plan/tasks “deferred/Later/optional” items on the finish bar MUST appear as OD rows or `[HITL]` tasks (promote silent deferrals — feeds §G.2).
 
 After those test tasks exist in `tasks.md`, Completion Report MUST remind: when tests are written and red, **spawn** T* per `docs/agent-os/SPAWN_REVIEWER.md` (review packet + `TEST_REVIEW_PROMPT.md`) before implementing that slice. Do **not** ask the human to paste the brief. Skip T* review until contract/auto tests exist (P0 scaffold is not a review gate).
 

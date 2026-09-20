@@ -59,6 +59,7 @@ Checklist the agent must prove before stopping:
 
 List product numbers, vault seeds, host account HITL, or other decisions the agent must **not** invent.
 Prefer linking **Open Decisions** ids from `spec.md` (`D1`, …) when they already exist (constitution §G).
+Feature must have `FINISH_BAR.md` with **Implement unblocked: yes** (§G.2) unless this packet is tiny-glue / Out-of-scope excludes finish-bar work.
 If any listed lock is **architecture-affecting**, require feature `PLAN_DELTA.md` (§G.1) complete before Status `ready`.
 If a lock is missing, put the task in **Out of scope** or Status `blocked` — do not stall a multi-hour run guessing.
 

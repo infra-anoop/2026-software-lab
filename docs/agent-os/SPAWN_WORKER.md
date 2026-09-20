@@ -36,7 +36,7 @@ If unsure → packet + worker.
 ## Authoring / main agent MUST
 
 1. Write or update `notes/packets/<id>.md` from [`notes/packets/_TEMPLATE.md`](../../notes/packets/_TEMPLATE.md). Set `Agent mode: background` when spawning async.
-2. Ensure Governor locks / Open Decisions needed by the packet are locked (not open). If locks were **architecture-affecting**, require feature `PLAN_DELTA.md` §G.1 checklist complete (analyze recorded) before spawn — else main must reconcile first.
+2. Ensure `FINISH_BAR.md` exists for the feature with **Implement unblocked: yes** (§G.2), unless the packet is tiny-glue or Out-of-scope excludes all finish-bar rows. Ensure Governor locks / Open Decisions needed by the packet are locked (not open). If locks were **architecture-affecting**, require feature `PLAN_DELTA.md` §G.1 checklist complete before spawn — else main must reconcile first.
 3. **Spawn** worker with pointer prompt (not a pasted novel):
 
    ```text
@@ -67,6 +67,7 @@ If unsure → packet + worker.
 - Paste full task lists or finding IDs into human chat.
 - Invent Open Decision content (`who: human`).
 - Start dependent implement when architecture-affecting ODs locked but §G.1 `PLAN_DELTA.md` is missing/incomplete.
+- Start product implement when `FINISH_BAR.md` is missing or **Implement unblocked** is not **yes** (§G.2).
 
 ## Isolation bar
 

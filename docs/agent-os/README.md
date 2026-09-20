@@ -18,6 +18,7 @@ Lab taste = thin **overlays** in constitution + template overrides — not a sec
 │  · Test-first for executable apps + independent T* test review      │
 │  · Progressive HITL (product locks human; process policy agent) │
 │  · Open Decisions (shape vs content; fail closed — §G)          │
+│  · Finish-bar lock batch before first implement (§G.2)            │
 │  · Architecture delta reconcile after arch-affecting OD locks (§G.1) │
 │  · Orchestrator / workers (packet + background default — §H)  │
 │  · Failable outcomes + extensible acceptance catalog        │
@@ -33,6 +34,7 @@ Lab taste = thin **overlays** in constitution + template overrides — not a sec
 | Constitution | `.specify/memory/constitution.md` |
 | Spec / plan / tasks templates | `.specify/templates/` (+ `overrides/spec.md`, `overrides/plan.md`, `overrides/tasks-template.md`) |
 | Open Decisions (§G) | Spec template section + constitution §G; tasks `[HITL]` / `[OD:D#]` / `[POLICY]` |
+| Finish-bar batch (§G.2) | After tasks + analyze: `FINISH_BAR.md` governor locks before first implement |
 | Architecture delta (§G.1) | After architecture-affecting OD locks: amend plan/data-model/contracts; `PLAN_DELTA.md`; `/speckit-analyze`; then implement |
 | Spawn reviewers | `docs/agent-os/SPAWN_REVIEWER.md` |
 | Spawn workers (§H) | `docs/agent-os/SPAWN_WORKER.md` + `notes/packets/_WORKER_PROMPT.md` |
@@ -57,8 +59,9 @@ Lab taste = thin **overlays** in constitution + template overrides — not a sec
 5. **Plan Architecture** review (recommended for non-trivial / first-of-kind) — **spawn** → lock **P-***  
 6. Human approves plan Architecture + Phasing  
 7. `/speckit-tasks` (test tasks **required** for executable apps)  
-8. Write failing contract/catalog-auto tests → **spawn T*** (`SPAWN_REVIEWER.md`) when those tests exist → implement via **packet + worker** (`SPAWN_WORKER.md`; prefer background)
-9. Optional: long ops packets; **required:** review packets at F*/R*/P*/T*
+8. `/speckit-analyze` + **§G.2** `FINISH_BAR.md` (governor lock batch) → **§G.1** if architecture-affecting locks  
+9. Write failing contract/catalog-auto tests → **spawn T*** (`SPAWN_REVIEWER.md`) when those tests exist → implement via **packet + worker** (`SPAWN_WORKER.md`; prefer background)  
+10. Optional: long ops packets; **required:** review packets at F*/R*/P*/T*
 
 **Plan ≠ task list.** Architecture is first-class inside plan (constitution §E).  
 **Progressive HITL:** human adjudicates product Debates + Open Decisions; process Nit/Later/process-T* may be agent-adjudicated (§F–G).  
@@ -84,6 +87,8 @@ If the human must open `tasks.md` to understand the question, the agent failed t
 
 **Open Decisions (§G):** deferred product *content* (lists, numbers, enums) with locked *shape* must live in the spec Open Decisions table. Implement fails closed — stop and ask in product language; never invent a seed list to keep the run going.
 
+**Finish-bar lock batch (§G.2):** after `/speckit-tasks` (+ `/speckit-analyze`), before first implement: deposit `FINISH_BAR.md`, inventory open ODs + plan/tasks finish deferrals, human lock or true-waive all rows, set **Implement unblocked: yes**. Then §G.1 if needed. See `FINISH_BAR_TEMPLATE.md`.
+
 **Architecture delta (§G.1):** when an OD lock is **architecture-affecting** (topology, new pipeline, new entities, deploy host), agents MUST amend `plan.md` / data-model / contracts in place, deposit `PLAN_DELTA.md` (see `PLAN_DELTA_TEMPLATE.md`), run `/speckit-analyze`, and **only then** spawn dependent implement packets. Do **not** greenfield re-plan or wipe `plan.md`. Content-only locks skip this gate.
 
 Unlocked product numbers and vault seeds are **run killers** for multi-hour agents. Put them in Open Decisions and/or the packet **Governor locks required** table (or Out of scope) before the run starts.
@@ -102,6 +107,7 @@ Unlocked product numbers and vault seeds are **run killers** for multi-hour agen
 
 | Version | Note |
 |---------|------|
+| 1.8.0 | §G.2 Finish-bar lock batch before first implement; `FINISH_BAR.md`; analyze CRITICAL for open ODs / finish deferrals |
 | 1.7.0 | §G.1 Architecture delta reconcile after architecture-affecting Open Decision locks; `PLAN_DELTA.md`; analyze before dependent implement |
 | 1.6.1 | §G: `waived` = out of product version; “not right now but still required” stays `open` |
 | 1.6.0 | §H orchestrator/workers: packet + background worker default; auto `[P]` parallel; tiny-glue exception; `SPAWN_WORKER.md` |

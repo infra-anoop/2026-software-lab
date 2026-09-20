@@ -4,7 +4,7 @@ Non-negotiable principles for every feature and agent run in this monorepo.
 Spec Kit phases (`/speckit-*`) and `AGENTS.md` must respect this document.
 Product-unique choices belong in feature specs — **not** by reinventing process.
 
-**Version**: 1.7.0 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-20
+**Version**: 1.8.0 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-20
 
 ## Core Principles
 
@@ -204,6 +204,35 @@ Locking an Open Decision is **not** enough when the lock changes how the system 
 
 **Human chat:** one product-altitude line — “Architecture delta reconcile required / done” — not three synonymous soft phrases.
 
+#### G.2 Finish-bar lock batch (before first implement — NON-NEGOTIABLE)
+
+Open Decisions and plan “Later/deferred” parking are easy to skip until late dogfood. This lab requires a **governor lock batch** after tasks (and analyze), **before** unattended execute.
+
+**When:** After `tasks.md` exists for the feature, and **before** the first implement/ops worker (or main-session product implement) for that feature.
+
+**Steps:**
+
+1. **Run** `/speckit-analyze` (if not already run for this tasks revision). Map CRITICAL underspec / deferred-finish findings into the inventory below.
+2. **Deposit** `FINISH_BAR.md` in the feature dir (template: `docs/agent-os/FINISH_BAR_TEMPLATE.md`) with an **inventory** of:
+   - Every Open Decision with `status: open` and `who: human`
+   - Every plan/tasks phrase that parks finish work (`deferred`, `Later`, `P7`, `optional`, `out of MVP`, similar) that still affects the feature’s **stated finish / dogfood / MVP-complete** bar
+   - Each row: already an OD id **or** must be promoted to a new OD (no silent plan-only deferral on the finish bar)
+3. **Human batch** (product language): lock or **true-waive** (`waived` = out of this product version) every inventory row. Set `arch_impact` on lock.
+4. **Then:**
+   - If any lock in the batch is **architecture-affecting** → complete **§G.1** before implement
+   - Else → implement may start
+5. **Gate:** Do **not** spawn implement/ops workers while any finish-bar inventory row is unresolved, or while `FINISH_BAR.md` is missing / `Implement unblocked: no`.
+
+**Exceptions (narrow):**
+
+- Tiny-glue / docs-only packets that touch no product behavior
+- A packet whose Out-of-scope explicitly excludes all unfinished finish-bar rows
+- Re-entry: if §G.2 already completed, only **new** ODs / new finish deferrals opened later require a **delta** addendum in `FINISH_BAR.md` (not a full reset)
+
+**Human chat:** one product-altitude line — “Finish-bar lock batch required / done.”
+
+**Relation:** §G = define/lock rows · §G.2 = batch before first execute · §G.1 = reconcile after architecture-affecting locks.
+
 ## Stack constraints
 
 - Python 3.12, PEP8, type hints on all signatures.
@@ -216,5 +245,5 @@ Locking an Open Decision is **not** enough when the lock changes how the system 
 
 1. This constitution supersedes informal chat habits when they conflict.
 2. Amendments require editing this file, bumping **Version** / **Last Amended**, and a short note in `docs/agent-os/README.md`.
-3. Feature specs may not waive I–V or §G / §G.1 (Open Decisions + Architecture delta) without an explicit architect-backlog decision.
+3. Feature specs may not waive I–V or §G / §G.1 / §G.2 (Open Decisions, Architecture delta, Finish-bar batch) without an explicit architect-backlog decision.
 4. `AGENTS.md` is the portable summary; `.specify/memory/constitution.md` is the Spec Kit source of process truth.

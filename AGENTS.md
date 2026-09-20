@@ -80,10 +80,10 @@ Constitution → Specify → [Clarify] → independent review → Plan → [Plan
 
 1. Do not implement from chat alone when the change is non-trivial — spec first.
 2. Git artifacts are the bus (no human copy/paste router). Independent reviews (F*/R*/P*/T*) are **spawned** from a git packet (`docs/agent-os/SPAWN_REVIEWER.md`); do **not** ask the human to paste a brief.
-3. Specs need **failable outcomes** + **acceptance catalog** (constitution §B–C) + **Open Decisions** when shape≠content (§G). Architecture-affecting OD locks require **§G.1** (`PLAN_DELTA.md` + amend plan/data-model + analyze) before dependent implement.
+3. Specs need **failable outcomes** + **acceptance catalog** (constitution §B–C) + **Open Decisions** when shape≠content (§G). After tasks: **§G.2** finish-bar batch before implement. Architecture-affecting OD locks require **§G.1** before dependent implement.
 4. Do not re-argue process per product; debate product-unique choices only.
-5. Stop and escalate on missing decisions, invariant conflicts, unmet DoD, open `who: human` Open Decisions needed by the current slice, or incomplete §G.1 after architecture-affecting locks. Do **not** ask what task is next. Do **not** invent deferred product content.
-6. Human adjudicates product Debates (spec, Architecture, product-tagged T*) and human Open Decisions; after locks are recorded (and §G.1 done when required), work **resumes** (§F–G). Nit/Later and process-tagged T* may be agent-adjudicated.
+5. Stop and escalate on missing decisions, invariant conflicts, unmet DoD, open `who: human` Open Decisions, incomplete §G.2 (`FINISH_BAR`), or incomplete §G.1 after architecture-affecting locks. Do **not** ask what task is next. Do **not** invent deferred product content.
+6. Human adjudicates product Debates (spec, Architecture, product-tagged T*) and human Open Decisions; after locks are recorded (and §G.2 / §G.1 done when required), work **resumes** (§F–G). Nit/Later and process-tagged T* may be agent-adjudicated.
 7. `/speckit-plan` must satisfy `PLAN_AUTHORING_GATES.md` (fail closed) — sibling topology reuse without SOTA alternatives is an ERROR.
 8. Executable apps: failing contract/catalog-auto tests before matching impl; **spawn** T* when those tests exist; after product locks, continue (constitution §V / §F).
 9. **Orchestrator / workers (§H):** Main session dialogues and spawns; default implement/ops = packet + **background worker** (`SPAWN_WORKER.md`). `[P]` + disjoint paths → parallel workers automatically. Tiny-glue exception only.
