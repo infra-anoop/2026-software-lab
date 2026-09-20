@@ -43,7 +43,7 @@ Produce a **second opinion** on whether these tests would **fail closed** on the
 
 ## Review lenses
 
-- **Lock fidelity** — Each `contracts/` auto-check hook and each `acceptance.md` `how: auto` row has a test that can fail.
+- **Lock fidelity** — Each `contracts/` auto-check hook and each `acceptance.md` `how: auto` row has a test that can fail. **Also (§I):** would greening these tests allow a thinner stand-in than a named lock (“not thinner than…”, dual-axis, real loop)? Flag product Debate if yes.
 - **Red-first honesty** — Would these tests fail *before* the implementation exists? Or do they import code that cannot exist yet / mock away the behavior?
 - **Wrong-thing tests** — Asserting status 200 without `mode`/`parent_artifact_id`/`type=clarify` is noise.
 - **Scope** — Human/hybrid catalog rows must not be faked as auto (e.g. “prose is specific”).

@@ -20,6 +20,7 @@ Lab taste = thin **overlays** in constitution + template overrides — not a sec
 │  · Open Decisions (shape vs content; fail closed — §G)          │
 │  · Finish-bar lock batch before first implement (§G.2)            │
 │  · Architecture delta reconcile after arch-affecting OD locks (§G.1) │
+│  · Locked-intent fidelity — disclose-or-stop; no silent substitutes (§I) │
 │  · Orchestrator / workers (packet + background default — §H)  │
 │  · Failable outcomes + extensible acceptance catalog        │
 │  · notes/packets for workers + required review packets        │
@@ -36,6 +37,7 @@ Lab taste = thin **overlays** in constitution + template overrides — not a sec
 | Open Decisions (§G) | Spec template section + constitution §G; tasks `[HITL]` / `[OD:D#]` / `[POLICY]` |
 | Finish-bar batch (§G.2) | After tasks + analyze: `FINISH_BAR.md` governor locks before first implement |
 | Architecture delta (§G.1) | After architecture-affecting OD locks: amend plan/data-model/contracts; `PLAN_DELTA.md`; `/speckit-analyze`; then implement |
+| Locked-intent fidelity (§I) | Default **letter**; packet Fidelity table; disclose-or-stop before spawn if substituting |
 | Spawn reviewers | `docs/agent-os/SPAWN_REVIEWER.md` |
 | Spawn workers (§H) | `docs/agent-os/SPAWN_WORKER.md` + `notes/packets/_WORKER_PROMPT.md` |
 | Slash-style skills | `.cursor/skills/speckit-*` |
@@ -91,6 +93,8 @@ If the human must open `tasks.md` to understand the question, the agent failed t
 
 **Architecture delta (§G.1):** when an OD lock is **architecture-affecting** (topology, new pipeline, new entities, deploy host), agents MUST amend `plan.md` / data-model / contracts in place, deposit `PLAN_DELTA.md` (see `PLAN_DELTA_TEMPLATE.md`), run `/speckit-analyze`, and **only then** spawn dependent implement packets. Do **not** greenfield re-plan or wipe `plan.md`. Content-only locks skip this gate.
 
+**Locked-intent fidelity (§I):** named tools/hosts/caps default to **letter**. Orchestrator must **disclose-or-stop** before spawning a packet that substitutes (e.g. “v0” → “v0-class”). Record human waive in the packet Fidelity table or OD row. Silent dilution is a harness defect — longer runs that ship thinner intent fail the SNR goal.
+
 Unlocked product numbers and vault seeds are **run killers** for multi-hour agents. Put them in Open Decisions and/or the packet **Governor locks required** table (or Out of scope) before the run starts.
 
 ## Product vs process vs architecture
@@ -107,6 +111,7 @@ Unlocked product numbers and vault seeds are **run killers** for multi-hour agen
 
 | Version | Note |
 |---------|------|
+| 1.9.0 | §I Locked-intent fidelity: disclose-or-stop; letter vs intent; packet Fidelity table; no silent substitutes |
 | 1.8.0 | §G.2 Finish-bar lock batch before first implement; `FINISH_BAR.md`; analyze CRITICAL for open ODs / finish deferrals |
 | 1.7.0 | §G.1 Architecture delta reconcile after architecture-affecting Open Decision locks; `PLAN_DELTA.md`; analyze before dependent implement |
 | 1.6.1 | §G: `waived` = out of product version; “not right now but still required” stays `open` |

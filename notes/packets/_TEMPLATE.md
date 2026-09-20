@@ -67,12 +67,21 @@ If a lock is missing, put the task in **Out of scope** or Status `blocked` — d
 |------|--------------------------------|
 | | |
 
+## Fidelity (constitution §I — required)
+
+Named locks default to **letter**. If this packet would use a **substitute** (different tool/host/thinner behavior / “-class” approx), Status stays **`blocked`** until human A/B is recorded below. Silent softening is a harness defect.
+
+| Lock | fidelity (letter \| intent) | How this packet honors it (or `fidelity waived → … (date)`) |
+|------|----------------|-------------|
+| | letter | |
+
 ## Stop / escalate if
 
 - Missing product/ops decision
 - DoD cannot be met without expanding owned paths
 - Conflict with `notes/architect-backlog.md`
 - A Governor lock row is empty / blocked and the DoD depends on it
+- DoD cannot be met at **letter** fidelity with available tools (do not invent a substitute — escalate §I)
 
 ## Handoff notes (agent fills at end)
 

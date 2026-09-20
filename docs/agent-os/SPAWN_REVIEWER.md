@@ -43,6 +43,7 @@ T*: only after contract / `acceptance.md` `how: auto` tests exist (red). Skip sc
 - Ask the human which task to do next after a lock or a finished slice.
 - Ask the human to read `tasks.md` / `TEST_REVIEW.md` to learn intermediate IDs before deciding.
 - Invent deferred product content for open `who: human` Open Decisions (§G).
+- Accept silent fidelity substitutes (constitution §I) — flag “named lock replaced by thinner stand-in” as **product** Debate/Blocker when it changes shall/host/tool.
 - Continue the authoring/implementer thread as the reviewer (same agent grading its own work).
 - Dump `InternalRunState` or rewrite spec/plan to “make review easier.”
 - Brief the human in implementer slang (task IDs, node names, test filenames) when a product-language Debate would do.

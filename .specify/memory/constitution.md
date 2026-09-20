@@ -4,7 +4,7 @@ Non-negotiable principles for every feature and agent run in this monorepo.
 Spec Kit phases (`/speckit-*`) and `AGENTS.md` must respect this document.
 Product-unique choices belong in feature specs — **not** by reinventing process.
 
-**Version**: 1.8.0 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-20
+**Version**: 1.9.0 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-20
 
 ## Core Principles
 
@@ -141,7 +141,7 @@ Downstream (routine unit tests, implement nits, PR nits, process-tagged T*), the
 
 **Always-ready pool:** Not required. Spawn-on-demand with a fixed pointer prompt (`notes/packets/_WORKER_PROMPT.md`) is enough. Standing cloud/automation pools are optional later ops.
 
-Open Decisions (§G) and progressive HITL (§F) still apply inside worker packets.
+Open Decisions (§G) and progressive HITL (§F) still apply inside worker packets. **Locked-intent fidelity (§I)** binds orchestrator and workers.
 
 ### G. Open Decisions (shape vs content — fail closed)
 
@@ -158,6 +158,7 @@ Every deferred interactive detail MUST appear in the feature spec’s **Open Dec
 | before | Which story/phase/task class must not invent this (plain language OK) |
 | status | `open` \| `locked` \| `waived` |
 | arch_impact | Set when locking: `content-only` \| `architecture-affecting` (drives §G.1); omit while `open` |
+| fidelity | Set when locking (optional, default **letter**): `letter` \| `intent` — see §I |
 
 **Status meanings:**
 - `open` = content still TBD; must ask before inventing; **still required for product finish** until locked or explicitly `waived`
@@ -174,6 +175,7 @@ Before implementing any `open` `who: human` row, raise it in product language an
 4. `who: agent-policy` opens may be resolved by the agent under written policy; still record the lock in the table (no silent defaults).
 5. Product reviewers (F*) SHOULD flag “non-final / TBD content” without an Open Decision row as a **Debate** or **Blocker**.
 6. Column **`arch_impact`** (optional but recommended): `content-only` \| `architecture-affecting` — set when locking (§G.1).
+7. Column **`fidelity`** (optional, default **letter**): `letter` \| `intent` — set when locking (§I). Named tools/hosts default to letter.
 
 Open Decisions are the bridge between high-altitude spec conversation and long autonomous execute stretches.
 
@@ -233,6 +235,23 @@ Open Decisions and plan “Later/deferred” parking are easy to skip until late
 
 **Relation:** §G = define/lock rows · §G.2 = batch before first execute · §G.1 = reconcile after architecture-affecting locks.
 
+### I. Locked-intent fidelity (fail closed — NON-NEGOTIABLE)
+
+Longer unattended runs are worthless if agents **silently dilute** locks. Throughput must not outrank fidelity.
+
+**Fidelity delta** = satisfying a lock with a **substitute** (different tool, host, thinner behavior, renamed “-class” approximation, softer SC) without an explicit human waive.
+
+**Rules**
+
+1. **Default = letter.** Named tools, hosts, numeric caps, enums, “not thinner than…”, and other concrete lock wording are **letter** unless the lock row (or packet) marks **`fidelity: intent`**.
+2. **Disclose-or-stop.** Before authoring or spawning a packet that would introduce a fidelity delta, the orchestrator MUST **stop** and pose a plain product/ops A/B (locked intent → proposed substitute → one-line stakes). Record the human choice in git (Open Decisions / review adjudication / packet **Fidelity** table). Silent substitute in a packet or commit is a **harness defect**.
+3. **`fidelity: intent`** (optional, set at lock time) = outcomes matter; a disclosed substitute may proceed after human A/B **or** when the packet’s Fidelity table cites the prior waive. Still no silent rename.
+4. **Workers** MUST NOT invent substitutes. If DoD cannot be met at letter fidelity with available tools → Stop/escalate per packet (do not “v0-class”, “approx”, or “good enough”).
+5. **Reviewers** (F*/P*/T*) MUST attack silent softening: “Did authoring/implement replace a named lock with a thinner stand-in?” Tag **product** when the shall/host/tool changed.
+6. **Waive is explicit.** Human may accept a substitute for this slice/version; agents record `fidelity waived → <substitute> (date)` — same seriousness as `waived` on an OD. “Keep going” is not a waive.
+
+**Anti-patterns (defects):** rewriting “Vercel v0” → “v0-class in-repo” in a spawn packet without A/B; greening tests with fabricated metadata that meets shape but not the lock’s “not thinner” / consistency bar without recording T* locks; treating `deferred` as skip (§G `waived` rules still apply).
+
 ## Stack constraints
 
 - Python 3.12, PEP8, type hints on all signatures.
@@ -245,5 +264,5 @@ Open Decisions and plan “Later/deferred” parking are easy to skip until late
 
 1. This constitution supersedes informal chat habits when they conflict.
 2. Amendments require editing this file, bumping **Version** / **Last Amended**, and a short note in `docs/agent-os/README.md`.
-3. Feature specs may not waive I–V or §G / §G.1 / §G.2 (Open Decisions, Architecture delta, Finish-bar batch) without an explicit architect-backlog decision.
+3. Feature specs may not waive I–V or §G / §G.1 / §G.2 / §I (Open Decisions, Architecture delta, Finish-bar batch, locked-intent fidelity) without an explicit architect-backlog decision or recorded human fidelity waive (§I).
 4. `AGENTS.md` is the portable summary; `.specify/memory/constitution.md` is the Spec Kit source of process truth.

@@ -2,14 +2,14 @@
 
 Companion to [`SPAWN_REVIEWER.md`](./SPAWN_REVIEWER.md). Reviewers stay isolated; **workers** do real implement/ops work so the **main session stays governor dialogue + orchestration**.
 
-Constitution: §F (roles), §H (orchestrator / workers). Human is governor, not parallelism router.
+Constitution: §F (roles), §H (orchestrator / workers), **§I (locked-intent fidelity)**. Human is governor, not parallelism router.
 
 ## Roles
 
 | Role | Session | Does | Must not |
 |------|---------|------|----------|
 | **Main (orchestrator)** | Chat with the human | Open Decisions, product Debates, write/update packets, **spawn** workers/reviewers, triage results in product language, tiny glue | Bulk implement, long pytest loops, “sit and wait” blocking the human turn when background spawn is available |
-| **Worker** | Spawned Task (prefer **background**) | Packet DoD: code, tests, commits on owned paths | Re-open product Debates in jargon; expand Out-of-scope; ask human “what next” |
+| **Worker** | Spawned Task (prefer **background**) | Packet DoD: code, tests, commits on owned paths | Re-open product Debates in jargon; expand Out-of-scope; ask human “what next”; invent fidelity substitutes (§I) |
 | **Reviewer** | Spawned Task | F*/R*/P*/T* only — see `SPAWN_REVIEWER.md` | Product code |
 
 ## When to spawn a worker (default)
@@ -35,9 +35,10 @@ If unsure → packet + worker.
 
 ## Authoring / main agent MUST
 
-1. Write or update `notes/packets/<id>.md` from [`notes/packets/_TEMPLATE.md`](../../notes/packets/_TEMPLATE.md). Set `Agent mode: background` when spawning async.
+1. Write or update `notes/packets/<id>.md` from [`notes/packets/_TEMPLATE.md`](../../notes/packets/_TEMPLATE.md). Set `Agent mode: background` when spawning async. Fill the **Fidelity** table (constitution §I); default locks to **letter**.
 2. Ensure `FINISH_BAR.md` exists for the feature with **Implement unblocked: yes** (§G.2), unless the packet is tiny-glue or Out-of-scope excludes all finish-bar rows. Ensure Governor locks / Open Decisions needed by the packet are locked (not open). If locks were **architecture-affecting**, require feature `PLAN_DELTA.md` §G.1 checklist complete before spawn — else main must reconcile first.
-3. **Spawn** worker with pointer prompt (not a pasted novel):
+3. **Fidelity disclose-or-stop (§I):** If the packet would satisfy a lock via substitute (tool/host/thinner stand-in / “-class”), **do not spawn**. Pose plain A/B to the human; record waive or letter path in the packet Fidelity table; then spawn.
+4. **Spawn** worker with pointer prompt (not a pasted novel):
 
    ```text
    You are a lab implementer worker. Ignore parent-thread loyalty for product inventing.
@@ -45,12 +46,13 @@ If unsure → packet + worker.
    Read notes/packets/<id>.md.
    Read AGENTS.md and the feature spec/plan named in the packet.
    Git + those files are the only source of truth.
+   Honor Fidelity table (constitution §I): no silent substitutes.
    Do the Definition of Done. Stay inside Owned paths.
    Prefer background-friendly commits. Stop when DoD is met or Stop/escalate triggers.
    ```
 
-4. Prefer **background** spawn so the main session stays free for human dialogue. Tell the human only: worker spawned, packet path, DoD summary in product language. Do **not** ask whether parallelism is OK when `[P]` + disjoint paths already say so.
-5. When the worker finishes: read handoff notes / diff; present product-altitude status; spawn T* if new red contract tests exist; resume next packet or stop at checkpoint. Do **not** ask “what next.”
+5. Prefer **background** spawn so the main session stays free for human dialogue. Tell the human only: worker spawned, packet path, DoD summary in product language. Do **not** ask whether parallelism is OK when `[P]` + disjoint paths already say so.
+6. When the worker finishes: read handoff notes / diff; present product-altitude status; spawn T* if new red contract tests exist; resume next packet or stop at checkpoint. Do **not** ask “what next.”
 
 ## Parallelism rules (automatic)
 
@@ -66,6 +68,7 @@ If unsure → packet + worker.
 - Ask the human “can we parallelize?” when `[P]` + disjoint paths apply.
 - Paste full task lists or finding IDs into human chat.
 - Invent Open Decision content (`who: human`).
+- **Silently dilute locks** (constitution §I) — no “v0-class”, “approx”, or thinner SC without recorded human waive.
 - Start dependent implement when architecture-affecting ODs locked but §G.1 `PLAN_DELTA.md` is missing/incomplete.
 - Start product implement when `FINISH_BAR.md` is missing or **Implement unblocked** is not **yes** (§G.2).
 

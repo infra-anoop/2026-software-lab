@@ -57,6 +57,14 @@ Examples: status-code splits, rate-limit scope, numeric caps, “defer P7.”
 |------|-------------------------|
 | | |
 
+## Fidelity (constitution §I)
+
+Reviewers: attack silent softening of named locks. Implementer packets must not spawn with undisclosed substitutes.
+
+| Lock | letter \| intent | Notes |
+|------|------------------|-------|
+| | | |
+
 ## Stop / escalate if
 
 - Artifacts under review are missing

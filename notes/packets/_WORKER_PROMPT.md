@@ -9,7 +9,7 @@ Read docs/agent-os/SPAWN_WORKER.md.
 Read notes/packets/<id>.md.
 Read AGENTS.md and the feature spec/plan named in the packet.
 Git + those files are the only source of truth.
-Execute the packet Definition of Done. Stay inside Owned paths. Honor Forbidden paths and Governor locks.
+Honor Governor locks and the packet **Fidelity** table (constitution §I). Do not invent substitutes (“-class”, approx, thinner SC). If letter fidelity cannot be met → Stop/escalate.
 Do not invent who:human Open Decision content. Escalate per packet Stop conditions.
 Commit when the slice is ready. Fill Handoff notes. Stop when DoD is met.
 ```

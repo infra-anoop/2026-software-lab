@@ -62,7 +62,7 @@ Produce a **second opinion** that helps a human decide whether to **approve the 
 - **Learning / SOTA fit** — Per STACK_POSTURE / PLAN_AUTHORING_GATES: managed vs self-host, OSS vs closed, v0/Vercel-class UI path, non-sibling alternatives; sibling-only alts = fail
 - **Topology & custody** — Runtimes/hosts; how UI calls API; who holds preview secrets (folder ≠ architecture)
 - **Risks / non-goals** — Honest about MVP limits (e.g. in-memory jobs)?
-- **Spec lock fidelity** — Plan contradicts or silently drops an F*/R* lock?
+- **Spec lock fidelity** — Plan contradicts or silently drops an F*/R* lock? **Also (§I):** plan/packet softens a named tool/host (“v0” → “v0-class”) without recorded waive?
 - **Cold-agent readiness** — Could `/speckit-tasks` proceed without chat archaeology?
 - **Phasing (light)** — Phases reference Architecture; MVP exit criteria failable; not a hidden task dump?
 
