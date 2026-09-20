@@ -226,7 +226,7 @@ D6 lock + T070 (vault seed + sync)
 
 ### Spend caps (D2 locked)
 
-- [ ] T063 [OD:D2] Settings + fail-closed enforcement in `apps/smart-writer-v2/app/config.py` / `http.py`: max **3** write jobs / conversation; max **10** clarify turns / conversation; max **8** inner assessor turns / write job; contract tests for outer caps (inner cap covered with D8 tests)
+- [x] T063 [OD:D2] Settings + fail-closed enforcement in `apps/smart-writer-v2/app/config.py` / `http.py`: max **3** write jobs / conversation; max **10** clarify turns / conversation; max **8** inner assessor turns / write job; contract tests for outer caps (inner cap covered with D8 tests)
 
 ### Dual-axis scored inner loop (D8 locked — required for complete V2)
 

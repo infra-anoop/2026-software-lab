@@ -19,6 +19,9 @@ ALL_ENV_NAMES: tuple[str, ...] = (
     "OPENAI_API_KEY",
     "SMART_WRITER_V2_AUDIT_SECRET",
     "SMART_WRITER_V2_AUDIT_RATE_LIMIT_PER_MIN",
+    "SMART_WRITER_V2_MAX_WRITE_JOBS_PER_CONVERSATION",
+    "SMART_WRITER_V2_MAX_CLARIFY_TURNS_PER_CONVERSATION",
+    "SMART_WRITER_V2_MAX_INNER_ASSESSOR_TURNS",
     "TAVILY_API_KEY",
     "LOGFIRE_TOKEN",
 )
@@ -27,6 +30,10 @@ DEFAULT_JOB_CONCURRENCY = 1
 DEFAULT_JOB_QUEUE_MAX = 4
 DEFAULT_JOB_TIMEOUT_SEC = 300.0
 DEFAULT_AUDIT_RATE_LIMIT_PER_MIN = 5
+# D2 locked (2026-09-20): 3 write jobs / 10 clarifies / 8 inner turns.
+DEFAULT_MAX_WRITE_JOBS_PER_CONVERSATION = 3
+DEFAULT_MAX_CLARIFY_TURNS_PER_CONVERSATION = 10
+DEFAULT_MAX_INNER_ASSESSOR_TURNS = 8
 
 
 class _SettingsBase(BaseSettings):
@@ -104,3 +111,40 @@ def get_audit_rate_limit_per_min() -> int:
         return max(0, int(raw))
     except ValueError:
         return DEFAULT_AUDIT_RATE_LIMIT_PER_MIN
+
+
+def _settings_int(env_name: str, default: int) -> int:
+    """Parse a non-negative int Settings field; invalid/empty → ``default``."""
+    raw = _settings_str(env_name, str(default))
+    try:
+        return max(0, int(raw))
+    except ValueError:
+        return default
+
+
+def get_max_write_jobs_per_conversation() -> int:
+    """Max generate/revise enqueues per conversation (D2 / FR-022)."""
+    return _settings_int(
+        "SMART_WRITER_V2_MAX_WRITE_JOBS_PER_CONVERSATION",
+        DEFAULT_MAX_WRITE_JOBS_PER_CONVERSATION,
+    )
+
+
+def get_max_clarify_turns_per_conversation() -> int:
+    """Max clarify assistant turns per conversation (D2 / FR-022)."""
+    return _settings_int(
+        "SMART_WRITER_V2_MAX_CLARIFY_TURNS_PER_CONVERSATION",
+        DEFAULT_MAX_CLARIFY_TURNS_PER_CONVERSATION,
+    )
+
+
+def get_max_inner_assessor_turns() -> int:
+    """Max writer↔assessor inner turns per write job (D2/D8).
+
+    Exposed for Settings / D8 graph wiring (T083+). Outer HTTP does not enforce
+    this until the scored loop lands.
+    """
+    return _settings_int(
+        "SMART_WRITER_V2_MAX_INNER_ASSESSOR_TURNS",
+        DEFAULT_MAX_INNER_ASSESSOR_TURNS,
+    )

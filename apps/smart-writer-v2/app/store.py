@@ -52,6 +52,9 @@ class InternalRunState:
     citation_mode_pref: CitationMode | None = None
     last_artifact_id: str | None = None
     grant_beachhead: bool = True
+    # D2 outer spend counters (per conversation).
+    write_job_count: int = 0
+    clarify_turn_count: int = 0
 
 
 @dataclass
@@ -148,6 +151,18 @@ class InMemoryStore:
         """T060: grant vs non-grant smoke. Not exposed on GET conversation (T2)."""
         state = self._run_state[conversation_id]
         state.grant_beachhead = enabled
+
+    def increment_write_job_count(self, conversation_id: str) -> int:
+        """Bump D2 write-job counter after a successful enqueue; return new count."""
+        state = self._run_state[conversation_id]
+        state.write_job_count += 1
+        return state.write_job_count
+
+    def increment_clarify_turn_count(self, conversation_id: str) -> int:
+        """Bump D2 clarify-turn counter after a clarify response; return new count."""
+        state = self._run_state[conversation_id]
+        state.clarify_turn_count += 1
+        return state.clarify_turn_count
 
     def set_last_artifact_id(self, conversation_id: str, artifact_id: str) -> None:
         """Point the conversation at the latest ArtifactVersion (T028)."""

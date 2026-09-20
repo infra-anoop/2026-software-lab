@@ -35,6 +35,8 @@ from app.config import (
     get_audit_rate_limit_per_min,
     get_audit_secret,
     get_job_timeout_sec,
+    get_max_clarify_turns_per_conversation,
+    get_max_write_jobs_per_conversation,
     get_openai_api_key,
 )
 from app.models import MaterialRef as ModelMaterialRef
@@ -286,8 +288,17 @@ def post_message(
     )
     missing = missing_grant_slots(merged)
     if state.grant_beachhead and missing:
+        if state.clarify_turn_count >= get_max_clarify_turns_per_conversation():
+            raise HTTPException(
+                status_code=429,
+                detail=(
+                    "Clarify turn cap exceeded for this conversation "
+                    f"(max {get_max_clarify_turns_per_conversation()})."
+                ),
+            )
         text = clarify_text_for_turn(missing, ranking)
         assistant = STORE.add_message(conversation_id, "assistant", text)
+        STORE.increment_clarify_turn_count(conversation_id)
         return ClarifyTurnOut(
             assistant_message=AssistantMessageOut(
                 message_id=assistant.message_id,
@@ -309,6 +320,14 @@ def post_message(
                 status_code=409,
                 detail="revise requires an existing parent artifact",
             ) from exc
+    if state.write_job_count >= get_max_write_jobs_per_conversation():
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                "Write job cap exceeded for this conversation "
+                f"(max {get_max_write_jobs_per_conversation()})."
+            ),
+        )
     runner: JobRunner = request.app.state.job_runner
     try:
         job = runner.enqueue(
@@ -328,6 +347,7 @@ def post_message(
         )
     except QueueFullError as exc:
         raise HTTPException(status_code=503, detail="Job queue is full") from exc
+    STORE.increment_write_job_count(conversation_id)
     return JobAcceptedOut(
         job_id=job.job_id,
         mode=mode,
