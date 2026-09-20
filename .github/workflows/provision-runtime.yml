@@ -1,7 +1,8 @@
 # Provision Railway runtime footprint (project / environment / service / public domain).
 #
-# Conscious bootstrap only — workflow_dispatch (or local CLI).
-# Not on push, PR, or v* ship. Secrets sync = A23; image pin = deploy.yml.
+# Preferred agent path: bootstrap/<app_id>/<environment> ops tag (ops-runtime.yml
+# runs provision → sync → verify). Break-glass: workflow_dispatch (UI) or local CLI.
+# Not on v* ship, ordinary branch push, or PR. Secrets sync = A23; image pin = deploy.yml.
 #
 # Auth: RAILWAY_WORKSPACE_TOKEN (preferred) or RAILWAY_TOKEN (same as deploy/smoke).
 # Names: deploy/railway/<environment>/<app_id>.yml (registry deploy.enabled gate).

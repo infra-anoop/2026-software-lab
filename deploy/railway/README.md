@@ -49,7 +49,8 @@ deploy/railway/
 ├── production/
 │   ├── research-auditor.yml   # production service + GHCR image mapping
 │   ├── smart-writer.yml
-│   └── smart-writer-v2.yml
+│   ├── smart-writer-v2.yml      # FastAPI worker (Nix / registry ship)
+│   └── smart-writer-v2-ui.yml   # Next UI+BFF (Docker first-ship; not registry)
 ├── staging/
 │   └── research-auditor.yml   # manual / preview only (see below)
 └── README.md
@@ -68,6 +69,7 @@ deploy/railway/
 | `research-auditor` | ✅ | ✅ (`research-auditor-staging`) |
 | `smart-writer` | ✅ | ❌ not configured |
 | `smart-writer-v2` | ✅ YAML in git; **service bootstrap** is `notes/packets/2026-09-17-swv2-railway-bootstrap.md` | ❌ not configured |
+| `smart-writer-v2-ui` | ✅ YAML in git (Docker UI; **not** `apps/registry.yaml`) — first-ship steps below | ❌ not configured |
 
 Manual `workflow_dispatch` with `environment=staging` and `app_id=smart-writer` or `smart-writer-v2` will fail at config lookup with a clear error (`Missing config: deploy/railway/staging/<app_id>.yml`). Use `environment=production` until a preview Railway service exists.
 
@@ -91,6 +93,29 @@ git push origin v1.0.0
 ```
 
 Pushes images for every app with `ship.publish_container`, then deploys every app with `deploy.enabled`, then smoke-tests each.
+
+## Ops tags (secrets sync / bootstrap — not code deploy)
+
+Conscious Infisical→Railway ops use **annotated tags**, not `v*`. Preferred agent path from a Codespace (ordinary git push; no PAT / no `actions:write`):
+
+| Intent | Tag | Workflow |
+|--------|-----|----------|
+| Secrets rotate (A23) | `sync/<app_id>/<environment>` | `ops-runtime.yml` → sync apply |
+| First-time footprint (A26→A23→A24) | `bootstrap/<app_id>/<environment>` | provision → sync → verify (live) |
+| Code ship / image pin | `v*` | existing ship/deploy — **never** runs A23 sync |
+
+```bash
+nix develop -c uv run scripts/ops_runtime_tag.py sync \
+  --app-id smart-writer-v2 --environment production --dry-run
+
+nix develop -c uv run scripts/ops_runtime_tag.py sync \
+  --app-id smart-writer-v2 --environment production --push
+
+nix develop -c uv run scripts/ops_runtime_tag.py bootstrap \
+  --app-id smart-writer-v2 --environment production --push
+```
+
+Break-glass: Actions UI `workflow_dispatch` on `sync-runtime-secrets.yml`, `provision-runtime.yml`, `verify-runtime-bootstrap.yml`. Playbook: `notes/codespace-a23-dispatch.md`.
 
 ## Manual deploy (one app)
 
@@ -150,11 +175,11 @@ This is **not** a user login. Anyone with the shared secret can enqueue jobs and
 | Env (Railway Variables / Infisical, never git) | `RESEARCH_AUDITOR_AUDIT_SECRET` | `SMART_WRITER_AUDIT_SECRET` | `SMART_WRITER_V2_AUDIT_SECRET` |
 | Unset / blank | POST `/audit` and GET `/jobs` → **503** | same | mutating `/v1/*` and jobs → **503** |
 | Wrong / missing header | **401** | **401** | **401** |
-| Browser | HTML + `sessionStorage` | HTML + `sessionStorage` | Next BFF holds the secret (no `NEXT_PUBLIC_*`) |
+| Browser | HTML + `sessionStorage` | HTML + `sessionStorage` | Railway Next BFF (`smart-writer-v2-ui`) holds the secret (no `NEXT_PUBLIC_*`) |
 
 `GET /`, `/health`, `/ready`, `/docs` stay unauthenticated. CLI is **not** the public cost control (Research Auditor CLI hardcodes 8; Smart Writer `--max-iterations` is flag-driven).
 
-Set the secret via Infisical (A23 `sync-runtime-secrets.yml`) or the Railway service Variables UI. Listing the name under `env.optional` does not inject a value.
+Set the secret via Infisical (preferred: `sync/<app>/<env>` ops tag / `ops-runtime.yml`; break-glass: A23 `sync-runtime-secrets.yml`) or the Railway service Variables UI. Listing the name under `env.optional` does not inject a value.
 
 ```bash
 # Enqueue (202 + job_id). Poll GET /jobs/{id} with the same header.
@@ -168,4 +193,45 @@ curl -sS "$RAILWAY_URL/jobs/JOB_ID" \
 ```
 
 Application secrets live in Infisical Cloud (schema in `deploy/secrets/schema.yaml`); A23 syncs names into Railway env. GitHub Actions holds Railway tokens, not app keys. CI (`scripts/validate_deploy_env.py`) fails if a `deploy.enabled` app has an empty `env.required` or if YAML names are not in that app’s Settings catalog.
+
+## Smart Writer V2 UI (`smart-writer-v2-ui`) — Docker first-ship
+
+**Lock (D5):** two Railway services in project `2026-software-lab` — worker `smart-writer-v2` + UI `smart-writer-v2-ui`. Design is in-repo Next; production host is Railway (not Vercel, not Codespaces).
+
+**Why not registry/Nix:** the lab ship matrix (`ship-registry.yml` / `container-*`) is Python/Nix today. Expanding it for Node is a separate platform epic. T069 ships **Docker-only** cattle: `apps/smart-writer-v2/web/Dockerfile` + `deploy/railway/production/smart-writer-v2-ui.yml`. `deploy.yml` can pin any YAML `app_id`; `provision_runtime.py` / ops tags / A23 sync **require** a registry `deploy.enabled` id — they do **not** cover `smart-writer-v2-ui` yet.
+
+### Env names (UI service Variables)
+
+| Name | Kind | Notes |
+|------|------|--------|
+| `SMART_WRITER_V2_AUDIT_SECRET` | secret | Same Infisical value as the worker. Server-only BFF. Never `NEXT_PUBLIC_*`. |
+| `SMART_WRITER_V2_WORKER_URL` | plain config | Public worker URL, e.g. `https://smart-writer-v2-production.up.railway.app` (no trailing slash). |
+
+### Human first-ship (exact)
+
+1. **Create service** in Railway project `2026-software-lab` / environment `production`: name **`smart-writer-v2-ui`**. Attach a **public service domain**. Add GHCR **Registry Credentials** (`read:packages`) on that service (same as worker).
+2. **Variables** on `smart-writer-v2-ui`:
+   - `SMART_WRITER_V2_AUDIT_SECRET` — copy from Infisical key `SMART_WRITER_V2_AUDIT_SECRET` (or from worker Variables).
+   - `SMART_WRITER_V2_WORKER_URL` — `https://smart-writer-v2-production.up.railway.app`
+3. **Build + push** image (local or CI runner with Docker + `docker login ghcr.io`):
+
+```bash
+cd apps/smart-writer-v2/web
+docker build -t ghcr.io/<owner>/smart-writer-v2-ui:latest .
+docker push ghcr.io/<owner>/smart-writer-v2-ui:latest
+# optional: also tag sha-<git>
+```
+
+4. **Pin + deploy** (digest path — same as other apps):
+
+```bash
+gh workflow run deploy.yml \
+  -f app_id=smart-writer-v2-ui \
+  -f tag=latest \
+  -f environment=production
+```
+
+5. **Verify:** open the Railway public UI URL (chat loads). Browser must never see the audit secret (DevTools → Network: only same-origin `/api/proxy/...`). Worker `GET /health` alone is insufficient for the UI finish bar.
+
+Do **not** use Codespaces as the production product URL. Do **not** provision a Vercel project for this ship.
 

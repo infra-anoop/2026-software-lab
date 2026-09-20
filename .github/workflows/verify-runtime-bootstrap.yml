@@ -1,7 +1,8 @@
 # Read-only bootstrap verify: Railway footprint + required env names (A24).
 #
-# Conscious check only — workflow_dispatch. Never creates resources or upserts
-# secrets. Not on push, PR, or v* ship. Sync = A23; provision = A26.
+# Preferred agent path: included at end of bootstrap/** ops tag (ops-runtime.yml).
+# Break-glass: workflow_dispatch (UI). Never creates resources or upserts secrets.
+# Not on v* ship, ordinary branch push, or PR. Sync = A23; provision = A26.
 #
 # Auth: RAILWAY_WORKSPACE_TOKEN (preferred) or RAILWAY_TOKEN (live path only).
 

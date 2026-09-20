@@ -1,44 +1,30 @@
-# Sync vault secrets → Railway runtime (install / rotate).
+# Ops runtime: Infisical→Railway sync / full bootstrap via annotated git tags.
 #
-# Preferred agent path: annotated ops tags via ops-runtime.yml
-#   (sync/<app_id>/<environment> — see scripts/ops_runtime_tag.py).
-# Break-glass: workflow_dispatch (UI) or local CLI.
-# Not on v* ship, ordinary branch push, or PR. Provision = A26; verify = A24.
+# Preferred agent path (Codespace): push sync/** or bootstrap/** tags
+#   nix develop -c uv run scripts/ops_runtime_tag.py sync --app-id <id> --environment production --push
+# Break-glass: workflow_dispatch on sync-runtime-secrets / provision-runtime /
+# verify-runtime-bootstrap (UI). Do not fold into v* ship/deploy.
 #
-# Auth:
-#   Railway: RAILWAY_WORKSPACE_TOKEN (preferred) or RAILWAY_TOKEN
-#   Infisical: GitHub OIDC → short-lived token (vars.INFISICAL_MACHINE_IDENTITY_ID)
-#              non-preferred fallback: secrets.INFISICAL_TOKEN
-# Do not use Infisical secrets-action to dump values into GITHUB_ENV — A21 CLI
-# fetches by deploy/secrets/schema.yaml vault_ref map.
+# Tag shapes (strict): sync/<app_id>/<environment> | bootstrap/<app_id>/<environment>
+# environment ∈ {production, staging}; app_id must be deploy.enabled.
+#
+# Lifecycle: bootstrap = A26 provision → A23 sync → A24 verify;
+# rotate = sync only; code deploy = v* (unchanged).
 
-name: Sync runtime secrets
+name: Ops runtime
 
 on:
-  workflow_dispatch:
-    inputs:
-      app_id:
-        description: "Application id (secrets schema + deploy.enabled)"
-        required: true
-        type: string
-      environment:
-        description: "Schema + deploy/railway/<environment>/"
-        required: false
-        type: choice
-        options: [production, staging]
-        default: production
-      dry_run:
-        description: "If true, print secret names only (no vault/Railway I/O)"
-        required: false
-        type: boolean
-        default: false
+  push:
+    tags:
+      - 'sync/**'
+      - 'bootstrap/**'
 
 permissions:
   contents: read
   id-token: write
 
 jobs:
-  sync:
+  ops:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -47,17 +33,14 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
 
-      - name: Sync (dry-run)
-        if: ${{ inputs.dry_run == true }}
+      - name: Parse and validate ops tag
+        id: tag
         run: >
-          uv run scripts/sync_runtime_secrets.py
-          --app-id "${{ inputs.app_id }}"
-          --environment "${{ inputs.environment }}"
-          --target railway
-          --dry-run
+          uv run scripts/ops_runtime_tag.py parse
+          --ref-name "${{ github.ref_name }}"
+          --github-output
 
       - name: Select Railway token (workspace preferred)
-        if: ${{ inputs.dry_run != true }}
         run: |
           if [ -n "${{ secrets.RAILWAY_WORKSPACE_TOKEN }}" ]; then
             echo "RAILWAY_TOKEN_EFFECTIVE=${{ secrets.RAILWAY_WORKSPACE_TOKEN }}" >> "$GITHUB_ENV"
@@ -71,7 +54,7 @@ jobs:
           fi
 
       - name: Infisical auth (OIDC preferred)
-        if: ${{ inputs.dry_run != true }}
+        # Needed for sync apply (both sync and bootstrap paths).
         env:
           INFISICAL_MACHINE_IDENTITY_ID: ${{ vars.INFISICAL_MACHINE_IDENTITY_ID }}
         run: |
@@ -90,14 +73,32 @@ jobs:
             exit 1
           fi
 
+      - name: Provision (apply) — bootstrap only
+        if: ${{ steps.tag.outputs.kind == 'bootstrap' }}
+        env:
+          RAILWAY_TOKEN: ${{ env.RAILWAY_TOKEN_EFFECTIVE }}
+        run: >
+          uv run scripts/provision_runtime.py
+          --app-id "${{ steps.tag.outputs.app_id }}"
+          --environment "${{ steps.tag.outputs.environment }}"
+          --apply
+
       - name: Sync (apply)
-        if: ${{ inputs.dry_run != true }}
         env:
           RAILWAY_TOKEN: ${{ env.RAILWAY_TOKEN_EFFECTIVE }}
           INFISICAL_TOKEN: ${{ env.INFISICAL_TOKEN }}
         run: >
           uv run scripts/sync_runtime_secrets.py
-          --app-id "${{ inputs.app_id }}"
-          --environment "${{ inputs.environment }}"
+          --app-id "${{ steps.tag.outputs.app_id }}"
+          --environment "${{ steps.tag.outputs.environment }}"
           --target railway
           --apply
+
+      - name: Verify bootstrap (live) — bootstrap only
+        if: ${{ steps.tag.outputs.kind == 'bootstrap' }}
+        env:
+          RAILWAY_TOKEN: ${{ env.RAILWAY_TOKEN_EFFECTIVE }}
+        run: >
+          uv run scripts/verify_runtime_bootstrap.py
+          --app-id "${{ steps.tag.outputs.app_id }}"
+          --environment "${{ steps.tag.outputs.environment }}"
