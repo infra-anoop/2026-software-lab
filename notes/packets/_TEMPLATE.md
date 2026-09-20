@@ -59,6 +59,7 @@ Checklist the agent must prove before stopping:
 
 List product numbers, vault seeds, host account HITL, or other decisions the agent must **not** invent.
 Prefer linking **Open Decisions** ids from `spec.md` (`D1`, …) when they already exist (constitution §G).
+If any listed lock is **architecture-affecting**, require feature `PLAN_DELTA.md` (§G.1) complete before Status `ready`.
 If a lock is missing, put the task in **Out of scope** or Status `blocked` — do not stall a multi-hour run guessing.
 
 | Lock | Value or `blocked until human` |

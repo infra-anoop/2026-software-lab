@@ -136,12 +136,12 @@ Template: `docs/agent-os/acceptance-catalog-template.md`
   who: agent-policy = agent may lock under written policy; still record the value.
 -->
 
-| id | shape_locked | content_open | who | before | status |
-|----|--------------|--------------|-----|--------|--------|
-| D1 | [e.g. closed property vocabulary; two intake axes] | [e.g. exact label list] | human | [e.g. before steering chips / property tests] | open |
-| (add rows or delete placeholder; empty table OK only if nothing deferred) | | | | | |
+| id | shape_locked | content_open | who | before | status | arch_impact |
+|----|--------------|--------------|-----|--------|--------|-------------|
+| D1 | [e.g. closed property vocabulary; two intake axes] | [e.g. exact label list] | human | [e.g. before steering chips / property tests] | open | |
+| (add rows or delete placeholder; empty table OK only if nothing deferred) | | | | | | |
 
-**Rules:** Inventing `content_open` for `who: human` while `status: open` is forbidden. Lock by filling content + `status: locked`. Use `waived` only for **out of this product version** (won’t-do). “Not right now but still required to finish” stays **`open`** — do not mark waived.
+**Rules:** Inventing `content_open` for `who: human` while `status: open` is forbidden. Lock by filling content + `status: locked` + **`arch_impact`** (`content-only` \| `architecture-affecting`). Use `waived` only for **out of this product version** (won’t-do). “Not right now but still required to finish” stays **`open`** — do not mark waived. Architecture-affecting locks → **§G.1** `PLAN_DELTA.md` before dependent implement.
 
 ## Review locks *(mandatory before Approved)*
 

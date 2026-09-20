@@ -87,9 +87,44 @@ Invisible; updated from free-form inference (FR-017). Never required as user-fac
 
 | Field | Type | Notes |
 |-------|------|-------|
-| uri | string | |
+| material_id | string | Stable id within conversation |
+| uri | string \| null | For `kind=link`; null for upload-only |
 | label | string \| null | |
 | kind | `link` \| `upload` | |
+| mime | string \| null | Required for upload |
+| byte_len | int \| null | Upload size; enforce caps at HTTP |
+| content_ref | string \| null | Key into process-local upload store (**D7** in-memory); not a durable URL |
+
+## UploadStore (process-local — D7)
+
+| Field | Type | Notes |
+|-------|------|-------|
+| content_ref | string | Opaque id |
+| conversation_id | string | |
+| bytes | bytes | In-memory; lost on restart |
+| mime | string | |
+| created_at | datetime | |
+
+## Rubric (per write job — D8)
+
+Built from **both** F6 axes before the writer↔assessor loop. Not user-visible taxonomy.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| rubric_id | string | Per job |
+| job_id | string | |
+| axis_a_dimensions | list[object] | From grant intent substance (Who/Whom/Ask/Why/Evidence as criteria text) |
+| axis_b_dimensions | list[object] | From property ranking / steering |
+| weights | object \| null | Optional; redesign vs V1 allowed |
+
+## AssessorScore (per inner turn — D8)
+
+| Field | Type | Notes |
+|-------|------|-------|
+| iteration | int | 1…8 |
+| dimension_scores | list[object] | id → score |
+| aggregate_score | float \| null | |
+| feedback | string | Feeds next writer turn |
 
 ## Job / Run
 
@@ -105,7 +140,8 @@ Invisible; updated from free-form inference (FR-017). Never required as user-fac
 | error | string \| null | |
 | elapsed_ms | int \| null | Wall time for the write job (**D3**); set on terminal status |
 | usage | object \| null | Best-effort: `input_tokens`, `output_tokens`, optional `estimated_cost_usd` (**D3**) |
-| loop | object \| null | Inner critique: `iterations`, scores / aggregate, `stop_reason` (**D8**) |
+| loop | object \| null | Inner critique: `iterations`, `aggregate_score`, `stop_reason` (`max_iterations` \| `targets_met` \| `error`) (**D8**) |
+| rubric_id | string \| null | Dual-axis rubric for this job (**D8**) |
 
 ## State transitions
 
@@ -116,8 +152,9 @@ user message
   → else enqueue Job(mode=generate|revise)
        generate: parent_artifact_id = null
        revise:   parent_artifact_id = last_artifact_id (required)
-  → on success: new ArtifactVersion + assistant message with body
-  → explicit regenerate: mode=generate (new chain head)
+       inner (D8): build Rubric(A+B) → write ↔ assess (≤8) → provenance
+  → on success: new ArtifactVersion + assistant message with body; job.elapsed_ms / usage / loop filled (D3/D8)
+  → explicit regenerate (UI control / client_intent=regenerate): mode=generate (new chain head) (D9)
 ```
 
 ## Validation rules

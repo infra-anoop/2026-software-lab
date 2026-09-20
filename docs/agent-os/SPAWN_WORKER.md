@@ -36,7 +36,7 @@ If unsure → packet + worker.
 ## Authoring / main agent MUST
 
 1. Write or update `notes/packets/<id>.md` from [`notes/packets/_TEMPLATE.md`](../../notes/packets/_TEMPLATE.md). Set `Agent mode: background` when spawning async.
-2. Ensure Governor locks / Open Decisions needed by the packet are locked or waived (re-ask if waived — §G).
+2. Ensure Governor locks / Open Decisions needed by the packet are locked (not open). If locks were **architecture-affecting**, require feature `PLAN_DELTA.md` §G.1 checklist complete (analyze recorded) before spawn — else main must reconcile first.
 3. **Spawn** worker with pointer prompt (not a pasted novel):
 
    ```text
@@ -66,6 +66,7 @@ If unsure → packet + worker.
 - Ask the human “can we parallelize?” when `[P]` + disjoint paths apply.
 - Paste full task lists or finding IDs into human chat.
 - Invent Open Decision content (`who: human`).
+- Start dependent implement when architecture-affecting ODs locked but §G.1 `PLAN_DELTA.md` is missing/incomplete.
 
 ## Isolation bar
 

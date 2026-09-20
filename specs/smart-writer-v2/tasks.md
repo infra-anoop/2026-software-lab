@@ -249,9 +249,9 @@ D6 lock + T070 (vault seed + sync)
 
 - [ ] T069 [OD:D5] **(1)** Vercel **v0** GUI design pass (chat + Settings). **(2)** Deploy that UI on **Railway** (cattle in git; public product URL). Wire BFF/secret custody to worker — browser never sees audit secret. Update `apps/smart-writer-v2/web/README.md` for Railway UI host (not Vercel deploy). Local/Codespaces = dev only, not the finish bar.
 
-### Uploads (D7 — in finish bar once locked)
+### Uploads (D7 locked — in-memory)
 
-- [ ] T073 [OD:D7] Lock applied: upload shape = in-memory bytes; document size/MIME defaults in contract/`web` README; no object store
+- [ ] T073 [OD:D7] Document size/MIME defaults in `contracts/http-api.md` + `web/README.md`; storage = in-memory bytes (no object store)
 - [ ] T074 [P] Contract tests for upload accept/reject in `apps/smart-writer-v2/tests/contract/test_upload_materials.py` (red → T* → impl)
 - [ ] T075 Extend `POST .../messages` (or dedicated upload route) + store `MaterialRef` `kind=upload` with in-memory bytes in `apps/smart-writer-v2/app/entrypoints/http.py` / `store.py`
 - [ ] T076 Chat UI upload control in `apps/smart-writer-v2/web/` (BFF custody; no client audit secret)

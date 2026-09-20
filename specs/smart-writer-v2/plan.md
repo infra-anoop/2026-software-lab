@@ -10,7 +10,7 @@ Phasing references architecture; it does not replace it.
 
 **Plan Architecture review:** Report [`PLAN_REVIEW.md`](./PLAN_REVIEW.md). Brief: [`PLAN_REVIEW_PROMPT.md`](../../docs/agent-os/PLAN_REVIEW_PROMPT.md). Posture: [`STACK_POSTURE.md`](../../docs/agent-os/STACK_POSTURE.md).
 
-**Status**: **Approved** — Architecture + Phased delivery (P1–P8). Core stories done. **Finish bar** = Open Decisions D2–D9 (**all locked 2026-09-20**) + Phase 10 tasks. **Amendments:** dual-axis scored loop (**D8**); **D5** = v0 design + Railway UI deploy; **D7** uploads in-memory; **D9** = single revise path + explicit regenerate.
+**Status**: **Approved** — Architecture + Phased delivery (P1–P8). Core stories done. **Finish bar** = Open Decisions D2–D9 (**all locked 2026-09-20**) + Phase 10 tasks. **Amendments:** dual-axis scored loop (**D8**); **D5** = v0 design + Railway UI deploy; **D7** uploads in-memory; **D9** = single revise path + explicit regenerate. **§G.1:** [`PLAN_DELTA.md`](./PLAN_DELTA.md) (2026-09-20) — architecture-affecting locks reconciled; dependent implement unblocked.
 
 ## Remaining work map (V2 finish)
 

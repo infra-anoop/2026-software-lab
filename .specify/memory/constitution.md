@@ -4,7 +4,7 @@ Non-negotiable principles for every feature and agent run in this monorepo.
 Spec Kit phases (`/speckit-*`) and `AGENTS.md` must respect this document.
 Product-unique choices belong in feature specs — **not** by reinventing process.
 
-**Version**: 1.6.1 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-20
+**Version**: 1.7.0 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-20
 
 ## Core Principles
 
@@ -157,6 +157,7 @@ Every deferred interactive detail MUST appear in the feature spec’s **Open Dec
 | who | `human` \| `agent-policy` |
 | before | Which story/phase/task class must not invent this (plain language OK) |
 | status | `open` \| `locked` \| `waived` |
+| arch_impact | Set when locking: `content-only` \| `architecture-affecting` (drives §G.1); omit while `open` |
 
 **Status meanings:**
 - `open` = content still TBD; must ask before inventing; **still required for product finish** until locked or explicitly `waived`
@@ -169,11 +170,39 @@ Before implementing any `open` `who: human` row, raise it in product language an
 
 1. `/speckit-clarify` and `/speckit-specify`: when a list-like or numeric detail is wrong for PRD mood, **emit an Open Decision row** (do not drop the debt; do not invent the list).
 2. `/speckit-tasks`: every `who: human` + `status: open` decision MUST produce at least one task tagged **`[HITL]`** (or `[OD:D#]`) that resolves it **before** dependent product work. Tasks that only need process policy use **`[POLICY]`** when useful.
-3. `/speckit-implement` and packets: MUST NOT invent content for `who: human` opens. Stop, pose the Open Decision in **product language**, record the lock in the spec table, then resume. Inventing a seed list / caps / UX enum to “keep going” is a **harness defect** (unauthorized product authorship).
+3. `/speckit-implement` and packets: MUST NOT invent content for `who: human` opens. Stop, pose the Open Decision in **product language**, record the lock in the spec table, then resume. Inventing a seed list / caps / UX enum to “keep going” is a **harness defect** (unauthorized product authorship). After architecture-affecting locks, complete **§G.1** before dependent implement.
 4. `who: agent-policy` opens may be resolved by the agent under written policy; still record the lock in the table (no silent defaults).
 5. Product reviewers (F*) SHOULD flag “non-final / TBD content” without an Open Decision row as a **Debate** or **Blocker**.
+6. Column **`arch_impact`** (optional but recommended): `content-only` \| `architecture-affecting` — set when locking (§G.1).
 
 Open Decisions are the bridge between high-altitude spec conversation and long autonomous execute stretches.
+
+#### G.1 Architecture delta reconcile (after OD lock — NON-NEGOTIABLE)
+
+Locking an Open Decision is **not** enough when the lock changes how the system is built. Spec Kit stock under-specifies evolution; this lab fails closed.
+
+**When any `who: human` row becomes `locked` or `waived`, classify it** (record on the row or in the feature `PLAN_DELTA.md`):
+
+| Class | Meaning | Examples |
+|-------|---------|----------|
+| **content-only** | Fills numbers/enums/labels/ops into already-locked Architecture shape | Spend-cap integers; vault “yes seed”; citation in Settings when Settings already planned; explicit regenerate control already in contract |
+| **architecture-affecting** | Changes topology, hosts, required subsystems, entities/fields, or pipeline stages | New scored quality loop; UI design-tool vs deploy-host split; upload storage model; new job snapshot metrics that imply new entities |
+
+**If the batch includes any architecture-affecting lock, before dependent implement/packets:**
+
+1. **Amend in place** (do **not** create a new feature directory solely for OD fills; do **not** re-run stock plan setup that **replaces** `plan.md` with an empty template):
+   - `plan.md` Architecture (+ Phasing exit criteria if needed)
+   - `data-model.md` and `contracts/` when entities/APIs change
+   - `research.md` Decision rows that were overturned
+   - `tasks.md` — append/adjust; do not renumber completed task IDs
+2. **Deposit** `PLAN_DELTA.md` in the feature dir (or an **Amendments** checklist section that points to the same content) with: locks classified, artifacts touched, remaining gaps, and whether a delta **P\*** review is warranted.
+3. **Run** `/speckit-analyze` (cross-artifact consistency) and record the result in `PLAN_DELTA.md` (pass / gaps filed as tasks).
+4. **Independent P\*** (spawn) **only if** the delta reopens topology or SOTA/host forks — or the human asks. Not a greenfield re-plan.
+5. **Gate:** Do **not** spawn implement/ops workers whose DoD depends on those locks until steps 1–3 are done for the architecture-affecting subset.
+
+**Content-only locks:** update the Open Decisions table + dependent Settings/task text; no `PLAN_DELTA` gate required (still may note them in an existing delta if one is open).
+
+**Human chat:** one product-altitude line — “Architecture delta reconcile required / done” — not three synonymous soft phrases.
 
 ## Stack constraints
 
@@ -187,5 +216,5 @@ Open Decisions are the bridge between high-altitude spec conversation and long a
 
 1. This constitution supersedes informal chat habits when they conflict.
 2. Amendments require editing this file, bumping **Version** / **Last Amended**, and a short note in `docs/agent-os/README.md`.
-3. Feature specs may not waive I–V or §G (Open Decisions fail-closed) without an explicit architect-backlog decision.
+3. Feature specs may not waive I–V or §G / §G.1 (Open Decisions + Architecture delta) without an explicit architect-backlog decision.
 4. `AGENTS.md` is the portable summary; `.specify/memory/constitution.md` is the Spec Kit source of process truth.

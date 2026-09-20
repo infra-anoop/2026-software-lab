@@ -18,6 +18,7 @@ Lab taste = thin **overlays** in constitution + template overrides — not a sec
 │  · Test-first for executable apps + independent T* test review      │
 │  · Progressive HITL (product locks human; process policy agent) │
 │  · Open Decisions (shape vs content; fail closed — §G)          │
+│  · Architecture delta reconcile after arch-affecting OD locks (§G.1) │
 │  · Orchestrator / workers (packet + background default — §H)  │
 │  · Failable outcomes + extensible acceptance catalog        │
 │  · notes/packets for workers + required review packets        │
@@ -32,6 +33,7 @@ Lab taste = thin **overlays** in constitution + template overrides — not a sec
 | Constitution | `.specify/memory/constitution.md` |
 | Spec / plan / tasks templates | `.specify/templates/` (+ `overrides/spec.md`, `overrides/plan.md`, `overrides/tasks-template.md`) |
 | Open Decisions (§G) | Spec template section + constitution §G; tasks `[HITL]` / `[OD:D#]` / `[POLICY]` |
+| Architecture delta (§G.1) | After architecture-affecting OD locks: amend plan/data-model/contracts; `PLAN_DELTA.md`; `/speckit-analyze`; then implement |
 | Spawn reviewers | `docs/agent-os/SPAWN_REVIEWER.md` |
 | Spawn workers (§H) | `docs/agent-os/SPAWN_WORKER.md` + `notes/packets/_WORKER_PROMPT.md` |
 | Slash-style skills | `.cursor/skills/speckit-*` |
@@ -82,6 +84,8 @@ If the human must open `tasks.md` to understand the question, the agent failed t
 
 **Open Decisions (§G):** deferred product *content* (lists, numbers, enums) with locked *shape* must live in the spec Open Decisions table. Implement fails closed — stop and ask in product language; never invent a seed list to keep the run going.
 
+**Architecture delta (§G.1):** when an OD lock is **architecture-affecting** (topology, new pipeline, new entities, deploy host), agents MUST amend `plan.md` / data-model / contracts in place, deposit `PLAN_DELTA.md` (see `PLAN_DELTA_TEMPLATE.md`), run `/speckit-analyze`, and **only then** spawn dependent implement packets. Do **not** greenfield re-plan or wipe `plan.md`. Content-only locks skip this gate.
+
 Unlocked product numbers and vault seeds are **run killers** for multi-hour agents. Put them in Open Decisions and/or the packet **Governor locks required** table (or Out of scope) before the run starts.
 
 ## Product vs process vs architecture
@@ -98,6 +102,7 @@ Unlocked product numbers and vault seeds are **run killers** for multi-hour agen
 
 | Version | Note |
 |---------|------|
+| 1.7.0 | §G.1 Architecture delta reconcile after architecture-affecting Open Decision locks; `PLAN_DELTA.md`; analyze before dependent implement |
 | 1.6.1 | §G: `waived` = out of product version; “not right now but still required” stays `open` |
 | 1.6.0 | §H orchestrator/workers: packet + background worker default; auto `[P]` parallel; tiny-glue exception; `SPAWN_WORKER.md` |
 | 1.5.1 | §G: `waived` = deferred this cycle; must re-ask in product language before later implement |
