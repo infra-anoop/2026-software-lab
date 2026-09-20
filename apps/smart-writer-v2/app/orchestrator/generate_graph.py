@@ -1,4 +1,4 @@
-"""LangGraph generate: infer → materials → web → write → provenance (P3)."""
+"""LangGraph generate: infer → materials → web → rubric → write↔assess → provenance (D8)."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from uuid import uuid4
 from langgraph.graph import END, START, StateGraph
 
 from app.agents.infer import infer_grant_state
+from app.agents.infer_state import extract_intent_slots
 from app.agents.provenance import attach_provenance, coerce_claims
 from app.agents.writer import write_grant_draft
 from app.config import get_openai_api_key
@@ -20,6 +21,7 @@ from app.models import (
     SourceRecord,
     WebSignal,
 )
+from app.orchestrator.scored_loop import run_scored_inner_loop
 from app.retrieval.bundles import collect_bundles
 from app.retrieval.url_fetch import FetchBudget
 
@@ -34,20 +36,25 @@ class GenerateState(TypedDict, total=False):
     humor_enabled: bool
     web_research_enabled: bool
     property_ranking: list[str]
+    intent_slots: dict[str, str | None]
     search_query: str
     materials_sources: list[SourceRecord]
     web_sources: list[SourceRecord]
     body: str
+    rubric_id: str
+    loop: dict[str, Any]
     claims: list[ClaimProvenance]
     artifact: ArtifactVersion
 
 
 class GenerateResult(TypedDict):
-    """Return value for callers (T028 later)."""
+    """Return value for callers — includes D8 loop keys (T049 / T085)."""
 
     artifact: ArtifactVersion
     sources: list[SourceRecord]
     humor_enabled: bool
+    rubric_id: str
+    loop: dict[str, Any]
 
 
 def decide_web_signal(*, web_research_enabled: bool, web_sources: list[SourceRecord]) -> WebSignal:
@@ -101,11 +108,19 @@ async def _node_infer(state: GenerateState) -> dict[str, Any]:
     ranking = list(inferred.property_ranking or state.get("property_ranking") or [])
     # T030: HTTP store/payload is source of truth for disable (canned tests never hit LLM).
     web_enabled = bool(state.get("web_research_enabled", True))
+    slots = {
+        "who": inferred.who,
+        "whom": inferred.whom,
+        "ask": inferred.ask,
+        "why_funder": inferred.why_funder,
+        "evidence": inferred.evidence,
+    }
     return {
         "humor_enabled": inferred.humor_enabled,
         "web_research_enabled": web_enabled,
         "property_ranking": ranking,
         "search_query": inferred.search_query,
+        "intent_slots": slots,
     }
 
 
@@ -137,22 +152,38 @@ async def _node_web(state: GenerateState) -> dict[str, Any]:
     return {"web_sources": bundles.web}
 
 
-async def _node_write(state: GenerateState) -> dict[str, Any]:
+async def _node_scored_loop(state: GenerateState) -> dict[str, Any]:
+    """After research: dual-axis rubric → write ↔ assess (≤ Settings max)."""
     materials = state.get("materials_sources") or []
     web = state.get("web_sources") or []
     pref = state.get("citation_mode_pref")
     citation: CitationMode = pref or "panel"
     if (materials or web) and pref is None:
         citation = "panel"
-    out = await write_grant_draft(
+    ranking = list(state.get("property_ranking") or [])
+    humor = bool(state.get("humor_enabled", False))
+    slots = dict(state.get("intent_slots") or {})
+
+    async def write_turn(prior: str | None, feedback: str | None) -> str:
+        out = await write_grant_draft(
+            user_text=state["user_text"],
+            humor_enabled=humor,
+            property_ranking=ranking,
+            materials=materials,
+            web=web,
+            citation_mode=citation,
+            prior_body=prior,
+            assessor_feedback=feedback,
+        )
+        return out.body
+
+    body, rubric_id, loop = await run_scored_inner_loop(
+        intent_slots=slots,
+        property_ranking=ranking,
         user_text=state["user_text"],
-        humor_enabled=bool(state.get("humor_enabled", False)),
-        property_ranking=list(state.get("property_ranking") or []),
-        materials=materials,
-        web=web,
-        citation_mode=citation,
+        write_turn=write_turn,
     )
-    return {"body": out.body}
+    return {"body": body, "rubric_id": rubric_id, "loop": loop}
 
 
 async def _node_provenance(state: GenerateState) -> dict[str, Any]:
@@ -183,18 +214,18 @@ async def _node_provenance(state: GenerateState) -> dict[str, Any]:
 
 
 def build_generate_graph() -> Any:
-    """Compile infer → materials → web → write → provenance."""
+    """Compile infer → materials → web → scored loop → provenance."""
     graph = StateGraph(GenerateState)
     graph.add_node("infer", _node_infer)
     graph.add_node("materials", _node_materials)
     graph.add_node("web", _node_web)
-    graph.add_node("write", _node_write)
+    graph.add_node("scored_loop", _node_scored_loop)
     graph.add_node("provenance", _node_provenance)
     graph.add_edge(START, "infer")
     graph.add_edge("infer", "materials")
     graph.add_edge("materials", "web")
-    graph.add_edge("web", "write")
-    graph.add_edge("write", "provenance")
+    graph.add_edge("web", "scored_loop")
+    graph.add_edge("scored_loop", "provenance")
     graph.add_edge("provenance", END)
     return graph.compile()
 
@@ -230,6 +261,16 @@ def _compose_grant_body(user_text: str, sources: list[SourceRecord]) -> str:
     return body if body.strip() else "Draft pending additional detail."
 
 
+def _apply_assessor_feedback(body: str, feedback: str | None) -> str:
+    """Deterministic revise step for the no-LLM scored loop."""
+    note = (feedback or "").strip()
+    if not note:
+        return body
+    if note in body:
+        return body
+    return f"{body.rstrip()}\n\nRevision note: {note}"
+
+
 def _claims_from_sources(body: str, sources: list[SourceRecord]) -> list[ClaimProvenance]:
     claims: list[ClaimProvenance] = []
     for src in sources:
@@ -248,6 +289,17 @@ def _claims_from_sources(body: str, sources: list[SourceRecord]) -> list[ClaimPr
     return coerce_claims(body, claims, sources)
 
 
+def _slots_dict_from_text(user_text: str) -> dict[str, str | None]:
+    inferred = extract_intent_slots(user_text)
+    return {
+        "who": inferred.who,
+        "whom": inferred.whom,
+        "ask": inferred.ask,
+        "why_funder": inferred.why_funder,
+        "evidence": inferred.evidence,
+    }
+
+
 async def _run_generate_without_llm(
     *,
     conversation_id: str,
@@ -256,8 +308,9 @@ async def _run_generate_without_llm(
     citation_mode_pref: CitationMode | None,
     humor_enabled: bool,
     web_research_enabled: bool,
+    property_ranking: list[str] | None,
 ) -> GenerateResult:
-    """Retrieve + assemble_artifact (T1/T3). Does not return canned assertion JSON."""
+    """Retrieve + scored loop + assemble_artifact. Does not return canned assertion JSON."""
     refs = materials or []
     bundles = await collect_bundles(
         refs,
@@ -266,7 +319,20 @@ async def _run_generate_without_llm(
         fetch_budget=FetchBudget(timeout_sec=3.0),
     )
     sources = [*bundles.materials, *bundles.web]
-    body = _compose_grant_body(user_text, sources)
+    ranking = list(property_ranking or [])
+    slots = _slots_dict_from_text(user_text)
+
+    async def write_turn(prior: str | None, feedback: str | None) -> str:
+        if prior and feedback:
+            return _apply_assessor_feedback(prior, feedback)
+        return _compose_grant_body(user_text, sources)
+
+    body, rubric_id, loop = await run_scored_inner_loop(
+        intent_slots=slots,
+        property_ranking=ranking,
+        user_text=user_text,
+        write_turn=write_turn,
+    )
     claims = _claims_from_sources(body, sources)
     web_signal = decide_web_signal(
         web_research_enabled=web_research_enabled,
@@ -287,6 +353,8 @@ async def _run_generate_without_llm(
         artifact=artifact,
         sources=list(artifact.sources),
         humor_enabled=humor_enabled,
+        rubric_id=rubric_id,
+        loop=loop,
     )
 
 
@@ -313,6 +381,7 @@ async def run_generate(
                 "humor_enabled": humor_enabled,
                 "web_research_enabled": web_research_enabled,
                 "property_ranking": ranking,
+                "intent_slots": _slots_dict_from_text(user_text),
             }
         )
         artifact: ArtifactVersion = final["artifact"]
@@ -320,6 +389,8 @@ async def run_generate(
             artifact=artifact,
             sources=list(artifact.sources),
             humor_enabled=bool(final.get("humor_enabled", humor_enabled)),
+            rubric_id=str(final.get("rubric_id") or ""),
+            loop=dict(final.get("loop") or {}),
         )
     return await _run_generate_without_llm(
         conversation_id=conversation_id,
@@ -328,5 +399,5 @@ async def run_generate(
         citation_mode_pref=citation_mode_pref,
         humor_enabled=humor_enabled,
         web_research_enabled=web_research_enabled,
+        property_ranking=ranking,
     )
-

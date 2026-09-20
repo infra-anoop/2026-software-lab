@@ -141,10 +141,10 @@ def get_max_clarify_turns_per_conversation() -> int:
 def get_max_inner_assessor_turns() -> int:
     """Max writer↔assessor inner turns per write job (D2/D8).
 
-    Exposed for Settings / D8 graph wiring (T083+). Outer HTTP does not enforce
-    this until the scored loop lands.
+    Clamped to **8** (T51 / catalog ≤8). Settings may be lower.
     """
-    return _settings_int(
+    raw = _settings_int(
         "SMART_WRITER_V2_MAX_INNER_ASSESSOR_TURNS",
         DEFAULT_MAX_INNER_ASSESSOR_TURNS,
     )
+    return min(8, raw)

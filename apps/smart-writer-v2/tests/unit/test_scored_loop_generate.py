@@ -1,7 +1,9 @@
 """D8: generate orchestrator must return scored loop metadata (unit seam).
 
-T079 — red until T083/T085 attach loop to GenerateResult. Uses the canned
-no-LLM path (sk-test key); does not stub assertion JSON onto the graph.
+T079 / T080: HTTP job snapshot is the D8 contract gate; this unit is a seam
+landmine — when T081+ wires the loop, ``run_generate`` must return
+``rubric_id`` + ``loop`` (same consistency locks as contract helper).
+Uses canned no-LLM path (sk-test key); does not stub assertion JSON onto the graph.
 """
 
 from __future__ import annotations
@@ -49,9 +51,19 @@ async def test_run_generate_includes_scored_loop_metadata(
         assert 1 <= iterations <= max_inner
         scores = loop.get("scores")
         assert isinstance(scores, list) and len(scores) == iterations
-        assert loop.get("stop_reason") in {"max_iterations", "targets_met", "error"}
+        stop_reason = loop.get("stop_reason")
+        assert stop_reason in {"max_iterations", "targets_met", "error"}
+        if stop_reason == "max_iterations":
+            assert iterations == max_inner
+        elif stop_reason == "targets_met":
+            assert iterations < max_inner
         assert isinstance(loop.get("aggregate_score"), (int, float))
-        assert int(loop.get("axis_a_dimension_count") or 0) >= 1
-        assert int(loop.get("axis_b_dimension_count") or 0) >= 1
+        axis_a = int(loop.get("axis_a_dimension_count") or 0)
+        axis_b = int(loop.get("axis_b_dimension_count") or 0)
+        assert axis_a >= 1 and axis_b >= 1
+        min_dims = axis_a + axis_b
+        for entry in scores:
+            dims = entry.get("dimension_scores")
+            assert isinstance(dims, list) and len(dims) >= min_dims
     finally:
         get_settings.cache_clear()

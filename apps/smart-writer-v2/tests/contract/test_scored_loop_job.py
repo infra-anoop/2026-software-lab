@@ -2,6 +2,9 @@
 
 T079 — red until T081–T085 wire rubric → write ↔ assess and persist loop metadata.
 Public HTTP only; do not stub the graph to the assertion JSON.
+
+T080 locks (T47/T48): shape + stop↔iterations consistency; per-turn dimension_scores
+cover both axes (len >= axis_a + axis_b).
 """
 
 from __future__ import annotations
@@ -14,7 +17,6 @@ from fastapi.testclient import TestClient
 from app.config import get_max_inner_assessor_turns, get_settings
 from app.entrypoints.http import app
 from tests.contract.grant_flow import (
-    AUTH,
     SECRET,
     post_followup_turn,
     submit_grant_and_wait,
@@ -25,7 +27,7 @@ _STOP_REASONS = frozenset({"max_iterations", "targets_met", "error"})
 
 
 def _assert_scored_loop(job: dict[str, Any], *, max_inner: int) -> None:
-    """Structural D8 / FR-022 checks (catalog loop.scores_and_stop, iterations_cap, dual_axis)."""
+    """Structural + consistency D8 checks (catalog loop.* / rubric.dual_axis; T47/T48)."""
     assert job.get("status") == "succeeded"
     rubric_id = job.get("rubric_id")
     assert isinstance(rubric_id, str) and rubric_id.strip() != ""
@@ -47,11 +49,17 @@ def _assert_scored_loop(job: dict[str, Any], *, max_inner: int) -> None:
 
     stop_reason = loop.get("stop_reason")
     assert stop_reason in _STOP_REASONS
+    # T47(b): stop reason must match iteration accounting (cheap fabricator guard)
+    if stop_reason == "max_iterations":
+        assert iterations == max_iterations
+    elif stop_reason == "targets_met":
+        assert iterations < max_iterations
 
     axis_a = loop.get("axis_a_dimension_count")
     axis_b = loop.get("axis_b_dimension_count")
     assert isinstance(axis_a, int) and axis_a >= 1
     assert isinstance(axis_b, int) and axis_b >= 1
+    min_dims = axis_a + axis_b
 
     scores = loop.get("scores")
     assert isinstance(scores, list) and len(scores) >= 1
@@ -62,12 +70,18 @@ def _assert_scored_loop(job: dict[str, Any], *, max_inner: int) -> None:
         assert isinstance(turn, int)
         assert 1 <= turn <= max_iterations
         dims = entry.get("dimension_scores")
-        assert isinstance(dims, list) and len(dims) >= 1
+        assert isinstance(dims, list)
+        # T48(b): each turn's scores cover both axes
+        assert len(dims) >= min_dims
+        seen_ids: set[str] = set()
         for dim in dims:
             assert isinstance(dim, dict)
-            assert isinstance(dim.get("id"), str) and dim["id"].strip() != ""
+            dim_id = dim.get("id")
+            assert isinstance(dim_id, str) and dim_id.strip() != ""
+            seen_ids.add(dim_id.strip())
             score = dim.get("score")
             assert isinstance(score, (int, float)) and not isinstance(score, bool)
+        assert len(seen_ids) >= min_dims
         turn_agg = entry.get("aggregate_score")
         assert isinstance(turn_agg, (int, float)) and not isinstance(turn_agg, bool)
         feedback = entry.get("feedback")
@@ -82,7 +96,7 @@ def test_generate_job_exposes_dual_axis_scored_loop(client: TestClient) -> None:
 
 def test_revise_job_runs_same_scored_loop(client: TestClient) -> None:
     """Succeeded revise also carries dual-axis scored loop (D8 / T084)."""
-    conversation_id, _accepted, first = submit_grant_and_wait(client)
+    conversation_id, _accepted, _first = submit_grant_and_wait(client)
     response = post_followup_turn(
         client,
         conversation_id,

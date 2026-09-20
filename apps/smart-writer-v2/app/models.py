@@ -96,3 +96,64 @@ class ProvenanceOutput(BaseModel):
     """Schema-first provenance node."""
 
     claims: list[ClaimProvenance] = Field(default_factory=list)
+
+
+class RubricDimension(BaseModel):
+    """One scored criterion on Axis A (intent) or Axis B (property)."""
+
+    id: str
+    axis: Literal["a", "b"]
+    label: str
+    description: str = ""
+
+
+class Rubric(BaseModel):
+    """Dual-axis rubric for one write job (D8) — not user-visible taxonomy."""
+
+    rubric_id: str
+    axis_a_dimensions: list[RubricDimension] = Field(min_length=1)
+    axis_b_dimensions: list[RubricDimension] = Field(min_length=1)
+    weights: dict[str, float] | None = None
+
+    def all_dimensions(self) -> list[RubricDimension]:
+        """Axis A then Axis B (stable assessor order)."""
+        return [*self.axis_a_dimensions, *self.axis_b_dimensions]
+
+
+class DimensionScore(BaseModel):
+    """One dimension id + numeric score (AssessorScore row)."""
+
+    id: str
+    score: float
+
+
+class AssessorOutput(BaseModel):
+    """Schema-first assessor result_type (T082) — covers both rubric axes."""
+
+    dimension_scores: list[DimensionScore] = Field(min_length=1)
+    aggregate_score: float
+    feedback: str
+
+
+StopReason = Literal["max_iterations", "targets_met", "error"]
+
+
+class LoopScoreEntry(BaseModel):
+    """One inner writer↔assess turn on the job snapshot."""
+
+    iteration: int
+    dimension_scores: list[DimensionScore]
+    aggregate_score: float
+    feedback: str
+
+
+class LoopMetadata(BaseModel):
+    """Job.loop payload (D8 / http-api hook 7)."""
+
+    iterations: int
+    max_iterations: int
+    aggregate_score: float
+    stop_reason: StopReason
+    axis_a_dimension_count: int
+    axis_b_dimension_count: int
+    scores: list[LoopScoreEntry]

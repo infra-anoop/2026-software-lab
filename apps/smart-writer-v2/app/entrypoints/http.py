@@ -67,6 +67,7 @@ async def _execute_job(payload: dict[str, Any]) -> dict[str, Any]:
             parent=parent,
             citation_mode_pref=payload.get("citation_mode_pref"),
             humor_enabled=bool(payload.get("humor_enabled", False)),
+            property_ranking=list(payload.get("property_ranking") or []),
         )
     else:
         raw_materials = payload.get("materials") or []
@@ -90,6 +91,8 @@ async def _execute_job(payload: dict[str, Any]) -> dict[str, Any]:
     return {
         "humor_enabled": result["humor_enabled"],
         "artifact": artifact.model_dump(),
+        "rubric_id": result["rubric_id"],
+        "loop": result["loop"],
     }
 
 
@@ -380,5 +383,7 @@ def get_job(
         "status": "succeeded",
         "mode": mode,
         "humor_enabled": result.get("humor_enabled", False),
+        "rubric_id": result.get("rubric_id"),
+        "loop": result.get("loop"),
         "artifact": result["artifact"],
     }

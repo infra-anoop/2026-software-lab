@@ -952,3 +952,144 @@ Feature-local lock: plan-approved harness cut (B5 mutating spend/abuse; queue-fu
 
 Tests edited to match. **T062 rate-limiter impl may start.**
 
+
+---
+
+## T080 — D8 scored-loop red tests (T079)
+
+**Reviewer role:** Independent test reviewer (did not write these tests; no loyalty to their wording)  
+**Brief:** `docs/agent-os/TEST_REVIEW_PROMPT.md` (constitution §V)  
+**Packet:** `notes/packets/2026-09-20-swv2-t080.md`  
+**Feature:** `specs/smart-writer-v2/`  
+**Commit under review:** `0a359ab`  
+**Date:** 2026-09-20  
+
+**Scope files**
+
+| Task | File |
+|------|------|
+| T079 | `apps/smart-writer-v2/tests/contract/test_scored_loop_job.py` |
+| T079 | `apps/smart-writer-v2/tests/unit/test_scored_loop_generate.py` |
+| T078 (read-only) | `contracts/http-api.md` hook 7; `data-model.md` Job.loop / Rubric / AssessorScore; `acceptance.md` `loop.*` / `rubric.dual_axis` |
+
+**Pytest (app `.venv`, 2026-09-20):** 4 failed — contract trio at `_assert_scored_loop` missing nonempty `rubric_id`; unit at `'rubric_id' in result` on current `GenerateResult` (artifact/sources/humor only). Fail locus matches packet. No D8 product impl yet.
+
+---
+
+### A. Executive verdict
+
+**Approve tests with minor edits**
+
+The contract suite is honest red against the public job snapshot: generate, revise, and a Settings override of inner max all share a structural helper that encodes hook 7 + catalog `loop.scores_and_stop` / `loop.iterations_cap` / `rubric.dual_axis` (nonempty `rubric_id`, `loop`, numeric aggregates, stop enum, axis counts ≥ 1, `len(scores)==iterations`, per-turn dims + feedback). They do **not** stub the graph to assertion JSON. The unit seam fails for the same missing fields on `run_generate`.
+
+They would **not** fail closed on a one-shot write that **fabricates** a legal-looking `loop` (thinner than V1 / FR-022 “writer↔assess … optimizes”), on Axis A/B **counts** that disagree with `dimension_scores` coverage, or on `stop_reason` that contradicts `iterations` (e.g. `max_iterations` with `iterations=1`). The unit test also locks `GenerateResult` keys that the HTTP contract places on the **job** snapshot — implementers may overfit the orchestrator TypedDict.
+
+Do not start matching T081–T085 product code until product Debates **T47–T48** are human-adjudicated (constitution §F). Process Debate **T49** may be agent-adjudicated. Do not green by attaching canned loop JSON in `_execute_job` without a real dual-axis assess path.
+
+---
+
+### B. Findings table
+
+| ID | Severity | Lens | Locus | Finding | Suggested resolution |
+|----|----------|------|-------|---------|----------------------|
+| **T47** | **Debate** | Lock fidelity / wrong-thing | `_assert_scored_loop`; catalog `loop.scores_and_stop`; FR-022; http-api “not thinner than V1” | Steelman: structural JSON is what `how: auto` can honestly check; scores/stop/axes/cap are present; live LLM quality is hybrid/human. Attack: FR-022 and the contract ban one-shot write without scores — but a **post-hoc fabricated** `loop` (one writer pass, then invent `scores[]` with ids/scores/feedback, `stop_reason=targets_met`, counts=1/1) greens every assert while no assessor turn ran and nothing optimized. “Not thinner than V1” becomes theater identical to pre-lock US1 claims-shape-without-binding. | **`product`** — Lock one of: (a) **structural-only** is the approved auto bar for D8 (impl/PR must still wire real write↔assess; tests stay shape); or (b) harden auto with **consistency** that a pure fabricator fails cheaply: if `stop_reason==max_iterations` then `iterations==max_iterations`; if `targets_met` then `iterations < max_iterations` **or** last aggregate meets an explicit numeric gate field the contract names; require `len(dimension_scores) >= axis_a_dimension_count + axis_b_dimension_count` per turn (pairs with T48). Do not pytest prose “useful feedback.” |
+| **T48** | **Debate** | Lock fidelity | `axis_*_dimension_count`; AssessorScore `dimension_scores`; `rubric.dual_axis`; data-model “covering … both axes” | Steelman: catalog row only requires snapshot counts ≥ 1 each; Rubric is not user-visible. Attack: counts can be `{1,1}` while every turn’s `dimension_scores` is a single Axis-A id (or one shared fake dim). Dual-axis lock is then two integers, not two scored axes. Data-model AssessorScore says dimension_scores cover rubric dimensions **(both axes)**. | **`product`** — Require per turn: `len(dimension_scores) >= axis_a_dimension_count + axis_b_dimension_count` (and both counts ≥ 1 already). Optional: distinct non-empty `id`s; do **not** require exposing Rubric taxonomy on HTTP. Leave “ids map to intent vs property meaning” hybrid/human. |
+| **T49** | **Debate** | Over-constrain / wrong layer | `test_scored_loop_generate.py`; `GenerateResult` TypedDict; hook 7 on job GET | Steelman: T083/T085 attach loop to generate result; unit fails closed without HTTP. Attack: contract auto-check lives on **succeeded job** snapshot. Today `GenerateResult` is `{artifact, sources, humor_enabled}`; job assembly can add `rubric_id`/`loop` at persist. Forcing those keys on `run_generate`’s TypedDict over-constrains the seam and duplicates the contract file. Canned `sk-test-fake` path will eventually mint loop metadata by construction — same theater risk as T47, closer to the implementer’s stub. | **`process`** — Keep HTTP contract tests as the D8 gate. Either (a) drop or thin the unit to “job snapshot after `_execute_job`” / store seam, or (b) keep unit only if T081+ explicitly returns loop from `run_generate` — document that in the test docstring; still do not stub assertion JSON onto the graph. |
+| **T50** | Later | SNR / lock fidelity | `stop_reason` ∈ enum only; catalog `loop.iterations_cap` | Enum membership is necessary. No coupling: `max_iterations` + `iterations=1`, or `error` on a **succeeded** job, both pass. Catalog text “stop by score gate or cap” is unenforced beyond allowing those strings. | If T47 picks (b), add the stop↔iterations consistency asserts. If (a), leave as Later — PR review owns real stop semantics. |
+| **T51** | Later | Lock fidelity | Settings override test; `get_max_inner_assessor_turns`; catalog ≤8 | Override `=5` correctly pins `max_iterations==5`. `_settings_int` is `max(0, int)` — env `12` yields 12; contract/catalog require `max_iterations ≤ 8`. No red test that Settings >8 is clamped or rejected. | Matching impl (T063/T083): clamp inner max to **8** (or fail closed on Settings). Add one assert: env `9` → job `max_iterations==8` (or 422/config error — pick one in impl). Not blocking if D2 Settings tests already lock default 8. |
+| **T52** | **Strength** | Red-first / SNR | both files; grant_flow; revise + Settings override | Public HTTP only; comment forbids graph stub. Fail today on missing `rubric_id` / `loop`, not ImportError. Generate **and** revise share `_assert_scored_loop` (D8 “every write job”). Settings override clears cache and rebuilds client — `max_iterations` must equal override, not a hardcoded 8. Bool-as-score guarded. Per-turn `feedback` nonempty on contract helper. | Keep no-stub rule. Do not green by monkeypatching `_execute_job` to return the assertion JSON. |
+| **T53** | Nit | SNR | unit vs `_assert_scored_loop` | Unit omits nonempty `feedback`, per-dim `id`/score typing depth, and `max_iterations <= 8` explicit (relies on Settings default). Duplicate thinner copy of the contract helper. | If unit survives T49: call a shared assert helper, or delete redundant checks and keep only `rubric_id`+`loop` presence at the seam. |
+
+Minimum count met. Debates: **T47** (`product`), **T48** (`product`), **T49** (`process`). Strength: **T52**.
+
+Correctly **not** pytested (do not fake): assessor prose quality; “optimizes toward scores” trajectory; Rubric taxonomy text; human revise vs inner loop (D9); outer write-job caps (other files).
+
+---
+
+### C. Adversarial positions (required)
+
+1. **Position: these tests would go green while a spec lock fails** — strongest case
+
+   After one canned writer body, persist `rubric_id="r1"`, `loop={iterations:1, max_iterations:8, aggregate_score:0.9, stop_reason:"targets_met", axis_a_dimension_count:1, axis_b_dimension_count:1, scores:[{iteration:1, dimension_scores:[{id:"a", score:1}], aggregate_score:0.9, feedback:"ok"}]}`. No assessor agent, no dual-axis rubric build, no second writer turn. Contract + unit go green. FR-022 writer↔assess optimize and “not thinner than V1” fail. Settings override still passes if `max_iterations` echoes Settings.
+
+   *What would have to be true for the suite to be right anyway:* T47 locks structural-only as the auto bar and PR/tasks T081–T085 are the real loop gate; **or** T47(b)+T48 consistency makes cheap fabricators fail; F5 still forbids LangGraph-as-product-SC so pytest cannot prove “a real assessor ran.”
+
+2. **Position: these tests over-constrain implementation / test the wrong layer** — strongest case
+
+   Unit forces `GenerateResult` to grow job-snapshot fields; job assembler could be the only contract surface (hook 7). Requiring nonempty `feedback` and full AssessorScore shape on every turn may push stub feedback strings. Pinning `max_iterations == get_max_inner_assessor_turns()` forbids a job-local lower cap under Settings max. Revise must carry the same loop even if plan allows revise to narrow research — correct for D8, but doubles LLM cost in CI unless canned path invents loop (back to theater).
+
+   *What would have to be true for the suite to be right anyway:* T49 keeps HTTP as source of truth; job may set `max_iterations` equal to Settings (not lower) as the D2/D8 lock; canned path is allowed **only** if it still runs the dual-axis score objects through the same code as prod (not a JSON literal in the test).
+
+---
+
+### D. Catalog / contract coverage map
+
+| Catalog id or contract hook | Test file / name | Can fail today? | Gap |
+|-----------------------------|------------------|-----------------|-----|
+| Hook 7 — succeeded generate/revise `rubric_id` + `loop` shape | `test_scored_loop_job.py` (generate + revise + Settings) | **yes** (missing `rubric_id`) | Theater fabricator (T47); dim coverage (T48); stop↔iterations (T50) |
+| `loop.scores_and_stop` | `_assert_scored_loop` | **yes** | Same; no “real loop ran” |
+| `loop.iterations_cap` | `_assert_scored_loop` + Settings override | **yes** | Override=5 good; Settings>8 untested (T51) |
+| `rubric.dual_axis` | axis count asserts | **yes** | Counts only; not dimension_scores coverage (T48) |
+| AssessorScore per-turn fields | contract helper | **yes** (unreached until rubric_id exists) | feedback/ids required on HTTP; thinner on unit (T53) |
+| Unit seam `run_generate` loop keys | `test_scored_loop_generate.py` | **yes** | Wrong layer risk (T49) |
+| FR-022 “optimizes toward scores” | none | n/a | Correctly not auto |
+| D9 outer revise routing | revise test only asserts loop present | n/a | Continuity covered elsewhere |
+
+---
+
+### E. Edit list
+
+- After **T47**: either document structural-only auto bar in test docstring, **or** add stop↔iterations (+ optional aggregate gate) consistency asserts.
+- After **T48**: per-turn `len(dimension_scores) >= axis_a_dimension_count + axis_b_dimension_count`.
+- After **T49**: keep HTTP as D8 gate; thin/drop unit or document `run_generate` as intentional return surface.
+- Optional **T51**: env inner max `9` → job `max_iterations == 8` (once Settings clamps).
+- Share `_assert_scored_loop` with unit if unit remains (**T53**).
+- Do **not** stub `_execute_job` / graph to return the assertion JSON.
+- Do **not** pytest assessor prose quality or Axis label semantics.
+- Matching impl (post-lock): real dual-axis rubric → write↔assess ≤ Settings max; persist job `rubric_id`/`loop`.
+
+---
+
+### F. Questions for the human (max 3)
+
+1. **T47:** Is D8 `how: auto` **structural job JSON only** (accept fabricator risk; enforce real loop in T081–T085 / PR), or must tests add **stop↔iterations / coverage consistency** so a one-shot fabricator fails?
+2. **T48:** Must each turn’s `dimension_scores` **cover both axes** (`len >= axis_a + axis_b`), or are `axis_*_dimension_count >= 1` alone enough for catalog `rubric.dual_axis`?
+
+Implementer: do not start T081–T085 until **T47–T48** are accepted or tests edited. Process **T49** and Nit/Later (**T50–T51**, **T53**) may be agent-adjudicated (§F). Do not green by attaching canned loop metadata without a dual-axis assess path.
+
+---
+
+## Adjudication — T080 (2026-09-20) — partial (process / Nit/Later)
+
+Agent-closed under constitution §F. **Product Debates T47–T48 remain open** until human lock.
+
+| ID | Status | Lock |
+|----|--------|------|
+| **T47** | **await Debate** | product — structural-only auto bar vs harden consistency |
+| **T48** | **await Debate** | product — axis counts alone vs `dimension_scores` cover both axes |
+| **T49** | **locked (process)** | HTTP job-snapshot contract tests are the D8 gate. Keep unit `test_scored_loop_generate.py` only as a seam landmine: docstring must say `run_generate` returns `rubric_id`/`loop` when T081+ wires them; do not stub assertion JSON onto the graph. Prefer shared `_assert_scored_loop` (or presence-only) per T53. |
+| **T50** | **accepted (Later)** | Follows T47: if harden (b), add stop↔iterations consistency; if structural-only (a), PR owns stop semantics. |
+| **T51** | **accepted (Later)** | Matching Settings/impl clamp inner max to **8** (or fail closed). Optional env `9` → job `max_iterations==8` when that clamp exists. |
+| **T52** | **strength** | Keep no-stub / generate+revise+Settings split. |
+| **T53** | **accepted (Nit)** | If unit kept: share contract helper or presence-only at seam. |
+
+**Resume:** after T47–T48 recorded below, edit red tests if required, then T081–T085 may start.
+
+---
+
+## Adjudication — T080 product Debates (2026-09-20)
+
+Human lock (chat): auto bar **B** (shape + cheap consistency); dual-axis **B** (scores cover both axes).
+
+| ID | Status | Lock |
+|----|--------|------|
+| **T47** | **locked** | D8 `how: auto` = **shape + consistency**. Require: if `stop_reason==max_iterations` then `iterations==max_iterations`; if `stop_reason==targets_met` then `iterations < max_iterations`; per-turn `len(dimension_scores) >= axis_a_dimension_count + axis_b_dimension_count` (with T48). Do not pytest assessor prose. Real write↔assess still required in T081–T085 / PR — tests catch cheap fabricators only. |
+| **T48** | **locked** | Each turn: `len(dimension_scores) >= axis_a_dimension_count + axis_b_dimension_count` (both counts ≥ 1). Distinct nonempty `id`s preferred; do **not** require Rubric taxonomy on HTTP. Axis meaning of ids stays hybrid/human. |
+| **T49** | **locked (process)** | HTTP is D8 gate; unit seam kept with docstring that `run_generate` returns `rubric_id`/`loop`. |
+| **T50** | **accepted** | Consistency asserts landed with T47(b). |
+| **T51** | **accepted (Later)** | Clamp inner max to 8 in Settings/impl. |
+| **T52** | **strength** | Keep no-stub / generate+revise+Settings. |
+| **T53** | **accepted (Nit)** | Share helper or presence-only on unit. |
+
+Tests edited to match. **T081–T085 may start.**
+

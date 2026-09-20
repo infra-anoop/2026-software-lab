@@ -50,3 +50,4 @@ Extensible checks for [`spec.md`](./spec.md) Success Criteria. Grow from test ru
 | 2026-09-15 | R4 hygiene: class column prefers SC-*; auto subset deferred to plan |
 | 2026-09-18 | T061: `revise.continuity_default` → `how: auto` (green `test_revise_job.py`; plan P2 exit) |
 | 2026-09-20 | T078: D8 scored loop structural rows (`loop.scores_and_stop`, `loop.iterations_cap`, `rubric.dual_axis`) |
+| 2026-09-20 | T086: confirm `loop.*` / `rubric.dual_axis` remain `how: auto` (structural); assessor prose / score-quality stays hybrid/human |

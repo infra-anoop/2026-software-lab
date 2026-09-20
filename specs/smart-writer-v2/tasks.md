@@ -221,8 +221,8 @@ D6 lock + T070 (vault seed + sync)
 
 ### Ops / cattle
 
-- [ ] T070 [OD:D6] Human seeds `SMART_WRITER_V2_AUDIT_SECRET` in Infisical (path per schema); sync to Railway worker + UI/BFF; verify mutating `/v1` accepts the secret (not only `/health`). Never commit the value.
-- [ ] T071 Ship + deploy `smart-writer-v2` from current `main` (GHCR pin) + `smoke-test.yml` `/health` 200; document Railway URL in `apps/smart-writer-v2/README.md` if changed
+- [x] T070 [OD:D6] Human seeds `SMART_WRITER_V2_AUDIT_SECRET` in Infisical (path per schema); sync to Railway worker + UI/BFF; verify mutating `/v1` accepts the secret (not only `/health`). Never commit the value. — sync #5 + deploy #4 (2026-09-20): `/v1` wrong/missing secret → **401** (was 503). UI/BFF host secret when T069 Railway UI ships.
+- [x] T071 Ship + deploy `smart-writer-v2` from current `main` (GHCR pin) + `smoke-test.yml` `/health` 200; document Railway URL in `apps/smart-writer-v2/README.md` if changed — deploy #4 success; `GET /health` 200 verified; URL in README
 
 ### Spend caps (D2 locked)
 
@@ -232,13 +232,13 @@ D6 lock + T070 (vault seed + sync)
 
 - [x] T078 Amend `specs/smart-writer-v2/contracts/http-api.md` + `data-model.md`: job snapshot fields for inner loop (`iterations`, scores / aggregate, `stop_reason`); catalog rows in `acceptance.md` for scored loop structural checks
 - [x] T079 [P] Red contract/unit tests for dual-axis rubric + scored loop (≤8, scores present, stop by cap or score gate) under `apps/smart-writer-v2/tests/`
-- [ ] T080 Spawn T* review packet for T079 tests (`notes/packets/` + `SPAWN_REVIEWER.md`); resolve product-tagged Debates before impl
-- [ ] T081 Rubric builder from **Axis A (intent slots) + Axis B (property ranking)** in `apps/smart-writer-v2/app/agents/` + prompt program (redesign OK; not thinner than V1 scored capability)
-- [ ] T082 Assessor agent with **scores** (schema-first `result_type`) in `apps/smart-writer-v2/app/agents/`
-- [ ] T083 Wire generate graph: after research, **rubric → write ↔ assess →** provenance in `apps/smart-writer-v2/app/orchestrator/generate_graph.py` (honor Settings max 8)
-- [ ] T084 Wire revise graph to run the same scored inner loop (may skip/narrow research) in `apps/smart-writer-v2/app/orchestrator/revise_graph.py`
-- [ ] T085 Persist/expose loop metadata on job snapshot + artifact assembly; green T079 tests
-- [ ] T086 Mark applicable catalog rows `how: auto` where structural; note hybrid remainder for human score quality
+- [x] T080 Spawn T* review packet for T079 tests (`notes/packets/` + `SPAWN_REVIEWER.md`); resolve product-tagged Debates before impl — T47/T48 locked (shape+consistency; dual-axis coverage); tests hardened
+- [x] T081 Rubric builder from **Axis A (intent slots) + Axis B (property ranking)** in `apps/smart-writer-v2/app/agents/` + prompt program (redesign OK; not thinner than V1 scored capability)
+- [x] T082 Assessor agent with **scores** (schema-first `result_type`) in `apps/smart-writer-v2/app/agents/`
+- [x] T083 Wire generate graph: after research, **rubric → write ↔ assess →** provenance in `apps/smart-writer-v2/app/orchestrator/generate_graph.py` (honor Settings max 8)
+- [x] T084 Wire revise graph to run the same scored inner loop (may skip/narrow research) in `apps/smart-writer-v2/app/orchestrator/revise_graph.py`
+- [x] T085 Persist/expose loop metadata on job snapshot + artifact assembly; green T079 tests
+- [x] T086 Mark applicable catalog rows `how: auto` where structural; note hybrid remainder for human score quality
 
 ### Spend / observability / UI polish
 
