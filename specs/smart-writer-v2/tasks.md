@@ -256,7 +256,7 @@ D6 lock + T070 (vault seed + sync)
 - [ ] T075 Extend `POST .../messages` (or dedicated upload route) + store `MaterialRef` `kind=upload` with in-memory bytes in `apps/smart-writer-v2/app/entrypoints/http.py` / `store.py`
 - [ ] T076 Chat UI upload control in `apps/smart-writer-v2/web/` (BFF custody; no client audit secret)
 
-### Outer revise routing (D9 — open; required once locked)
+### Outer revise routing (D9 locked)
 
 - [ ] T087 [OD:D9] Verify / keep **explicit** “Regenerate / start over” control through v0 GUI design (`web/`); `client_intent=regenerate` → generate. Do **not** add LLM inference of start-over from free-form feedback. Normal feedback stays single revise path.
 
