@@ -10,23 +10,25 @@ Phasing references architecture; it does not replace it.
 
 **Plan Architecture review:** Report [`PLAN_REVIEW.md`](./PLAN_REVIEW.md). Brief: [`PLAN_REVIEW_PROMPT.md`](../../docs/agent-os/PLAN_REVIEW_PROMPT.md). Posture: [`STACK_POSTURE.md`](../../docs/agent-os/STACK_POSTURE.md).
 
-**Status**: **Approved** — Architecture + Phased delivery (P1–P8 adjudicated). Implement through P2 core done; remaining polish/ops gated by **Open Decisions** in [`spec.md`](./spec.md) (§G dogfood).
+**Status**: **Approved** — Architecture + Phased delivery (P1–P8). Core stories done. **Finish bar** = Open Decisions D2–D7 (**reopened 2026-09-20**; required for V2 complete dogfood) + Phase 10 tasks in [`tasks.md`](./tasks.md).
 
-## Remaining work map (a/b/c/d dogfood)
+## Remaining work map (V2 finish)
 
-Governor view — agents keep task IDs in git; humans lock **D\*** in product language.
+Governor view — lock **D\*** in product language; agents keep task IDs in git.
 
-| Goal | Open Decision | Notes |
-|------|---------------|--------|
-| Live worker matches git + mutating API | **D6** waived | Deferred this cycle |
-| Chat in a production browser | **D5** waived | Deferred this cycle |
-| Extra spend caps beyond rate limit | **D2** waived | Deferred this cycle |
-| Optional observability | **D3** waived | Deferred this cycle |
-| Citation format control in UI | **D4** waived | Deferred this cycle |
-| File uploads | **D7** waived | Stay P3 deferred |
-| Property labels | **D1** | **locked** (ratified seed) |
+| Order | Goal | Open Decision | Tasks |
+|------|------|---------------|--------|
+| 1 | Preview secret in vault + sync | **D6** (open) | T070 |
+| 2 | Production worker = latest `main` | — (ops) | T071 |
+| 3 | Turn/cost cap numbers + Settings | **D2** (open) | T063 |
+| 4 | Observability (Logfire when token set) | **D3** (open) | T064 |
+| 5 | Citation format control in UI | **D4** (open) | T065 |
+| 6 | Live chat UI on Vercel | **D5** (open) | T069 |
+| 7 | File uploads | **D7** (open) | T073–T076 |
+| 8 | Final green + smoke | — | T068*, T077 |
+| — | Property labels | **D1** locked | — |
 
-**Execute posture:** D2–D7 waived (2026-09-19) — do not implement gated polish/ops; do not invent content. Reopen a row to `open` + lock content before any matching work.
+**Execute posture:** Do not invent open content. Prefer packet + background worker (§H). Sequence below is mandatory order unless a later item has no dependency on an earlier lock.
 
 ## Review locks (P*)
 
@@ -38,7 +40,7 @@ Governor view — agents keep task IDs in git; humans lock **D\*** in product la
 | **P4** | **locked** | **Claim-level provenance in MVP:** `ClaimProvenance` (claim span/quote → `source_id` \| `uncertain`). Retrieval emits **materials_bundle** vs **web_bundle**; SC-004 declare when web yields nothing useful. SC-003/004 hook these fields — not merely nonempty `sources[]`. |
 | **P5** | **locked** | **Clarify-before-write in P1:** Grant path with missing Who/Whom/Ask/Why/Evidence ⇒ `type=clarify` only (no generate/revise job). P1 exit includes a must-clarify fixture. Assistant questions are NL-only; do **not** default-expose slot ids (`missing_hints`) to the client. P2 = A-before-B ordering + chips, not “invent clarify.” |
 | **P6** | **accepted** | Strength: clean-room + mode/parent_artifact_id contracts + preview fail-closed + stack-not-as-SC — keep as task-ready bar. |
-| **P7** | **deferred** | SSRF/fetch, uploads, Logfire, turn/cost numbers → **Open Decisions D2–D7** in `spec.md` (fail closed; not silent invent) |
+| **P7** | **in finish** | SSRF/fetch hygiene as needed; uploads (**D7**); Logfire (**D3**); turn/cost numbers (**D2**) — see Phase 10 |
 | **P8** | **accepted** | Phasing order OK; P1 includes clarify-before-write exit (P5). |
 
 ## Summary

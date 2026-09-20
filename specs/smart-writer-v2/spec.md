@@ -224,21 +224,21 @@ Hard gates are **structural / evidence** checks, not literary taste. (F1 locked.
 Detailed check instances: [`acceptance.md`](./acceptance.md) (extensible; not buried in code/prompts).  
 Charter keeps stable classes; catalog grows from test runs.
 
-## Open Decisions *(constitution §G — dogfood)*
+## Open Decisions *(constitution §G)*
 
-Shape was locked in F*/P* reviews; content below was deferred or invented without a sync. Rows make that debt **fail-closed** for remaining a/b/c/d work.
+**Meaning (2026-09-20):** “Deferred earlier” meant *not right then*, **not** “drop from V2 finish.” D2–D7 are **reopened** (`open`) and remain **required** for Smart Writer V2 complete dogfood unless later set to `waived` (out of version).
 
 | id | shape_locked | content_open | who | before | status |
 |----|--------------|--------------|-----|--------|--------|
-| **D1** | Closed property vocabulary; dual intake axes (F6); `factual` = tone only (F3) | Exact label list for v2.0 seed | human | Before changing `app/properties.py` / steering chips beyond the ratified seed | **locked** — ratified post-hoc as shipped seed: `factual`, `persuasive`, `concise`, `warm`, `formal`, `humorous`, `specific`, `urgent` (research R8). Reopen only by flipping status to `open`. |
-| **D2** | Preview gate + rate limit + queue exist (B5/A9); unbounded spend still blocked by secret | Numeric turn/cost caps: max write jobs per conversation, max clarify turns, any HTTP iteration-style cap | human | Before turn/cost Settings work (tasks polish) | **waived** — deferred this cycle (2026-09-19). Do not implement T063. Reopen to `open` + set numbers to unlock. |
-| **D3** | `LOGFIRE_TOKEN` named in secrets schema (A25); no product SC for Logfire (F5) | Whether to wire Logfire init this cycle (noop if unset) vs leave deferred | human | Before observability init work | **waived** — deferred this cycle (2026-09-19). Do not implement T064. |
-| **D4** | Citation modes = panel / inline / footnotes / combo; default panel when sources exist; skip ask if no sources (F7) | Light control placement/UX in chat (where it lives; never block send when no sources) | human | Before citation override UI | **waived** — deferred this cycle (2026-09-19). Do not implement T065. |
-| **D5** | Topology: Vercel UI+BFF + Railway worker (P1); thin env names documented | Whether/when to provision live Vercel + Infisical→Vercel + worker URL (production browser dogfood) | human | Before fat UI-host ops packet | **waived** — deferred this cycle (2026-09-19). Do not run T069 / fat Vercel packet. |
-| **D6** | Preview secret **name** in schema; mutating `/v1` fail-closed without it | Seed `SMART_WRITER_V2_AUDIT_SECRET` in Infisical (and later Vercel) | human | Before production mutating API / live BFF dogfood | **waived** — deferred this cycle (2026-09-19). Do not run T070. |
-| **D7** | Materials via **links** in MVP; uploads first-class in F4 | Whether file-upload HTTP is in-scope next vs stay P3 deferred | human | Before upload contract/tasks | **waived** — stay P3 deferred (2026-09-19). No upload tasks. |
+| **D1** | Closed property vocabulary; dual intake axes (F6); `factual` = tone only (F3) | Exact label list for v2.0 seed | human | Before changing `app/properties.py` / steering chips beyond the ratified seed | **locked** — ratified seed: `factual`, `persuasive`, `concise`, `warm`, `formal`, `humorous`, `specific`, `urgent` |
+| **D2** | Preview gate + rate limit + queue exist (B5/A9) | Numeric turn/cost caps: max write jobs per conversation, max clarify turns, any HTTP iteration-style cap | human | Before T063 | **open** |
+| **D3** | `LOGFIRE_TOKEN` named in secrets schema (A25); no product SC for Logfire (F5) | Wire Logfire init (noop if unset) as part of V2 finish? | human | Before T064 | **open** |
+| **D4** | Citation modes = panel / inline / footnotes / combo; default panel when sources exist; skip ask if no sources (F7) | Light control placement/UX in chat | human | Before T065 | **open** |
+| **D5** | Topology: Vercel UI+BFF + Railway worker (P1); thin env names documented | Provision live Vercel + wire worker URL (production browser) | human | Before T069 | **open** |
+| **D6** | Preview secret **name** in schema; mutating `/v1` fail-closed without it | Seed `SMART_WRITER_V2_AUDIT_SECRET` in Infisical (and Vercel when live) | human | Before T070 / mutating prod | **open** |
+| **D7** | Materials via **links** in MVP; uploads first-class in F4 | File-upload HTTP in V2 finish scope (yes + shape) vs out-of-version waive | human | Before T073+ | **open** |
 
-**Fail closed:** While status is `waived` (deferred), agents MUST NOT implement the gated work and MUST NOT invent content. **Defer ≠ drop:** before any matching implementation, the agent MUST reopen the row to `open`, raise the topic again in **product language**, lock content with the human (or confirm still deferred), then proceed. Skipping that re-ask is a harness defect.
+**Fail closed:** Do not invent `content_open` while `open`. Pose in product language; lock here; then implement.
 
 ## Review locks *(mandatory before Approved)*
 

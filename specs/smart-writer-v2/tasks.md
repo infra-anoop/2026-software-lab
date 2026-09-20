@@ -191,22 +191,60 @@
 
 ---
 
-## Phase 9: Polish & Cross-Cutting (P7 deferred + cattle)
+## Phase 9: Polish & Cross-Cutting (done / partial)
 
-**Open Decisions (spec §G):** D2–D7 gate the remaining work. Do not invent numbers/UX/ops while `open`.
-
-- [x] T061 [P] Mark ≥1 catalog row `how: auto` in `specs/smart-writer-v2/acceptance.md` matching a green contract test (plan P2 exit; e.g. `revise.continuity_default` or `regenerate.explicit`)
+- [x] T061 [P] Mark ≥1 catalog row `how: auto` in `specs/smart-writer-v2/acceptance.md` matching a green contract test (plan P2 exit)
 - [x] T062 [P] Rate limit + queue caps (B5-class) in `apps/smart-writer-v2/app/entrypoints/http.py` and tests in `apps/smart-writer-v2/tests/contract/test_rate_limit.py`
-- [ ] T063 [HITL] [OD:D2] Turn/cost cap Settings in `apps/smart-writer-v2/app/config.py` (P7) — **waived/deferred** (D2 2026-09-19); do not implement
-- [ ] T064 [HITL] [OD:D3] Logfire init from `LOGFIRE_TOKEN` in `apps/smart-writer-v2/app/obs.py` (P7) — **waived/deferred** (D3 2026-09-19); do not implement
-- [ ] T065 [HITL] [OD:D4] Citation override control (inline/footnotes/panel/combo) and skip ask if no sources in `apps/smart-writer-v2/web/app/components/CitationMode.tsx` (F7) — **waived/deferred** (D4 2026-09-19); do not implement
 - [x] T066 Document restart/in-memory loss and local run in `specs/smart-writer-v2/quickstart.md` and `apps/smart-writer-v2/README.md`
-- [x] T067 [P] Vercel cattle pointer: git-declared env names for BFF (no UI-only secret) in `deploy/` adapter stub or `apps/smart-writer-v2/web/README.md` (P1 A21)
-- [x] T068 `cd apps/smart-writer-v2 && uv run ruff check app/ tests/` and `uv run pytest` green for contract suite
-- [ ] T069 [HITL] [OD:D5] Fat UI host ops packet (provision Vercel + wire worker URL) — **waived/deferred** (D5 2026-09-19); do not implement
-- [ ] T070 [HITL] [OD:D6] Human seeds preview secret in Infisical (+ sync) — **waived/deferred** (D6 2026-09-19); do not implement
+- [x] T067 [P] Vercel cattle pointer: git-declared env names for BFF in `apps/smart-writer-v2/web/README.md` (P1 A21 thin)
+- [x] T068 `cd apps/smart-writer-v2 && uv run ruff check app/ tests/` and `uv run pytest` green (re-run as T077 after finish)
 
-**D7 (uploads):** waived/deferred (2026-09-19); no task until reopened.
+---
+
+## Phase 10: V2 finish (required — Open Decisions reopened 2026-09-20)
+
+**Intent:** “Deferred” meant *not right then*, not *optional for V2*. Complete production dogfood + remaining polish. Lock each `[OD:D#]` in product language before matching impl. Prefer packet + background worker (constitution §H).
+
+### Finish sequence (mandatory order)
+
+```text
+D6 lock + T070 (vault seed + sync)
+    → T071 (ship/deploy worker; /health)
+        → D2 lock + T063 (turn/cost caps)     [can parallel D3 after D6 if desired]
+        → D3 lock + T064 (Logfire)
+            → D4 lock + T065 (citation UI)
+                → D5 lock + T069 (fat Vercel + BFF envs)
+                    → D7 lock + T073–T076 (uploads)
+                        → T077 final ruff/pytest + prod smoke notes
+```
+
+### Ops / cattle
+
+- [ ] T070 [HITL] [OD:D6] Human seeds `SMART_WRITER_V2_AUDIT_SECRET` in Infisical (path per schema); run sync to Railway; verify mutating `/v1` accepts the secret (not only `/health`)
+- [ ] T071 Ship + deploy `smart-writer-v2` from current `main` (GHCR pin) + `smoke-test.yml` `/health` 200; document Railway URL in `apps/smart-writer-v2/README.md` if changed
+
+### Spend / observability / UI polish
+
+- [ ] T063 [HITL] [OD:D2] Lock numeric caps (jobs/conversation, clarify turns, optional iteration-style cap); add Settings in `apps/smart-writer-v2/app/config.py`; fail-closed on cap hit; contract tests
+- [ ] T064 [HITL] [OD:D3] Lock “wire Logfire for V2 finish”; init from `LOGFIRE_TOKEN` in `apps/smart-writer-v2/app/obs.py` (noop if unset); lifespan hook; no secrets/InternalRunState in logs
+- [ ] T065 [HITL] [OD:D4] Lock citation control placement; implement `apps/smart-writer-v2/web/app/components/CitationMode.tsx` + `page.tsx` / BFF; hide when no sources (FR-010a)
+
+### Production browser (fat UI host)
+
+- [ ] T069 [HITL] [OD:D5] Fat Vercel ops packet: provision/project git declaration as applicable; set server env `SMART_WRITER_V2_AUDIT_SECRET` + `SMART_WRITER_V2_WORKER_URL`; browser dogfood via BFF (no `NEXT_PUBLIC_*` secret)
+
+### Uploads (D7 — in finish bar once locked)
+
+- [ ] T073 [HITL] [OD:D7] Lock upload shape (size limits, MIME, storage: in-memory bytes vs object store for MVP)
+- [ ] T074 [P] Contract tests for upload accept/reject in `apps/smart-writer-v2/tests/contract/test_upload_materials.py` (red → T* → impl)
+- [ ] T075 Extend `POST .../messages` (or dedicated upload route) + store `MaterialRef` `kind=upload` in `apps/smart-writer-v2/app/entrypoints/http.py` / `store.py`
+- [ ] T076 Chat UI upload control in `apps/smart-writer-v2/web/` (BFF custody; no client audit secret)
+
+### Close-out
+
+- [ ] T077 Re-run `uv run ruff check app/ tests/` + `uv run pytest` green; note prod `/health` (+ optional mutating smoke after T070)
+
+**Checkpoint:** V2 finish — secret live, worker current, caps/obs/citation as locked, production browser path, uploads if D7 locked in-scope
 
 ---
 
@@ -222,7 +260,8 @@ Phase 1 Setup
         → US5 (bundle roles)                  [MVP overlap]
         → US4 (property chips/weave)          [plan P2]
         → US6 (non-grant smoke)               [plan P2]
-        → Polish
+        → Phase 9 polish (T061–T062, T066–T068)
+        → Phase 10 V2 finish (T070→T077; OD locks)
 ```
 
 **MUST (I1 / P5):** T028 MUST NOT start until T043 is done. After Foundational, US1 contract tests T016–T020 and impl T021–T027 may run in parallel with writing US3 tests T039–T041, but **T039–T041 + T041 T\* + T042–T043 before T028**. Do not “enqueue first and add clarify later.”
@@ -264,15 +303,16 @@ then T035–T038
 
 ### Incremental
 
-- Plan P2: US4 chips + FR-003c + US6 smoke + T061 auto catalog + T065 citation override (**gated by D4**)
-- Plan P3: uploads (**D7**), durable DB, SSE, managed jobs — **out unless human prioritizes**
-- Remaining polish/ops: lock Open Decisions D2–D6 in product language, then autonomous `[HITL]` slices
+- Plan P2 core: done (chips, US6, T061 auto, rate limit)
+- **Phase 10 V2 finish:** T070–T077 + OD D2–D7 locks (required; “deferred” ≠ optional)
+- Plan P3 extras beyond D7 (durable DB, SSE, managed jobs) — still out unless prioritized
 
 ## Notes
 
 - [P] = different files, no incomplete deps  
+- [HITL] / [OD:D#] = product Open Decision; do not invent content while open  
 - Verify contract tests **fail** before impl of that slice  
-- After T016–T019 exist and are red: **spawn** T* per `docs/agent-os/SPAWN_REVIEWER.md` (`FEATURE_DIR=specs/smart-writer-v2/`). Do **not** paste the brief into the human chat.  
+- Spawn T* / workers per `SPAWN_REVIEWER.md` / `SPAWN_WORKER.md`  
 - Do not pytest `length.target_1_3_pages`, `delight.surprise`, or `research.prefer_criteria_over_trivia` as auto  
 - Commit after each logical group  
 
@@ -288,5 +328,6 @@ then T035–T038
 | US4 | T046–T052 | 7 |
 | US5 | T053–T057 | 5 |
 | US6 | T058–T060 | 3 |
-| Polish | T061–T068 + T069–T070 (ops HITL) | 10 |
-| **Total** | T001–T070 | **70** |
+| Phase 9 polish (done) | T061–T062, T066–T068 | 5 |
+| Phase 10 finish | T063–T065, T069–T077 | 12 |
+| **Total** | T001–T077 | **77** |

@@ -98,6 +98,7 @@ Unlocked product numbers and vault seeds are **run killers** for multi-hour agen
 
 | Version | Note |
 |---------|------|
+| 1.6.1 | §G: `waived` = out of product version; “not right now but still required” stays `open` |
 | 1.6.0 | §H orchestrator/workers: packet + background worker default; auto `[P]` parallel; tiny-glue exception; `SPAWN_WORKER.md` |
 | 1.5.1 | §G: `waived` = deferred this cycle; must re-ask in product language before later implement |
 | 1.5.0 | §G Open Decisions (shape vs content, fail closed); §F product vs process pauses; tasks `[HITL]`/`[OD]`/`[POLICY]`; T* Debate tags |

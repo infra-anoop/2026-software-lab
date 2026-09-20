@@ -141,7 +141,7 @@ Template: `docs/agent-os/acceptance-catalog-template.md`
 | D1 | [e.g. closed property vocabulary; two intake axes] | [e.g. exact label list] | human | [e.g. before steering chips / property tests] | open |
 | (add rows or delete placeholder; empty table OK only if nothing deferred) | | | | | |
 
-**Rules:** Inventing `content_open` for `who: human` while `status: open` is forbidden. Lock by filling content + `status: locked`. Use `waived` only for **deferred this cycle** (with reason) — before implementing that topic later, reopen to `open` and ask again in product language; do not treat waived as permanently dropped.
+**Rules:** Inventing `content_open` for `who: human` while `status: open` is forbidden. Lock by filling content + `status: locked`. Use `waived` only for **out of this product version** (won’t-do). “Not right now but still required to finish” stays **`open`** — do not mark waived.
 
 ## Review locks *(mandatory before Approved)*
 
