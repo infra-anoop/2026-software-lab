@@ -108,22 +108,24 @@ Invisible; updated from free-form inference (FR-017). Never required as user-fac
 ## Rubric (per write job — D8)
 
 Built from **both** F6 axes before the writer↔assessor loop. Not user-visible taxonomy.
+**Required** for every generate/revise job — not optional, not thinner than V1 scored rubrics.
+`axis_a_dimensions` and `axis_b_dimensions` MUST each be **nonempty** (dual-axis lock).
 
 | Field | Type | Notes |
 |-------|------|-------|
-| rubric_id | string | Per job |
+| rubric_id | string | Per job; echoed on job snapshot |
 | job_id | string | |
-| axis_a_dimensions | list[object] | From grant intent substance (Who/Whom/Ask/Why/Evidence as criteria text) |
-| axis_b_dimensions | list[object] | From property ranking / steering |
+| axis_a_dimensions | list[object] | From grant intent substance (Who/Whom/Ask/Why/Evidence as criteria text); **len ≥ 1** |
+| axis_b_dimensions | list[object] | From property ranking / steering; **len ≥ 1** |
 | weights | object \| null | Optional; redesign vs V1 allowed |
 
 ## AssessorScore (per inner turn — D8)
 
 | Field | Type | Notes |
 |-------|------|-------|
-| iteration | int | 1…8 |
-| dimension_scores | list[object] | id → score |
-| aggregate_score | float \| null | |
+| iteration | int | 1…8 (≤ Settings `max_inner_assessor_turns`) |
+| dimension_scores | list[object] | `{id, score}` covering rubric dimensions (both axes) |
+| aggregate_score | float | Required numeric for that turn (not null) |
 | feedback | string | Feeds next writer turn |
 
 ## Job / Run
@@ -140,8 +142,22 @@ Built from **both** F6 axes before the writer↔assessor loop. Not user-visible 
 | error | string \| null | |
 | elapsed_ms | int \| null | Wall time for the write job (**D3**); set on terminal status |
 | usage | object \| null | Best-effort: `input_tokens`, `output_tokens`, optional `estimated_cost_usd` (**D3**) |
-| loop | object \| null | Inner critique: `iterations`, `aggregate_score`, `stop_reason` (`max_iterations` \| `targets_met` \| `error`) (**D8**) |
-| rubric_id | string \| null | Dual-axis rubric for this job (**D8**) |
+| rubric_id | string \| null | Dual-axis rubric for this job; **non-null on succeeded** (**D8**) |
+| loop | object \| null | Inner critique metadata; **non-null on succeeded** (**D8**) — see below |
+
+### Job.loop (succeeded write jobs — D8)
+
+| Field | Type | Notes |
+|-------|------|-------|
+| iterations | int | Completed writer↔assess cycles; `1…max_iterations` |
+| max_iterations | int | Settings inner max (default **8**) |
+| aggregate_score | float | Final aggregate after last assess (not null) |
+| stop_reason | `max_iterations` \| `targets_met` \| `error` | Cap, score gate, or hard failure |
+| axis_a_dimension_count | int | `len(Rubric.axis_a_dimensions)` ≥ 1 |
+| axis_b_dimension_count | int | `len(Rubric.axis_b_dimensions)` ≥ 1 |
+| scores | list[AssessorScore] | Nonempty; `len(scores) == iterations` |
+
+Thinner stubs (one-shot write with no scores, null aggregate, empty `scores`, missing `stop_reason`) are **invalid**.
 
 ## State transitions
 
@@ -164,3 +180,4 @@ user message
 - Writing assistant turns that are not clarify MUST include a complete `body` (FR-018).
 - Do not expose intent slot / axis names in assistant clarify copy (FR-021 / **P5**).
 - Grant + missing intent slots ⇒ clarify only; never enqueue generate/revise (**P5**).
+- Succeeded write job ⇒ `rubric_id` and `loop` non-null; `loop.scores` nonempty; both axis dimension counts ≥ 1; `loop.iterations` ≤ `loop.max_iterations` ≤ **8** (**D8** / FR-022).

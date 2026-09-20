@@ -31,6 +31,9 @@ Extensible checks for [`spec.md`](./spec.md) Success Criteria. Grow from test ru
 | chat.free_form_input | SC-006 | must | any user message | No required user-visible Axis/slot forms | hybrid |
 | revise.continuity_default | SC-006 | must | feedback on prior artifact, no restart | New ArtifactVersion linked to prior + feedback; revise path not silent full regen | auto |
 | regenerate.explicit | SC-007 | must | user requests start over | Fresh generate path used | hybrid |
+| loop.scores_and_stop | SC-002 | must | succeeded generate or revise job | Job snapshot has non-null `rubric_id` + `loop` with nonempty `scores[]` (per-turn dimension scores + feedback), numeric `aggregate_score`, and `stop_reason` ∈ {max_iterations, targets_met, error} — not thinner than V1 scored loop | auto |
+| loop.iterations_cap | SC-002 | must | succeeded generate or revise job | `loop.iterations` ∈ 1…`loop.max_iterations` and `loop.max_iterations` ≤ 8 (Settings inner max); stop by score gate (`targets_met`) or cap (`max_iterations`) | auto |
+| rubric.dual_axis | SC-002 | must | succeeded generate or revise job | Rubric for the job has ≥1 Axis A (intent) and ≥1 Axis B (property) dimension; snapshot exposes `loop.axis_a_dimension_count` ≥ 1 and `loop.axis_b_dimension_count` ≥ 1 | auto |
 
 ## Change log
 
@@ -46,3 +49,4 @@ Extensible checks for [`spec.md`](./spec.md) Success Criteria. Grow from test ru
 | 2026-09-13 | F8: chat free-form; revise-by-default; regenerate explicit; axes internal |
 | 2026-09-15 | R4 hygiene: class column prefers SC-*; auto subset deferred to plan |
 | 2026-09-18 | T061: `revise.continuity_default` → `how: auto` (green `test_revise_job.py`; plan P2 exit) |
+| 2026-09-20 | T078: D8 scored loop structural rows (`loop.scores_and_stop`, `loop.iterations_cap`, `rubric.dual_axis`) |

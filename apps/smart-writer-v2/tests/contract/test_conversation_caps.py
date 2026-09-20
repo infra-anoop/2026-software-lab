@@ -4,9 +4,8 @@ T063 — fail closed when conversation hits max write jobs (default 3) or max
 clarify turns (default 10). Status aligns with http-api.md ``429 | Rate limit``
 (spend / rate family); distinct detail from sliding-window B5 limiter.
 
-Inner max 8 (``get_max_inner_assessor_turns``) is Settings-only until the D8
-scored loop (T078+) enforces it in the generate/revise graph — see unit test
-``test_max_inner_assessor_turns_default``.
+Inner max 8 (``get_max_inner_assessor_turns``) is enforced with the D8 scored
+loop — see ``test_scored_loop_job.py`` / ``test_scored_loop_generate.py``.
 """
 
 from __future__ import annotations

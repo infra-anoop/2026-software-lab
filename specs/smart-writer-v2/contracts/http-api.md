@@ -76,10 +76,25 @@ Natural-language questions only. Do **not** include `missing_hints` / slot ids i
     "output_tokens": 0,
     "estimated_cost_usd": null
   },
+  "rubric_id": "...",
   "loop": {
-    "iterations": 1,
-    "aggregate_score": null,
-    "stop_reason": "max_iterations | targets_met | error"
+    "iterations": 2,
+    "max_iterations": 8,
+    "aggregate_score": 18.0,
+    "stop_reason": "max_iterations | targets_met | error",
+    "axis_a_dimension_count": 3,
+    "axis_b_dimension_count": 2,
+    "scores": [
+      {
+        "iteration": 1,
+        "dimension_scores": [
+          { "id": "axis_a.whom_fit", "score": 3 },
+          { "id": "axis_b.warm", "score": 4 }
+        ],
+        "aggregate_score": 14.0,
+        "feedback": "Strengthen funder fit before next draft."
+      }
+    ]
   },
   "artifact": {
     "artifact_id": "...",
@@ -100,7 +115,19 @@ Natural-language questions only. Do **not** include `missing_hints` / slot ids i
 
 `humor_enabled` is a **job-snapshot** boolean (grant default `false` unless the user enabled humor). Do **not** dump `InternalRunState` / intent slots on `GET /v1/conversations` to satisfy this field.
 
-`elapsed_ms` and `usage` are **required keys** on terminal job snapshots for V2 finish observability (**D3**); values may be `null` only when measurement failed — prefer best-effort numbers. `loop` is required once the dual-axis scored inner loop ships (**D8** / T078+).
+`elapsed_ms` and `usage` are **required keys** on terminal job snapshots for V2 finish observability (**D3**); values may be `null` only when measurement failed — prefer best-effort numbers.
+
+**Dual-axis scored inner loop (**D8** / FR-022):** On every **succeeded** generate or revise job, `rubric_id` and `loop` are **required** (non-null). Capability must **not** be thinner than V1’s scored writer↔assessor loop: one-shot write without scores, stub/`null` `aggregate_score`, empty `scores[]`, or omitting `stop_reason` are contract failures.
+
+| `loop` field | Rules |
+|--------------|--------|
+| `iterations` | int in `1…max_iterations` (inner writer↔assess cycles completed) |
+| `max_iterations` | int; equals Settings inner max (locked default **8**, **D2**) |
+| `aggregate_score` | number (not JSON `null`) — final aggregate after last assess |
+| `stop_reason` | exactly one of `max_iterations` \| `targets_met` \| `error` |
+| `axis_a_dimension_count` | int ≥ 1 — rubric dimensions from grant intent substance |
+| `axis_b_dimension_count` | int ≥ 1 — rubric dimensions from property ranking / steering |
+| `scores` | nonempty list of per-turn AssessorScore objects (`iteration`, `dimension_scores`, `aggregate_score`, `feedback`); `len(scores) == iterations`; each `iteration` in `1…8` |
 
 When `artifact.sources` is nonempty and the turn did not override `citation_mode`, `citation_mode` MUST be `panel` (F7).
 
@@ -127,3 +154,4 @@ Contract tests should assert:
 4. Successful grant artifact with org/funder claims → each such claim in `claims[]` has `status=grounded`+`source_id` that exists on `artifact.sources[]`, or `status=uncertain` with null `source_id`; `excerpt` is a substring of `body` (SC-003 shape).
 5. When web enabled and no useful web hits → `web_signal=none_declared` (SC-004 shape). Not `disabled` on that fixture.
 6. Grant turn with empty Whom/Ask (fixture) → `type=clarify`; `job_id` absent or JSON `null`; `GET /v1/conversations/{id}` `last_artifact_id` JSON `null` (P5 / T10). Assistant text has no structured slot/axis labels (T9). A second fixture with Who+Whom+Ask filled and Why or Evidence empty must still clarify (T11).
+7. Succeeded generate/revise job → `rubric_id` non-null; `loop` present with `iterations` in `1…loop.max_iterations`, `loop.max_iterations` ≤ **8** and equal to Settings inner max, nonempty `scores` (length = `iterations`) with per-turn `dimension_scores`, numeric `aggregate_score`, `stop_reason` ∈ {`max_iterations`,`targets_met`,`error`}, and `axis_a_dimension_count` ≥ 1 and `axis_b_dimension_count` ≥ 1 (**D8** / FR-022).

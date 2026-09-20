@@ -230,8 +230,8 @@ D6 lock + T070 (vault seed + sync)
 
 ### Dual-axis scored inner loop (D8 locked — required for complete V2)
 
-- [ ] T078 Amend `specs/smart-writer-v2/contracts/http-api.md` + `data-model.md`: job snapshot fields for inner loop (`iterations`, scores / aggregate, `stop_reason`); catalog rows in `acceptance.md` for scored loop structural checks
-- [ ] T079 [P] Red contract/unit tests for dual-axis rubric + scored loop (≤8, scores present, stop by cap or score gate) under `apps/smart-writer-v2/tests/`
+- [x] T078 Amend `specs/smart-writer-v2/contracts/http-api.md` + `data-model.md`: job snapshot fields for inner loop (`iterations`, scores / aggregate, `stop_reason`); catalog rows in `acceptance.md` for scored loop structural checks
+- [x] T079 [P] Red contract/unit tests for dual-axis rubric + scored loop (≤8, scores present, stop by cap or score gate) under `apps/smart-writer-v2/tests/`
 - [ ] T080 Spawn T* review packet for T079 tests (`notes/packets/` + `SPAWN_REVIEWER.md`); resolve product-tagged Debates before impl
 - [ ] T081 Rubric builder from **Axis A (intent slots) + Axis B (property ranking)** in `apps/smart-writer-v2/app/agents/` + prompt program (redesign OK; not thinner than V1 scored capability)
 - [ ] T082 Assessor agent with **scores** (schema-first `result_type`) in `apps/smart-writer-v2/app/agents/`
