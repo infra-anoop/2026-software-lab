@@ -14,6 +14,13 @@ Set these on the Vercel project (or local `.env.local`). **Never** prefix with `
 
 Worker secret **name** is also in `deploy/secrets/schema.yaml` (Infisical → Railway). Vercel upsert is a separate fat ops packet (A21 `target_vercel` still stubbed) — this README is the thin git pointer (T067).
 
+## Settings (D4 / T065)
+
+Header **Settings** holds chat preferences. First preference: **citation format**
+(`panel` | `inline` | `footnotes` | `combo`). Default is **sources panel**. The
+value is sent as `citation_mode` on each turn; citation UI is hidden when a draft
+has no sources (FR-010a). Layout polish / v0 redesign is T069 (D5).
+
 ## Local
 
 ```bash

@@ -3,6 +3,10 @@
 import { FormEvent, useCallback, useState } from "react";
 
 import { PropertyChips } from "./components/PropertyChips";
+import {
+  CitationMode,
+  SettingsPanel,
+} from "./components/SettingsPanel";
 
 type ChatMessage = {
   role: "user" | "assistant";
@@ -37,6 +41,10 @@ async function api(path: string, init?: RequestInit): Promise<Response> {
   });
 }
 
+function showSourcesPanel(mode: string | undefined): boolean {
+  return mode === "panel" || mode === "combo" || mode === "footnotes";
+}
+
 export default function Page() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -46,6 +54,8 @@ export default function Page() {
   const [status, setStatus] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [intent, setIntent] = useState<"auto" | "regenerate">("auto");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [citationMode, setCitationMode] = useState<CitationMode>("panel");
 
   const ensureConversation = useCallback(async (): Promise<string> => {
     if (conversationId) {
@@ -106,7 +116,7 @@ export default function Page() {
         body: JSON.stringify({
           text,
           client_intent: intent,
-          citation_mode: null,
+          citation_mode: citationMode,
           materials,
         }),
       });
@@ -142,11 +152,24 @@ export default function Page() {
   }
 
   const sources = artifact?.sources ?? [];
+  const hasSources = sources.length > 0;
+  const effectiveMode = artifact?.citation_mode ?? citationMode;
+  const renderCitations =
+    hasSources && showSourcesPanel(effectiveMode);
 
   return (
     <main className="shell">
       <header className="top">
-        <h1>Smart Writer V2</h1>
+        <div className="top-row">
+          <h1>Smart Writer V2</h1>
+          <SettingsPanel
+            open={settingsOpen}
+            onOpenChange={setSettingsOpen}
+            citationMode={citationMode}
+            onCitationModeChange={setCitationMode}
+            disabled={busy}
+          />
+        </div>
         <p>Grant draft in chat. Questions first if something critical is missing.</p>
       </header>
       <div className="grid">
@@ -211,21 +234,26 @@ export default function Page() {
             </p>
           ) : null}
           {artifact?.body ? <pre className="body">{artifact.body}</pre> : <p className="empty">No draft yet.</p>}
-          {artifact?.citation_mode === "panel" || sources.length > 0 ? (
+          {hasSources && effectiveMode === "inline" ? (
+            <p className="status">
+              Citation format: inline (markers in draft when present). No sources
+              panel.
+            </p>
+          ) : null}
+          {renderCitations ? (
             <div>
-              <h2>Sources</h2>
-              {sources.length === 0 ? (
-                <p className="empty">No sources on this draft.</p>
-              ) : (
-                <ul className="sources">
-                  {sources.map((src) => (
-                    <li key={src.source_id}>
-                      <span>{src.title || src.uri || src.source_id}</span>
-                      {src.bundle ? <em> {src.bundle}</em> : null}
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <h2>{effectiveMode === "footnotes" ? "Footnotes" : "Sources"}</h2>
+              <ul className="sources">
+                {sources.map((src, index) => (
+                  <li key={src.source_id}>
+                    {effectiveMode === "footnotes" ? (
+                      <sup>{index + 1}</sup>
+                    ) : null}{" "}
+                    <span>{src.title || src.uri || src.source_id}</span>
+                    {src.bundle ? <em> {src.bundle}</em> : null}
+                  </li>
+                ))}
+              </ul>
             </div>
           ) : null}
         </aside>

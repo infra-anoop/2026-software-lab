@@ -12,6 +12,13 @@ body {
   padding: 1.5rem;
 }
 
+.top-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .top h1 {
   margin: 0 0 0.25rem;
   font-size: 1.4rem;
@@ -20,6 +27,51 @@ body {
 .top p {
   margin: 0 0 1rem;
   color: #9aa8b5;
+}
+
+.settings {
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.settings-toggle {
+  background: #243044;
+  color: #d5e4ff;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+}
+
+.settings-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.settings-body {
+  margin-top: 0.5rem;
+  background: #1a222c;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 0.75rem;
+  text-align: left;
+  min-width: 14rem;
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.settings-field select {
+  background: #0f1419;
+  color: inherit;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 0.4rem 0.5rem;
 }
 
 .grid {
