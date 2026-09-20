@@ -247,7 +247,7 @@ D6 lock + T070 (vault seed + sync)
 
 ### Production browser (fat UI host)
 
-- [ ] T069 [OD:D5] **(1)** Vercel **v0** GUI design pass (chat + Settings). **(2)** Deploy that UI on **Railway** (cattle in git; public product URL). Wire BFF/secret custody to worker — browser never sees audit secret. Update `apps/smart-writer-v2/web/README.md` for Railway UI host (not Vercel deploy). Local/Codespaces = dev only, not the finish bar.
+- [ ] T069 [OD:D5] **(1)** Vercel **v0** GUI design pass (chat + Settings). **(2)** Deploy that UI on **Railway** (cattle in git; public product URL). Wire BFF/secret custody to worker — browser never sees audit secret. Update `apps/smart-writer-v2/web/README.md` for Railway UI host (not Vercel deploy). Local/Codespaces = dev only, not the finish bar. — **pivoted to letter v0** (brief: `notes/packets/2026-09-20-swv2-v0-brief.md`); prior in-repo “v0-class” worker stopped; cattle drafts may exist uncommitted
 
 ### Uploads (D7 locked — in-memory)
 

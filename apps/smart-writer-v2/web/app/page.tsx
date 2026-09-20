@@ -161,7 +161,15 @@ export default function Page() {
     <main className="shell">
       <header className="top">
         <div className="top-row">
-          <h1>Smart Writer V2</h1>
+          <div className="brand">
+            <h1 className="brand-mark">
+              Smart Writer <span>V2</span>
+            </h1>
+            <p className="brand-lede">
+              Grant draft in chat. Questions first if something critical is
+              missing.
+            </p>
+          </div>
           <SettingsPanel
             open={settingsOpen}
             onOpenChange={setSettingsOpen}
@@ -170,15 +178,19 @@ export default function Page() {
             disabled={busy}
           />
         </div>
-        <p>Grant draft in chat. Questions first if something critical is missing.</p>
       </header>
       <div className="grid">
         <section className="thread" aria-label="Conversation">
           {messages.length === 0 ? (
-            <p className="empty">Describe the org, funder, ask, why them, and any evidence.</p>
+            <p className="empty">
+              Describe the org, funder, ask, why them, and any evidence.
+            </p>
           ) : (
             messages.map((msg, index) => (
-              <article key={`${msg.role}-${index}`} className={`bubble ${msg.role}`}>
+              <article
+                key={`${msg.role}-${index}`}
+                className={`bubble ${msg.role}`}
+              >
                 <strong>{msg.role === "user" ? "You" : "Assistant"}</strong>
                 <pre>{msg.text}</pre>
               </article>
@@ -207,16 +219,19 @@ export default function Page() {
                 setDraft((prev) => (prev.trim() ? `${prev.trim()} ${id}` : id))
               }
             />
-            <button type="submit" disabled={busy || !draft.trim()}>
-              {busy ? "Working…" : "Send"}
-            </button>
-            <button
-              type="button"
-              disabled={busy || !artifact}
-              onClick={() => setIntent("regenerate")}
-            >
-              Start over (next send)
-            </button>
+            <div className="composer-actions">
+              <button type="submit" disabled={busy || !draft.trim()}>
+                {busy ? "Working…" : "Send"}
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                disabled={busy || !artifact}
+                onClick={() => setIntent("regenerate")}
+              >
+                Start over (next send)
+              </button>
+            </div>
             {intent === "regenerate" ? (
               <p className="status">Next send starts a fresh generate.</p>
             ) : null}
@@ -227,13 +242,18 @@ export default function Page() {
           <h2>Draft</h2>
           {artifact ? (
             <p className="status">
-              {artifact.producing_mode ?? "generate"} {artifact.artifact_id.slice(0, 8)}
+              {artifact.producing_mode ?? "generate"}{" "}
+              {artifact.artifact_id.slice(0, 8)}
               {artifact.parent_artifact_id
                 ? ` ← ${artifact.parent_artifact_id.slice(0, 8)}`
                 : " (new)"}
             </p>
           ) : null}
-          {artifact?.body ? <pre className="body">{artifact.body}</pre> : <p className="empty">No draft yet.</p>}
+          {artifact?.body ? (
+            <pre className="body">{artifact.body}</pre>
+          ) : (
+            <p className="empty">No draft yet.</p>
+          )}
           {hasSources && effectiveMode === "inline" ? (
             <p className="status">
               Citation format: inline (markers in draft when present). No sources

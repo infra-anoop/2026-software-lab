@@ -1,0 +1,22 @@
+railway:
+  project_name: "2026-software-lab"
+  service_name: "smart-writer-v2-ui"
+  environment_name: "production"
+
+image:
+  registry: "ghcr.io"
+  repository: "{{ github_repository_owner }}/smart-writer-v2-ui"
+
+# Next standalone (apps/smart-writer-v2/web/Dockerfile). Not a Nix container-* attr.
+runtime:
+  start_command: "node server.js"
+
+# Names only (cattle). Values are set in the Railway service Variables UI, not GitHub.
+# PORT is platform-injected — do not list it.
+# SMART_WRITER_V2_WORKER_URL is config (public worker URL), not a vault secret.
+# SMART_WRITER_V2_AUDIT_SECRET must never be NEXT_PUBLIC_* — BFF only.
+env:
+  required:
+    - SMART_WRITER_V2_AUDIT_SECRET
+    - SMART_WRITER_V2_WORKER_URL
+  optional: []

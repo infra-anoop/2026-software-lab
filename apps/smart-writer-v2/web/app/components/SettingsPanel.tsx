@@ -39,9 +39,7 @@ export function SettingsPanel({
       </button>
       {open ? (
         <div className="settings-body">
-          <p className="status">
-            Preferences for this chat. More options will land here later.
-          </p>
+          <p className="status">Chat preferences. More options will land here.</p>
           <label className="settings-field">
             Citation format
             <select
@@ -59,8 +57,7 @@ export function SettingsPanel({
             </select>
           </label>
           <p className="status">
-            Applied on the next send. Citation UI is hidden when a draft has no
-            sources.
+            Applies on the next send. Hidden when a draft has no sources.
           </p>
         </div>
       ) : null}
