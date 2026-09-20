@@ -150,7 +150,7 @@ As a general short-form writer, I want the same engine for other 1–3 page goal
 - User ranks `factual` low → grounding/research **still on**; only prose emphasis changes (F3).
 - Citation presentation: default **sources panel**; override optional; skip ask if no sources (F7).
 - Multi-minute research/write → backend jobs (not a single short-lived serverless request).
-- Optional machine assessor/writer loop (if used) is separate from **human revise** path (F8).
+- **Machine critique (inner loop)** is **required** for complete V2 (Open Decision **D8**): writer↔assessor with scores, max 8 turns per write job; **distinct from** outer **human revise** (F8 / **D9**).
 
 ## Requirements *(mandatory)*
 
@@ -186,15 +186,17 @@ As a general short-form writer, I want the same engine for other 1–3 page goal
 - **FR-019**: WHEN the user sends feedback on an existing artifact and does not request restart, System MUST use a **revise** path (prior output + feedback + relevant internal state)—NOT a silent full re-initialize (F8).
 - **FR-020**: System MUST support an explicit **regenerate / start over** path (fresh generate) (F8).
 - **FR-021**: Clarifying Q&A and revision feedback share the same conversational surface; Q&A asks specific questions when needed and MUST NOT expose internal axis/slot nomenclature (F6/F8).
+- **FR-022**: Each **write job** (generate or revise enqueue) MUST run an **inner** writer↔assessor loop that (a) builds a rubric from **both** F6 axes (grant intent substance + property steering), (b) assigns **scores**, (c) optimizes toward those scores, and (d) stops by score gate or at most **8** inner turns — **not thinner** than V1’s scored loop; redesign (dual-axis rubric) is required (**D8**). Outer chat caps: ≤**3** write jobs and ≤**10** clarify turns per conversation (**D2**). Inner loop is distinct from outer human revise (**D9**).
+- **FR-023**: System MUST wire lab observability (Logfire / `LOGFIRE_TOKEN`) for V2 finish (**D3**): init when token present, noop if unset. Each write job MUST expose **elapsed time** and **token usage and/or estimated cost** for debug (job snapshot and/or traces). MUST NOT log secrets or raw InternalRunState.
 
 ### Key Entities
 
 - **Message / Turn**: Free-form user text (prompt, clarification answer, or feedback) + product response.
 - **ArtifactVersion**: Complete user-visible writing output; optional parent version for revise continuity (F8).
 - **InternalRunState**: Invisible structured state (intent slots, property ranking, sources, citation mode, etc.).
-- **Run / Job**: Long-running generate or revise work; status; snapshots.
+- **Run / Job**: Long-running generate or revise work; status; snapshots; inner-loop score / turn / stop metadata (**D8**).
 - **Source / provenance record**: User material or retrieved web snippet; linked to claims.
-- **Machine critique cycle** (optional): Writer↔assessor-style loops if used in plan — distinct from **human revise** (F8).
+- **Machine critique cycle** (**required** — **D8**): Writer↔assessor with dual-axis rubric + scores inside each write job — distinct from **human revise** (F8 / **D9**).
 - **Acceptance check result** (later): Catalog id × run outcome for evals.
 
 For SC-006/007: revise vs generate MUST be distinguishable in run/artifact metadata (exact fields → plan).
@@ -226,17 +228,19 @@ Charter keeps stable classes; catalog grows from test runs.
 
 ## Open Decisions *(constitution §G)*
 
-**Meaning (2026-09-20):** “Deferred earlier” meant *not right then*, **not** “drop from V2 finish.” D2–D7 are **reopened** (`open`) and remain **required** for Smart Writer V2 complete dogfood unless later set to `waived` (out of version).
+**Meaning (2026-09-20):** “Deferred earlier” meant *not right then*, **not** “drop from V2 finish.” Remaining `open` rows stay **required** for Smart Writer V2 complete dogfood unless set to `waived` (out of version). Sequencing tasks ≠ skipping scope.
 
 | id | shape_locked | content_open | who | before | status |
 |----|--------------|--------------|-----|--------|--------|
 | **D1** | Closed property vocabulary; dual intake axes (F6); `factual` = tone only (F3) | Exact label list for v2.0 seed | human | Before changing `app/properties.py` / steering chips beyond the ratified seed | **locked** — ratified seed: `factual`, `persuasive`, `concise`, `warm`, `formal`, `humorous`, `specific`, `urgent` |
-| **D2** | Preview gate + rate limit + queue exist (B5/A9) | Numeric turn/cost caps: max write jobs per conversation, max clarify turns, any HTTP iteration-style cap | human | Before T063 | **open** |
-| **D3** | `LOGFIRE_TOKEN` named in secrets schema (A25); no product SC for Logfire (F5) | Wire Logfire init (noop if unset) as part of V2 finish? | human | Before T064 | **open** |
-| **D4** | Citation modes = panel / inline / footnotes / combo; default panel when sources exist; skip ask if no sources (F7) | Light control placement/UX in chat | human | Before T065 | **open** |
-| **D5** | Topology: Vercel UI+BFF + Railway worker (P1); thin env names documented | Provision live Vercel + wire worker URL (production browser) | human | Before T069 | **open** |
-| **D6** | Preview secret **name** in schema; mutating `/v1` fail-closed without it | Seed `SMART_WRITER_V2_AUDIT_SECRET` in Infisical (and Vercel when live) | human | Before T070 / mutating prod | **open** |
-| **D7** | Materials via **links** in MVP; uploads first-class in F4 | File-upload HTTP in V2 finish scope (yes + shape) vs out-of-version waive | human | Before T073+ | **open** |
+| **D2** | Preview gate + rate limit + queue exist (B5/A9) | Numeric turn/cost caps | human | Before T063 | **locked** (2026-09-20) — max **3** write jobs / conversation; max **10** clarify turns / conversation; max **8** inner writer↔assessor turns / write job. Fail closed when hit. |
+| **D3** | `LOGFIRE_TOKEN` named in secrets schema (A25); no product SC for Logfire (F5) | Wire observability for V2 finish + which debug fields | human | Before T064 | **locked** (2026-09-20) — **Wire for V2 finish** (required for dogfood debug). Init when token present; **noop if unset** (product still runs). Minimum job/run visibility: **elapsed time** and **tokens and/or estimated cost** (best-effort from provider usage). Traces must not log secrets or raw InternalRunState. Flag-based log levels / fancy filters = later, not this lock. |
+| **D4** | Citation modes = panel / inline / footnotes / combo; default panel when sources exist; skip ask if no sources (F7) | Where the override lives in UI | human | Before T065 | **locked** (2026-09-20) — **Settings panel** (not in-chat). Citation format is one settings preference; same panel is the home for similar prefs that will accrue. Default remains **sources panel**. No mandatory per-turn citation interview. Refine layout during Vercel/v0-class GUI design (**D5**). |
+| **D5** | Chat UI is Next.js; browser must never hold preview secret (BFF or equivalent); Railway runs FastAPI worker | UI design tool vs production UI host | human | Before T069 / GUI design | **locked** (2026-09-20) — **Design** with **Vercel v0** (Lovable-class). **Deploy** the resulting UI on **Railway** as part of the shipped product (not Codespaces-only dogfood; not Vercel as production host). Worker stays on Railway; BFF/secret custody must hold on the Railway UI path. Overturns plan “Vercel hosts UI” deploy topology. |
+| **D6** | Preview secret **name** in schema; mutating `/v1` fail-closed without it | Seed `SMART_WRITER_V2_AUDIT_SECRET` in Infisical (Railway worker + Railway UI/BFF as needed) | human | Before T070 / mutating prod | **locked** (2026-09-20) — **Yes, seed for V2 finish.** Human puts value in Infisical; sync to Railway worker + UI/BFF. Mutating `/v1` must work in prod (not only `/health`). Never commit the value. |
+| **D7** | Materials via **links** in MVP; uploads first-class in F4 | File-upload HTTP in V2 finish scope (yes + shape) vs out-of-version waive | human | Before T073+ | **locked** (2026-09-20) — **In V2 finish.** Upload HTTP + chat UI control. **Storage = in-memory bytes** on the worker (restart loses files, same residual as conversations). Sensible size/MIME limits at impl (PDF/text-class); no object store required for this version. |
+| **D8** | F6 dual axes; F8 human revise distinct from machine critique; FR-006 weave into draft/critique | Dual-axis scored inner loop required for complete V2? | human | Before T078+ | **locked** (2026-09-20) — **Required** for V2 complete. Each write job: rubric from **Axis A (intent) + Axis B (properties)**; assessor **scores**; optimize ≤8 turns. Redesign OK; **not thinner** than V1 scored loop. Clarifiers exist to nail those dimensions for the rubric. Overturns plan/research “out of MVP / optional P3.” |
+| **D9** | Outer revise path exists (FR-019); continuity vs regenerate locked (F8); UI regenerate control exists (T038) | Tactical vs fuller rerun on normal feedback; how user indicates start over | human | Before T087+ | **locked** (2026-09-20) — **Simple default:** all normal feedback (`client_intent=auto`) uses the **same revise** path (continuity / “tactical”; no LLM routing between tactical vs fuller rerun). **Start over** = **explicit UI control** (and API `client_intent=regenerate`) → fresh **generate**, new chain head. **Do not** rely on the LLM to infer “start over” from free-form prose for this version (that would be heuristic routing ≈ option 2). Free-form feedback always revises unless the user hits regenerate. |
 
 **Fail closed:** Do not invent `content_open` while `open`. Pose in product language; lock here; then implement.
 
@@ -298,9 +302,9 @@ Historical prompts; living debt is the **Open Decisions** table above.
 2. Research providers / allowlists → plan P2 deferred alts (locked learning-scope cut).
 3. Clean-room `smart-writer-v2` → plan (done).
 4. Golden prompts + thin auto → T061 done for ≥1 auto row; hybrid/human remain.
-5. Citation UI control → **D4**.
-6. Turn/cost caps → **D2**; Logfire → **D3**.
-7. Preview gate / jobs → implemented; vault seed → **D6**; fat Vercel → **D5**.
+5. Citation UI control → **D4** (locked: Settings panel).
+6. Turn/cost caps → **D2** (locked 3/10/8); dual-axis scored inner loop → **D8** (locked); outer revise routing → **D9**; observability → **D3** (locked: wire + elapsed/tokens).
+7. Preview gate / jobs → implemented; vault seed → **D6** (locked); UI = **v0 design + Railway deploy** → **D5** (locked).
 
 ## Approval
 

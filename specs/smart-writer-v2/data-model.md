@@ -103,6 +103,9 @@ Invisible; updated from free-form inference (FR-017). Never required as user-fac
 | parent_artifact_id | string \| null | Required when mode=revise |
 | result_artifact_id | string \| null | On success |
 | error | string \| null | |
+| elapsed_ms | int \| null | Wall time for the write job (**D3**); set on terminal status |
+| usage | object \| null | Best-effort: `input_tokens`, `output_tokens`, optional `estimated_cost_usd` (**D3**) |
+| loop | object \| null | Inner critique: `iterations`, scores / aggregate, `stop_reason` (**D8**) |
 
 ## State transitions
 

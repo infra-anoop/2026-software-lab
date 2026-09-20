@@ -70,6 +70,17 @@ Natural-language questions only. Do **not** include `missing_hints` / slot ids i
   "status": "succeeded",
   "mode": "generate | revise",
   "humor_enabled": false,
+  "elapsed_ms": 12345,
+  "usage": {
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost_usd": null
+  },
+  "loop": {
+    "iterations": 1,
+    "aggregate_score": null,
+    "stop_reason": "max_iterations | targets_met | error"
+  },
   "artifact": {
     "artifact_id": "...",
     "parent_artifact_id": null,
@@ -88,6 +99,8 @@ Natural-language questions only. Do **not** include `missing_hints` / slot ids i
 ```
 
 `humor_enabled` is a **job-snapshot** boolean (grant default `false` unless the user enabled humor). Do **not** dump `InternalRunState` / intent slots on `GET /v1/conversations` to satisfy this field.
+
+`elapsed_ms` and `usage` are **required keys** on terminal job snapshots for V2 finish observability (**D3**); values may be `null` only when measurement failed — prefer best-effort numbers. `loop` is required once the dual-axis scored inner loop ships (**D8** / T078+).
 
 When `artifact.sources` is nonempty and the turn did not override `citation_mode`, `citation_mode` MUST be `panel` (F7).
 

@@ -8,10 +8,10 @@ Format aligned with [`research-template.md`](../../docs/agent-os/research-templa
 
 ## Block: Topology & runtime custody
 
-- **Decision:** **P1 (b)** — Vercel (Next UI + BFF) + Railway FastAPI worker; browser never holds preview secret.
-- **Rationale:** STACK_POSTURE managed UI host + safe secret custody; teaches modern split without putting spend key in the client.
-- **Pattern source:** none (explicitly not “in-tree web under one Python process”).
-- **Alternatives considered:** (a) Next BFF on same Railway-style host; (c) no Next in P1 (SSR/HTML); (d) FastAPI serves static Next export — **rejected** for v2.0 MVP in favor of Vercel UI host.
+- **Decision (locked 2026-09-20 — D5):** **Design** with **Vercel v0**. **Deploy UI on Railway** (shipped product includes that UI). **Worker** on Railway. Browser never holds preview secret (BFF on Railway UI path). **Not:** Vercel as production UI host; **not:** Codespaces-only as the product.
+- **Rationale:** Governor wants modern UI craft (v0) and a real deployed product surface on lab cattle (Railway), without conflating design studio with host.
+- **Pattern source:** Railway cattle for Python worker; UI service(s) to be declared in T069.
+- **Alternatives rejected:** Vercel-as-host (prior P1); Codespaces-only dogfood as finish bar; browser-held audit secret.
 
 ---
 
@@ -100,11 +100,11 @@ Revise: may skip or narrow `materials`/`web`; always produces new `ArtifactVersi
 
 ## R6. Machine critique loop
 
-**Decision:** **Out of MVP.** Human revise (F8) is the iteration path. Optional writer↔assessor phase = P3+.
+**Decision (amended 2026-09-20 — Open Decision D8):** **Required for V2 complete.** Each write job runs writer↔assessor with **scores**, rubric from **both** F6 axes (intent substance + property steering), max **8** inner turns. Redesign OK; capability **not thinner** than V1’s scored loop. Human revise (F8) remains the **outer** HITL loop (**D9** = tactical vs fuller rerun — still open).
 
-**Rationale:** Spec distinguishes machine critique from human revise; V1 loop is costly and not required for SC-001–007 beachhead.
+**Rationale:** Spec always distinguished machine critique from human revise; plan incorrectly deferred critique as “out of MVP.” Governor lock restores nested loops.
 
-**Alternatives:** Port V1 assessors early (high cost, dilutes F8 learning).
+**Alternatives rejected:** Skip loop / one-shot write only; thinner-than-V1 stub scores; blind V1 port without dual-axis redesign.
 
 ---
 
