@@ -1,5 +1,7 @@
 # Work packet — SW V2 Railway bootstrap (A26 → A23 → ship → deploy → smoke)
 
+> **Superseded for ship/deploy (2026-09-21):** do not `gh workflow run` ship/deploy/smoke. One-app publish is `nix develop -c uv run scripts/ops_runtime_tag.py ship --app-id smart-writer-v2 --environment production --push` (`notes/packets/2026-09-21-one-app-ship-tags.md`). This packet remains historical for the first Railway footprint.
+
 Lab cattle already exists. This packet **wires `smart-writer-v2` onto it**. Not a Spec Kit product story. Do **not** `git tag v*` (that ships every `publish_container` app).
 
 ## Meta

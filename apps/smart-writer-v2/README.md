@@ -48,11 +48,9 @@ Nix cattle copies `apps/smart-writer-v2` as-is. **Commit refreshed `app/static/u
 
 ```bash
 nix build .#container-smart-writer-v2 --option sandbox false
-# Ship/deploy (human if Codespace lacks actions:write):
-#   gh workflow run ship-registry.yml -f app_id=smart-writer-v2 \
-#     -f nix_attr=container-smart-writer-v2 -f image_name=smart-writer-v2
-#   gh workflow run deploy.yml -f app_id=smart-writer-v2 -f tag=latest -f environment=production
-#   gh workflow run smoke-test.yml -f app_id=smart-writer-v2 -f environment=production
+# One-app ship + deploy (Codespace: git push, not workflow_dispatch):
+nix develop -c uv run scripts/ops_runtime_tag.py ship \
+  --app-id smart-writer-v2 --environment production --push
 ```
 
 Do **not** publish `smart-writer-v2-ui`.

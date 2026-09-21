@@ -9,7 +9,7 @@
 # the same semver-style v* tags; routing preview vs production later should use
 # branch context on branch pushes and/or whether the tagged commit is on main,
 # not tag-shape alone. Today: verify on every push/PR; ship → Railway prod →
-# smoke only on v* tag pushes.
+# smoke only on v* tag pushes. One-app agent ship is ship-one.yml (ship/** tags).
 #
 # Ship / deploy / smoke fan out per apps/registry.json (see registry-matrices job).
 # ------------------------------------------------------------------------------
@@ -18,6 +18,10 @@ name: "CI-CD Pipeline"
 
 on:
   push:
+    branches:
+      - "**"
+    tags:
+      - "v*"
   pull_request:
   workflow_dispatch:
 

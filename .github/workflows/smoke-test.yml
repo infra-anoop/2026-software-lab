@@ -4,6 +4,10 @@
 # Derives the Railway public URL via GraphQL and curls /health.
 # Requires: RAILWAY_WORKSPACE_TOKEN (preferred) or RAILWAY_TOKEN
 # Config: deploy/railway/<environment>/<app_id>.yml (see apps/registry.yaml)
+#
+# Preferred agent path: ship/<app_id>/<environment> via ship-one.yml.
+# Break-glass: this file's workflow_dispatch (Actions UI). Do not use
+# `gh workflow run` from a Codespace (no actions:write).
 # ------------------------------------------------------------------------------
 
 name: "Post-Deploy Smoke Test (Railway)"

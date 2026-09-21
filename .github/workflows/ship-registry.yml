@@ -3,7 +3,14 @@
 # ------------------------------------------------------------------------------
 # Builds `nix build .#<nix_attr>` (e.g. container-research-auditor), loads into
 # Docker, tags ghcr.io/<owner>/<image_name>, pushes.
-# Callers supply matrix inputs from apps/registry.json (see ci-cd-pipeline.yml).
+# Callers supply matrix inputs from apps/registry.json (see ci-cd-pipeline.yml)
+# or ship-one.yml (one-app agent tag).
+#
+# Preferred agent path: ship/<app_id>/<environment> via ship-one.yml
+#   nix develop -c uv run scripts/ops_runtime_tag.py ship --app-id <id> \
+#     --environment production --push
+# Break-glass: this file's workflow_dispatch (Actions UI). Do not use
+# `gh workflow run` from a Codespace (no actions:write).
 # ------------------------------------------------------------------------------
 
 name: "Ship Container to GHCR"
@@ -23,6 +30,11 @@ on:
         description: "Docker/OCI image basename (matches oci.image_name)"
         required: true
         type: string
+      image_tag:
+        description: "Override GHCR tag (e.g. sha-abc1234). Empty = git tag name or branch-<ref>"
+        required: false
+        type: string
+        default: ""
 
   workflow_dispatch:
     inputs:
@@ -38,6 +50,11 @@ on:
         description: "Image basename after docker load"
         required: true
         type: string
+      image_tag:
+        description: "Override GHCR tag (optional). Empty = git tag name or branch-<ref>"
+        required: false
+        type: string
+        default: ""
 
 concurrency:
   group: ship-${{ github.ref }}-${{ inputs.app_id }}
@@ -76,6 +93,7 @@ jobs:
           APP_ID: ${{ inputs.app_id }}
           NIX_ATTR: ${{ inputs.nix_attr }}
           IMAGE_NAME: ${{ inputs.image_name }}
+          IMAGE_TAG_OVERRIDE: ${{ inputs.image_tag }}
         run: |
           set -euo pipefail
 
@@ -86,8 +104,11 @@ jobs:
 
           REF="${{ github.ref_name }}"
           SHORT_SHA="$(echo "${{ github.sha }}" | cut -c1-7)"
+          OVERRIDE="${IMAGE_TAG_OVERRIDE:-}"
 
-          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+          if [[ -n "$OVERRIDE" ]]; then
+            TAG="$OVERRIDE"
+          elif [[ "${{ github.ref_type }}" == "tag" ]]; then
             TAG="$REF"
           else
             TAG="branch-$REF"

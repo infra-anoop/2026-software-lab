@@ -4,6 +4,11 @@ name: Deploy to Railway
 # runtime.start_command from deploy/railway/<environment>/<app_id>.yml, then
 # deploys and waits for that new deployment to go terminal.
 # Railway is a runtime only — it must not build from git/Railpack.
+#
+# Preferred agent path: ship/<app_id>/<environment> via ship-one.yml
+#   (verify → ship → this deploy → smoke). Lab-wide: v* + ci-cd-pipeline.yml.
+# Break-glass: this file's workflow_dispatch (Actions UI). Do not use
+# `gh workflow run` from a Codespace (no actions:write).
 
 on:
   workflow_call:

@@ -46,6 +46,18 @@ nix flake check   # heavier; full matrix
 
 HTTP app loop: `uv run uvicorn app.entrypoints.http:app --reload --host 0.0.0.0 --port 8080`
 
+### Agent CI / ship (Codespace)
+
+Ordinary git push. Do **not** `gh workflow run` (Codespace tokens cannot `workflow_dispatch`). Playbook: `notes/codespace-a23-dispatch.md`.
+
+| Intent | Command |
+|--------|---------|
+| Verify | push a branch / open a PR |
+| One-app ship + deploy + smoke | `nix develop -c uv run scripts/ops_runtime_tag.py ship --app-id <id> --environment production --push` |
+| Lab-wide release (all apps) | `git tag vX.Y.Z && git push origin vX.Y.Z` |
+| Secrets rotate | `… ops_runtime_tag.py sync --app-id <id> --environment production --push` |
+| First-time Railway footprint | `… ops_runtime_tag.py bootstrap --app-id <id> --environment production --push` |
+
 ---
 
 ## Code conventions
