@@ -94,7 +94,7 @@ Ship the existing v0 Next UI from **`smart-writer-v2`** same-origin with FastAPI
 
 ## Handoff notes (agent fills at end)
 
-- **Branch:** `packet/2026-09-21-swv2-d5-one-service-ui` (from `origin/main` @ `507d587`)
+- **Branch:** `packet/2026-09-21-swv2-d5-one-service-ui` @ `9a32891` (from `origin/main` @ `507d587`)
 - **What changed:**
   - Next `output: "export"`; `npm run build:fastapi` → `app/static/ui/` (committed for Nix cattle)
   - FastAPI serves UI at `/` + static assets; `/v1` + `/health` unchanged
