@@ -9,7 +9,7 @@
 | Gate | T* |
 | Brief | `docs/agent-os/TEST_REVIEW_PROMPT.md` |
 | Feature dir | `specs/smart-writer-v2/` |
-| Commit | *(filled after commit)* |
+| Commit | d42e4021a3e08ab8d47f764e915470d17bc654a2* |
 | Agent mode | spawned-reviewer |
 
 ## Context to read first
