@@ -7,12 +7,12 @@ Governor re-locked **D5** (2026-09-21): keep v0 UI design; **one** Railway servi
 | Field | Value |
 |-------|-------|
 | Packet id | `2026-09-21-swv2-d5-one-service-ui` |
-| Status | **done** (code); T069 checkbox awaits prod proof |
+| Status | **done** |
 | Feature / spec | `specs/smart-writer-v2/` |
-| Branch | `packet/2026-09-21-swv2-d5-one-service-ui` |
+| Branch | merged via PR #3 → `main` (`b0beb5b`) |
 | Agent mode | **background** |
 | Spawn | `docs/agent-os/SPAWN_WORKER.md` + `_WORKER_PROMPT.md` |
-| Note | Respawn 2026-09-21 after SSH drop; prior worker left no durable implement. Lock commit `507d587` on `main`. |
+| Note | Prod proof 2026-09-21: ship #9 + deploy #5; UI + 401 gate on worker URL. |
 
 ## Goal
 
@@ -61,7 +61,7 @@ Ship the existing v0 Next UI from **`smart-writer-v2`** same-origin with FastAPI
 - [x] `smart-writer-v2-ui` cattle removed or marked do-not-ship; `deploy/railway/README.md` updated
 - [x] Nix/Docker image path builds UI into worker image (or documented CI step); one-app deploy still `smart-writer-v2`
 - [x] Local: `npm run build` + serve path documented; pytest green for app
-- [ ] T069 checkbox updated only when public URL on **worker** service shows UI + gated API
+- [x] T069 checkbox updated only when public URL on **worker** service shows UI + gated API — **2026-09-21** ship #9 / deploy #5; `GET /` HTML; `/v1` → 401 without/wrong secret
 - [x] Handoff notes any human ops (rebuild Codespace N/A; may need ship/deploy)
 
 ## Out of scope

@@ -247,7 +247,7 @@ D6 lock + T070 (vault seed + sync)
 
 ### Production browser (fat UI host)
 
-- [ ] T069 [OD:D5] **(1)** Vercel **v0** GUI design pass (chat + Settings) — **done 2026-09-20.** **(2)** **Re-lock path:** ship that UI from the **one** Railway service `smart-writer-v2` (FastAPI serves built Next assets **same-origin**). **V1-style** preview secret field in UI → browser sends `X-Audit-Secret` (no BFF custody). Remove or stop shipping `smart-writer-v2-ui` / BFF-as-gate cattle. Update `apps/smart-writer-v2/web/README.md` + `deploy/railway/README.md`. Public product URL = worker URL (or documented path). Local/Codespaces = dev only.
+- [x] T069 [OD:D5] **(1)** Vercel **v0** GUI design pass (chat + Settings) — **done 2026-09-20.** **(2)** **Re-lock path:** ship that UI from the **one** Railway service `smart-writer-v2` (FastAPI serves built Next assets **same-origin**). **V1-style** preview secret field in UI → browser sends `X-Audit-Secret` (no BFF custody). Remove or stop shipping `smart-writer-v2-ui` / BFF-as-gate cattle. Update `apps/smart-writer-v2/web/README.md` + `deploy/railway/README.md`. Public product URL = worker URL (or documented path). Local/Codespaces = dev only. — **proven 2026-09-21:** ship #9 + deploy #5; `GET /` HTML “Smart Writer V2”; `/v1` missing/wrong secret → **401**.
 
 ### Uploads (D7 locked — in-memory)
 
