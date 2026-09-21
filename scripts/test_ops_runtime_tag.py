@@ -36,6 +36,19 @@ def test_parse_valid_bootstrap_staging() -> None:
     assert tag.environment == "staging"
 
 
+def test_parse_valid_ship() -> None:
+    tag = ort.parse_ops_tag("ship/smart-writer-v2/production")
+    assert tag.kind == "ship"
+    assert tag.app_id == "smart-writer-v2"
+    assert tag.environment == "production"
+    assert tag.name == "ship/smart-writer-v2/production"
+
+
+def test_parse_rejects_ship_extra_segments() -> None:
+    with pytest.raises(ort.OpsTagError, match="extra|invalid|expected"):
+        ort.parse_ops_tag("ship/smart-writer-v2/production/v1.2.3")
+
+
 def test_parse_rejects_extra_segments() -> None:
     with pytest.raises(ort.OpsTagError, match="extra|invalid|expected"):
         ort.parse_ops_tag("sync/smart-writer-v2/production/extra")
@@ -105,6 +118,41 @@ def test_dry_run_bootstrap(capsys: pytest.CaptureFixture[str]) -> None:
     assert "bootstrap/research-auditor/production" in out
 
 
+def test_dry_run_ship(capsys: pytest.CaptureFixture[str]) -> None:
+    code = ort.main(
+        [
+            "ship",
+            "--app-id",
+            "smart-writer-v2",
+            "--environment",
+            "production",
+            "--dry-run",
+        ]
+    )
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "ship/smart-writer-v2/production" in out
+    assert "dry-run" in out
+    assert "ship-one.yml" in out
+    assert "ops-runtime.yml" not in out
+
+
+def test_dry_run_ship_staging_without_yaml_fails(capsys: pytest.CaptureFixture[str]) -> None:
+    code = ort.main(
+        [
+            "ship",
+            "--app-id",
+            "smart-writer-v2",
+            "--environment",
+            "staging",
+            "--dry-run",
+        ]
+    )
+    assert code == 1
+    err = capsys.readouterr().err.lower()
+    assert "schema" in err or "environment" in err or "missing" in err
+
+
 def test_dry_run_unknown_app_fails(capsys: pytest.CaptureFixture[str]) -> None:
     code = ort.main(
         ["sync", "--app-id", "nope", "--environment", "production", "--dry-run"]
@@ -131,6 +179,26 @@ def test_parse_cli_github_output(capsys: pytest.CaptureFixture[str], monkeypatch
     assert "environment=production" in out
 
 
+def test_parse_cli_ship_github_output(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    code = ort.main(
+        [
+            "parse",
+            "--ref-name",
+            "ship/smart-writer-v2/production",
+            "--github-output",
+        ]
+    )
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "kind=ship" in out
+    assert "app_id=smart-writer-v2" in out
+    assert "nix_attr=container-smart-writer-v2" in out
+    assert "image_name=smart-writer-v2" in out
+
+
 def test_parse_cli_invalid(capsys: pytest.CaptureFixture[str]) -> None:
     code = ort.main(["parse", "--ref-name", "sync/only-one"])
     assert code == 1
@@ -142,6 +210,14 @@ def test_actions_filter_url() -> None:
     assert url.startswith("https://github.com/infra-anoop/2026-software-lab/actions/")
     assert "ops-runtime.yml" in url
     assert "sync%2Fa%2Fproduction" in url or "branch%3Async/a/production" in url
+
+
+def test_actions_filter_url_ship() -> None:
+    url = ort.actions_filter_url(
+        "infra-anoop/2026-software-lab", "ship/smart-writer-v2/production"
+    )
+    assert "ship-one.yml" in url
+    assert "ops-runtime.yml" not in url
 
 
 def _load_yaml(path: Path) -> dict:

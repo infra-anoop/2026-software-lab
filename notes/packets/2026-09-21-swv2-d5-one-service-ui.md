@@ -1,5 +1,7 @@
 # Work packet — SW V2 D5 re-lock: one-service UI + V1-style secret (T069)
 
+> **Superseded for ship/deploy (2026-09-21):** do not `gh workflow run`. One-app publish is `nix develop -c uv run scripts/ops_runtime_tag.py ship --app-id smart-writer-v2 --environment production --push` (`notes/packets/2026-09-21-one-app-ship-tags.md`).
+
 Governor re-locked **D5** (2026-09-21): keep v0 UI design; **one** Railway service; **V1-style** preview secret (not BFF / not `smart-writer-v2-ui`).
 
 ## Meta

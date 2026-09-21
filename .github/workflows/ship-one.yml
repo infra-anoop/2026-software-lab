@@ -1,0 +1,104 @@
+# One-app ship: verify → GHCR push → Railway pin → smoke via annotated git tags.
+#
+# Preferred agent path (Codespace): push ship/<app_id>/<environment>
+#   nix develop -c uv run scripts/ops_runtime_tag.py ship \
+#     --app-id <id> --environment production --push
+# Break-glass: Actions UI workflow_dispatch on ship-registry.yml / deploy.yml /
+# smoke-test.yml. Do not grant Codespace actions:write.
+#
+# Tag shape (strict): ship/<app_id>/<environment>
+# Image identity is sha-<7> (not the git tag name). Never runs A23 sync.
+# Lab-wide release remains v* (ci-cd-pipeline.yml).
+
+name: Ship one app
+
+on:
+  push:
+    tags:
+      - 'ship/**'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  lookup:
+    name: Parse ship tag
+    runs-on: ubuntu-latest
+    outputs:
+      kind: ${{ steps.tag.outputs.kind }}
+      app_id: ${{ steps.tag.outputs.app_id }}
+      environment: ${{ steps.tag.outputs.environment }}
+      nix_attr: ${{ steps.tag.outputs.nix_attr }}
+      image_name: ${{ steps.tag.outputs.image_name }}
+      image_tag: ${{ steps.sha.outputs.image_tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Parse and validate ship tag
+        id: tag
+        run: >
+          uv run scripts/ops_runtime_tag.py parse
+          --ref-name "${{ github.ref_name }}"
+          --github-output
+
+      - name: Require ship kind + registry image fields
+        run: |
+          set -euo pipefail
+          test "${{ steps.tag.outputs.kind }}" = "ship"
+          test -n "${{ steps.tag.outputs.app_id }}"
+          test -n "${{ steps.tag.outputs.environment }}"
+          test -n "${{ steps.tag.outputs.nix_attr }}"
+          test -n "${{ steps.tag.outputs.image_name }}"
+
+      - name: Image tag from git SHA
+        id: sha
+        run: |
+          SHORT="$(echo '${{ github.sha }}' | cut -c1-7)"
+          echo "image_tag=sha-${SHORT}" >> "$GITHUB_OUTPUT"
+          echo "Pinning GHCR + Railway to sha-${SHORT}"
+
+  verify:
+    name: Verify source
+    needs: lookup
+    uses: ./.github/workflows/verify-source.yml
+
+  ship:
+    name: Ship ${{ needs.lookup.outputs.app_id }}
+    needs: [lookup, verify]
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/ship-registry.yml
+    with:
+      app_id: ${{ needs.lookup.outputs.app_id }}
+      nix_attr: ${{ needs.lookup.outputs.nix_attr }}
+      image_name: ${{ needs.lookup.outputs.image_name }}
+      image_tag: ${{ needs.lookup.outputs.image_tag }}
+    secrets: inherit
+
+  deploy:
+    name: Deploy ${{ needs.lookup.outputs.app_id }}
+    needs: [lookup, ship]
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/deploy.yml
+    with:
+      app_id: ${{ needs.lookup.outputs.app_id }}
+      environment: ${{ needs.lookup.outputs.environment }}
+      tag: ${{ needs.lookup.outputs.image_tag }}
+    secrets: inherit
+
+  smoke:
+    name: Smoke ${{ needs.lookup.outputs.app_id }}
+    needs: [lookup, deploy]
+    uses: ./.github/workflows/smoke-test.yml
+    with:
+      app_id: ${{ needs.lookup.outputs.app_id }}
+      environment: ${{ needs.lookup.outputs.environment }}
+    secrets: inherit

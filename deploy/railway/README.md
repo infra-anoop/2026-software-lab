@@ -13,7 +13,7 @@ Railway deploy and post-deploy smoke read **per-app** YAML files keyed by applic
 3. Ask GHCR for that tag's **content digest** (`docker buildx imagetools inspect`)
 4. Pin digest + start command on Railway via GraphQL, then `serviceInstanceDeploy` and wait until that deployment is terminal — fail-closed if the live schema cannot accept the pin (probe details live only in `deploy.yml`)
 
-`workflow_dispatch` on `deploy.yml` is the same path as the tag pipeline (app + tag + environment).
+`workflow_dispatch` on `deploy.yml` is **human break-glass** (same GraphQL pin as the tag pipelines). Agents must not use it from a Codespace.
 
 ### Tag → digest (local)
 
@@ -71,9 +71,16 @@ deploy/railway/
 | `smart-writer-v2` | ✅ YAML in git; one-service UI+API (**D5**); bootstrap packet for footprint | ❌ not configured |
 | `smart-writer-v2-ui` | ❌ **superseded** (do not ship) | ❌ |
 
-Manual `workflow_dispatch` with `environment=staging` and `app_id=smart-writer` or `smart-writer-v2` will fail at config lookup with a clear error (`Missing config: deploy/railway/staging/<app_id>.yml`). Use `environment=production` until a preview Railway service exists.
+A `ship/<app_id>/staging` tag (or UI dispatch) with `app_id=smart-writer` or `smart-writer-v2` will fail at config lookup (`Missing config: deploy/railway/staging/<app_id>.yml`). Use `environment=production` until a preview Railway service exists.
 
-**One-app ship:** do not `git tag v*` to publish V2 alone — a `v*` tag ships every `publish_container` app. Use `workflow_dispatch` on `ship-registry.yml` / `deploy.yml` / `smoke-test.yml` with `app_id=smart-writer-v2` (see the bootstrap packet).
+**One-app ship (agents):** do not `git tag v*` to publish one app — a `v*` tag ships every `publish_container` app. Push a `ship/<app_id>/<environment>` tag instead:
+
+```bash
+nix develop -c uv run scripts/ops_runtime_tag.py ship \
+  --app-id smart-writer-v2 --environment production --push
+```
+
+That runs verify → GHCR push → Railway digest pin → smoke for **that app only** (`ship-one.yml`). Re-ship with `--force`. Playbook: `notes/codespace-a23-dispatch.md`.
 
 Automated tag releases (`v*`) deploy **production only** for all apps with `deploy.enabled`. Future *preview* deployment is tracked separately (see comment block in `.github/workflows/ci-cd-pipeline.yml` and `notes/todo.md`).
 
@@ -96,17 +103,21 @@ Pushes images for every app with `ship.publish_container`, then deploys every ap
 
 ## Ops tags (secrets sync / bootstrap — not code deploy)
 
-Conscious Infisical→Railway ops use **annotated tags**, not `v*`. Preferred agent path from a Codespace (ordinary git push; no PAT / no `actions:write`):
+Conscious Infisical→Railway ops use **annotated tags**, not `v*` or `ship/…`. Preferred agent path from a Codespace (ordinary git push; no PAT / no `actions:write`):
 
 | Intent | Tag | Workflow |
 |--------|-----|----------|
 | Secrets rotate (A23) | `sync/<app_id>/<environment>` | `ops-runtime.yml` → sync apply |
 | First-time footprint (A26→A23→A24) | `bootstrap/<app_id>/<environment>` | provision → sync → verify (live) |
-| Code ship / image pin | `v*` | existing ship/deploy — **never** runs A23 sync |
+| One-app ship / image pin | `ship/<app_id>/<environment>` | `ship-one.yml` (verify → ship → deploy → smoke) |
+| Lab-wide code ship / image pin | `v*` | `ci-cd-pipeline.yml` — **never** runs A23 sync |
 
 ```bash
-nix develop -c uv run scripts/ops_runtime_tag.py sync \
+nix develop -c uv run scripts/ops_runtime_tag.py ship \
   --app-id smart-writer-v2 --environment production --dry-run
+
+nix develop -c uv run scripts/ops_runtime_tag.py ship \
+  --app-id smart-writer-v2 --environment production --push
 
 nix develop -c uv run scripts/ops_runtime_tag.py sync \
   --app-id smart-writer-v2 --environment production --push
@@ -115,26 +126,11 @@ nix develop -c uv run scripts/ops_runtime_tag.py bootstrap \
   --app-id smart-writer-v2 --environment production --push
 ```
 
-Break-glass: Actions UI `workflow_dispatch` on `sync-runtime-secrets.yml`, `provision-runtime.yml`, `verify-runtime-bootstrap.yml`. Playbook: `notes/codespace-a23-dispatch.md`.
+Break-glass: Actions UI `workflow_dispatch` on the leaf workflows. Playbook: `notes/codespace-a23-dispatch.md`.
 
-## Manual deploy (one app)
+## Break-glass deploy (human UI)
 
-```bash
-gh workflow run deploy.yml \
-  -f app_id=smart-writer \
-  -f tag=v1.0.0 \
-  -f environment=production
-```
-
-Same GraphQL path as the tag pipeline: digest pin → start command → deploy → wait.
-
-## Manual smoke
-
-```bash
-gh workflow run smoke-test.yml \
-  -f app_id=research-auditor \
-  -f environment=production
-```
+From a machine with `actions:write` (not this Codespace), Actions UI “Run workflow” on `deploy.yml` / `smoke-test.yml` is equivalent GraphQL: digest pin → start command → deploy → wait. Agents: use `ops_runtime_tag.py ship` instead.
 
 ## Adding a new app
 
