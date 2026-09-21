@@ -14,13 +14,14 @@ from __future__ import annotations
 
 import hmac
 from contextlib import asynccontextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from lab_shared.jobs import JobRunner, QueueFullError, SlidingWindowRateLimiter
+from lab_shared.jobs import Job, JobRunner, QueueFullError, SlidingWindowRateLimiter
 from pydantic import BaseModel, Field
 
 from app.agents.clarify import clarify_text_for_turn
@@ -43,6 +44,7 @@ from app.config import (
     get_openai_api_key,
 )
 from app.models import MaterialRef as ModelMaterialRef
+from app.obs import configure_observability, empty_usage, job_span
 from app.orchestrator.generate_graph import run_generate
 from app.orchestrator.revise_graph import run_revise
 from app.orchestrator.turn_mode import (
@@ -58,53 +60,85 @@ AUDIT_SECRET_HEADER = "X-Audit-Secret"
 UI_STATIC_DIR = Path(__file__).resolve().parents[1] / "static" / "ui"
 
 
+def _parse_job_ts(raw: str | None) -> datetime | None:
+    if not raw:
+        return None
+    try:
+        return datetime.fromisoformat(raw)
+    except ValueError:
+        return None
+
+
+def _job_elapsed_ms(job: Job) -> int | None:
+    """Wall time from JobRunner timestamps (D3); None if measurement failed."""
+    start = _parse_job_ts(job.started_at)
+    end = _parse_job_ts(job.finished_at)
+    if start is None or end is None:
+        return None
+    return max(0, int((end - start).total_seconds() * 1000))
+
+
+def _job_usage(result: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Prefer provider totals on the result; else empty shell (keys present, nulls)."""
+    if isinstance(result, dict):
+        usage = result.get("usage")
+        if isinstance(usage, dict) and "input_tokens" in usage and "output_tokens" in usage:
+            return usage
+    return empty_usage()
+
+
 async def _execute_job(payload: dict[str, Any]) -> dict[str, Any]:
     """Run generate or revise and persist the ArtifactVersion (T028/T037)."""
     conversation_id = str(payload["conversation_id"])
     mode = str(payload.get("mode") or "generate")
-    if mode == "revise":
-        parent_id = payload.get("parent_artifact_id")
-        parent = STORE.get_artifact(str(parent_id)) if parent_id else None
-        if parent is None:
-            raise ReviseWithoutParentError("revise parent missing at execute")
-        result = await run_revise(
-            conversation_id=conversation_id,
-            feedback=str(payload.get("user_text") or ""),
-            parent=parent,
-            citation_mode_pref=payload.get("citation_mode_pref"),
-            humor_enabled=bool(payload.get("humor_enabled", False)),
-            property_ranking=list(payload.get("property_ranking") or []),
-        )
-    else:
-        raw_materials = payload.get("materials") or []
-        refs = [
-            ModelMaterialRef(uri=str(item["uri"]), label=item.get("label"), kind="link")
-            for item in raw_materials
-            if item.get("uri")
-        ]
-        result = await run_generate(
-            conversation_id=conversation_id,
-            user_text=str(payload.get("user_text") or ""),
-            materials=refs,
-            citation_mode_pref=payload.get("citation_mode_pref"),
-            humor_enabled=bool(payload.get("humor_enabled", False)),
-            web_research_enabled=bool(payload.get("web_research_enabled", True)),
-            property_ranking=list(payload.get("property_ranking") or []),
-        )
-    artifact = result["artifact"]
-    STORE.save_artifact(conversation_id, artifact)
-    STORE.add_message(conversation_id, "assistant", artifact.body)
-    return {
-        "humor_enabled": result["humor_enabled"],
-        "artifact": artifact.model_dump(),
-        "rubric_id": result["rubric_id"],
-        "loop": result["loop"],
-    }
+    with job_span(job_mode=mode, conversation_id=conversation_id):
+        if mode == "revise":
+            parent_id = payload.get("parent_artifact_id")
+            parent = STORE.get_artifact(str(parent_id)) if parent_id else None
+            if parent is None:
+                raise ReviseWithoutParentError("revise parent missing at execute")
+            result = await run_revise(
+                conversation_id=conversation_id,
+                feedback=str(payload.get("user_text") or ""),
+                parent=parent,
+                citation_mode_pref=payload.get("citation_mode_pref"),
+                humor_enabled=bool(payload.get("humor_enabled", False)),
+                property_ranking=list(payload.get("property_ranking") or []),
+            )
+        else:
+            raw_materials = payload.get("materials") or []
+            refs = [
+                ModelMaterialRef(uri=str(item["uri"]), label=item.get("label"), kind="link")
+                for item in raw_materials
+                if item.get("uri")
+            ]
+            result = await run_generate(
+                conversation_id=conversation_id,
+                user_text=str(payload.get("user_text") or ""),
+                materials=refs,
+                citation_mode_pref=payload.get("citation_mode_pref"),
+                humor_enabled=bool(payload.get("humor_enabled", False)),
+                web_research_enabled=bool(payload.get("web_research_enabled", True)),
+                property_ranking=list(payload.get("property_ranking") or []),
+            )
+        artifact = result["artifact"]
+        STORE.save_artifact(conversation_id, artifact)
+        STORE.add_message(conversation_id, "assistant", artifact.body)
+        # Provider token totals live on Agent RunResult; agents return outputs only.
+        # Emit required usage keys with nulls rather than inventing fake burns (D3).
+        return {
+            "humor_enabled": result["humor_enabled"],
+            "artifact": artifact.model_dump(),
+            "rubric_id": result["rubric_id"],
+            "loop": result["loop"],
+            "usage": empty_usage(),
+        }
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Start the in-process job worker. Health does not touch this."""
+    """Observability (noop without token) + in-process job worker."""
+    configure_observability()
     runner = JobRunner(
         execute=_execute_job,
         timeout_sec=get_job_timeout_sec,
@@ -376,19 +410,29 @@ def get_job(
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     mode = job.payload.get("mode") or "generate"
+    terminal = job.status in {"succeeded", "failed", "timed_out"}
+    elapsed_ms = _job_elapsed_ms(job) if terminal else None
+    result = job.result if isinstance(job.result, dict) else None
+    usage = _job_usage(result) if terminal else None
     if job.status != "succeeded":
-        return {
+        snapshot: dict[str, Any] = {
             "job_id": job.job_id,
             "status": job.status,
             "mode": mode,
             "error": job.error,
         }
-    result = job.result if isinstance(job.result, dict) else {}
+        if terminal:
+            snapshot["elapsed_ms"] = elapsed_ms
+            snapshot["usage"] = usage
+        return snapshot
+    assert result is not None
     return {
         "job_id": job.job_id,
         "status": "succeeded",
         "mode": mode,
         "humor_enabled": result.get("humor_enabled", False),
+        "elapsed_ms": elapsed_ms,
+        "usage": usage,
         "rubric_id": result.get("rubric_id"),
         "loop": result.get("loop"),
         "artifact": result["artifact"],

@@ -242,7 +242,7 @@ D6 lock + T070 (vault seed + sync)
 
 ### Spend / observability / UI polish
 
-- [ ] T064 [OD:D3] Wire Logfire from `LOGFIRE_TOKEN` in `apps/smart-writer-v2/app/obs.py` (noop if unset); lifespan hook; job spans. Job snapshot MUST include `elapsed_ms` + `usage` (`input_tokens`, `output_tokens`, optional `estimated_cost_usd`) per `contracts/http-api.md` / `data-model.md`. No secrets / raw InternalRunState in logs. Contract test: terminal job JSON has those keys.
+- [x] T064 [OD:D3] Wire Logfire from `LOGFIRE_TOKEN` in `apps/smart-writer-v2/app/obs.py` (noop if unset); lifespan hook; job spans. Job snapshot MUST include `elapsed_ms` + `usage` (`input_tokens`, `output_tokens`, optional `estimated_cost_usd`) per `contracts/http-api.md` / `data-model.md`. No secrets / raw InternalRunState in logs. Contract test: terminal job JSON has those keys.
 - [x] T065 [OD:D4] Settings panel framework in `apps/smart-writer-v2/web/`: citation format (panel / inline / footnotes / combo) as a **settings** preference (not in-chat control); default sources panel; hide/skip when no sources (FR-010a). Panel is the home for future similar prefs. Layout may be refined in D5 GUI design.
 
 ### Production browser (fat UI host)

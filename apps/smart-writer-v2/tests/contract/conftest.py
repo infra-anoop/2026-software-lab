@@ -15,6 +15,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     monkeypatch.setenv("SMART_WRITER_V2_AUDIT_SECRET", SECRET)
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test-fake")
     monkeypatch.delenv("TAVILY_API_KEY", raising=False)
+    monkeypatch.delenv("LOGFIRE_TOKEN", raising=False)
     get_settings.cache_clear()
     with TestClient(app) as test_client:
         yield test_client
