@@ -65,7 +65,7 @@ from app.orchestrator.turn_mode import (
 )
 from app.store import STORE, MaterialRef, Message
 
-AUDIT_SECRET_HEADER = "X-Audit-Secret"
+AUDIT_SECRET_HEADER = "X-Audit-Secret"  # nosec B105 — HTTP header name, not a password
 
 # D7 upload defaults (contracts/http-api.md).
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
@@ -375,7 +375,8 @@ def get_conversation(
     """Client snapshot. Do not dump intent slots or a draft on clarify (T10)."""
     _require_conversation(conversation_id)
     conversation = STORE.get_conversation(conversation_id)
-    assert conversation is not None
+    if conversation is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
     state = STORE.get_run_state(conversation_id)
     last_artifact_id = state.last_artifact_id if state is not None else None
     return ConversationSnapshotOut(
@@ -408,7 +409,8 @@ async def post_upload(
     record = STORE.uploads.put(conversation_id, data, mime)
     material_id = f"mat_{uuid4().hex[:12]}"
     state = STORE.get_run_state(conversation_id)
-    assert state is not None
+    if state is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
     state.materials.append(
         MaterialRef(
             material_id=material_id,
@@ -446,7 +448,8 @@ def post_message(
         )
     _require_conversation(conversation_id)
     state = STORE.get_run_state(conversation_id)
-    assert state is not None
+    if state is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
     if body.citation_mode is not None:
         state.citation_mode_pref = body.citation_mode
     for item in body.materials:
@@ -561,7 +564,8 @@ def get_job(
             snapshot["elapsed_ms"] = elapsed_ms
             snapshot["usage"] = usage
         return snapshot
-    assert result is not None
+    if result is None:
+        raise HTTPException(status_code=500, detail="Succeeded job missing result")
     return {
         "job_id": job.job_id,
         "status": "succeeded",
