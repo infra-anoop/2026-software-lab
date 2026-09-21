@@ -1,29 +1,10 @@
-# Smart Writer V2 UI — Next.js standalone for Railway (Docker, not Nix).
-# Build context: apps/smart-writer-v2/web/
-
-FROM node:22-alpine AS deps
-WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
-
-FROM node:22-alpine AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build
-
-FROM node:22-alpine AS runner
-WORKDIR /app
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-RUN addgroup --system --gid 1001 nodejs \
-  && adduser --system --uid 1001 nextjs
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-USER nextjs
-EXPOSE 8080
-ENV PORT=8080
-ENV HOSTNAME=0.0.0.0
-CMD ["node", "server.js"]
+# SUPERSEDED (D5 re-lock 2026-09-21) — do not ship.
+#
+# Product UI is the Next static export served by FastAPI on service
+# `smart-writer-v2` (same-origin). See apps/smart-writer-v2/web/README.md
+# and notes/packets/2026-09-21-swv2-d5-one-service-ui.md.
+#
+# This Dockerfile previously built a standalone Next server for a second
+# Railway service `smart-writer-v2-ui`. That cattle path is retired.
+# Prefer: cd web && npm run build:fastapi  → assets under app/static/ui
+# then: nix build .#container-smart-writer-v2

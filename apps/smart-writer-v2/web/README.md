@@ -2,36 +2,49 @@
 
 **D5 re-lock (2026-09-21):** Production = **same Railway service** as FastAPI (`smart-writer-v2`), UI served **same-origin**. Spend gate = **V1-style** shared preview secret (user types it; browser sends `X-Audit-Secret`).
 
-**Superseded:** Railway service `smart-writer-v2-ui`, BFF-held silent secret, “browser never sees audit secret.”
+**Superseded:** Railway service `smart-writer-v2-ui`, BFF-held silent secret, “browser never sees audit secret,” and `web/app/api/proxy`.
 
-Implement packet: `notes/packets/2026-09-21-swv2-d5-one-service-ui.md` (T069).
+Packet: `notes/packets/2026-09-21-swv2-d5-one-service-ui.md` (T069).
 
 ## Design
 
-Vercel v0 export integrated here (shell + Settings + chips + draft pane). Keep that look; change transport/custody only.
+Vercel v0 export integrated here (shell + Settings + chips + draft pane). Keep that look; transport is same-origin `/v1` only.
 
-## Target API calls (after T069)
+## API calls
 
 | From | To |
 |------|-----|
 | Browser | Same-origin `/v1/...` with header `X-Audit-Secret` |
-| Secret UX | Password field + `sessionStorage` (mirror V1) |
+| Secret UX | Settings password field + `sessionStorage` (mirror V1) |
 
-Remove or stop using `app/api/proxy/[...path]/route.ts` once same-origin wiring lands.
+No Next Route Handlers for custody. `output: "export"` → static files under `../app/static/ui` for FastAPI.
 
 ## Settings (D4 / T065)
 
-Header **Settings** holds chat preferences. First preference: **citation format**
+Header **Settings** holds chat preferences and the **preview gate secret**. Citation format:
 (`panel` | `inline` | `footnotes` | `combo`). Default is **sources panel**.
 
-## Local (dev)
+## Build into FastAPI
 
 ```bash
-# Terminal A — API
-cd apps/smart-writer-v2 && uv run uvicorn app.entrypoints.http:app --reload --port 8080
+# Needs Node 22+ (nix-shell -p nodejs_22 if not on PATH)
+cd apps/smart-writer-v2/web
+npm ci
+npm run build:fastapi   # next build (static export) → ../app/static/ui
+```
 
-# Terminal B — UI (until FastAPI serves the build)
+Then one process:
+
+```bash
+cd apps/smart-writer-v2
+uv run uvicorn app.entrypoints.http:app --reload --port 8080
+# http://127.0.0.1:8080/
+```
+
+## Dev hot-reload (optional)
+
+```bash
 cd apps/smart-writer-v2/web && npm run dev
 ```
 
-Needs Node (`nix develop` if missing).
+Pointing `npm run dev` at a separate origin still requires a typed secret in Settings; do not restore the BFF proxy.

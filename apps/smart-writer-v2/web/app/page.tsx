@@ -1,12 +1,14 @@
 "use client";
 
-import { FormEvent, useCallback, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 
 import { PropertyChips } from "./components/PropertyChips";
 import {
   CitationMode,
   SettingsPanel,
 } from "./components/SettingsPanel";
+
+const SECRET_KEY = "smart_writer_v2_audit_secret";
 
 type ChatMessage = {
   role: "user" | "assistant";
@@ -31,13 +33,17 @@ type ArtifactView = {
   web_signal?: string;
 };
 
-async function api(path: string, init?: RequestInit): Promise<Response> {
-  return fetch(`/api/proxy/${path.replace(/^\//, "")}`, {
+async function api(
+  path: string,
+  secret: string,
+  init?: RequestInit,
+): Promise<Response> {
+  const headers = new Headers(init?.headers);
+  headers.set("content-type", "application/json");
+  headers.set("X-Audit-Secret", secret);
+  return fetch(`/${path.replace(/^\//, "")}`, {
     ...init,
-    headers: {
-      "content-type": "application/json",
-      ...(init?.headers ?? {}),
-    },
+    headers,
   });
 }
 
@@ -56,45 +62,67 @@ export default function Page() {
   const [intent, setIntent] = useState<"auto" | "regenerate">("auto");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [citationMode, setCitationMode] = useState<CitationMode>("panel");
+  const [auditSecret, setAuditSecret] = useState("");
+
+  useEffect(() => {
+    const stored = sessionStorage.getItem(SECRET_KEY);
+    if (stored) {
+      setAuditSecret(stored);
+    }
+  }, []);
+
+  const persistSecret = useCallback((value: string) => {
+    setAuditSecret(value);
+    if (value) {
+      sessionStorage.setItem(SECRET_KEY, value);
+    } else {
+      sessionStorage.removeItem(SECRET_KEY);
+    }
+  }, []);
 
   const ensureConversation = useCallback(async (): Promise<string> => {
     if (conversationId) {
       return conversationId;
     }
-    const response = await api("v1/conversations", { method: "POST" });
+    const response = await api("v1/conversations", auditSecret, {
+      method: "POST",
+    });
     if (!response.ok) {
       throw new Error(await response.text());
     }
     const body = (await response.json()) as { conversation_id: string };
     setConversationId(body.conversation_id);
     return body.conversation_id;
-  }, [conversationId]);
+  }, [auditSecret, conversationId]);
 
-  const pollJob = useCallback(async (jobId: string): Promise<void> => {
-    const deadline = Date.now() + 120_000;
-    while (Date.now() < deadline) {
-      const response = await api(`v1/jobs/${jobId}`);
-      const body = (await response.json()) as {
-        status?: string;
-        error?: string;
-        artifact?: ArtifactView;
-      };
-      setStatus(body.status ?? "unknown");
-      if (body.status === "succeeded" && body.artifact) {
-        setArtifact(body.artifact);
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", text: body.artifact?.body ?? "" },
-        ]);
-        return;
+  const pollJob = useCallback(
+    async (jobId: string): Promise<void> => {
+      const deadline = Date.now() + 120_000;
+      while (Date.now() < deadline) {
+        const response = await api(`v1/jobs/${jobId}`, auditSecret);
+        const body = (await response.json()) as {
+          status?: string;
+          error?: string;
+          artifact?: ArtifactView;
+        };
+        setStatus(body.status ?? "unknown");
+        if (body.status === "succeeded" && body.artifact) {
+          setArtifact(body.artifact);
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", text: body.artifact?.body ?? "" },
+          ]);
+          return;
+        }
+        if (body.status === "failed" || body.status === "timed_out") {
+          throw new Error(body.error || body.status);
+        }
+        await new Promise((resolve) => setTimeout(resolve, 400));
       }
-      if (body.status === "failed" || body.status === "timed_out") {
-        throw new Error(body.error || body.status);
-      }
-      await new Promise((resolve) => setTimeout(resolve, 400));
-    }
-    throw new Error("Timed out waiting for draft");
-  }, []);
+      throw new Error("Timed out waiting for draft");
+    },
+    [auditSecret],
+  );
 
   async function onSubmit(event: FormEvent): Promise<void> {
     event.preventDefault();
@@ -102,6 +130,19 @@ export default function Page() {
     if (!text || busy) {
       return;
     }
+    if (!auditSecret.trim()) {
+      setSettingsOpen(true);
+      setStatus("error");
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          text: "Preview gate secret is required (Settings). This is not a login.",
+        },
+      ]);
+      return;
+    }
+    sessionStorage.setItem(SECRET_KEY, auditSecret);
     setBusy(true);
     setStatus("sending");
     setDraft("");
@@ -111,7 +152,7 @@ export default function Page() {
       const materials = materialUri.trim()
         ? [{ uri: materialUri.trim(), label: null }]
         : [];
-      const response = await api(`v1/conversations/${cid}/messages`, {
+      const response = await api(`v1/conversations/${cid}/messages`, auditSecret, {
         method: "POST",
         body: JSON.stringify({
           text,
@@ -154,8 +195,7 @@ export default function Page() {
   const sources = artifact?.sources ?? [];
   const hasSources = sources.length > 0;
   const effectiveMode = artifact?.citation_mode ?? citationMode;
-  const renderCitations =
-    hasSources && showSourcesPanel(effectiveMode);
+  const renderCitations = hasSources && showSourcesPanel(effectiveMode);
 
   return (
     <main className="shell">
@@ -175,6 +215,8 @@ export default function Page() {
             onOpenChange={setSettingsOpen}
             citationMode={citationMode}
             onCitationModeChange={setCitationMode}
+            auditSecret={auditSecret}
+            onAuditSecretChange={persistSecret}
             disabled={busy}
           />
         </div>
@@ -183,7 +225,8 @@ export default function Page() {
         <section className="thread" aria-label="Conversation">
           {messages.length === 0 ? (
             <p className="empty">
-              Describe the org, funder, ask, why them, and any evidence.
+              Describe the org, funder, ask, why them, and any evidence. Open
+              Settings to enter the preview gate secret first.
             </p>
           ) : (
             messages.map((msg, index) => (

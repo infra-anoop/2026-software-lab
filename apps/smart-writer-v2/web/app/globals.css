@@ -166,6 +166,7 @@ body::before {
   color: var(--ink-soft);
 }
 
+.settings-field input,
 .settings-field select {
   background: var(--foam);
   color: var(--ink);
@@ -265,6 +266,7 @@ body::before {
 
 .composer input:focus,
 .composer textarea:focus,
+.settings-field input:focus,
 .settings-field select:focus {
   outline: none;
   border-color: color-mix(in srgb, var(--leaf) 55%, var(--line));

@@ -7,11 +7,12 @@ Governor re-locked **D5** (2026-09-21): keep v0 UI design; **one** Railway servi
 | Field | Value |
 |-------|-------|
 | Packet id | `2026-09-21-swv2-d5-one-service-ui` |
-| Status | ready |
+| Status | **done** (code); T069 checkbox awaits prod proof |
 | Feature / spec | `specs/smart-writer-v2/` |
-| Branch | `packet/2026-09-21-swv2-d5-one-service-ui` (or current `main` if human prefers) |
+| Branch | `packet/2026-09-21-swv2-d5-one-service-ui` |
 | Agent mode | **background** |
 | Spawn | `docs/agent-os/SPAWN_WORKER.md` + `_WORKER_PROMPT.md` |
+| Note | Respawn 2026-09-21 after SSH drop; prior worker left no durable implement. Lock commit `507d587` on `main`. |
 
 ## Goal
 
@@ -54,14 +55,14 @@ Ship the existing v0 Next UI from **`smart-writer-v2`** same-origin with FastAPI
 
 ## Definition of Done
 
-- [ ] Next build assets served by FastAPI on `/` (or documented path); `/v1` still works
-- [ ] UI has V1-style preview-secret field; mutating calls send `X-Audit-Secret`; **no** reliance on server-held secret in Next for custody
-- [ ] `web/app/api/proxy/...` removed or unused; README says same-origin + V1-style gate
-- [ ] `smart-writer-v2-ui` cattle removed or marked do-not-ship; `deploy/railway/README.md` updated
-- [ ] Nix/Docker image path builds UI into worker image (or documented CI step); one-app deploy still `smart-writer-v2`
-- [ ] Local: `npm run build` + serve path documented; pytest green for app
+- [x] Next build assets served by FastAPI on `/` (or documented path); `/v1` still works
+- [x] UI has V1-style preview-secret field; mutating calls send `X-Audit-Secret`; **no** reliance on server-held secret in Next for custody
+- [x] `web/app/api/proxy/...` removed or unused; README says same-origin + V1-style gate
+- [x] `smart-writer-v2-ui` cattle removed or marked do-not-ship; `deploy/railway/README.md` updated
+- [x] Nix/Docker image path builds UI into worker image (or documented CI step); one-app deploy still `smart-writer-v2`
+- [x] Local: `npm run build` + serve path documented; pytest green for app
 - [ ] T069 checkbox updated only when public URL on **worker** service shows UI + gated API
-- [ ] Handoff notes any human ops (rebuild Codespace N/A; may need ship/deploy)
+- [x] Handoff notes any human ops (rebuild Codespace N/A; may need ship/deploy)
 
 ## Out of scope
 
@@ -93,4 +94,21 @@ Ship the existing v0 Next UI from **`smart-writer-v2`** same-origin with FastAPI
 
 ## Handoff notes (agent fills at end)
 
-- …
+- **Branch:** `packet/2026-09-21-swv2-d5-one-service-ui` @ `9a32891` (from `origin/main` @ `507d587`)
+- **What changed:**
+  - Next `output: "export"`; `npm run build:fastapi` → `app/static/ui/` (committed for Nix cattle)
+  - FastAPI serves UI at `/` + static assets; `/v1` + `/health` unchanged
+  - Settings: V1-style preview secret → `sessionStorage` → `X-Audit-Secret` on same-origin `/v1`
+  - Removed `web/app/api/proxy` (BFF custody)
+  - Deleted `deploy/railway/production/smart-writer-v2-ui.yml`; READMEs + Dockerfile marked do-not-ship
+- **Tests / commands:**
+  - `nix-shell -p nodejs_22 --run 'cd apps/smart-writer-v2/web && npm ci && npm run build:fastapi'`
+  - `cd apps/smart-writer-v2 && nix develop -c bash -c 'uv sync --locked && uv run ruff check app/ tests/ && uv run pytest -q'` → **58 passed**
+- **T069 checkbox:** **unchecked** — local proven; public worker URL not redeployed from this session
+- **Human ops (ship/deploy):** Codespace may lack `actions: write` / `workflow_dispatch`. From a machine with `gh` auth:
+  1. Merge/push this branch (or cherry-pick) to `main`
+  2. `gh workflow run ship-registry.yml -f app_id=smart-writer-v2 -f nix_attr=container-smart-writer-v2 -f image_name=smart-writer-v2`
+  3. `gh workflow run deploy.yml -f app_id=smart-writer-v2 -f tag=latest -f environment=production`
+  4. Open `https://smart-writer-v2-production.up.railway.app/` → Settings secret → confirm gated `/v1`
+  5. Then check T069 in `tasks.md`
+- **Fidelity:** letter D5/D6; no BFF substitute; flake.nix untouched — UI baked via committed `app/static/ui` (documented rebuild path)

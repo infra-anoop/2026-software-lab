@@ -1,6 +1,7 @@
-"""FastAPI worker: health, ready, preview gate, conversations.
+"""FastAPI worker: health, ready, preview gate, conversations, UI.
 
 Endpoints:
+  GET  /                                — Next static UI (when app/static/ui present)
   GET  /health                          — liveness (public)
   GET  /ready                           — OPENAI_API_KEY present; no upstream call
   POST /v1/conversations                — create conversation (preview gate)
@@ -13,10 +14,12 @@ from __future__ import annotations
 
 import hmac
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from lab_shared.jobs import JobRunner, QueueFullError, SlidingWindowRateLimiter
 from pydantic import BaseModel, Field
 
@@ -50,6 +53,9 @@ from app.orchestrator.turn_mode import (
 from app.store import STORE, MaterialRef, Message
 
 AUDIT_SECRET_HEADER = "X-Audit-Secret"
+
+# Next static export copied here by `web/` `npm run build:fastapi` (D5 / T069).
+UI_STATIC_DIR = Path(__file__).resolve().parents[1] / "static" / "ui"
 
 
 async def _execute_job(payload: dict[str, Any]) -> dict[str, Any]:
@@ -387,3 +393,22 @@ def get_job(
         "loop": result.get("loop"),
         "artifact": result["artifact"],
     }
+
+
+def _ui_ready() -> bool:
+    return (UI_STATIC_DIR / "index.html").is_file()
+
+
+if _ui_ready():
+
+    @app.get("/")
+    def ui_index() -> FileResponse:
+        """Serve the v0 Next export index (same-origin with /v1)."""
+        return FileResponse(UI_STATIC_DIR / "index.html")
+
+    # Assets (_next/, icons, …). Registered after API routes so /health and /v1 win.
+    app.mount(
+        "/",
+        StaticFiles(directory=str(UI_STATIC_DIR), html=True),
+        name="ui-static",
+    )

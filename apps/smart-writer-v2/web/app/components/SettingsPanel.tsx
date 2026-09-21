@@ -9,6 +9,8 @@ type SettingsPanelProps = {
   onOpenChange: (open: boolean) => void;
   citationMode: CitationMode;
   onCitationModeChange: (mode: CitationMode) => void;
+  auditSecret: string;
+  onAuditSecretChange: (value: string) => void;
   disabled?: boolean;
 };
 
@@ -24,6 +26,8 @@ export function SettingsPanel({
   onOpenChange,
   citationMode,
   onCitationModeChange,
+  auditSecret,
+  onAuditSecretChange,
   disabled = false,
 }: SettingsPanelProps) {
   return (
@@ -40,6 +44,21 @@ export function SettingsPanel({
       {open ? (
         <div className="settings-body">
           <p className="status">Chat preferences. More options will land here.</p>
+          <label className="settings-field">
+            Preview gate secret
+            <input
+              type="password"
+              autoComplete="off"
+              value={auditSecret}
+              disabled={disabled}
+              onChange={(event) => onAuditSecretChange(event.target.value)}
+              placeholder="Shared preview secret"
+            />
+          </label>
+          <p className="status">
+            Preview gate only. The browser sends this as X-Audit-Secret. Anyone
+            with the secret can run paid jobs. This is not a login.
+          </p>
           <label className="settings-field">
             Citation format
             <select

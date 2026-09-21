@@ -50,7 +50,7 @@ deploy/railway/
 │   ├── research-auditor.yml   # production service + GHCR image mapping
 │   ├── smart-writer.yml
 │   └── smart-writer-v2.yml      # FastAPI + served UI (D5 one-service; Nix / registry)
-# smart-writer-v2-ui.yml — superseded; do not ship (see README § superseded)
+# smart-writer-v2-ui.yml — removed (D5); do not recreate (see README § superseded)
 ├── staging/
 │   └── research-auditor.yml   # manual / preview only (see below)
 └── README.md
@@ -200,7 +200,9 @@ Application secrets live in Infisical Cloud (schema in `deploy/secrets/schema.ya
 
 **Current lock:** one service `smart-writer-v2` serves FastAPI + v0 Next UI same-origin; **V1-style** typed preview secret. See `notes/packets/2026-09-21-swv2-d5-one-service-ui.md` and `specs/smart-writer-v2/spec.md` **D5**.
 
-Historical Docker first-ship notes for `-ui` are obsolete; `deploy/railway/production/smart-writer-v2-ui.yml` should be removed or left unused by T069.
+Historical Docker first-ship notes for `-ui` are obsolete; `deploy/railway/production/smart-writer-v2-ui.yml` was **removed** (T069). Do not recreate that service or push `ghcr.io/.../smart-writer-v2-ui`.
 
 Do **not** use Codespaces as the production product URL. Do **not** provision a Vercel project for this ship.
+
+**Ship UI with the worker image:** run `apps/smart-writer-v2/web` `npm run build:fastapi` so `app/static/ui/` is present in git, then `nix build .#container-smart-writer-v2` / `ship-registry.yml` for `smart-writer-v2` only.
 
