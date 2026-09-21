@@ -5,11 +5,11 @@
 | Field | Value |
 |-------|-------|
 | Packet id | `2026-09-21-swv2-t074-upload-test-review` |
-| Status | ready |
+| Status | done (review deposited; product Debates await human) |
 | Gate | T* |
 | Brief | `docs/agent-os/TEST_REVIEW_PROMPT.md` |
 | Feature dir | `specs/smart-writer-v2/` |
-| Commit | d42e4021a3e08ab8d47f764e915470d17bc654a2* |
+| Commit | `d42e402` |
 | Agent mode | spawned-reviewer |
 
 ## Context to read first
