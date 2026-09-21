@@ -60,3 +60,4 @@ Do **not** publish `smart-writer-v2-ui`.
 - Service: `smart-writer-v2` — `https://smart-writer-v2-production.up.railway.app`
 - Cattle: `deploy/railway/production/smart-writer-v2.yml`
 - Secret: Infisical → A23 sync onto **this** service only (users type the same value in Settings)
+- **T077 (2026-09-21):** local `ruff` + **67** pytest green on `main` (uploads D7 merged). Prod smoke: `GET /health` → 200 after `ship/smart-writer-v2/production` from that tip.

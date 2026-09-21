@@ -262,7 +262,7 @@ D6 lock + T070 (vault seed + sync)
 
 ### Close-out
 
-- [ ] T077 Re-run `uv run ruff check app/ tests/` + `uv run pytest` green; note prod `/health` (+ optional mutating smoke after T070)
+- [x] T077 Re-run `uv run ruff check app/ tests/` + `uv run pytest` green; note prod `/health` (+ optional mutating smoke after T070) — **2026-09-21:** ruff clean; **67** pytest passed on `main` `@acfc5f9` (uploads merged). Prod `/health` re-checked after one-app `ship/smart-writer-v2/production` (see README).
 
 **Checkpoint:** V2 finish — secret live, worker current, caps + dual-axis scored loop, obs/citation/browser/uploads/routing as locked, final green
 ---
