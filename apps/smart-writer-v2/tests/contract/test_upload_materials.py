@@ -4,6 +4,7 @@ Red before T075. Public HTTP only — no store/graph stubs.
 
 T54(A): this suite is shape + 422 reject only; UploadStore + materials append
 are owned by T075 (not asserted here).
+T57: missing file 422; unknown conversation 404; wrong/missing secret 401.
 """
 
 from __future__ import annotations
@@ -72,3 +73,40 @@ def test_upload_rejects_disallowed_mime(client: TestClient) -> None:
         files={"file": ("photo.png", b"\x89PNG\r\n", "image/png")},
     )
     assert response.status_code == 422, response.text
+
+
+def test_upload_rejects_missing_file(client: TestClient) -> None:
+    """No multipart file field → 422 (T57)."""
+    conversation_id = _create_conversation(client)
+    response = client.post(
+        f"/v1/conversations/{conversation_id}/uploads",
+        headers={"X-Audit-Secret": SECRET},
+        data={"label": "no-file"},
+    )
+    assert response.status_code == 422, response.text
+
+
+def test_upload_unknown_conversation_404(client: TestClient) -> None:
+    """Unknown conversation id → 404 (T57)."""
+    response = client.post(
+        "/v1/conversations/does-not-exist/uploads",
+        headers={"X-Audit-Secret": SECRET},
+        files={"file": ("criteria.txt", b"x", "text/plain")},
+    )
+    assert response.status_code == 404, response.text
+
+
+def test_upload_rejects_missing_or_wrong_secret(client: TestClient) -> None:
+    """Missing or wrong X-Audit-Secret → 401 on /uploads (T57)."""
+    conversation_id = _create_conversation(client)
+    missing = client.post(
+        f"/v1/conversations/{conversation_id}/uploads",
+        files={"file": ("criteria.txt", b"x", "text/plain")},
+    )
+    assert missing.status_code == 401, missing.text
+    wrong = client.post(
+        f"/v1/conversations/{conversation_id}/uploads",
+        headers={"X-Audit-Secret": "not-the-secret"},
+        files={"file": ("criteria.txt", b"x", "text/plain")},
+    )
+    assert wrong.status_code == 401, wrong.text

@@ -126,11 +126,29 @@ async def _node_infer(state: GenerateState) -> dict[str, Any]:
 
 async def _node_materials(state: GenerateState) -> dict[str, Any]:
     raw = state.get("materials_in") or []
-    refs = [
-        MaterialRef(uri=str(item["uri"]), label=item.get("label"), kind="link")
-        for item in raw
-        if item.get("uri")
-    ]
+    refs: list[MaterialRef] = []
+    for item in raw:
+        kind = str(item.get("kind") or "link")
+        if kind == "upload":
+            refs.append(
+                MaterialRef(
+                    material_id=item.get("material_id"),
+                    uri=None,
+                    label=item.get("label"),
+                    kind="upload",
+                    mime=item.get("mime"),
+                    byte_len=item.get("byte_len"),
+                    content_ref=item.get("content_ref"),
+                )
+            )
+        elif item.get("uri"):
+            refs.append(
+                MaterialRef(
+                    uri=str(item["uri"]),
+                    label=item.get("label"),
+                    kind="link",
+                )
+            )
     bundles = await collect_bundles(
         refs,
         search_query="",

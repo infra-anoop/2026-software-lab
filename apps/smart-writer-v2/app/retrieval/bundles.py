@@ -23,16 +23,52 @@ class BundleResult:
     web: list[SourceRecord] = field(default_factory=list)
 
 
+def _excerpt_from_upload_bytes(data: bytes, mime: str) -> str | None:
+    """Decode text-class uploads for materials excerpts; skip binary PDF bytes."""
+    if mime == "application/pdf":
+        return None
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        text = data.decode("utf-8", errors="replace")
+    stripped = text.strip()
+    return stripped[:1500] if stripped else None
+
+
 async def collect_materials_bundle(
     materials: list[MaterialRef],
     *,
     budget: FetchBudget | None = None,
 ) -> list[SourceRecord]:
-    """Fetch user links into materials-side SourceRecords."""
+    """Fetch user links / read in-memory uploads into materials-side SourceRecords."""
+    # Late import avoids cycles with store ↔ orchestrator at import time.
+    from app.store import STORE
+
     out: list[SourceRecord] = []
     for ref in materials:
+        sid = ref.material_id or f"mat_{uuid4().hex[:10]}"
+        if ref.kind == "upload":
+            record = STORE.uploads.get(ref.content_ref or "")
+            excerpt = (
+                _excerpt_from_upload_bytes(record.data, record.mime)
+                if record is not None
+                else None
+            )
+            out.append(
+                SourceRecord(
+                    source_id=sid,
+                    kind="user_material",
+                    bundle="materials",
+                    uri=None,
+                    title=ref.label,
+                    excerpt=excerpt,
+                    retrieved_at=_now(),
+                )
+            )
+            continue
+        if not ref.uri:
+            continue
         fetched = await fetch_url_text(ref.uri, budget=budget)
-        sid = f"mat_{uuid4().hex[:10]}"
         if fetched is None:
             out.append(
                 SourceRecord(

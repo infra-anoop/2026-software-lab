@@ -41,11 +41,15 @@ class SourceRecord(BaseModel):
 
 
 class MaterialRef(BaseModel):
-    """User URL or upload pointer (uploads deferred P7)."""
+    """User URL or upload pointer (D7: uploads use content_ref into UploadStore)."""
 
-    uri: str
+    material_id: str | None = None
+    uri: str | None = None
     label: str | None = None
     kind: MaterialKind = "link"
+    mime: str | None = None
+    byte_len: int | None = None
+    content_ref: str | None = None
 
 
 class ArtifactVersion(BaseModel):

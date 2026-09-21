@@ -32,11 +32,54 @@ class IntentSlots:
 
 @dataclass
 class MaterialRef:
-    """User URL or upload pointer (uploads deferred P7)."""
+    """User URL or upload pointer (D7 uploads use content_ref + UploadStore)."""
 
-    uri: str
+    uri: str | None = None
     label: str | None = None
     kind: MaterialKind = "link"
+    material_id: str | None = None
+    mime: str | None = None
+    byte_len: int | None = None
+    content_ref: str | None = None
+
+
+@dataclass
+class UploadRecord:
+    """Process-local upload bytes (data-model UploadStore row)."""
+
+    content_ref: str
+    conversation_id: str
+    data: bytes
+    mime: str
+    created_at: str
+
+
+class UploadStore:
+    """In-memory bytes keyed by opaque content_ref (D7). Restart loses bytes."""
+
+    def __init__(self) -> None:
+        self._by_ref: dict[str, UploadRecord] = {}
+
+    def reset(self) -> None:
+        """Drop all upload bytes (tests / process residual)."""
+        self._by_ref.clear()
+
+    def put(self, conversation_id: str, data: bytes, mime: str) -> UploadRecord:
+        """Store bytes; return the record (content_ref is the opaque key)."""
+        content_ref = f"upl_{uuid4().hex}"
+        record = UploadRecord(
+            content_ref=content_ref,
+            conversation_id=conversation_id,
+            data=data,
+            mime=mime,
+            created_at=utc_now_iso(),
+        )
+        self._by_ref[content_ref] = record
+        return record
+
+    def get(self, content_ref: str) -> UploadRecord | None:
+        """Return an upload record or None."""
+        return self._by_ref.get(content_ref)
 
 
 @dataclass
@@ -85,12 +128,14 @@ class InMemoryStore:
         self._conversations: dict[str, Conversation] = {}
         self._run_state: dict[str, InternalRunState] = {}
         self._artifacts: dict[str, ArtifactVersion] = {}
+        self.uploads = UploadStore()
 
     def reset(self) -> None:
-        """Drop all conversations (tests)."""
+        """Drop all conversations and upload bytes (tests)."""
         self._conversations.clear()
         self._run_state.clear()
         self._artifacts.clear()
+        self.uploads.reset()
 
     def create_conversation(self) -> Conversation:
         """Allocate a conversation and default InternalRunState."""

@@ -251,10 +251,10 @@ D6 lock + T070 (vault seed + sync)
 
 ### Uploads (D7 locked — in-memory)
 
-- [ ] T073 [OD:D7] Document size/MIME defaults in `contracts/http-api.md` + `web/README.md`; storage = in-memory bytes (no object store)
-- [ ] T074 [P] Contract tests for upload accept/reject in `apps/smart-writer-v2/tests/contract/test_upload_materials.py` (red → T* → impl)
-- [ ] T075 Extend `POST .../messages` (or dedicated upload route) + store `MaterialRef` `kind=upload` with in-memory bytes in `apps/smart-writer-v2/app/entrypoints/http.py` / `store.py`
-- [ ] T076 Chat UI upload control in `apps/smart-writer-v2/web/` (same-origin `/v1`; V1-style audit secret — no BFF custody)
+- [x] T073 [OD:D7] Document size/MIME defaults in `contracts/http-api.md` + `web/README.md`; storage = in-memory bytes (no object store)
+- [x] T074 [P] Contract tests for upload accept/reject in `apps/smart-writer-v2/tests/contract/test_upload_materials.py` (red → T* → impl)
+- [x] T075 Extend `POST .../messages` (or dedicated upload route) + store `MaterialRef` `kind=upload` with in-memory bytes in `apps/smart-writer-v2/app/entrypoints/http.py` / `store.py`
+- [x] T076 Chat UI upload control in `apps/smart-writer-v2/web/` (same-origin `/v1`; V1-style audit secret — no BFF custody)
 
 ### Outer revise routing (D9 locked)
 
