@@ -1218,3 +1218,18 @@ Agent-closed under constitution §F. **Product Debates T54–T55 remain open** u
 
 ---
 
+## Adjudication — T074 product Debates (2026-09-21)
+
+Human locks (plain A/B). Tests edited to match. **T075–T076 may start.**
+
+| ID | Status | Lock |
+|----|--------|------|
+| **T54** | **locked** | **(A)** T074 auto bar = HTTP MaterialRef shape + 422 oversize/MIME only. `UploadStore` + materials append = **T075** code review / later generate-with-upload — not required in this red suite. |
+| **T55** | **locked** | Success JSON: `"uri" in body and body["uri"] is None`. Keep `kind == "upload"`. |
+| **T56** | **locked (process)** | (unchanged) Keep `assert status_code == 422`; interim missing-route 405 ok until route lands. |
+| **T57** | **accepted (Later)** | (unchanged) Add missing-file 422 / unknown 404 / uploads 401 with or right after T075. |
+| **T58** | **accepted (Nit)** | (unchanged) Dropped tautological `in ALLOWED_MIME`; optional extras not required to start T075. |
+| **T59** | **strength** | (unchanged) Public HTTP / no stub. |
+
+---
+
