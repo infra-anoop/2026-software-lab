@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import UTC, datetime
+
 from supabase import Client
 
 
@@ -7,16 +8,16 @@ class SupabaseRepo:
 
     def __init__(self, client: Client) -> None:
         self.client = client
-    
+
     def create_run(self, topic: str) -> str:
         """Create a new run and return its ID."""
         result = self.client.table("runs").insert({
             "topic": topic,
             "status": "running",
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
         }).execute()
         return result.data[0]["id"]
-    
+
     def append_turn(
         self,
         run_id: str,
@@ -36,9 +37,9 @@ class SupabaseRepo:
             "output": output,
             "ok": ok,
             "error": error,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
         }).execute()
-    
+
     def finalize_run(
         self,
         run_id: str,
@@ -49,17 +50,17 @@ class SupabaseRepo:
     ) -> None:
         """Finalize a run with status and optional metadata."""
         update_data = {"status": status}
-        
+
         if status in ("completed", "failed"):
-            update_data["completed_at"] = datetime.utcnow().isoformat()
-        
+            update_data["completed_at"] = datetime.now(UTC).isoformat()
+
         if final_output is not None:
             update_data["final_output"] = final_output
-        
+
         if error is not None:
             update_data["error"] = error
-        
+
         if trace_id is not None:
             update_data["trace_id"] = trace_id
-        
+
         self.client.table("runs").update(update_data).eq("id", run_id).execute()

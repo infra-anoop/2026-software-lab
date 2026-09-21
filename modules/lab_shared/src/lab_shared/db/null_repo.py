@@ -19,7 +19,6 @@ class NullRepo:
         error: str | None,
     ) -> None:
         """No-op: do nothing."""
-        pass
     
     def finalize_run(
         self,
@@ -30,4 +29,3 @@ class NullRepo:
         trace_id: str | None = None,
     ) -> None:
         """No-op: do nothing."""
-        pass

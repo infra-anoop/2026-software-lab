@@ -12,7 +12,7 @@ import time
 from collections import deque
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal
 from uuid import uuid4
 
@@ -26,7 +26,7 @@ TimeoutFn = Callable[[], float | None]
 
 def utc_now_iso() -> str:
     """UTC timestamp for job records (ISO-8601)."""
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 @dataclass
@@ -143,7 +143,7 @@ class JobRunner:
                 result = await coro
             job.result = result
             job.status = "succeeded"
-        except asyncio.TimeoutError:
+        except TimeoutError:
             job.status = "timed_out"
             job.error = f"Workflow exceeded wall-clock timeout ({timeout}s)"
             logger.warning("audit job %s timed out after %ss", job_id, timeout)

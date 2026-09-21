@@ -1,6 +1,7 @@
 """Shared Supabase client. Single place that reads env and creates the client."""
 import os
-from supabase import create_client, Client
+
+from supabase import Client, create_client
 
 _cached: Client | None = None
 _initialized = False
@@ -19,7 +20,7 @@ def get_supabase_client() -> Client | None:
         else:
             try:
                 _cached = create_client(url, key)
-            except Exception as e:
+            except (ValueError, TypeError, OSError) as e:
                 print("Supabase disabled: invalid SUPABASE_URL or SUPABASE_SECRET_KEY")
                 print(f"Supabase error: {type(e).__name__}: {e}")
                 _cached = None
