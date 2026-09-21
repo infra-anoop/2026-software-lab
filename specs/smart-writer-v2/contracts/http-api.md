@@ -18,6 +18,7 @@ Missing/wrong secret → `401`. Secret unset in env → `503` on protected route
 |--------|------|---------|
 | POST | `/v1/conversations` | Create conversation → `{ conversation_id }` |
 | POST | `/v1/conversations/{id}/messages` | User turn (see below) |
+| POST | `/v1/conversations/{id}/uploads` | Multipart file upload → `MaterialRef` `kind=upload` (D7; see below) |
 | GET | `/v1/conversations/{id}` | Snapshot: messages, latest artifact, internal state **redacted** (no raw secrets; slot values OK for debugging only if flag — default omit slots from client or return “filled/missing” booleans) |
 | GET | `/v1/jobs/{job_id}` | Job snapshot (status/result) |
 | GET | `/v1/artifacts/{artifact_id}` | ArtifactVersion + sources |
@@ -37,6 +38,7 @@ Request:
 
 - `client_intent: auto` — server chooses clarify vs generate vs revise (revise if `last_artifact_id` and not regenerate).
 - `client_intent: regenerate` — force **generate** path (FR-020).
+- `materials` on this route remain **link** pointers (`uri` required). File bytes use the dedicated upload route below (**D7**).
 
 Response (one of):
 
@@ -61,6 +63,48 @@ Natural-language questions only. Do **not** include `missing_hints` / slot ids i
   "parent_artifact_id": null
 }
 ```
+
+### POST `/v1/conversations/{id}/uploads` (D7)
+
+Multipart form (`multipart/form-data`), not JSON:
+
+| Field | Required | Notes |
+|-------|----------|-------|
+| `file` | yes | Upload bytes |
+| `label` | no | Display label |
+
+**Storage:** process-local in-memory `UploadStore` (`data-model.md`). Restart loses bytes (same residual as conversations). No object store.
+
+**Defaults (sensible limits — D7):**
+
+| Limit | Default |
+|-------|---------|
+| Max `byte_len` | **5 MiB** (`5 * 1024 * 1024`) |
+| Allowed MIME (PDF / text-class) | `application/pdf`, `text/plain`, `text/markdown`, `text/csv`, `application/json` |
+
+MIME is taken from the multipart `Content-Type` of `file` (fallback: sniff from filename extension only when Content-Type is missing/`application/octet-stream`). Reject otherwise.
+
+Success `200`:
+
+```json
+{
+  "material_id": "...",
+  "kind": "upload",
+  "mime": "text/plain",
+  "byte_len": 123,
+  "content_ref": "...",
+  "label": null,
+  "uri": null
+}
+```
+
+The material is appended to the conversation’s `InternalRunState.materials` and is available to later generate turns. `content_ref` is an opaque key into the process-local store — not a durable URL.
+
+| Code | When |
+|------|------|
+| 401 / 503 | Same preview-gate rules as other protected routes |
+| 404 | Unknown conversation |
+| 422 | Missing `file`; oversize; disallowed MIME |
 
 ### GET `/v1/jobs/{job_id}` (success shape)
 
@@ -155,3 +199,4 @@ Contract tests should assert:
 5. When web enabled and no useful web hits → `web_signal=none_declared` (SC-004 shape). Not `disabled` on that fixture.
 6. Grant turn with empty Whom/Ask (fixture) → `type=clarify`; `job_id` absent or JSON `null`; `GET /v1/conversations/{id}` `last_artifact_id` JSON `null` (P5 / T10). Assistant text has no structured slot/axis labels (T9). A second fixture with Who+Whom+Ask filled and Why or Evidence empty must still clarify (T11).
 7. Succeeded generate/revise job → `rubric_id` non-null; `loop` present with `iterations` in `1…loop.max_iterations`, `loop.max_iterations` ≤ **8** and equal to Settings inner max, nonempty `scores` (length = `iterations`) with per-turn `dimension_scores`, numeric `aggregate_score`, `stop_reason` ∈ {`max_iterations`,`targets_met`,`error`}, and `axis_a_dimension_count` ≥ 1 and `axis_b_dimension_count` ≥ 1 (**D8** / FR-022).
+8. Upload happy path → `200` with `kind=upload`, `uri` JSON `null`, nonempty `material_id` / `content_ref`, `mime` in the allowed set, `byte_len` matching payload size. Oversize or disallowed MIME → `422` (**D7**).

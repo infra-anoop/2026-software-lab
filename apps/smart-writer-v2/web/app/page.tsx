@@ -47,6 +47,27 @@ async function api(
   });
 }
 
+/** Multipart upload — do not set Content-Type (browser sets boundary). */
+async function uploadMaterial(
+  conversationId: string,
+  secret: string,
+  file: File,
+  label?: string,
+): Promise<Response> {
+  const form = new FormData();
+  form.append("file", file);
+  if (label) {
+    form.append("label", label);
+  }
+  const headers = new Headers();
+  headers.set("X-Audit-Secret", secret);
+  return fetch(`/v1/conversations/${conversationId}/uploads`, {
+    method: "POST",
+    headers,
+    body: form,
+  });
+}
+
 function showSourcesPanel(mode: string | undefined): boolean {
   return mode === "panel" || mode === "combo" || mode === "footnotes";
 }
@@ -56,6 +77,8 @@ export default function Page() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [materialUri, setMaterialUri] = useState("");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadNote, setUploadNote] = useState<string>("");
   const [artifact, setArtifact] = useState<ArtifactView | null>(null);
   const [status, setStatus] = useState<string>("");
   const [busy, setBusy] = useState(false);
@@ -149,6 +172,29 @@ export default function Page() {
     setMessages((prev) => [...prev, { role: "user", text }]);
     try {
       const cid = await ensureConversation();
+      if (uploadFile) {
+        setStatus("uploading");
+        const up = await uploadMaterial(
+          cid,
+          auditSecret,
+          uploadFile,
+          uploadFile.name,
+        );
+        if (!up.ok) {
+          const errBody = (await up.json().catch(() => ({}))) as {
+            detail?: string;
+          };
+          throw new Error(errBody.detail || up.statusText);
+        }
+        const upBody = (await up.json()) as {
+          label?: string | null;
+          mime?: string;
+        };
+        setUploadNote(
+          `Uploaded ${upBody.label || uploadFile.name} (${upBody.mime ?? "file"})`,
+        );
+        setUploadFile(null);
+      }
       const materials = materialUri.trim()
         ? [{ uri: materialUri.trim(), label: null }]
         : [];
@@ -249,6 +295,20 @@ export default function Page() {
                 disabled={busy}
               />
             </label>
+            <label>
+              Upload file (optional)
+              <input
+                type="file"
+                accept=".pdf,.txt,.md,.markdown,.csv,.json,application/pdf,text/plain,text/markdown,text/csv,application/json"
+                disabled={busy}
+                onChange={(event) => {
+                  const next = event.target.files?.[0] ?? null;
+                  setUploadFile(next);
+                  setUploadNote(next ? `Ready: ${next.name}` : "");
+                }}
+              />
+            </label>
+            {uploadNote ? <p className="status">{uploadNote}</p> : null}
             <textarea
               value={draft}
               onChange={(event) => setDraft(event.target.value)}

@@ -24,6 +24,17 @@ No Next Route Handlers for custody. `output: "export"` → static files under `.
 Header **Settings** holds chat preferences and the **preview gate secret**. Citation format:
 (`panel` | `inline` | `footnotes` | `combo`). Default is **sources panel**.
 
+## File uploads (D7 / T073–T076)
+
+Chat may attach a file via `POST /v1/conversations/{id}/uploads` (multipart `file` + optional `label`) with the same `X-Audit-Secret` header as other `/v1` calls — **same-origin, no BFF**.
+
+| Limit | Default |
+|-------|---------|
+| Max size | **5 MiB** |
+| Allowed MIME | `application/pdf`, `text/plain`, `text/markdown`, `text/csv`, `application/json` |
+
+Bytes live **in-memory on the worker** (`UploadStore`). A process restart drops uploads (same residual as conversations). No object store in this version.
+
 ## Build into FastAPI
 
 ```bash

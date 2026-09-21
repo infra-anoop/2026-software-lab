@@ -6,6 +6,7 @@ Endpoints:
   GET  /ready                           — OPENAI_API_KEY present; no upstream call
   POST /v1/conversations                — create conversation (preview gate)
   POST /v1/conversations/{id}/messages  — clarify or enqueue generate
+  POST /v1/conversations/{id}/uploads   — multipart file → MaterialRef kind=upload (D7)
   GET  /v1/conversations/{id}           — snapshot (last_artifact_id)
   GET  /v1/jobs/{job_id}                — job snapshot
 """
@@ -16,9 +17,19 @@ import hmac
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
+from uuid import uuid4
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import (
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    Header,
+    HTTPException,
+    Request,
+    UploadFile,
+)
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from lab_shared.jobs import Job, JobRunner, QueueFullError, SlidingWindowRateLimiter
@@ -56,6 +67,26 @@ from app.store import STORE, MaterialRef, Message
 
 AUDIT_SECRET_HEADER = "X-Audit-Secret"
 
+# D7 upload defaults (contracts/http-api.md).
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+ALLOWED_UPLOAD_MIME = frozenset(
+    {
+        "application/pdf",
+        "text/plain",
+        "text/markdown",
+        "text/csv",
+        "application/json",
+    }
+)
+_EXT_MIME: dict[str, str] = {
+    ".pdf": "application/pdf",
+    ".txt": "text/plain",
+    ".md": "text/markdown",
+    ".markdown": "text/markdown",
+    ".csv": "text/csv",
+    ".json": "application/json",
+}
+
 # Next static export copied here by `web/` `npm run build:fastapi` (D5 / T069).
 UI_STATIC_DIR = Path(__file__).resolve().parents[1] / "static" / "ui"
 
@@ -87,6 +118,61 @@ def _job_usage(result: dict[str, Any] | None) -> dict[str, Any] | None:
     return empty_usage()
 
 
+def _material_refs_from_payload(raw_materials: list[Any]) -> list[ModelMaterialRef]:
+    """Build ModelMaterialRef list from job payload (links + D7 uploads)."""
+    refs: list[ModelMaterialRef] = []
+    for item in raw_materials:
+        if not isinstance(item, dict):
+            continue
+        kind = str(item.get("kind") or "link")
+        if kind == "upload":
+            refs.append(
+                ModelMaterialRef(
+                    material_id=item.get("material_id"),
+                    uri=None,
+                    label=item.get("label"),
+                    kind="upload",
+                    mime=item.get("mime"),
+                    byte_len=item.get("byte_len"),
+                    content_ref=item.get("content_ref"),
+                )
+            )
+        elif item.get("uri"):
+            refs.append(
+                ModelMaterialRef(
+                    uri=str(item["uri"]),
+                    label=item.get("label"),
+                    kind="link",
+                )
+            )
+    return refs
+
+
+def _material_payload(ref: MaterialRef) -> dict[str, Any]:
+    """Serialize store MaterialRef for job enqueue (links + uploads)."""
+    return {
+        "material_id": ref.material_id,
+        "uri": ref.uri,
+        "label": ref.label,
+        "kind": ref.kind,
+        "mime": ref.mime,
+        "byte_len": ref.byte_len,
+        "content_ref": ref.content_ref,
+    }
+
+
+def _resolve_upload_mime(filename: str | None, content_type: str | None) -> str | None:
+    """MIME from multipart Content-Type; sniff extension when missing/octet-stream."""
+    raw = (content_type or "").split(";")[0].strip().lower()
+    if raw and raw != "application/octet-stream":
+        return raw
+    if not filename or "." not in filename:
+        return raw or None
+    ext = "." + filename.rsplit(".", 1)[-1].lower()
+    sniffed = _EXT_MIME.get(ext)
+    return sniffed or (raw or None)
+
+
 async def _execute_job(payload: dict[str, Any]) -> dict[str, Any]:
     """Run generate or revise and persist the ArtifactVersion (T028/T037)."""
     conversation_id = str(payload["conversation_id"])
@@ -106,12 +192,7 @@ async def _execute_job(payload: dict[str, Any]) -> dict[str, Any]:
                 property_ranking=list(payload.get("property_ranking") or []),
             )
         else:
-            raw_materials = payload.get("materials") or []
-            refs = [
-                ModelMaterialRef(uri=str(item["uri"]), label=item.get("label"), kind="link")
-                for item in raw_materials
-                if item.get("uri")
-            ]
+            refs = _material_refs_from_payload(list(payload.get("materials") or []))
             result = await run_generate(
                 conversation_id=conversation_id,
                 user_text=str(payload.get("user_text") or ""),
@@ -228,6 +309,18 @@ class ConversationMessageOut(BaseModel):
     created_at: str
 
 
+class UploadMaterialOut(BaseModel):
+    """POST .../uploads success — MaterialRef kind=upload (hook 8 / D7)."""
+
+    material_id: str
+    kind: Literal["upload"] = "upload"
+    mime: str
+    byte_len: int
+    content_ref: str
+    label: str | None = None
+    uri: None = None
+
+
 class ConversationSnapshotOut(BaseModel):
     """GET /v1/conversations/{id} — slots redacted; last_artifact_id always present."""
 
@@ -289,6 +382,51 @@ def get_conversation(
         conversation_id=conversation.conversation_id,
         messages=[_message_out(m) for m in conversation.messages],
         last_artifact_id=last_artifact_id,
+    )
+
+
+@app.post(
+    "/v1/conversations/{conversation_id}/uploads",
+    response_model=UploadMaterialOut,
+)
+async def post_upload(
+    conversation_id: str,
+    file: Annotated[UploadFile | None, File()] = None,
+    label: Annotated[str | None, Form()] = None,
+    _: None = Depends(require_preview_secret),
+) -> UploadMaterialOut:
+    """Multipart upload → in-memory UploadStore + MaterialRef kind=upload (D7 / T075)."""
+    _require_conversation(conversation_id)
+    if file is None:
+        raise HTTPException(status_code=422, detail="Missing file")
+    data = await file.read()
+    mime = _resolve_upload_mime(file.filename, file.content_type)
+    if mime not in ALLOWED_UPLOAD_MIME:
+        raise HTTPException(status_code=422, detail="Disallowed MIME type")
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=422, detail="Upload exceeds max size")
+    record = STORE.uploads.put(conversation_id, data, mime)
+    material_id = f"mat_{uuid4().hex[:12]}"
+    state = STORE.get_run_state(conversation_id)
+    assert state is not None
+    state.materials.append(
+        MaterialRef(
+            material_id=material_id,
+            uri=None,
+            label=label,
+            kind="upload",
+            mime=mime,
+            byte_len=len(data),
+            content_ref=record.content_ref,
+        )
+    )
+    return UploadMaterialOut(
+        material_id=material_id,
+        mime=mime,
+        byte_len=len(data),
+        content_ref=record.content_ref,
+        label=label,
+        uri=None,
     )
 
 
@@ -379,9 +517,7 @@ def post_message(
                 "user_text": body.text,
                 "mode": mode,
                 "parent_artifact_id": parent_id,
-                "materials": [
-                    {"uri": ref.uri, "label": ref.label} for ref in state.materials
-                ],
+                "materials": [_material_payload(ref) for ref in state.materials],
                 "citation_mode_pref": state.citation_mode_pref,
                 "humor_enabled": state.humor_enabled,
                 "web_research_enabled": state.web_research_enabled,

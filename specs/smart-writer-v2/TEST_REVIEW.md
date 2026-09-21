@@ -1093,3 +1093,143 @@ Human lock (chat): auto bar **B** (shape + cheap consistency); dual-axis **B** (
 
 Tests edited to match. **T081–T085 may start.**
 
+---
+
+## T074 — D7 upload accept/reject red tests (2026-09-21)
+
+**Reviewer role:** Independent test reviewer (did not write these tests; no loyalty to their wording)  
+**Brief:** `docs/agent-os/TEST_REVIEW_PROMPT.md` (constitution §V)  
+**Packet:** `notes/packets/2026-09-21-swv2-t074-upload-test-review.md`  
+**Feature:** `specs/smart-writer-v2/`  
+**Finding IDs:** **T54+** (do not reuse T1–T53)
+
+**Scope files**
+
+| Task | File |
+|------|------|
+| T074 | `apps/smart-writer-v2/tests/contract/test_upload_materials.py` (**new**, red) |
+| T073 (read-only) | `contracts/http-api.md` POST `.../uploads` + hook 8; `web/README.md` upload section |
+| Locks | D7 letter (in-memory bytes; sensible size/MIME; no object store); D5 secret header on protected routes |
+
+**Pytest (app `.venv`, 2026-09-21):** all three FAIL — `405 Method Not Allowed` (`{"detail":"Method Not Allowed"}`) at status asserts (200 / 422 / 422). No matching `POST .../uploads` product route. Negative cases fail for **missing route**, not MIME/size validation.
+
+No new `acceptance.md` `how: auto` upload row (correct — do not fake human/hybrid fit/criteria rows). Coverage claim is **contract hook 8** + D7 HTTP defaults.
+
+---
+
+### A. Executive verdict
+
+**Do not implement against these tests yet**
+
+The suite is the right layer (public multipart HTTP, no store/graph stubs) and is honestly red because the upload route does not exist. Constants match `http-api.md` (5 MiB; PDF/text-class MIME set). Happy path asserts hook 8’s MaterialRef fields (`kind=upload`, nonempty `material_id`/`content_ref`, `byte_len`, label).
+
+Greening still allows a thinner stand-in than D7’s **letter** lock: return a fabricated MaterialRef JSON with opaque `content_ref` and never keep process-local bytes (`UploadStore`), never append to conversation materials. `body.get("uri") is None` also greens when `uri` is **absent**, not only JSON `null`. Reject tests currently share the happy-path fail locus (405), so MIME/size locks are not independently red until a route exists.
+
+Do not start T075–T076 until product Debates **T54–T55** are human-adjudicated (constitution §F). Process Debate **T56** and Nit/Later may be agent-adjudicated.
+
+---
+
+### B. Findings table
+
+| ID | Severity | Lens | Locus | Finding | Suggested resolution |
+|----|----------|------|-------|---------|----------------------|
+| **T54** | **Debate** | Lock fidelity / §I | `test_upload_materials.py` happy path; D7; `data-model.md` UploadStore; hook 8 | Steelman: asserts `kind=upload`, `uri` null-ish, nonempty `material_id`/`content_ref`, `mime`, `byte_len`, optional `label` — the public success shape hook 8 names. Attack: greening needs only a JSON fabricator. No assert that `content_ref` keys **in-memory bytes**, that restart residual is process-local, or that the material is appended for later generate. Docs-only / link-only theater is blocked (`kind` + route), but **bytes theater** (phantom `content_ref`, durable blob behind the ref, no `UploadStore`) still greens. D7 letter = in-memory bytes, not MaterialRef cosplay. | **product** — Choose: **(A)** T074 bar = hook 8 HTTP shape + 422 oversize/MIME; UploadStore + materials append owned by T075 code review / a later generate-with-upload fixture; or **(B)** before T075, add a fail-closed bytes proof that does **not** dump `InternalRunState` (e.g. contract-stable second surface, or documented store probe only if plan names it). Do not green by S3/object-store behind `content_ref`. Do not pytest SC-002 fit prose. |
+| **T55** | **Debate** | Wrong-thing / lock fidelity | happy path `body.get("uri") is None`; hook 8 / success JSON | Steelman: upload-only must not expose a link `uri`. Attack: `dict.get("uri") is None` passes when the key is **missing**. Contract success example and hook 8 say `uri` JSON `null` (key present), same class as prior `parent_artifact_id` key-present locks. Implementer can omit `uri` and still pass. | **product** — Assert `"uri" in body and body["uri"] is None`. Keep `kind == "upload"`. |
+| **T56** | **Debate** | Red-first honesty | `test_upload_rejects_*`; packet note | Steelman: oversize and disallowed MIME assert `422` — correct final lock. Attack: today both fail on **405** with the happy path; MIME/size branches are unexecuted. A catch-all `return 422` route greens both rejects while happy path stays red; a catch-all `200` + MaterialRef greens happy and fails rejects for the right reason. Interim shared 405 weakens “three independent red locks.” | **process** — Keep `assert status_code == 422` (do not widen to `{405,422}`). After T075 route exists, re-run and confirm reject fail locus is validation 422 (ideally distinct bodies for oversize vs MIME). Optional docstring: red is missing-route until route lands. |
+| **T57** | Later | Lock fidelity / SNR | hook 8 table; hook 3; contract 404/422 missing file | Contract also: missing `file` → 422; unknown conversation → 404; 401/503 same preview-gate as other protected routes. Suite has no missing-file, no 404, no wrong/missing secret on `/uploads`. Hook 3 today only covers `POST /v1/conversations` (already green elsewhere). New route can ship without auth and only these three tests stay green once shape works. | Add (post-route or with T075): missing `file` → 422; unknown id → 404; wrong/missing `X-Audit-Secret` → 401. Do not duplicate full preview-gate matrix if one uploads 401 lands. |
+| **T58** | Nit | SNR | happy path; MIME fallback; boundary | `assert body["mime"] in ALLOWED_MIME` is tautological after `mime == "text/plain"`. Exact `MAX_UPLOAD_BYTES` accept path untested (only +1). MIME sniff fallback (`octet-stream` / missing CT → extension) untested. PDF never exercised (set membership only via text/plain). | Drop redundant `in ALLOWED_MIME` or use a second allowed MIME fixture. Optional: exact 5 MiB → 200; one sniff case; one `application/pdf` tiny fixture. Do not over-test every MIME. |
+| **T59** | **Strength** | Red-first / scope | `test_upload_materials.py`; D7; catalog | Public HTTP only — docstring forbids store/graph stubs. Limits/MIME constants match contract + README. Accept vs oversize vs disallowed MIME are separate cases. Does **not** fake `beachhead.audience_fit_min` / `research.prefer_criteria_over_trivia`. Fail locus today is missing route (honest pre-impl), not ImportError. `kind=upload` + null `uri` blocks pure link theater on this path. | Keep no-stub rule. Do not green by stubbing UploadStore in the test module. Do not add hybrid fit-point pytest. |
+
+Minimum count met. Debates: T54–T56. Strength: T59.
+
+Correctly **not** pytested: SC-002 ≥2 fit points from uploads (hybrid/human); prefer-criteria-over-trivia (human); chat UI upload control (T076); object-store absence as infra assert; restart-loss residual.
+
+---
+
+### C. Adversarial positions (required)
+
+1. **Position: these tests would go green while a spec lock fails** — strongest case
+
+   Implement `POST .../uploads` that ignores the file body beyond `len`/`Content-Type`, returns `{material_id, kind: upload, mime, byte_len, content_ref: "x", label, uri: null}` with **no** `UploadStore` and **no** append to `InternalRunState.materials`. Enforce size/MIME so 422 tests pass. Happy path greens. D7 letter (in-memory bytes; materials available to later generate) fails. F4 upload-as-criteria stays theater until generate. Object store behind a private map still greens if HTTP shape holds.
+
+   *What would have to be true for the suite to be right anyway:* Human locks **T54(A)** — T074 is intentionally shape+reject only; T075 must land real `UploadStore` + materials append (reviewed, not pytested here); **T55** requires `"uri" in body`.
+
+2. **Position: these tests over-constrain implementation / test the wrong layer** — strongest case
+
+   Demanding a bytes round-trip or materials-list observe forces either GET conversation `run_state` dump (fights T2-class redaction) or a new download route not in the contract. Pinning multipart field names/`files=`/`data=` couples to Starlette TestClient idioms. 5 MiB exact constant in the test forbids a slightly lower Settings default without editing tests. Unit-testing `UploadStore` would be the natural bytes proof; calling it “contract” over-weights HTTP.
+
+   *What would have to be true for the suite to be right anyway:* Hook 8 remains the HTTP gate; bytes proof if required must use a contract-named surface or stay in T075 review; size/MIME defaults stay the documented D7 numbers unless Open Decision revises them.
+
+---
+
+### D. Catalog / contract coverage map
+
+| Catalog id or contract hook | Test file / name | Can fail today? | Gap |
+|-----------------------------|------------------|-----------------|-----|
+| Hook 8 — happy MaterialRef shape | `test_upload_accepts_text_plain_happy_path` | **yes** (405, not shape) | Shape asserts unreached; no bytes/`UploadStore` (T54); `uri` key-absent greens (T55) |
+| Hook 8 — oversize → 422 | `test_upload_rejects_oversize` | **yes** (405 ≠ 422) | Fail locus is missing route, not size (T56) |
+| Hook 8 — disallowed MIME → 422 | `test_upload_rejects_disallowed_mime` | **yes** (405 ≠ 422) | Same (T56); PDF/sniff untested (T58) |
+| Contract — missing `file` → 422 | none | **no** | T57 |
+| Contract — unknown conversation → 404 | none | **no** | T57 |
+| Hook 3 — uploads auth 401 | none on `/uploads` | **no** | T57; create-conversation covered elsewhere |
+| D7 UploadStore in-memory bytes | none | **no** | T54 |
+| Materials append / later generate | none | **no** | T54 / T075+ |
+| `beachhead.audience_fit_min` / prefer-criteria (human/hybrid) | none | n/a | Correctly not faked |
+| Any new `acceptance.md` `how: auto` upload row | n/a | n/a | None claimed |
+
+---
+
+### E. Edit list
+
+- After **T55**: `"uri" in body and body["uri"] is None` (and keep other shape asserts).
+- After **T54**: if **(B)**, add one fail-closed bytes/materials proof without `InternalRunState` dump; if **(A)**, docstring that T074 is shape+reject only and T075 owns `UploadStore`+append.
+- After **T56**: docstring on reject tests — interim 405 expected; post-route confirm 422 locus.
+- Optional **T57**: missing `file` → 422; bad conversation → 404; wrong secret → 401 on `/uploads`.
+- Optional **T58**: drop tautological `in ALLOWED_MIME`; optional exact-5MiB accept; optional one sniff or PDF fixture.
+- Do **not** stub UploadStore / graph inside the test module to return assertion JSON.
+- Do **not** pytest fit-point prose or object-store absence as infra.
+- Matching impl (post-lock): real multipart route + in-memory store + size/MIME 422s.
+
+---
+
+### F. Questions for the human (max 3)
+
+1. **T54:** Is T074’s D7 auto bar **(A)** HTTP MaterialRef shape + 422 reject only (UploadStore/append = T075 review), or **(B)** must tests fail closed on in-memory bytes (or materials availability) before T075?
+2. **T55:** Must success JSON include **`uri` key present as JSON `null`**, or is omitted `uri` acceptable for upload-only?
+
+Implementer: do not start T075–T076 until **T54–T55** are accepted or tests edited. Process **T56** and Nit/Later (**T57–T58**) may be agent-adjudicated (§F). Do not green with phantom `content_ref` and no process-local bytes.
+
+---
+
+## Adjudication — T074 (2026-09-21) — partial (process / Nit/Later)
+
+Agent-closed under constitution §F. **Product Debates T54–T55 remain open** until human lock.
+
+| ID | Status | Lock |
+|----|--------|------|
+| **T54** | **await Debate** | product — (A) T074 = HTTP shape + 422 reject; UploadStore/append = T075 review vs (B) fail-closed bytes/materials proof before T075 |
+| **T55** | **await Debate** | product — `"uri" in body and body["uri"] is None` vs omitted `uri` OK |
+| **T56** | **locked (process)** | Keep `assert status_code == 422` on reject tests (do not widen to `{405,422}`). Docstring: interim red may be missing-route 405; after T075 route lands, confirm fail locus is validation 422. |
+| **T57** | **accepted (Later)** | With or right after T075: missing `file` → 422; unknown conversation → 404; wrong/missing `X-Audit-Secret` → 401 on `/uploads`. One uploads 401 is enough (no full preview-gate matrix). |
+| **T58** | **accepted (Nit)** | Drop tautological `body["mime"] in ALLOWED_MIME` after exact `mime == "text/plain"`. Optional later: exact 5 MiB accept, one sniff, or tiny PDF — not required to start T075. |
+| **T59** | **strength** | Keep public-HTTP / no-stub rule. |
+
+**Resume:** after T54–T55 recorded below, edit red tests if required, then T075–T076 may start.
+
+---
+
+## Adjudication — T074 product Debates (2026-09-21)
+
+Human locks (plain A/B). Tests edited to match. **T075–T076 may start.**
+
+| ID | Status | Lock |
+|----|--------|------|
+| **T54** | **locked** | **(A)** T074 auto bar = HTTP MaterialRef shape + 422 oversize/MIME only. `UploadStore` + materials append = **T075** code review / later generate-with-upload — not required in this red suite. |
+| **T55** | **locked** | Success JSON: `"uri" in body and body["uri"] is None`. Keep `kind == "upload"`. |
+| **T56** | **locked (process)** | (unchanged) Keep `assert status_code == 422`; interim missing-route 405 ok until route lands. |
+| **T57** | **accepted (Later)** | (unchanged) Add missing-file 422 / unknown 404 / uploads 401 with or right after T075. |
+| **T58** | **accepted (Nit)** | (unchanged) Dropped tautological `in ALLOWED_MIME`; optional extras not required to start T075. |
+| **T59** | **strength** | (unchanged) Public HTTP / no stub. |
+
+---
+
