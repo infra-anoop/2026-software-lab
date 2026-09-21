@@ -10,7 +10,7 @@ Phasing references architecture; it does not replace it.
 
 **Plan Architecture review:** Report [`PLAN_REVIEW.md`](./PLAN_REVIEW.md). Brief: [`PLAN_REVIEW_PROMPT.md`](../../docs/agent-os/PLAN_REVIEW_PROMPT.md). Posture: [`STACK_POSTURE.md`](../../docs/agent-os/STACK_POSTURE.md).
 
-**Status**: **Approved** — Architecture + Phased delivery (P1–P8). Core stories done. **Finish bar** = Open Decisions D2–D9 (**all locked 2026-09-20**) + Phase 10 tasks. **§G.2:** [`FINISH_BAR.md`](./FINISH_BAR.md) — **Implement unblocked: yes**. **§G.1:** [`PLAN_DELTA.md`](./PLAN_DELTA.md). **Amendments:** dual-axis scored loop (**D8**); **D5** = v0 design + Railway UI deploy; **D7** uploads in-memory; **D9** = single revise path + explicit regenerate.
+**Status**: **Approved** — Architecture + Phased delivery (P1–P8). Core stories done. **Finish bar** = Open Decisions D2–D9 (**D5 re-locked 2026-09-21**) + Phase 10 tasks. **§G.2:** [`FINISH_BAR.md`](./FINISH_BAR.md) — **Implement unblocked: yes**. **§G.1:** [`PLAN_DELTA.md`](./PLAN_DELTA.md). **Amendments:** dual-axis scored loop (**D8**); **D5** = v0 design + **one** Railway service + **V1-style** secret; **D7** uploads in-memory; **D9** = single revise path + explicit regenerate.
 
 ## Remaining work map (V2 finish)
 
@@ -24,7 +24,7 @@ Governor view — lock **D\*** in product language; agents keep task IDs in git.
 | 4 | Dual-axis scored writer↔assessor loop | **D8** locked | T078–T086 |
 | 5 | Observability wired + elapsed/tokens on jobs | **D3** locked | T064 |
 | 6 | Citation + prefs in **Settings** panel | **D4** locked | T065 |
-| 7 | v0 design → UI live on **Railway** | **D5** locked | T069 |
+| 7 | v0 UI live on **one** Railway service (V1-style secret) | **D5** re-locked | T069 |
 | 8 | File uploads (in-memory) | **D7** locked | T073–T076 |
 | 9 | Outer revise = one path; start over = explicit control | **D9** locked | T087 (verify UI control survives v0 design) |
 | 10 | Final green + smoke | — | T068*, T077 |
@@ -36,7 +36,7 @@ Governor view — lock **D\*** in product language; agents keep task IDs in git.
 
 | ID | Status | Lock |
 |----|--------|------|
-| **P1** | **amended** (2026-09-20 **D5**) | **Design:** Vercel **v0** generates/refines the Next.js chat UI. **Deploy:** UI ships on **Railway** (same cattle family as the worker) — not Vercel hosting, not Codespaces-only as the product. **Worker:** Railway FastAPI. **Secret custody:** browser never holds preview secret (BFF or equivalent on the Railway UI path). Two surfaces may be one or two Railway services — implement detail in T069; git must declare cattle for the live UI. |
+| **P1** | **amended** (2026-09-21 **D5** re-lock) | **Design:** Vercel **v0** generates/refines the Next.js chat UI (kept). **Deploy:** **one** Railway service `smart-writer-v2` — FastAPI + served Next assets **same-origin**. **Secret custody:** **V1-style** — user enters shared preview secret in UI; browser sends `X-Audit-Secret`; no BFF required for custody. **Not:** second `smart-writer-v2-ui` service; **not:** silent server-only secret as the spend gate on a public UI. |
 | **P2** | **locked** | **Learning-scope cut:** MVP keeps in-process JobRunner + Tavily (optional) + POST/poll chat. Managed/SOTA alts **explicitly deferred** (not silent): jobs → Inngest/Trigger/Temporal/LangGraph Platform; search → Firecrawl/Jina/vendor web tools; chat protocol → SSE / AI SDK `useChat`. Not product SCs (F5). |
 | **P3** | **amended** | **LangGraph:** generate = infer → materials → web → **rubric (dual-axis) → write ↔ assess (scores, ≤8) → provenance**; revise graph may narrow/skip research but **still** runs the scored inner loop (**D8**). PydanticAI `result_type` per node. |
 | **P4** | **locked** | **Claim-level provenance in MVP:** `ClaimProvenance` (claim span/quote → `source_id` \| `uncertain`). Retrieval emits **materials_bundle** vs **web_bundle**; SC-004 declare when web yields nothing useful. SC-003/004 hook these fields — not merely nonempty `sources[]`. |
@@ -53,9 +53,9 @@ Build new registry app `smart-writer-v2`: a **chat-first** short-form writer wit
 
 ### System building blocks
 
-- **UI / clients**: Next.js (App Router) chat UI **designed with Vercel v0**, **deployed on Railway** (**D5**). Primary surface: conversational thread + complete artifact pane + default **sources panel** + **Settings** (citation + future prefs — **D4**). Optional property chips as light correction only.
-- **UI BFF**: Server routes (or equivalent) on the **Railway UI** path — hold preview secret; proxy/enqueue to FastAPI worker; browser talks only to same-origin UI.
-- **API / application services**: New FastAPI app `apps/smart-writer-v2` (registered in `apps/registry.yaml`) on **Railway** (lab Python cattle). Owns HTTP contracts, Settings/secrets wiring, turn routing (clarify vs enqueue generate/revise), job execution.
+- **UI / clients**: Next.js (App Router) chat UI **designed with Vercel v0**, **served from the same Railway service as FastAPI** (**D5**). Primary surface: conversational thread + complete artifact pane + default **sources panel** + **Settings** (citation + future prefs — **D4**). Optional property chips as light correction only. Preview secret field (V1-style) in the UI.
+- **UI transport**: Browser calls **same-origin** `/v1/...` with `X-Audit-Secret` from user-entered secret (`sessionStorage` OK). **No BFF** required for spend custody. Legacy `web/app/api/proxy` may be removed in T069.
+- **API / application services**: FastAPI app `apps/smart-writer-v2` (registered) on **Railway** — HTTP contracts, Settings/secrets, jobs, **and** static/SPA hosting for built `web/` assets.
 - **Orchestration / jobs**: In-process `lab_shared.jobs.JobRunner` runs a **LangGraph `StateGraph`** (**P3** amended): generate nodes **infer → materials → web → dual-axis rubric → write ↔ assess (scores, ≤8) → provenance**; revise may narrow/skip research but **keeps** the scored inner loop (**D8**). Modes: `clarify` / `generate` / `revise`. PydanticAI schema-first `result_type`s per node.
 - **Agents / prompt program**: PydanticAI schema-first agents for slot/property inference, research planning, **rubric builder**, **writer**, **assessor (scores)**, provenance. Versioned **prompt program** under the app. Clarify fills F6 axes that feed the rubric.
 - **Data stores**: MVP = process-local conversation/artifact store co-located with jobs (restart caveat) **plus** job snapshots. Optional Supabase = later phase.
@@ -65,19 +65,19 @@ Build new registry app `smart-writer-v2`: a **chat-first** short-form writer wit
 
 | Block | Owns | Does not own |
 |-------|------|--------------|
-| Next.js on Railway (UI + BFF; v0-designed) | Chat UX, Settings, artifact display, sources panel, regenerate; **secret custody** in server routes; calls worker | Pipeline graph internals, acceptance catalog |
-| FastAPI on Railway | Preview gate enforcement on worker, rate limits, job enqueue/poll, turn/job API, Settings (server), orchestrator | v0 design studio; browser-held secrets |
+| Next.js assets on Railway (v0-designed; served by FastAPI) | Chat UX, Settings, artifact display, sources panel, regenerate; **V1-style** secret field → `X-Audit-Secret` | Pipeline graph internals, acceptance catalog |
+| FastAPI on Railway | Preview gate enforcement, rate limits, job enqueue/poll, turn/job API, Settings (server), orchestrator, **static UI hosting** | v0 design studio |
 | Prompt program | Writer templates, property weave, grant humor default | Runtime secrets, deploy manifests |
 | `lab_shared` | JobRunner if still chosen (P3), shared helpers | Product-specific grant logic |
 | Legacy `smart-writer` | V1 only | V2 requirements; no back-port duty |
 
-### Topology & runtime custody *(P1 amended — D5)*
+### Topology & runtime custody *(P1 amended — D5 re-lock 2026-09-21)*
 
-- **Design tool**: **Vercel v0** — produce/refine the Next.js chat + Settings UI.
-- **Runtimes / hosts (production)**: (1) **Railway** — FastAPI job worker. (2) **Railway** — deployed UI (v0 output), with BFF or equivalent so the browser never sees the preview secret.
-- **Not the finish bar**: Vercel as production UI host; Codespaces-only UI dogfood as the shipped product.
-- **How UI calls API**: Browser → Railway UI/BFF → Railway worker. No browser→worker with audit secret.
-- **Cattle manifests**: Git must declare Railway worker **and** Railway UI (one or two services — T069). No UI-only drift.
+- **Design tool**: **Vercel v0** — produce/refine the Next.js chat + Settings UI (kept).
+- **Runtime / host (production)**: **one** Railway service `smart-writer-v2` — FastAPI job API + served Next build (same origin).
+- **Not the finish bar**: Vercel as production UI host; Codespaces-only UI dogfood as the shipped product; second `smart-writer-v2-ui` service; BFF-held silent audit secret.
+- **How UI calls API**: Browser → same-origin `/v1/...` with user-supplied `X-Audit-Secret` (V1-style).
+- **Cattle manifests**: Git declares the **one** Railway service (existing `smart-writer-v2.yml`). Deprecate/remove `smart-writer-v2-ui` cattle in T069.
 
 ### Data & persistence
 
@@ -97,7 +97,7 @@ Build new registry app `smart-writer-v2`: a **chat-first** short-form writer wit
 - **Chat thread**: user free-form; assistant returns either clarifying question(s) or complete artifact.
 - **Artifact view**: full draft; version indicator; “Regenerate / start over” explicit control.
 - **Sources panel** default when sources exist; one control for inline / footnotes / panel / combo (F7).
-- UI talks to backend via **async jobs** for generate/revise: browser → Vercel BFF → FastAPI (**POST → job_id → poll** for MVP — **P2**; SSE/`useChat` deferred). Clarify may be sync short response via BFF.
+- UI talks to backend via **async jobs** for generate/revise: browser → same-origin FastAPI (**POST → job_id → poll** for MVP — **P2**; SSE/`useChat` deferred). Clarify may be sync short response. **V1-style** `X-Audit-Secret` on mutating calls.
 
 ### Major risks / non-goals for this architecture
 
@@ -115,27 +115,27 @@ Build new registry app `smart-writer-v2`: a **chat-first** short-form writer wit
 | **P1** MVP vertical | Chat + BFF + jobs + LangGraph generate/revise + materials/URL + Tavily + **claim provenance** + sources panel + revise continuity + **clarify-before-write** | API, JobRunner, LangGraph, agents, Vercel UI+BFF, prompt program | Grant: missing slots → clarify fixture; rich path → complete artifact with `claims[]`; revise `parent_artifact_id`; regenerate = generate; preview gate; humor default off |
 | **P2** Beachhead harden | Intent A-before-B ordering; property chips; citation override; non-grant smoke; catalog `auto` CI | Clarify ordering, property UX, acceptance | FR-003b–c; SC-005; ≥1 `auto` catalog row green |
 | **P3** Depth (partial) | Durable persistence; richer uploads; managed jobs/SSE/search **still optional** unless prioritized | Data store, Inngest/SSE/Firecrawl if prioritized | Only if human prioritizes |
-| **Finish (required)** | Caps (**D2**); dual-axis scored loop (**D8**); Logfire/citation/Vercel/uploads/routing per open ODs | Settings, rubric/assess graph, ops | See Phase 10 `tasks.md` |
+| **Finish (required)** | Caps (**D2**); dual-axis scored loop (**D8**); Logfire/citation/**one-service UI**/uploads/routing per ODs | Settings, rubric/assess graph, ops, **T069** | See Phase 10 `tasks.md` |
 
-**MVP definition (P1):** Thin but real dogfood — Vercel chat → BFF → Railway jobs; missing grant slots **clarify** first; else complete grounded draft with **claim provenance** + sources panel; feedback → **revise**; explicit regenerate. Preview gate on. **Complete V2 (finish bar):** adds **D8** scored dual-axis inner loop + **D2** caps + remaining open ODs — not a silent skip.
+**MVP definition (P1):** Thin dogfood — Next chat → jobs (historical path used BFF). **Complete V2 (finish bar):** **D5 re-lock** = same-origin UI on one Railway service + V1-style secret; **D8** scored loop + **D2** caps + remaining ODs.
 
 ## Technical Context
 
-**Language/Version**: Python 3.12 (API); TypeScript/Node for Next.js UI
+**Language/Version**: Python 3.12 (API); TypeScript/Node for Next.js UI (build-time)
 
-**Primary Dependencies**: FastAPI, Pydantic / PydanticAI, **LangGraph (P1 lock)**, `lab_shared.jobs`, Next.js (Vercel), httpx; Tavily optional
+**Primary Dependencies**: FastAPI, Pydantic / PydanticAI, **LangGraph (P1 lock)**, `lab_shared.jobs`, Next.js (v0 design), httpx; Tavily optional
 
 **Storage**: MVP in-memory (jobs + conversation); Supabase optional later
 
 **Testing**: pytest (API/orchestrator/contracts); UI smoke later; acceptance catalog hybrid + thin auto
 
-**Target Platform**: Codespaces (dev); **Vercel v0** (UI design); **Railway** (worker + deployed UI)
+**Target Platform**: Codespaces (dev); **Vercel v0** (UI design); **Railway** (**one** service: API + served UI)
 
-**Project Type**: Monorepo — `apps/smart-writer-v2/` FastAPI worker (registry) + `apps/smart-writer-v2/web/` Next app **designed via v0**, **deployed on Railway**; BFF on UI path (**D5**).
+**Project Type**: Monorepo — `apps/smart-writer-v2/` FastAPI (registry) + `web/` Next app **designed via v0**, **served same-origin from that service** (**D5**).
 
 **Performance Goals**: Multi-minute jobs OK; clarify turns fast; hobbyist scale
 
-**Constraints**: Cattle/secrets/registry; preview gate; cost caps; no durable pip; grounding invariant
+**Constraints**: Cattle/secrets/registry; preview gate (V1-style); cost caps; no durable pip; grounding invariant
 
 **Scale/Scope**: ~10 users (stretch ~100)
 
@@ -144,14 +144,14 @@ Build new registry app `smart-writer-v2`: a **chat-first** short-form writer wit
 *GATE: Must pass before tasks/implement. Re-check after architecture edits.*
 
 - [x] Architecture section complete (blocks, boundaries, topology, data, APIs/UI)
-- [x] Topology & runtime custody locked (P1)
+- [x] Topology & runtime custody locked (P1 — **D5 re-lock 2026-09-21**)
 - [x] Phased delivery present with MVP and exit criteria
 - [x] `research.md` alternatives per major block (STACK_POSTURE) — P2 deferred alts explicit
 - [x] Orchestrator P1 lock (LangGraph named nodes — P3)
 - [x] Plan Architecture review (P*) triaged (P1–P8)
 - [x] Human approved Architecture + Phased delivery
 - [x] `/speckit-tasks` generated (`tasks.md`) — T* when contract tests exist, then implement
-- [x] Secrets/registry/cattle rules respected (names in schema; BFF custody — P1)
+- [x] Secrets/registry/cattle rules respected (names in schema; **V1-style** preview gate — P1)
 - [x] Learning/stack prefs not smuggled as product gates (F5/R1/R2)
 - [x] PLAN_AUTHORING_GATES posture addressed via P* locks (topology + non-sibling alts)
 
@@ -188,7 +188,7 @@ deploy/secrets/schema.yaml   # SMART_WRITER_V2_* names
 deploy/railway/        # when shipping
 ```
 
-**Structure Decision**: **Clean-room** FastAPI worker `smart-writer-v2` (FR-011) + Next UI (`web/`) **designed with v0**, **deployed on Railway** (**D5**). Reuse `lab_shared.jobs` + patterns only — not V1 product modules. Cattle declares worker + UI.
+**Structure Decision**: **Clean-room** FastAPI `smart-writer-v2` (FR-011) + Next UI (`web/`) **designed with v0**, **served same-origin from that one Railway service** (**D5**). Reuse `lab_shared.jobs` + patterns only — not V1 product modules. Cattle declares **one** service.
 
 ## Complexity Tracking
 

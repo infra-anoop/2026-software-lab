@@ -8,10 +8,11 @@ Format aligned with [`research-template.md`](../../docs/agent-os/research-templa
 
 ## Block: Topology & runtime custody
 
-- **Decision (locked 2026-09-20 — D5):** **Design** with **Vercel v0**. **Deploy UI on Railway** (shipped product includes that UI). **Worker** on Railway. Browser never holds preview secret (BFF on Railway UI path). **Not:** Vercel as production UI host; **not:** Codespaces-only as the product.
-- **Rationale:** Governor wants modern UI craft (v0) and a real deployed product surface on lab cattle (Railway), without conflating design studio with host.
-- **Pattern source:** Railway cattle for Python worker; UI service(s) to be declared in T069.
-- **Alternatives rejected:** Vercel-as-host (prior P1); Codespaces-only dogfood as finish bar; browser-held audit secret.
+- **Decision (re-locked 2026-09-21 — D5):** **Design** with **Vercel v0**. **Deploy:** **one** Railway service `smart-writer-v2` — FastAPI serves built Next UI **same-origin** with `/v1`. **Secret custody = V1-style** (user enters shared preview secret in UI; browser sends `X-Audit-Secret`). **Not:** Vercel as production host; **not:** Codespaces-only as product; **not:** second `smart-writer-v2-ui` service; **not:** BFF-held silent secret as the spend gate (public UI would still burn tokens).
+- **Rationale:** v0 craft kept. Public UI + server-only secret does not gate spend; V1 shared-password gate matches how the product is actually used. One service avoids GHCR/Node cattle split for a POC.
+- **Pattern source:** V1 HTML form + `sessionStorage` + `X-Audit-Secret`; Railway Python cattle; Next static/assets served by FastAPI.
+- **Alternatives rejected:** Vercel-as-host; Codespaces-only finish; two Railway services + BFF custody (2026-09-20 lock — overturned); multi-process one service (prefer static UI in Python image).
+- **Alternatives considered (kept as learning notes):** BFF + real user auth / Access proxy — revisit if UI must be public without a shared password.
 
 ---
 

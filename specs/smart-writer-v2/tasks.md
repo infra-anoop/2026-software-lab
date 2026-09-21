@@ -213,7 +213,7 @@ D6 lock + T070 (vault seed + sync)
         → T063 (D2 locked: 3 write jobs / 10 clarifies / 8 inner turns → Settings + fail-closed tests)
             → T078–T086 (D8 locked: dual-axis scored writer↔assessor loop — required)
                 → T065 (D4 locked: Settings panel + citation pref)
-                    → T069 (D5 locked: v0 design → Railway UI deploy)
+                    → T069 (D5 re-lock: v0 UI on one Railway service + V1-style secret)
                         → T073–T076 (D7 locked: uploads in-memory)
                             → T087 (D9 locked: single revise path; explicit regenerate control)
                                 → T077 final ruff/pytest + prod smoke notes
@@ -221,7 +221,7 @@ D6 lock + T070 (vault seed + sync)
 
 ### Ops / cattle
 
-- [x] T070 [OD:D6] Human seeds `SMART_WRITER_V2_AUDIT_SECRET` in Infisical (path per schema); sync to Railway worker + UI/BFF; verify mutating `/v1` accepts the secret (not only `/health`). Never commit the value. — sync #5 + deploy #4 (2026-09-20): `/v1` wrong/missing secret → **401** (was 503). UI/BFF host secret when T069 Railway UI ships.
+- [x] T070 [OD:D6] Human seeds `SMART_WRITER_V2_AUDIT_SECRET` in Infisical (path per schema); sync to Railway **service** `smart-writer-v2`; verify mutating `/v1` accepts the secret (not only `/health`). Never commit the value. — sync #5 + deploy #4 (2026-09-20): `/v1` wrong/missing secret → **401**. (**D5 re-lock:** UI uses V1-style typed secret; no separate UI-service vault copy required.)
 - [x] T071 Ship + deploy `smart-writer-v2` from current `main` (GHCR pin) + `smoke-test.yml` `/health` 200; document Railway URL in `apps/smart-writer-v2/README.md` if changed — deploy #4 success; `GET /health` 200 verified; URL in README
 
 ### Spend caps (D2 locked)
@@ -247,18 +247,18 @@ D6 lock + T070 (vault seed + sync)
 
 ### Production browser (fat UI host)
 
-- [ ] T069 [OD:D5] **(1)** Vercel **v0** GUI design pass (chat + Settings). **(2)** Deploy that UI on **Railway** (cattle in git; public product URL). Wire BFF/secret custody to worker — browser never sees audit secret. Update `apps/smart-writer-v2/web/README.md` for Railway UI host (not Vercel deploy). Local/Codespaces = dev only, not the finish bar. — **pivoted to letter v0** (brief: `notes/packets/2026-09-20-swv2-v0-brief.md`); prior in-repo “v0-class” worker stopped; cattle drafts may exist uncommitted
+- [ ] T069 [OD:D5] **(1)** Vercel **v0** GUI design pass (chat + Settings) — **done 2026-09-20.** **(2)** **Re-lock path:** ship that UI from the **one** Railway service `smart-writer-v2` (FastAPI serves built Next assets **same-origin**). **V1-style** preview secret field in UI → browser sends `X-Audit-Secret` (no BFF custody). Remove or stop shipping `smart-writer-v2-ui` / BFF-as-gate cattle. Update `apps/smart-writer-v2/web/README.md` + `deploy/railway/README.md`. Public product URL = worker URL (or documented path). Local/Codespaces = dev only.
 
 ### Uploads (D7 locked — in-memory)
 
 - [ ] T073 [OD:D7] Document size/MIME defaults in `contracts/http-api.md` + `web/README.md`; storage = in-memory bytes (no object store)
 - [ ] T074 [P] Contract tests for upload accept/reject in `apps/smart-writer-v2/tests/contract/test_upload_materials.py` (red → T* → impl)
 - [ ] T075 Extend `POST .../messages` (or dedicated upload route) + store `MaterialRef` `kind=upload` with in-memory bytes in `apps/smart-writer-v2/app/entrypoints/http.py` / `store.py`
-- [ ] T076 Chat UI upload control in `apps/smart-writer-v2/web/` (BFF custody; no client audit secret)
+- [ ] T076 Chat UI upload control in `apps/smart-writer-v2/web/` (same-origin `/v1`; V1-style audit secret — no BFF custody)
 
 ### Outer revise routing (D9 locked)
 
-- [ ] T087 [OD:D9] Verify / keep **explicit** “Regenerate / start over” control through v0 GUI design (`web/`); `client_intent=regenerate` → generate. Do **not** add LLM inference of start-over from free-form feedback. Normal feedback stays single revise path.
+- [x] T087 [OD:D9] Verify / keep **explicit** “Regenerate / start over” control through v0 GUI design (`web/`); `client_intent=regenerate` → generate. Do **not** add LLM inference of start-over from free-form feedback. Normal feedback stays single revise path. — verified 2026-09-20 in v0-integrated `page.tsx` (“Start over” / “Fresh generate next” toggles `client_intent`).
 
 ### Close-out
 

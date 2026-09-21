@@ -17,7 +17,7 @@
 | D2 | Spend caps (jobs / clarifies / inner turns) | content-only | **locked** — 3 / 10 / 8 |
 | D3 | Wire observability + elapsed/tokens on jobs | architecture-affecting | **locked** — wire for finish |
 | D4 | Citation control placement | content-only | **locked** — Settings panel |
-| D5 | UI design tool vs deploy host | architecture-affecting | **locked** — v0 design; Railway UI deploy |
+| D5 | UI design tool vs deploy host + secret custody | architecture-affecting | **re-locked 2026-09-21** — v0 design; **one** Railway service; V1-style browser secret |
 | D6 | Seed preview secret in vault | content-only | **locked** — yes for finish |
 | D7 | File uploads in finish + storage | architecture-affecting | **locked** — yes; in-memory |
 | D8 | Dual-axis scored quality loop required? | architecture-affecting | **locked** — required for complete V2 |
@@ -36,4 +36,4 @@
 
 | Date | New rows | Re-lock done? |
 |------|----------|---------------|
-| | | |
+| 2026-09-21 | **D5 re-lock** (one service + V1-style secret; drop BFF custody / second UI service) | **yes** — see `PLAN_DELTA.md` § D5 re-lock |
