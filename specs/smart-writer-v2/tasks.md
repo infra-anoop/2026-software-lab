@@ -262,7 +262,7 @@ D6 lock + T070 (vault seed + sync)
 
 ### Close-out
 
-- [x] T077 Re-run `uv run ruff check app/ tests/` + `uv run pytest` green; note prod `/health` (+ optional mutating smoke after T070) — **2026-09-21:** ruff clean; **67** pytest passed on `main` `@acfc5f9` (uploads merged). Prod `/health` re-checked after one-app `ship/smart-writer-v2/production` (see README).
+- [x] T077 Re-run `uv run ruff check app/ tests/` + `uv run pytest` green; note prod `/health` (+ optional mutating smoke after T070) — **2026-09-21:** ruff/bandit clean; **68** pytest on `main`; prod ship-one [run 35583520115](https://github.com/infra-anoop/2026-software-lab/actions/runs/35583520115) green @ `f01692d`; `GET /health` → 200.
 
 **Checkpoint:** V2 finish — secret live, worker current, caps + dual-axis scored loop, obs/citation/browser/uploads/routing as locked, final green
 ---
