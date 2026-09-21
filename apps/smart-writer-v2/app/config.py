@@ -96,6 +96,12 @@ def get_tavily_api_key() -> str | None:
     return raw or None
 
 
+def get_logfire_token() -> str | None:
+    """Return LOGFIRE_TOKEN or None (observability noop when unset)."""
+    raw = _settings_str("LOGFIRE_TOKEN")
+    return raw or None
+
+
 def get_job_timeout_sec() -> float | None:
     """Wall-clock seconds for in-process jobs; ``None`` means no server-side timeout."""
     return DEFAULT_JOB_TIMEOUT_SEC

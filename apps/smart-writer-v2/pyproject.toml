@@ -10,6 +10,7 @@ dependencies = [
   "pydantic-settings>=2.9,<3",
   "pydantic-ai-slim[openai]>=1.59,<2",
   "langgraph>=1.0.6,<1.1",
+  "logfire>=4.24,<5",
   "fastapi>=0.115,<1",
   "uvicorn[standard]>=0.32,<1",
   "lab-shared",
