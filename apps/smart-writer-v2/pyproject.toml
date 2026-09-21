@@ -23,6 +23,7 @@ dev = [
   "bandit[toml]>=1.7",
   "pytest>=8",
   "pytest-asyncio>=0.24,<1",
+  "pytest-cov>=5,<7",
 ]
 
 [tool.pytest.ini_options]
