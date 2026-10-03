@@ -6,9 +6,12 @@ Invocation: `uv run --project scripts/factory factory <command>`. All commands a
 |---------|--------|-------------------|------|
 | `factory status` | Print board: in flight, blocked on governor (plain-language prompts), ready queue, overrides per gate, unverified governor actions | — | FR-003/004, SC-001 |
 | `factory decisions` | Print open decision requests (the governor's batch) | — | FR-004, I-E2 |
-| `factory order new --feature F --from-task T…` | Scaffold an order file from tasks; validates; writes `bus/orders/<id>/order.yaml` | depends on open human decision; size > horizon; missing fidelity for a touched named lock | FR-006/007/016 |
-| `factory claim <order-id>` | Create branch `wo/<order-id>` from `main`, push, write `claimed_at` into the run record on the branch | active ≥ cap (3); owned paths overlap an active order; order blocked on governor | FR-005/007/008 |
-| `factory handoff <order-id>` | Validate handoff + run record on branch | any registered gate for the order failing locally (FR-009) | FR-009/010 |
+| `factory order new --feature F --from-task T…` | Scaffold an order file from tasks locally; validates | size > horizon; missing fidelity for a touched named lock | FR-006/016 |
+| `factory order issue <order-id>` | Create `wo/<order-id>` from `main` with the order as its first commit; push (never pushes `main`) | depends on open human decision; schema invalid | FR-005/007 |
+| `factory claim <order-id>` | Fast-forward push of the claim event to `wo/<order-id>` (atomic per order) | active ≥ cap (3); owned paths overlap an active order; order blocked on governor; already claimed | FR-007/008 |
+| `factory release <order-id> --reason R` | Append release event; frees capacity | — | P4 |
+| `factory handoff <order-id>` | Validate handoff + `run-complete` event on branch | any registered gate for the order failing locally (FR-009) | FR-009/010 |
+| `factory bus pr --message M…` | Open a bus PR (`bus/<date>-<slug>`) for decision, correction, or post-mortem messages; merge on green | non-bus paths in the change | FR-001 |
 | `factory pr open <order-id>` | Open PR `wo/<order-id>` → `main` via REST; body links order + intents | no handoff; handoff invalid | FR-005, I-P1 |
 | `factory verdict <order-id> --file V` | Validate verdict (family, isolation inputs) and commit it to the branch | reviewer family = author family; non-git input | FR-011/011a |
 | `factory override <order-id> --gate G --reason R` | Write override message | empty reason; governor-only gate by non-governor actor | FR-020/021 |

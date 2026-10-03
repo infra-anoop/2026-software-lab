@@ -6,16 +6,16 @@ Source of truth: Pydantic models in `scripts/factory/src/factory/bus/`. Generate
 
 ```text
 bus/
-├── orders/<order-id>/
-│   ├── order.yaml            # on main (issued)
-│   ├── amendment-NN.yaml     # on main
-│   ├── handoff.yaml          # on wo/<order-id> branch → merges with work
-│   ├── run.yaml              # on branch
-│   ├── verdict-NN.yaml       # on branch
-│   └── override-NN.yaml      # on branch
-├── decisions/<decision-id>/{request,lock}.yaml
-├── corrections/<correction-id>.yaml
-└── postmortems/<sprint>.yaml
+├── orders/<order-id>/        # all on branch wo/<order-id>; reach main when the work PR merges
+│   ├── order.yaml            # first commit of the branch (issued)
+│   ├── amendment-NN.yaml
+│   ├── claim.yaml · release.yaml · run-complete.yaml   # run events (append-only)
+│   ├── handoff.yaml
+│   ├── verdict-NN.yaml
+│   └── override-NN.yaml
+├── decisions/<decision-id>/{request,lock}.yaml   # via bus PRs (bus/<date>-<slug>)
+├── corrections/<correction-id>.yaml              # via bus PRs
+└── postmortems/<sprint>.yaml                     # via bus PRs
 ```
 
 ## Invariants (each is a check)

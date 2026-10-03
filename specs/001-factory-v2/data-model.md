@@ -72,9 +72,17 @@ Forbidden keys in any message: `status`, `state`, `done`, `progress` (FR-003, I-
 
 `gate`, `pr`, `reason` (non-empty), `gate_class` (copied from registry). If `gate_class: governor-only` → `actor` must be `governor`, verified per D4.
 
-## RunRecord (`kind: run_record`, id `<order-id>.run`)
+## Run events (append-only; replace a mutable run record — review P1)
 
-`claimed_at`, `handoff_at`, `wall_minutes`, `rework_loops`, `governor_interrupts`, `governor_minutes`, `cost_usd?` (estimate flag), `overrides`, `deviations`. Combined with verdicts and corrections, this feeds the scorecard.
+Measurements are separate immutable events on the order's branch; the scorecard aggregates them on read.
+
+| Kind | Id | Written by | Fields |
+|------|----|-----------|--------|
+| `claim` | `<order-id>.claim` | worker via `factory claim` | `claimed_at`, `worker_runtime`, `actor_model` |
+| `release` | `<order-id>.release` | orchestrator | `reason` (`abandoned` \| `superseded` \| `blocked`); frees capacity |
+| `run_complete` | `<order-id>.run-complete` | worker in the handoff commit | `wall_minutes`, `governor_interrupts`, `cost_usd?` (estimate flag), `deviations_count` |
+
+Rework loops, overrides, and first-pass acceptance are derived from verdicts and overrides (never self-reported). Governor minutes come from decision locks.
 
 ## Gate (registry entry, `scripts/factory/gates.yaml`)
 
@@ -82,15 +90,24 @@ Forbidden keys in any message: `status`, `state`, `done`, `progress` (FR-003, I-
 
 ## Lifecycle (derived — never stored)
 
+Two PR kinds reach protected `main` (review P2):
+
+- **Work PR**: branch `wo/<order-id>`. The order is the branch's **first commit**, pushed by `factory order issue` (issuance never pushes to `main`). Claim, amendments, handoff, run events, verdicts, and overrides are later commits on the same branch. One order = one branch = one PR (FR-005); the order reaches `main` when the work merges.
+- **Bus PR**: branch `bus/<date>-<slug>`, containing only `bus/decisions/`, `bus/corrections/`, `bus/postmortems/` files. Schema gates only; the orchestrator merges on green. A governor lock counts as **verified** when the governor's own identity approves that PR (requires D4 option A).
+
 ```text
-issued        order file exists on main
-claimed       branch wo/<order-id> exists on origin
-in_review     open PR head = wo/<order-id>
-accepted      latest verdict in PR head = accept AND required checks green (or overridden)
-rejected      latest verdict = reject  → correction expected; new order for rework
+issued        origin has wo/<order-id> whose first commit adds bus/orders/<order-id>/order.yaml; no claim event
+claimed       claim event on the branch; no release event
+in_review     open PR with head wo/<order-id>
+accepted      latest verdict = accept AND required checks green (or overridden)
+rejected      latest verdict = reject → correction expected; new order for rework
 merged        PR merged
+released      release event on the branch, OR PR closed unmerged (excluded from active)
+stale (overlay)                claimed, no PR, and no commit for > 3 × size_minutes → flagged on the board;
+                               still counts toward the cap until released (conservative)
 blocked_on_governor (overlay)  depends_on_decisions has an open human decision
-                               OR handoff has blocker_governor question without lock
+                               OR handoff has a blocker_governor question without a lock
+ready queue   issued ∧ ¬claimed ∧ ¬blocked_on_governor
 ```
 
-Concurrency: `active = claimed ∪ in_review`; `factory claim` refuses when `|active| ≥ cap` or owned paths intersect an active order.
+**Claim atomicity:** the claim commit is a fast-forward push to `wo/<order-id>`, so two concurrent claims of the same order cannot both succeed (git rejects the non-fast-forward). **Cap:** `active = (claimed ∪ in_review) − released`; `factory claim` refuses at `|active| ≥ cap` or when owned paths intersect an active order. The CI twin replays claim events in timestamp order and blocks the PR whose claim exceeded the cap (closes the read-then-push race between different orders).

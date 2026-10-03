@@ -25,7 +25,7 @@ Replace sprint-01's prose process (mutable packets, free-text status, the human 
   - `hooks` — Cursor hook entrypoints.
   - `github` — REST adapter, the only module that talks to GitHub (I-A4).
   - `config` — typed `factory.toml` loader (I-A3).
-- **Orchestration / jobs**: **P1 lock — linear derived state machine** `issued → claimed → in_review → accepted | rejected → merged`, plus a `blocked_on_governor` overlay; no workflow engine (migrate trigger in `research.md`). Agents run as Cursor background subagents or cloud agents and enter only through `factory claim`.
+- **Orchestration / jobs**: **P1 lock — linear derived state machine** `issued → claimed → in_review → accepted | rejected → merged`, with `released` and overlays `stale` and `blocked_on_governor`; no workflow engine (migrate trigger in `research.md`). **Issuance never touches `main`:** the order is the first commit of `wo/<order-id>`; claims are atomic fast-forward pushes; decisions, corrections, and post-mortems travel in separate *bus PRs* (full sequence in [`data-model.md`](./data-model.md) § Lifecycle). Agents run as Cursor background subagents or cloud agents; the authoritative admission point is `factory claim` (scope of spawn refusal per review P3, pending governor choice).
 - **Data stores**: git only. `bus/` holds append-only YAML messages; `factory.toml` holds repo config; `scripts/factory/gates.yaml` is the gate registry; `scripts/factory/rubrics/patterns.yaml` is the pattern catalog (P2). No database.
 - **External systems**: GitHub (git remote, REST API, Actions, branch protection, CODEOWNERS), Cursor (hooks, subagents, cloud agents), Semgrep CE / import-linter / mutmut (OSS CLIs in CI), and Bugbot (non-authoritative reviewer).
 
@@ -66,7 +66,7 @@ Until D4 locks, P1 implements **C** behind an `identity` adapter so A or B slot 
 
 ### Data & persistence
 
-- Entities: [`data-model.md`](./data-model.md). The run identity is the **order id** (`wo-YYYYMMDD-<slug>`), which names the branch `wo/<order-id>`, the bus folder, and the run record.
+- Entities: [`data-model.md`](./data-model.md). The run identity is the **order id** (`wo-YYYYMMDD-<slug>`), which names the branch `wo/<order-id>` and the bus folder. Run measurements are append-only events (`claim`, `release`, `run-complete`), aggregated on read — no message is ever updated.
 - Durable: every bus message (git). Ephemeral: lifecycle snapshots and the board (recomputed on read), gate run outputs (CI logs + job summary).
 
 ### APIs & contracts
@@ -169,6 +169,19 @@ scripts/factory/
 ```
 
 **Structure Decision**: one uv project under `scripts/` because it is repo tooling, not app runtime (so not `modules/lab_shared`) and not a deployable (so not `apps/`). The package boundary is clean enough to extract into its own repo in sprint 03.
+
+## Plan review locks *(P\*, [`PLAN_REVIEW.md`](./PLAN_REVIEW.md))*
+
+| ID | Status | Lock |
+|----|--------|------|
+| **P1** | locked (agent — contract defect) | Run record replaced by append-only `claim` / `release` / `run-complete` events; aggregates derived on read |
+| **P2** | locked (agent — contract defect) | Issuance never touches `main`: order = first commit of `wo/<id>`; decisions/corrections/post-mortems via schema-gated bus PRs; FR-005 unchanged |
+| **P3** | await governor | Is the worker cap enforced at launch (needs a launch broker) or at claim + merge (advisory editor hook)? |
+| **P4** | await governor (recommendation in data-model) | Git stays the lease authority with release/stale/atomic-claim rules, vs a managed tracker owning leases |
+| **P5** | await governor (= spec D4) | Agent identity: when governor-only checks become enforcing |
+| **P6** | await governor | Red-first: require a real assertion failure, or accept import/collection errors |
+| **P7** | Later → tasks | Freeze executable interfaces + shared fixtures at P0; integration checkpoints; 3-day target vs 5-day max |
+| **P8** | accepted | Strength: alternatives coverage — preserve rows |
 
 ## Complexity Tracking
 
