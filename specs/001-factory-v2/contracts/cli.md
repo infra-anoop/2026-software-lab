@@ -1,0 +1,21 @@
+# Contract — `factory` CLI
+
+Invocation: `uv run --project scripts/factory factory <command>`. All commands accept `--json` (machine output) and `--repo PATH`. Exit codes: `0` ok, `1` gate/validation failure, `2` refused by policy (cap, open decision, path overlap), `3` usage/config error, `4` external failure (git/GitHub unreachable).
+
+| Command | Effect | Refusals (exit 2) | Spec |
+|---------|--------|-------------------|------|
+| `factory status` | Print board: in flight, blocked on governor (plain-language prompts), ready queue, overrides per gate, unverified governor actions | — | FR-003/004, SC-001 |
+| `factory decisions` | Print open decision requests (the governor's batch) | — | FR-004, I-E2 |
+| `factory order new --feature F --from-task T…` | Scaffold an order file from tasks; validates; writes `bus/orders/<id>/order.yaml` | depends on open human decision; size > horizon; missing fidelity for a touched named lock | FR-006/007/016 |
+| `factory claim <order-id>` | Create branch `wo/<order-id>` from `main`, push, write `claimed_at` into the run record on the branch | active ≥ cap (3); owned paths overlap an active order; order blocked on governor | FR-005/007/008 |
+| `factory handoff <order-id>` | Validate handoff + run record on branch | any registered gate for the order failing locally (FR-009) | FR-009/010 |
+| `factory pr open <order-id>` | Open PR `wo/<order-id>` → `main` via REST; body links order + intents | no handoff; handoff invalid | FR-005, I-P1 |
+| `factory verdict <order-id> --file V` | Validate verdict (family, isolation inputs) and commit it to the branch | reviewer family = author family; non-git input | FR-011/011a |
+| `factory override <order-id> --gate G --reason R` | Write override message | empty reason; governor-only gate by non-governor actor | FR-020/021 |
+| `factory correction new …` | Write correction; `--links-to` records the repeat link and emits a rule/check proposal order | — | FR-029 |
+| `factory gate run [--gate G] [--pr N \| --base B --head H]` | Run registered gates; prints per-intent results | — | FR-012..024 |
+| `factory check schema \| intent \| hooks \| registry \| immutability` | Repo-level validations | — | FR-001/002/022/023 |
+| `factory scorecard [--sprint S]` | Compute scorecard from run records, verdicts, corrections, overrides | — | FR-035, SC-009 |
+| `factory sprint close --sprint S` | Refuse unless post-mortem exists and dispositions every correction | missing post-mortem / undispositioned correction | FR-030 |
+| `factory hook <name>` | Hook entrypoint (stdin JSON → stdout JSON per Cursor hooks) | per hook | FR-022 |
+| `factory retro --since <ref>` | Run P1 gates retroactively on merged Wave 1 PRs; write report | — | FR-037 |

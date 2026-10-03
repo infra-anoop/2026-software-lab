@@ -320,6 +320,8 @@ Existing checks reused as-is: validate-secrets-schema, validate-deploy-env, uv-s
 | **D2** | Changed-code mutation score is a gate (FR-019) | Threshold (share of mutants killed on changed lines) | human | Before the mutation gate blocks | **locked** (2026-10-03) — **70%** of mutants killed on changed lines; tune at post-mortem from override counts | content-only | letter |
 | **D3** | Reviewers come from a different model family than the author (FR-011) | Which family reviews by default | human | Before the first spawned review of this spec | **locked** (2026-10-03) — **GPT (OpenAI)** reviews by default; author family is Claude | content-only | letter |
 
+| **D4** | Governor-only gates (FR-020) and rule-change approval (FR-031) need the governor to be distinguishable from agents; today both act as one GitHub account | Mechanism: separate agent identity (GitHub App) / governor-signed decisions / recorded-only — consequences in plan Architecture "Governor identity" | human | Before P2 governor-only enforcement work (P0/P1 ship recorded-only behind an adapter) | open (raised by plan 2026-10-03) | **arch** (identity, secret custody, ops steps) | letter |
+
 **Rules:** see constitution §G. Do not invent `content_open` while `open`.
 
 ## Review locks *(mandatory before Approved)*
