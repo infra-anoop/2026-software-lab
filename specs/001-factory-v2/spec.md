@@ -295,7 +295,7 @@ Ranking rule: **P1** = catches a drift pattern observed in sprint 01, or is foun
 | **P1** | 1 | Bus schema + derived board (`bus.*`, `message.*`, `factory-status-test`, `order.size-cap`); gate registry + fail-mode category + override (`gate.fail-mode-category`, `message.override`, `overrides-per-gate`); hook-has-ci-twin; intent traceability (`factory-check-intent`); red-first proof; test-seam ban; diff-within-owned-paths; deferral-words-need-od; order-fidelity-declared + lock letter tokens; decision-request-no-ids; catalog-test-linkage; pr-links-order; order-blocked-on-open-human-od; spawn-concurrency-cap; verdict reviewer-family-differs; run records + scorecard metrics |
 | **P2** | 1 (stretch) → 2 | Architecture lint pack (import-layers, agent-has-output-type, banned-getenv-outside-config, vendor-imports-only-in-adapters, generic-identifier-ban, lab-shared-declares-consumers); pattern-catalog reviewer rubric (`rubric.patterns`, `rubric.fidelity`, `rubric.undeclared-decisions`); new-dependency-needs-decision-ref; research-decision-has-nonsibling-alt; od.arch-options-have-consequences; od.plain-options; correction records + repeated-corrections; sprint-close-requires-postmortem; codeowners-governor-on-rule-paths; process-rule-cites-check; constitution 2.0 + lean always-applied guidance; block-system-path-edits hook |
 | **P2** | 2 (Models lane) | mutation-changed-lines (threshold **D2**) |
-| **P3** | proposed out of version (**D1**) | factory-fixture-repo-test (portability proof); one-service-per-app-manifest; live-config-drift-check; secret-scan |
+| **P3** | out of this version — sprint 03 (**D1** waived) | factory-fixture-repo-test (portability proof); one-service-per-app-manifest; live-config-drift-check; secret-scan |
 
 Existing checks reused as-is: validate-secrets-schema, validate-deploy-env, uv-sync-locked.
 
@@ -303,9 +303,9 @@ Existing checks reused as-is: validate-secrets-schema, validate-deploy-env, uv-s
 
 | id | shape_locked | content_open | who | before | status | arch_impact | fidelity |
 |----|--------------|--------------|-----|--------|--------|-------------|----------|
-| **D1** | P3 rows are intended but not needed by sprint 02 work | Confirm P3 rows are out of this version (scheduled next sprint), or pull any in | human | Before tasks | open | | |
-| **D2** | Changed-code mutation score is a gate (FR-019) | Threshold (share of mutants killed on changed lines) | human | Before the mutation gate blocks | open | | |
-| **D3** | Reviewers come from a different model family than the author (FR-011) | Which family reviews by default | human | Before the first spawned review of this spec | open | | |
+| **D1** | P3 rows are intended but not needed by sprint 02 work | Confirm P3 rows are out of this version (scheduled next sprint), or pull any in | human | Before tasks | **waived** (2026-10-03) — all four P3 rows out of this version; scheduled for sprint 03 | content-only | letter |
+| **D2** | Changed-code mutation score is a gate (FR-019) | Threshold (share of mutants killed on changed lines) | human | Before the mutation gate blocks | **locked** (2026-10-03) — **70%** of mutants killed on changed lines; tune at post-mortem from override counts | content-only | letter |
+| **D3** | Reviewers come from a different model family than the author (FR-011) | Which family reviews by default | human | Before the first spawned review of this spec | **locked** (2026-10-03) — **GPT (OpenAI)** reviews by default; author family is Claude | content-only | letter |
 
 **Rules:** see constitution §G. Do not invent `content_open` while `open`.
 
