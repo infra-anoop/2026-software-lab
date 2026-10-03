@@ -34,7 +34,7 @@ scorecard:
   autonomy_horizon: 1h          # unattended worker run length this sprint
   drift: { target: 0.95, meaning: "share of 1h unattended runs where governor finds no intent violation afterwards" }
   first_pass_acceptance: { target: 0.75, meaning: "worker PRs accepted without rework" }
-  intent_coverage: { target: 0.90, meaning: "intent statements mapped to a check; explicit human counts" }
+  intent_coverage: { target: 0.90, meaning: "effective coverage at sprint close: intents backed by an implemented, passing non-human check or an explicit governor-judged mapping. Mapping presence itself is a 100% invariant (review R2)." }
   decision_points_per_feature: { target: null, meaning: "measure this sprint; set target next sprint" }
 
 intents:

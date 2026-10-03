@@ -55,6 +55,7 @@ As the governor, I approve a work order, walk away for about an hour, and come b
 5. **Given** a work order that depends on an open governor decision, **When** issuing is attempted, **Then** it is refused.
 6. **Given** more than the concurrency cap of workers already active, **When** another spawn is attempted, **Then** it is refused.
 7. **Given** a completed PR, **When** it is reviewed, **Then** the verdict records a reviewer model family different from the author's.
+8. **Given** a reviewer is spawned, **When** it starts, **Then** it receives only git artifacts (work order, diff, check results, intent ids) — never the author's conversation or narrative — and the verdict records the inputs it was given.
 
 ---
 
@@ -101,12 +102,13 @@ As the governor, every intent statement maps to a check or an explicit "governor
 
 **Why this priority**: Without traceability, intent capture is paperwork (pre-mortem risk) and drift cannot be attributed. (I-N1, I-P4)
 
-**Independent Test**: Remove the check mapping from one intent; the traceability check fails and coverage drops below target.
+**Independent Test**: Remove *all* mappings from one intent — the presence check fails. Separately, mark checks as planned-only — effective coverage drops and is reported.
 
 **Acceptance Scenarios**:
 
-1. **Given** the intent file, **When** checked, **Then** every intent has ≥1 mapped check and coverage is reported.
-2. **Given** a PR linked to a work order, **When** checks finish, **Then** results are reported per intent id.
+1. **Given** the intent file, **When** checked, **Then** every intent has ≥1 mapped check (presence is a 100% invariant).
+2. **Given** the intent file and current check registry, **When** coverage is computed, **Then** it reports the share of intents backed by an implemented, passing non-human check or an explicit governor-judged mapping (effective coverage).
+3. **Given** a PR linked to a work order, **When** checks finish, **Then** results are reported per intent id.
 
 ---
 
@@ -177,7 +179,7 @@ As the governor, the factory tooling runs in a fresh repo of mine with only conf
 - A gate produces a false positive repeatedly → override count rises; post-mortem decides tune/remove; the governor approves the change.
 - Two work orders' owned paths overlap → they cannot run in parallel; the second waits.
 - Checks pass but the governor rejects ("smells wrong") → recorded as a correction and counted against the drift metric.
-- The bootstrap: factory gates are built before they exist → Wave 1 is held to manual equivalents, then the new gates run retroactively on Wave 1 PRs.
+- The bootstrap: factory gates are built before they exist → see FR-037 (bootstrap verdicts, retroactive gate runs, remediation before Wave 2).
 - Existing sprint-01 packets → remain readable history; not migrated to the new message format.
 - Legacy code (V1, Research Auditor) violating new architecture lints → checks apply to changed lines only; untouched legacy is not blocked.
 
@@ -201,6 +203,7 @@ As the governor, the factory tooling runs in a fresh repo of mine with only conf
 - **FR-009**: A worker MUST NOT be able to report done while its work order's checks fail. (I-G2)
 - **FR-010**: Escalations MUST be classed: governor-owned product/architecture ambiguity = real-time blocker; all else = conservative choice + deviation recorded in the handoff. (I-B1, I-B2)
 - **FR-011**: Acceptance MUST be decided from check results per intent plus a verdict from a reviewer of a different model family; worker self-reports MUST NOT count as evidence. (I-P3, I-G2)
+- **FR-011a**: Reviewers MUST receive only git artifacts (work order, diff, check results, intent ids) and never the author's conversation or narrative; each verdict MUST record the inputs it was given. (I-P3)
 
 **Drift gates (sprint-01 patterns)**
 
@@ -210,7 +213,7 @@ As the governor, the factory tooling runs in a fresh repo of mine with only conf
 - **FR-015**: Spec/plan/tasks text MUST NOT park required work without an Open Decision reference. (I-B6)
 - **FR-016**: Work orders MUST declare fidelity for every named lock they touch. (I-B5)
 - **FR-017**: Decision requests to the governor MUST NOT contain task/finding ids or internal jargon. (I-B3)
-- **FR-018**: Every acceptance-catalog row marked automatic MUST link to an existing test or eval. (I-B7)
+- **FR-018**: Every acceptance-catalog row marked automatic MUST carry an evidence reference. The sentinel `planned` is allowed until the work order that implements the row; that work order's PR MUST NOT merge until the reference names an existing test or eval. (I-B7)
 - **FR-019**: Changed code MUST meet a mutation-score threshold (**D2**). (I-B7)
 
 **Gate framework**
@@ -221,7 +224,7 @@ As the governor, the factory tooling runs in a fresh repo of mine with only conf
 
 **Intent traceability**
 
-- **FR-023**: Every intent MUST map to ≥1 check (explicit governor-judged counts); coverage MUST be computed and reported. (I-N1, I-P4)
+- **FR-023**: Every intent MUST map to ≥1 check (presence — 100% invariant). Effective coverage MUST be computed and reported as the share of intents backed by an implemented, passing non-human check or an explicit governor-judged mapping. (I-N1, I-P4)
 - **FR-024**: PR results MUST be reported per intent id. (I-P4)
 
 **Architecture religion**
@@ -236,8 +239,8 @@ As the governor, the factory tooling runs in a fresh repo of mine with only conf
 - **FR-029**: Governor corrections and rejections MUST be recorded as correction messages; a repeated correction MUST trigger an immediate rule/check proposal. (I-P7)
 - **FR-030**: Sprint close MUST require a post-mortem dispositioning every correction and reviewing overrides, reversed locks, and rework. (I-P7, I-P8)
 - **FR-031**: Changes to factory rules and gates MUST require governor approval to merge. (I-P5)
-- **FR-032**: Every MUST/NEVER in process docs MUST cite an enforcing check or be marked governor-judged. (I-P6, I-X2)
-- **FR-033**: The constitution MUST move to 2.0, reflecting conflict resolutions in `intent.yaml`, with prose that became checks replaced by pointers. (I-P6)
+- **FR-032**: Every MUST/NEVER in the governed process documents — the constitution, `AGENTS.md`, always-applied editor rules, and `docs/agent-os/` — MUST carry `[check: <id>]` or `[governor-judged]`. Other documents are out of scope for this gate. (I-P6, I-X2)
+- **FR-033**: The constitution MUST move to 2.0, reflecting each conflict resolution in `intent.yaml`, with prose that became checks replaced by pointers. The constitution change MUST be its own work order with an independent verdict; each conflict resolution and each still-unenforceable invariant has its own acceptance row. (I-P6)
 - **FR-034**: Always-applied agent guidance MUST contain only pointers and rules not yet enforceable; deep rules load per phase. (I-X2)
 
 **Scorecard**
@@ -247,6 +250,10 @@ As the governor, the factory tooling runs in a fresh repo of mine with only conf
 **Portability**
 
 - **FR-036**: Factory core MUST NOT hardcode this repo's apps, paths, or providers; repo specifics come from configuration. (I-G4)
+
+**Bootstrap**
+
+- **FR-037**: Each Wave 1 PR (built before its gates exist) MUST carry a bootstrap verdict from an independent reviewer listing the manual equivalents run. Once the gates land, they MUST run retroactively on every Wave 1 PR; each failure becomes a remediation work order that must merge — or be overridden with a reason — before Wave 2 work orders are issued. (I-G1, I-M1)
 
 ### Key Entities
 
@@ -271,11 +278,14 @@ As the governor, the factory tooling runs in a fresh repo of mine with only conf
 - **SC-002 Seeded drift caught**: For each sprint-01 drift pattern (substitution, hidden deferral, fake-green tests, test seams in app code, out-of-scope edits, jargon to governor), a seeded-violation PR is blocked or flagged by machine — 100% of seeds, zero governor involvement. (US3)
 - **SC-003 Hand-off integrity**: For every work order this sprint, the PR's acceptance shows per-intent check results and a different-family reviewer verdict; no work order was issued while depending on an open governor decision; no worker reported done with failing checks. (US2)
 - **SC-004 Override visibility**: 100% of gate overrides carry a reason and appear on the board and in per-gate counts; zero overrides without a reason. (US4)
-- **SC-005 Traceability**: Intent coverage computed by machine is ≥ 90% (target in `intent.yaml`), and removing any mapping fails the check. (US5)
+- **SC-005 Traceability**: (a) Presence: 100% of intents have ≥1 mapping; removing all mappings from any intent fails the check. (b) Effective coverage: by sprint close, ≥ 90% of intents are backed by an implemented, passing non-human check or an explicit governor-judged mapping. (US5)
 - **SC-006 Rules as code**: 100% of MUST/NEVER statements in process docs cite an enforcing check or are marked governor-judged. (US8)
 - **SC-007 Mining loop live**: By sprint close, every governor correction has a record; every repeated correction produced an immediate proposal; the sprint cannot close without a post-mortem dispositioning all corrections. (US7)
 - **SC-008 No bookkeeping commits**: After Wave 1 lands, zero commits whose only change is recording status or SHAs in bus files. (US1)
 - **SC-009 Scorecard measured**: By sprint close, drift, first-pass acceptance, decision points per feature, and governor minutes are computed from run records for every work order. (US2, US7)
+- **SC-010 No routing**: Across the sprint, zero instances of the governor relaying content between agents or being asked what to do next (each instance the governor reports is recorded as a correction tagged routing). (I-B4)
+- **SC-011 Capture budget**: Governor minutes spent on intent capture are recorded per feature; each feature is ≤ about 60 minutes. (I-M2)
+- **SC-012 Bootstrap evidence**: Every Wave 1 PR has a bootstrap verdict and retroactive gate results; every retroactive failure is remediated or overridden with a reason before Wave 2 work orders are issued. (FR-037)
 
 ### Aspirational (judged at post-mortem — not sole pass/fail)
 
@@ -313,9 +323,25 @@ Existing checks reused as-is: validate-secrets-schema, validate-deploy-env, uv-s
 
 Briefs: product [`SPEC_REVIEW_PROMPT.md`](../../docs/agent-os/SPEC_REVIEW_PROMPT.md) (**F-***); process [`PROCESS_REVIEW_PROMPT.md`](../../docs/agent-os/PROCESS_REVIEW_PROMPT.md) (**R-***). For this feature the factory *is* the product, so the product reviewer judges factory value for the governor; the process reviewer judges whether the factory improves on its own process.
 
+Reports: [`SPEC_REVIEW.md`](./SPEC_REVIEW.md) (F1–F10), [`PROCESS_REVIEW.md`](./PROCESS_REVIEW.md) (R1–R8). Reviewer family: GPT (D3).
+
 | ID | Status | Lock |
 |----|--------|------|
-| (from review) | TBD | … |
+| **F1 + R1** | await governor | Fail-mode taxonomy vs drift gates that block |
+| **F2** | await governor | Worker cap: 3 or 4 |
+| **F3** | locked (agent — restores intent letter) | Reviewer isolation added: US2 #8, FR-011a, acceptance `handoff.reviewer_isolated` |
+| **F4** | locked (agent) | Finish evidence added for no-routing (SC-010), capture budget (SC-011); Wave 1 time-box evidence pending F6 |
+| **F5** | await governor | Seeds: block vs flag; add declared-lock substitution seed |
+| **F6 + R6** | await governor | Wave 1 exit vs version finish bar |
+| **F7** | await governor | How repeated corrections are recognized |
+| **F8** | locked (agent, process) | FR-032 bounded to governed documents; accepted forms `[check: <id>]` / `[governor-judged]` |
+| **F9** | Later → plan | Bus transport alternatives stay in plan Architecture |
+| **F10 + R5** | locked (agent) | Catalog gains `evidence` column; FR-018 lifecycle: `planned` until the implementing work order, real id before its PR merges |
+| **R2** | locked (agent, process) | Traceability split: 100% presence invariant + ≥90% effective coverage (implemented & passing, or governor-judged) by sprint close — SC-005, FR-023, US5 |
+| **R3** | locked (agent, process) | Constitution 2.0 is its own work order with independent verdict; acceptance rows per conflict resolution + preserved invariants (FR-033) |
+| **R4** | locked (agent, process) | Bootstrap verdicts + retroactive gates + remediation before Wave 2 (FR-037, SC-012) |
+| **R7** | Later → plan | Group stories into observe → enforce → learn slices with explicit dependencies |
+| **R8** | accepted | Strength: framing, intent traceability, seeded fixtures — preserve |
 
 **Status may become Approved only after Blockers are resolved or explicitly accepted.**
 
