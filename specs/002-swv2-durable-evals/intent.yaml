@@ -22,9 +22,17 @@ north_star:
     - { kind: metric, ref: judge-governor-agreement, status: planned }
 
 open_content:   # content the spec must carry as Open Decisions (do not invent)
-  - judge-governor agreement threshold required before the eval gate blocks
-  - bake-off "small margin" for best-value model choice
   - real per-draft spend ceiling (after bake-off measurement; $3 outer limit already locked)
+
+# Locked at spec review 2026-10-03 (spec D1, D2, D4 + review F1–F6):
+locks:
+  - judge agreement: within 1 point (5-point scale) on >= 80% of calibration drafts, every dimension
+  - bake-off margin: not distinguishable from the best beyond measured noise, every dimension
+  - judge family: Google Gemini; writer candidates exclude Gemini
+  - gate: any single dimension beyond its noise blocks; no offsetting
+  - source support: non-compensable regression gate, different-family checker
+  - held-out slice never used for selection; blinded governor review each post-mortem
+  - retention use = open/view/edit/upload/generate or job completion; deletion date + browser-only notice shown; cascade delete
 
 intents:
   # ── Quality: what "good" means (judge rubric) ────────────────────────────

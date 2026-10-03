@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-03
 
-**Status**: Draft
+**Status**: Approved (2026-10-03 — review Blocker and Debates locked per review-locks table; D3 open by design until bake-off)
 
 **Input**: Governor intent session 2026-10-03 → [`intent.yaml`](./intent.yaml). Sprint charter: [`notes/sprints/2026-10-sprint-02.md`](../../notes/sprints/2026-10-sprint-02.md). Backlog locks A27 (durable state), A28 (real migrations).
 
@@ -12,41 +12,48 @@
 
 **Why this feature exists**: Two gaps keep Smart Writer V2 from being a real product and from being a usable test bed for the factory: (1) every deploy erases all user work; (2) nothing measures whether drafts are good, so no change — human or agent — can be shown to improve the product.
 
+**Positioning of the quality gate**: The gate measures consistency against a governor-calibrated synthetic proxy. Transfer to real grant work is checked separately by a held-out slice and a blinded governor review each post-mortem (US2); the gate does not claim more than that.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 — My work survives (Priority: P1)
 
-As a writer, my conversations, every draft version, and my uploaded materials are still there after the service is redeployed or restarted; only I (my browser) can see them; they are cleaned up 30 days after I last used them.
+As a writer, my conversations, every draft version, and my uploaded materials are still there after the service is redeployed or restarted; only I (my browser) can see them; each conversation shows when it will be deleted and that it is stored for this browser only; everything it owns is deleted 30 days after I last used it.
 
 **Why this priority**: Today a deploy wipes everything, which makes the product unusable for real work and blocks learning from real usage. (SW-D1, SW-D2, SW-D4, SW-D5, SW-D6)
 
-**Independent Test**: Create conversations with drafts and uploads from two browsers; redeploy and restart; each browser sees exactly its own work; items idle past 30 days are gone.
+**Independent Test**: Create conversations with drafts and uploads from two browsers; redeploy and restart; each browser sees exactly its own work; opening a conversation moves its deletion date; items idle past 30 days are gone along with everything they own.
 
 **Acceptance Scenarios**:
 
 1. **Given** a conversation with several draft versions and an upload, **When** the service restarts or is redeployed, **Then** all of it is available to the same browser.
 2. **Given** two browsers, **When** each lists conversations, **Then** neither sees the other's.
-3. **Given** a conversation idle more than 30 days, **When** retention runs, **Then** it and its uploads are deleted; **Given** one idle less than 30 days, **Then** it is kept.
+3. **Given** a conversation idle more than 30 days, **When** retention runs, **Then** it and everything it owns (messages, versions, run state, checkpoints, uploads, source/provenance records) are deleted; **Given** one idle less than 30 days, **Then** it is kept.
 4. **Given** a schema change, **When** shipped, **Then** it is applied as a versioned migration, proven against a real database in CI and on staging before production, with a rollback path.
+5. **Given** the owning browser opens, views, edits, uploads to, or generates in a conversation (or a job in it completes), **When** that happens, **Then** the conversation's 30-day clock restarts.
+6. **Given** any conversation, **When** shown in the UI, **Then** its deletion date and a "stored in this browser only — clearing browser data loses access" notice are visible.
 
 ---
 
 ### User Story 2 — Every change is measured (Priority: P1)
 
-As the governor, every PR that touches Smart Writer V2 shows how draft quality moved — per quality dimension — as judged by a calibrated reader who thinks like a busy program officer; a PR that makes drafts worse beyond normal noise is blocked unless overridden with a reason.
+As the governor, every PR that touches Smart Writer V2 shows how draft quality moved — per quality dimension — as judged by a calibrated reader who thinks like a busy program officer; a PR that makes any one dimension worse beyond normal noise, or that makes cited claims less supported by their sources, is blocked unless overridden with a reason.
 
-**Why this priority**: This is direction A ("measure first") and the factory's fitness function for this workload. (SW-N1, SW-Q1..Q5, SW-Q7, SW-Q8, SW-E1..E3)
+**Why this priority**: This is direction A ("measure first") and the factory's fitness function for this workload. (SW-N1, SW-Q1..Q8, SW-E1..E3)
 
-**Independent Test**: Run the eval set on an unchanged build twice (noise band); submit a PR that deliberately degrades drafts — blocked; submit a no-op PR — not blocked; every PR shows per-dimension scores vs the main branch.
+**Independent Test**: Run the eval set on an unchanged build repeatedly (noise band); submit a PR that degrades only one dimension — blocked; submit a PR that degrades source support — blocked; submit a no-op PR — not blocked; every PR shows per-dimension and support scores vs main.
 
 **Acceptance Scenarios**:
 
-1. **Given** a PR touching the app, **When** checks run, **Then** per-dimension scores (funder fit, persuasive narrative, evidence of impact, organizational voice) are reported against main, within the per-PR eval budget.
-2. **Given** a quality drop larger than the measured noise band, **When** checks finish, **Then** the PR is blocked unless the orchestrator overrides with a reason.
+1. **Given** a PR touching the app, **When** checks run, **Then** per-dimension scores (funder fit, persuasive narrative, evidence of impact, organizational voice) and the source-support rate are reported against main, within the per-PR eval budget.
+2. **Given** a drop in **any one** dimension larger than that dimension's measured noise band, **When** checks finish, **Then** the PR is blocked unless the orchestrator overrides with a reason; gains in other dimensions do not offset it.
 3. **Given** a change that does not affect drafts, **When** checks finish, **Then** it is not blocked (no false positive from noise).
-4. **Given** the judge, **When** compared with the governor's hand ratings of 10–15 drafts, **Then** agreement meets the threshold (**D1**) before the gate is allowed to block.
+4. **Given** the judge, **When** compared with the governor's hand ratings of 10–15 drafts, **Then** it is within 1 point (5-point scale) of the governor on ≥ 80% of drafts for every dimension (**D1**) before the gate is allowed to block.
 5. **Given** the golden set, **When** reviewed by the governor, **Then** it contains realistic grant scenarios built from public funder RFPs plus at least one non-grant smoke scenario.
-6. **Given** the judge, **When** configured, **Then** it is from a different model family than the writer.
+6. **Given** the judge, **When** configured, **Then** it is from a different model family than the writer (Google Gemini — **D4**).
+7. **Given** the golden set, **When** split, **Then** a held-out slice exists that is never used for prompt, model, or judge selection; its scores are reported nightly and at post-mortem only.
+8. **Given** a post-mortem, **When** held, **Then** the governor blind-reviews about 5 drafts (including held-out ones) and the agreement with judge scores is recorded.
+9. **Given** a draft's cited claims, **When** evaluated, **Then** each is checked for whether its source actually supports it, by a model of a different family than the writer; a support rate worse than main beyond noise blocks the PR regardless of quality scores; the governor spot-checks a sample of support judgments at post-mortem.
 
 ---
 
@@ -66,34 +73,35 @@ As the governor, the test suite exercises the real pipeline — with models subs
 
 ---
 
-### User Story 4 — Bounded cost and time (Priority: P1)
+### User Story 4 — Bounded cost, measured time (Priority: P1)
 
-As the governor, no single draft can cost more than $3, and a complete draft arrives within about 10 minutes; the real per-draft ceiling is set from measurement.
+As the governor, no single draft can cost more than $3; time to a complete draft is measured against a 10-minute target (measured, not gated, this version); the real per-draft ceiling is set from measurement.
 
-**Why this priority**: Spend is a fail-closed category (factory I-P9); durable, longer jobs and stronger models raise exposure. (SW-L1, SW-L2)
+**Why this priority**: Spend is a governor-only gate category (factory I-P9); durable, longer jobs and stronger models raise exposure. (SW-L1, SW-L2)
 
 **Independent Test**: A job engineered to exceed the ceiling stops with a clear reason; golden-set runs report draft latency.
 
 **Acceptance Scenarios**:
 
 1. **Given** a generate or revise job whose spend would exceed the ceiling, **When** it runs, **Then** it stops and reports why; no job exceeds $3.
-2. **Given** golden-set runs, **When** measured, **Then** the 95th-percentile time to a complete draft is about 10 minutes or less.
+2. **Given** golden-set runs, **When** measured, **Then** the 95th-percentile time to a complete draft is reported against the 10-minute target.
 
 ---
 
-### User Story 5 — The right model per role, chosen by evidence (Priority: P2)
+### User Story 5 — The right models, chosen by evidence (Priority: P2)
 
-As the governor, each pipeline role (writer, assessor, extraction, judge) uses a configured model chosen by a bake-off on the eval set — the cheapest within a small margin of the best — and any model change re-runs the full eval set.
+As the governor, each pipeline role (writer, assessor, extraction, judge) uses a configured model chosen by evidence: per-role bake-offs pick the cheapest candidate not distinguishable from the best beyond noise, the chosen bundle is then checked end to end, and any model change re-runs the full eval set.
 
 **Why this priority**: Models are hardcoded to one 2024-era model in five places; choices should be evidence-driven. P2 because it depends on US2. (SW-M1..M3)
 
-**Independent Test**: Change one role's model in configuration; the full eval set runs; the bake-off record shows the decision rule applied per role.
+**Independent Test**: Change one role's model in configuration; the full eval set runs; the bake-off record shows the decision rule applied per role and the end-to-end bundle result.
 
 **Acceptance Scenarios**:
 
 1. **Given** application code, **When** checked, **Then** no model id is hardcoded outside typed configuration.
-2. **Given** a bake-off, **When** completed, **Then** each role's choice is recorded with scores and costs, and the governor locks it.
+2. **Given** a bake-off, **When** completed, **Then** each role's choice is recorded with scores and costs, the selected bundle is compared end to end against the current bundle, and the governor locks it.
 3. **Given** a model configuration change, **When** a PR is opened, **Then** the full eval set runs (not only the per-PR subset).
+4. **Given** judge candidates, **When** compared, **Then** they are ranked by agreement with the governor's calibration ratings, never by their own quality scores.
 
 ---
 
@@ -123,12 +131,13 @@ As the governor, the UI is built as part of producing the deployable image; buil
 
 ### Edge Cases
 
-- A browser key is lost → that browser's conversations are unreachable (accepted until accounts — SW-D4).
+- A browser key is lost → that browser's conversations are unreachable (accepted until accounts — SW-D4); the UI notice (US1 #6) says so in advance.
 - A job completes after its conversation passes 30 days idle → completion counts as use; retention restarts.
 - An upload exceeds limits → baseline D7 limits still apply.
 - The eval budget would be exceeded on a PR → the run stops at the budget and the PR reports partial results as "incomplete", not as a pass.
 - The noise band is not yet measured → the gate reports but does not block until measured.
 - The judge is not yet calibrated (D1 unmet) → the gate reports but does not block.
+- The nightly full set finds a regression the per-PR subset missed → a regression item opens on the factory board, owned by the orchestrator, and every later app PR reports it until resolved or overridden with a reason (plan defines time bound).
 - A migration fails on staging → production deploy does not proceed.
 - Legacy V1 / Research Auditor → untouched this sprint (SW-X4).
 
@@ -141,30 +150,33 @@ As the governor, the UI is built as part of producing the deployable image; buil
 - **FR-001**: Conversations, messages, every draft version, and internal run state MUST persist across deploys and restarts. (SW-D1)
 - **FR-002**: Uploaded materials MUST persist across deploys and restarts. (SW-D2)
 - **FR-003**: Every conversation MUST belong to an anonymous per-browser key; a browser MUST see only its own conversations. (SW-D4)
-- **FR-004**: Conversations and uploads MUST be deleted 30 days after last use. (SW-D5)
+- **FR-004**: A conversation and everything it owns — messages, all draft versions, internal run state, job checkpoints, stored uploads, source/provenance records — MUST be deleted 30 days after last use. "Use" = the owning browser opening, viewing, editing, uploading to, or generating in the conversation, or a job in it completing. Eval artifacts built only from synthetic golden-set data are outside this lifecycle. (SW-D5)
+- **FR-004a**: The UI MUST show each conversation's deletion date and a notice that it is stored for this browser only and is lost if browser data is cleared. (SW-D4, SW-D5)
 - **FR-005**: Jobs MUST checkpoint per pipeline step; an interrupted job MUST resume or be marked failed with a reason. (SW-D3)
 - **FR-006**: Schema changes MUST ship as versioned migrations, proven against a real database in CI and on staging before production, with a rollback path. (SW-D6)
 
 **Measured quality**
 
-- **FR-007**: The product MUST have a golden set of grant scenarios (public funder RFPs + synthetic orgs) plus ≥1 non-grant smoke scenario, reviewed by the governor. (SW-Q8)
+- **FR-007**: The product MUST have a golden set of grant scenarios (public funder RFPs + synthetic orgs) plus ≥1 non-grant smoke scenario, reviewed by the governor. The set MUST include a held-out slice never used for prompt, model, or judge selection. (SW-Q8)
 - **FR-008**: A judge MUST score drafts on funder fit, persuasive narrative, evidence of impact, and organizational voice, reading as a busy program officer. (SW-Q1..Q5)
-- **FR-009**: The judge MUST be from a different model family than the writer. (SW-E3)
-- **FR-010**: Judge agreement with the governor's hand ratings MUST be measured; the eval gate MUST NOT block until agreement meets **D1**. (SW-Q7)
-- **FR-011**: Every PR touching the app MUST report per-dimension scores against main within ~$1–2 eval spend; a larger set runs nightly. (SW-N1, SW-E2)
-- **FR-012**: A PR whose quality drop exceeds the measured noise band MUST be blocked, overridable with a reason. (SW-E1)
-- **FR-013**: Grounding MUST remain a structural pipeline invariant checked through claim provenance on the real path — not a judge dimension. (SW-Q6)
+- **FR-009**: The judge MUST be from a different model family than the writer — Google Gemini (**D4**); writer candidates therefore exclude Gemini. (SW-E3)
+- **FR-010**: Judge agreement with the governor's hand ratings MUST be measured as the share of calibration drafts where judge and governor are within 1 point on a 5-point scale, per dimension; the eval gate MUST NOT block until that share is ≥ 80% for every dimension (**D1**). (SW-Q7)
+- **FR-011**: Every PR touching the app MUST report per-dimension and source-support scores against main within ~$1–2 eval spend, on a per-PR subset covering every scenario category outside the held-out slice (selection/rotation defined in plan). A larger set, including the held-out slice, runs nightly; a nightly-only regression opens a board item per Edge Cases. (SW-N1, SW-E2)
+- **FR-012**: A PR MUST be blocked if any single dimension drops vs main by more than that dimension's noise band, measured from repeated runs of an unchanged build (repeat count and statistic defined in plan); gains in other dimensions MUST NOT offset. Overridable by the orchestrator with a reason. (SW-E1)
+- **FR-013**: Grounding MUST remain a structural pipeline invariant checked through claim provenance on the real path — not a judge quality dimension. (SW-Q6)
+- **FR-013a**: Each cited claim in eval drafts MUST be checked for whether its source supports it, by a model of a different family than the writer. A support rate worse than main beyond noise MUST block the PR regardless of quality scores (orchestrator override with reason). The governor spot-checks a sample at each post-mortem. (SW-Q6, SW-E1)
+- **FR-013b**: At each post-mortem the governor MUST blind-review about 5 drafts (including held-out ones); agreement with judge scores is recorded. (SW-Q7)
 
 **Models**
 
 - **FR-014**: Each role's model MUST come from typed configuration; no hardcoded model ids. (SW-M1)
-- **FR-015**: A bake-off MUST choose per role the cheapest model within **D2** of the best quality; the governor locks the result. (SW-M2)
+- **FR-015**: A per-role bake-off MUST choose the cheapest candidate not distinguishable from the best beyond measured noise on every dimension (**D2**); the selected bundle MUST then beat or match the current bundle end to end; judge candidates MUST be ranked by agreement with governor calibration ratings, not their own scores; the governor locks the result. (SW-M2)
 - **FR-016**: Any model configuration change MUST trigger the full eval set. (SW-M3)
 
 **Limits**
 
 - **FR-017**: A job MUST stop when its spend would exceed the per-draft ceiling (**D3**; never above $3). (SW-L1)
-- **FR-018**: Time to a complete draft MUST be measured; target p95 ≈ 10 minutes. (SW-L2)
+- **FR-018**: Time to a complete draft MUST be measured and reported against a 10-minute p95 target; this version does not gate on it (canonical workload and sample defined in plan). (SW-L2)
 
 **Test and ship hygiene**
 
@@ -176,14 +188,15 @@ As the governor, the UI is built as part of producing the deployable image; buil
 ### Key Entities
 
 - **Browser key** — anonymous owner of conversations.
-- **Conversation / Message / ArtifactVersion / InternalRunState** — baseline entities, now durable.
+- **Conversation / Message / ArtifactVersion / InternalRunState** — baseline entities, now durable; conversation owns all derived records for deletion.
 - **Stored upload** — durable upload bytes + metadata, owned via conversation.
 - **Job checkpoint** — last completed pipeline step for a job.
-- **Golden scenario** — funder RFP excerpt + synthetic org materials + prompt + expectations.
+- **Golden scenario** — funder RFP excerpt + synthetic org materials + prompt + expectations; tagged tuning or held-out.
 - **Judge score** — per-dimension scores for a draft from the judge.
-- **Calibration rating** — governor's hand rating of a draft, per dimension.
+- **Support judgment** — per cited claim: supported / not supported by its source, with checker model.
+- **Calibration rating** — governor's hand rating of a draft, per dimension (calibration or blinded post-mortem review).
 - **Eval run** — scores for a build over the golden set (per-PR subset or nightly full), with cost and latency.
-- **Bake-off record** — per-role model candidates, scores, costs, decision.
+- **Bake-off record** — per-role model candidates, scores, costs, decision; end-to-end bundle comparison.
 
 ## Success Criteria *(mandatory)*
 
@@ -191,21 +204,23 @@ As the governor, the UI is built as part of producing the deployable image; buil
 
 - **SC-001 Survival**: After a redeploy and a restart, 100% of seeded conversations, draft versions, and uploads are available to their owning browser.
 - **SC-002 Isolation**: Zero cases of one browser key seeing another's conversations.
-- **SC-003 Retention**: Items idle > 30 days are deleted; items idle < 30 days remain (100% in seeded fixtures).
+- **SC-003 Retention**: Items idle > 30 days are deleted together with every owned record type in FR-004; items idle < 30 days remain; each "use" action in FR-004 restarts the clock (100% in seeded fixtures).
 - **SC-004 No silent loss**: 100% of interrupted jobs end resumed or explicitly failed.
-- **SC-005 Measured**: 100% of PRs touching the app report per-dimension scores vs main within the per-PR budget.
-- **SC-006 Gate is right**: A seeded quality regression beyond the noise band is blocked; a no-op change is not blocked.
-- **SC-007 Calibrated**: Judge–governor agreement meets **D1** before the gate blocks.
+- **SC-005 Measured**: 100% of PRs touching the app report per-dimension and support scores vs main within the per-PR budget.
+- **SC-006 Gate is right**: A seeded regression in any single dimension beyond its noise band is blocked even when other dimensions improve; a seeded support regression is blocked; a no-op change is not blocked.
+- **SC-007 Calibrated**: Judge within 1 point of governor on ≥ 80% of calibration drafts for every dimension before the gate blocks.
 - **SC-008 Truthful tests**: Zero test-only branches in app code; every pipeline step executed by tests; baseline `auto` rows green.
 - **SC-009 Spend bound**: Zero jobs exceed $3; a job engineered to exceed the ceiling stops with a reason.
-- **SC-010 Latency measured**: p95 time to complete draft on the golden set is reported; target ≈ 10 minutes.
-- **SC-011 Evidence-based models**: Every role's model has a bake-off record; model changes trigger the full eval set.
+- **SC-010 Latency measured**: p95 time to complete draft on the golden set is reported against the 10-minute target (not gated).
+- **SC-011 Evidence-based models**: Every role's model has a bake-off record including the end-to-end bundle comparison; judge candidates ranked by calibration agreement; model changes trigger the full eval set.
 - **SC-012 Migration safety**: Migrations pass against a real database in CI and on staging before production.
+- **SC-013 Held-out honesty**: Zero bake-off, prompt, or judge-selection runs use held-out scenarios; held-out scores and a blinded governor review are recorded at sprint post-mortem.
+- **SC-014 Retention disclosure**: 100% of conversations in the UI show a deletion date and the browser-only notice.
 
 ### Aspirational
 
 - Eval scores rise across the sprint on the same golden set (bake-off + measured prompt pass in Wave 3).
-- The governor agrees the top-scored drafts are the ones they would send.
+- The governor agrees the top-scored drafts are the ones they would send; held-out scores track tuning-slice scores.
 
 ### Acceptance catalog
 
@@ -226,21 +241,31 @@ US4 spend ceiling (FR-017) lands with the Models + tests lane.
 
 | id | shape_locked | content_open | who | before | status | arch_impact | fidelity |
 |----|--------------|--------------|-----|--------|--------|-------------|----------|
-| **D1** | Judge must agree with governor hand ratings before the gate blocks | Agreement threshold | human | Before the eval gate blocks | open | | |
-| **D2** | Best-value rule: cheapest within a small margin of best quality | Margin size | human | Before bake-off lock | open | | |
-| **D3** | Hard outer limit $3 per draft; real ceiling from measurement | Real per-draft ceiling | human | After bake-off measurement, before production uses new models | open | | |
-| **D4** | Judge is a different model family from the writer; needs a second provider key in the vault | Which provider/family judges | human | Before Evals lane | open | | |
+| **D1** | Judge must agree with governor hand ratings before the gate blocks | Agreement threshold | human | Before the eval gate blocks | **locked** (2026-10-03) — within 1 point (5-point scale) on ≥ 80% of calibration drafts, every dimension | content-only | letter |
+| **D2** | Best-value rule: cheapest within a small margin of best quality | Margin size | human | Before bake-off lock | **locked** (2026-10-03) — not distinguishable from the best beyond measured noise, on every dimension | content-only | letter |
+| **D3** | Hard outer limit $3 per draft; real ceiling from measurement | Real per-draft ceiling | human | After bake-off measurement, before production uses new models | open (by design — governor sets after measurement) | content-only | |
+| **D4** | Judge is a different model family from the writer; needs a second provider key in the vault | Which provider/family judges | human | Before Evals lane | **locked** (2026-10-03) — **Google Gemini** judges; writer candidates exclude Gemini | arch (vault secret, provider adapter) | letter |
 
 ## Review locks *(mandatory before Approved)*
 
+Report: [`SPEC_REVIEW.md`](./SPEC_REVIEW.md) (F1–F9). Reviewer family: GPT.
+
 | ID | Status | Lock |
 |----|--------|------|
-| (from review) | TBD | … |
+| **F1** | locked (governor + agent) | Governor: any one dimension beyond its noise blocks, no offsetting (FR-012). Agent → plan: subset selection/rotation and noise statistic; gate reports-only until noise measured and D1 met (Edge Cases) |
+| **F2** | locked (governor) | Proxy gate + held-out slice never used for selection + blinded governor review each post-mortem (FR-007, FR-013b, SC-013, positioning note) |
+| **F3** | locked (governor) | Non-compensable source-support check by a different family; regression vs main blocks; governor spot-checks (FR-013a, US2 #9) |
+| **F4** | locked (governor) | Any open/view/edit/upload/generate or job completion resets the clock; deletion date + browser-only notice always visible (FR-004, FR-004a, SC-014) |
+| **F5** | locked (agent — restores "best value" at system level) | Per-role bake-off + end-to-end bundle check; judge candidates ranked by calibration agreement (FR-015, US5 #4) |
+| **F6** | locked (agent — restores intent letter) | Deletion cascades through every owned record; synthetic eval artifacts outside lifecycle (FR-004) |
+| **F7** | locked (agent) / Later → plan | Latency labelled measured-not-gated (US4, FR-018); plan defines canonical workload and sample |
+| **F8** | locked (agent) / Later → plan | Nightly-only regression opens an orchestrator-owned board item reported on later PRs (Edge Cases, FR-011); plan sets time bound |
+| **F9** | accepted | Strength: baseline preservation — keep references through plan and tasks |
 
 ## Assumptions
 
 - Postgres via Supabase (A27) in a dedicated project for this app (backlog P6: one project per app) — ops HITL: governor creates the project; names go in the secrets schema.
-- Second LLM provider key in the vault for the judge (D4) — ops HITL.
+- Google Gemini API key in the vault for the judge and support checker (D4) — ops HITL.
 - Uploads move to object storage in the same Supabase project.
 - Single Railway replica remains acceptable; the in-process rate limiter stays in memory.
 - Baseline D7 upload limits unchanged.
@@ -253,3 +278,4 @@ US4 spend ceiling (FR-017) lands with the Models + tests lane.
 - Funder-intelligence research (later direction) — SW-X3.
 - V1 / Research Auditor adoption — SW-X4.
 - Prompt/quality improvements beyond the Wave 3 bake-off and measured prompt pass.
+- Gating on latency (measured only).
