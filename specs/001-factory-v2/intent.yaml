@@ -1,0 +1,443 @@
+# Intent — 001 Factory v2
+#
+# Captured: 2026-10-03, governor intent session (4 rounds) + harvest from
+# constitution 1.9.0 + sprint-01 history (packets, re-locks, amendments).
+# Status: draft -> approved after governor review. Feeds spec.md (Wave 0).
+#
+# Every intent maps to >=1 check. Check kinds:
+#   ci       required CI gate (blocks merge)
+#   hook     Cursor hook (convenience mirror; must have a ci twin — I-G5)
+#   lint     static analysis run inside ci
+#   schema   bus/spec file schema validated by `factory check`
+#   metric   scorecard measurement (factory run records / git / CI)
+#   review   independent reviewer with a rubric file (different model family)
+#   human    explicitly human-judged (counts toward coverage)
+# Check status: planned | exists
+
+schema_version: 1
+feature: 001-factory-v2
+status: draft
+
+north_star:
+  id: I-N1
+  statement: >
+    The factory continuously teases out the governor's implicit "religion"
+    (from corrections, sprint history, and post-mortems) and codifies it into
+    checks, so unattended agent work stays on intent. Intent cannot be fully
+    written upfront; capture is a loop, not a document.
+  checks:
+    - { kind: metric, ref: scorecard.intent_coverage, status: planned }
+    - { kind: ci, ref: factory-check-intent, status: planned }
+    - { kind: human, ref: sprint-postmortem, status: planned }
+
+scorecard:
+  autonomy_horizon: 1h          # unattended worker run length this sprint
+  drift: { target: 0.95, meaning: "share of 1h unattended runs where governor finds no intent violation afterwards" }
+  first_pass_acceptance: { target: 0.75, meaning: "worker PRs accepted without rework" }
+  intent_coverage: { target: 0.90, meaning: "intent statements mapped to a check; explicit human counts" }
+  decision_points_per_feature: { target: null, meaning: "measure this sprint; set target next sprint" }
+
+intents:
+  # ── Goals ────────────────────────────────────────────────────────────────
+  - id: I-G1
+    kind: goal
+    statement: Intent violations are caught by machine checks before they reach the governor.
+    source: session.r1
+    checks:
+      - { kind: metric, ref: scorecard.drift, status: planned }
+  - id: I-G2
+    kind: goal
+    statement: >
+      The governor hands off a work order, walks away for the autonomy horizon,
+      and returns to a PR accepted without rework.
+    source: session.r1
+    checks:
+      - { kind: metric, ref: scorecard.first_pass_acceptance, status: planned }
+      - { kind: schema, ref: order.size-cap, status: planned }   # order declares est. <= autonomy_horizon
+  - id: I-G3
+    kind: goal
+    statement: A feature goes from intent to deployed with few governor decision points (measured this sprint).
+    source: session.r1
+    checks:
+      - { kind: metric, ref: scorecard.decision_points_per_feature, status: planned }
+  - id: I-G4
+    kind: goal
+    statement: Factory tooling is portable to any future repo of the governor's (not built for the world yet).
+    source: session.r1
+    checks:
+      - { kind: ci, ref: factory-fixture-repo-test, status: planned }  # factory runs against a minimal fixture repo
+  - id: I-G5
+    kind: goal
+    statement: Cursor-first for convenience; every enforcement lives in git/CI so any agent tool is held to the same gates.
+    source: session.r2
+    checks:
+      - { kind: lint, ref: hook-has-ci-twin, status: planned }
+
+  # ── Agent behavior ───────────────────────────────────────────────────────
+  - id: I-B1
+    kind: rule
+    statement: >
+      When intent and the work order don't answer a question, the worker picks
+      the most conservative option (least scope, reversible, no new
+      dependency/service, matches existing patterns), records it as a
+      deviation in the handoff, and continues.
+    source: session.r1
+    checks:
+      - { kind: schema, ref: handoff.deviations-required, status: planned }
+      - { kind: review, ref: rubric.undeclared-decisions, status: planned }
+  - id: I-B2
+    kind: rule
+    statement: Blockers reach the governor in real time; everything else is batched to checkpoints.
+    source: session.r1
+    checks:
+      - { kind: schema, ref: message.escalation-class, status: planned }
+  - id: I-B3
+    kind: rule
+    statement: Agents bring the governor plain product/ops choices with stakes — never task/finding IDs or internal jargon.
+    source: [history.jargon, constitution.F]
+    checks:
+      - { kind: lint, ref: decision-request-no-ids, status: planned }   # human-facing bus messages: ban T0xx/F*/P*/§ patterns
+      - { kind: human, ref: sprint-postmortem, status: planned }
+  - id: I-B4
+    kind: rule
+    statement: The governor is never the router between agents (no pasting briefs, no "what next").
+    source: [history.me_as_router, constitution.H]
+    checks:
+      - { kind: schema, ref: bus.every-spawn-has-order, status: planned }
+      - { kind: metric, ref: human-routing-events, status: planned }
+  - id: I-B5
+    kind: rule
+    statement: No silent substitution — named tools, hosts, caps and behaviors are honored to the letter unless the governor waives.
+    source: [history.substitution, constitution.I]
+    checks:
+      - { kind: schema, ref: lock.letter-tokens, status: planned }      # locks carry machine-readable named tokens
+      - { kind: ci, ref: order-fidelity-declared, status: planned }
+      - { kind: review, ref: rubric.fidelity, status: planned }
+  - id: I-B6
+    kind: rule
+    statement: Required work is never parked in prose ("Later", "optional", "deferred") without an Open Decision row.
+    source: [history.hidden_deferral, constitution.G2]
+    checks:
+      - { kind: lint, ref: deferral-words-need-od, status: planned }
+  - id: I-B7
+    kind: rule
+    statement: >
+      Tests are load-bearing: no fake green. New tests fail on base and pass on
+      head; changed code meets a mutation-score threshold; acceptance rows
+      marked auto link to a real test/eval id.
+    source: [history.fake_green, session.r3]
+    checks:
+      - { kind: ci, ref: red-first-proof, status: planned }
+      - { kind: ci, ref: mutation-changed-lines, status: planned }
+      - { kind: ci, ref: catalog-test-linkage, status: planned }
+  - id: I-B8
+    kind: rule
+    statement: A PR touches only its work order's owned paths.
+    source: session.r3
+    checks:
+      - { kind: ci, ref: diff-within-owned-paths, status: planned }
+
+  # ── Architecture religion ────────────────────────────────────────────────
+  - id: I-A1
+    kind: religion
+    domain: architecture
+    statement: Business logic stays out of entrypoints and infra.
+    source: [session.r4, AGENTS.md]
+    checks:
+      - { kind: lint, ref: import-layers, status: planned }            # e.g. import-linter contracts
+      - { kind: review, ref: rubric.patterns, status: planned }
+  - id: I-A2
+    kind: religion
+    domain: architecture
+    statement: Schema-first agents — typed Pydantic outputs; no free-text parsing of model output.
+    source: [session.r4, constitution.stack]
+    checks:
+      - { kind: lint, ref: agent-has-output-type, status: planned }
+  - id: I-A3
+    kind: religion
+    domain: architecture
+    statement: All config through typed Settings and the secrets schema; no ad-hoc getenv in new or changed code.
+    source: [session.r4, constitution.IV]
+    checks:
+      - { kind: lint, ref: banned-getenv-outside-config, status: planned }  # changed lines; A12 hybrid residue in V1/RA untouched
+      - { kind: ci, ref: validate-secrets-schema, status: exists }
+  - id: I-A4
+    kind: religion
+    domain: architecture
+    statement: External platforms sit behind adapter interfaces, not hardcoded.
+    source: [session.r4, backlog.A20-A21]
+    checks:
+      - { kind: lint, ref: vendor-imports-only-in-adapters, status: planned }
+  - id: I-A5
+    kind: religion
+    domain: architecture
+    statement: Code goes into lab_shared only when two or more apps use it.
+    source: [session.r4, constitution.III]
+    checks:
+      - { kind: ci, ref: lab-shared-consumer-count, status: planned }
+    conflict: CONFLICT-1
+  - id: I-A6
+    kind: religion
+    domain: architecture
+    statement: One deployable service per app unless a split is justified by a locked decision.
+    source: [session.r4, history.topology_regret]
+    checks:
+      - { kind: lint, ref: one-service-per-app-manifest, status: planned }
+  - id: I-A7
+    kind: religion
+    domain: architecture
+    statement: >
+      Descriptive, contextual names. Generic names (data, result, tmp, info,
+      obj, helper, utils, manager, handle, process) confuse both AI and the
+      governor the very next day.
+    source: session.r4
+    checks:
+      - { kind: lint, ref: generic-identifier-ban, status: planned }   # changed lines; module names too (utils.py, helpers.py)
+      - { kind: review, ref: rubric.patterns, status: planned }
+  - id: I-A8
+    kind: religion
+    domain: architecture
+    statement: >
+      Conventional layering and scope discipline: each layer and actor stays in
+      its scope. Tests never change production code to make themselves pass
+      (no test seams, key sniffing, or TESTING branches in app code).
+      Application work never modifies OS/system/global environment or other
+      apps to make itself work.
+    source: session.r4
+    checks:
+      - { kind: lint, ref: test-seam-ban, status: planned }
+      - { kind: lint, ref: import-layers, status: planned }
+      - { kind: ci, ref: diff-within-owned-paths, status: planned }
+      - { kind: hook, ref: block-system-path-edits, status: planned }
+  - id: I-A9
+    kind: religion
+    domain: architecture
+    statement: >
+      No familiar-but-not-SOTA choices: every architecture decision and every
+      new dependency/pattern in a PR traces to a decision that weighed at least
+      one non-sibling SOTA alternative.
+    source: [session.r3, constitution.VI]
+    checks:
+      - { kind: lint, ref: research-decision-has-nonsibling-alt, status: planned }
+      - { kind: ci, ref: new-dependency-needs-decision-ref, status: planned }
+      - { kind: review, ref: rubric.patterns, status: planned }
+  - id: I-A10
+    kind: religion
+    domain: architecture
+    statement: >
+      Architecture-affecting decisions are posed with concrete consequences per
+      option (services, secret custody, ops steps, cost) so the governor feels
+      them before locking.
+    source: history.topology_regret
+    checks:
+      - { kind: schema, ref: od.arch-options-have-consequences, status: planned }
+  - id: I-A11
+    kind: religion
+    domain: architecture
+    statement: >
+      Output that "smells" of breaking the governor's architectural patterns is
+      rejected even when checks pass. The pattern catalog (I-A1..A8) is the
+      reviewer rubric and grows at each post-mortem.
+    source: session.r3
+    checks:
+      - { kind: review, ref: rubric.patterns, status: planned }
+      - { kind: human, ref: sprint-postmortem, status: planned }
+
+  # ── Process religion ─────────────────────────────────────────────────────
+  - id: I-P1
+    kind: religion
+    domain: process
+    statement: Non-trivial work starts from intent + spec; every product PR links a work order that links a feature folder.
+    source: constitution.I
+    checks:
+      - { kind: ci, ref: pr-links-order, status: planned }
+  - id: I-P2
+    kind: religion
+    domain: process
+    statement: Test-first — failing tests precede matching implementation.
+    source: constitution.V
+    checks:
+      - { kind: ci, ref: red-first-proof, status: planned }
+  - id: I-P3
+    kind: religion
+    domain: process
+    statement: Independent review by a different model family that never sees the author's thread.
+    source: [constitution.A, session.q-providers]
+    checks:
+      - { kind: schema, ref: verdict.reviewer-family-differs, status: planned }
+  - id: I-P4
+    kind: religion
+    domain: process
+    statement: Every intent statement maps to a check or an explicit human-only flag.
+    source: session.r4
+    checks:
+      - { kind: ci, ref: factory-check-intent, status: planned }
+  - id: I-P5
+    kind: religion
+    domain: process
+    statement: Agents propose rule and gate changes via PR; the governor approves every one.
+    source: session.r2
+    checks:
+      - { kind: ci, ref: codeowners-governor-on-rule-paths, status: planned }
+  - id: I-P6
+    kind: religion
+    domain: process
+    statement: Rules are code. A new MUST/NEVER in process docs must cite the check that enforces it.
+    source: [session.r3, anti_goal.more_prose]
+    checks:
+      - { kind: lint, ref: process-rule-cites-check, status: planned }
+  - id: I-P7
+    kind: religion
+    domain: process
+    statement: >
+      Every governor correction or rejection is logged as a correction record;
+      the sprint post-mortem dispositions each one into a proposed rule/check
+      (or explicit no-op).
+    source: session.r2-r4
+    checks:
+      - { kind: schema, ref: message.correction, status: planned }
+      - { kind: ci, ref: sprint-close-requires-postmortem, status: planned }
+  - id: I-P8
+    kind: religion
+    domain: process
+    statement: Each sprint ends with a post-mortem that mines history (reversed locks, rework, overrides, corrections) for new religion.
+    source: session.r2
+    checks:
+      - { kind: ci, ref: sprint-close-requires-postmortem, status: planned }
+      - { kind: human, ref: sprint-postmortem, status: planned }
+
+  # ── Ops religion ─────────────────────────────────────────────────────────
+  - id: I-O1
+    kind: religion
+    domain: ops
+    statement: Every deploy/config change is declared in git manifests; no UI-only drift.
+    source: [session.r3, constitution.II]
+    checks:
+      - { kind: ci, ref: validate-deploy-env, status: exists }
+      - { kind: ci, ref: live-config-drift-check, status: planned }
+  - id: I-O2
+    kind: religion
+    domain: ops
+    statement: Secret names live in the schema; values never enter git.
+    source: constitution.IV
+    checks:
+      - { kind: ci, ref: validate-secrets-schema, status: exists }
+      - { kind: ci, ref: secret-scan, status: planned }
+  - id: I-O3
+    kind: religion
+    domain: ops
+    statement: Locks committed; environments reproducible from git (uv.lock, flake.lock).
+    source: constitution.II
+    checks:
+      - { kind: ci, ref: uv-sync-locked, status: exists }
+
+  # ── Guardrails (from pre-mortem) ─────────────────────────────────────────
+  - id: I-M1
+    kind: guardrail
+    statement: >
+      Gates are hard but never make the governor the unblocker: the
+      orchestrator may override a gate with a written reason; every override
+      is surfaced to the governor, counted per gate, and reviewed at
+      post-mortem to tune or remove the gate.
+    source: session.r3-r4
+    checks:
+      - { kind: schema, ref: message.override, status: planned }
+      - { kind: metric, ref: overrides-per-gate, status: planned }
+  - id: I-M2
+    kind: guardrail
+    statement: >
+      Intent capture is not paperwork: agents draft, the governor reacts,
+      within about 60 minutes of governor time per feature. Bus files carry no
+      hand-maintained status fields.
+    source: session.r3-r4
+    checks:
+      - { kind: metric, ref: governor-minutes-intent, status: planned }
+      - { kind: schema, ref: bus.no-handwritten-status, status: planned }
+  - id: I-M3
+    kind: guardrail
+    statement: >
+      Factory tooling must not eat the sprint: Wave 1 targets 3 days and may
+      slip at most 2; Smart Writer V2 shows visible progress this sprint.
+    source: session.r3-r4
+    checks:
+      - { kind: human, ref: sprint-postmortem, status: planned }
+  - id: I-M4
+    kind: guardrail
+    statement: One board answers, at any moment, what is in flight, blocked, and waiting on the governor.
+    source: governor-dialogue.2026-10-03
+    checks:
+      - { kind: ci, ref: factory-status-test, status: planned }
+
+  # ── Anti-goals ───────────────────────────────────────────────────────────
+  - id: I-X1
+    kind: anti_goal
+    statement: Not enterprise ceremony — process exists only where it prevents drift.
+    source: session.r3
+    checks:
+      - { kind: human, ref: sprint-postmortem, status: planned }
+  - id: I-X2
+    kind: anti_goal
+    statement: Not more unenforced prose (see I-P6).
+    source: session.r3
+    checks:
+      - { kind: lint, ref: process-rule-cites-check, status: planned }
+  - id: I-X3
+    kind: anti_goal
+    statement: Not a replacement for governor judgment on architecture and product bets — agents propose, governor locks.
+    source: [session.r3, constitution.G]
+    checks:
+      - { kind: ci, ref: order-blocked-on-open-human-od, status: planned }
+  - id: I-X4
+    kind: anti_goal
+    statement: Not a race to maximize parallel agents — at most 3–4 concurrent workers.
+    source: session.r3
+    checks:
+      - { kind: ci, ref: spawn-concurrency-cap, status: planned }
+  - id: I-X5
+    kind: anti_goal
+    statement: Not a dashboard product — a CLI / markdown board is enough.
+    source: session.r3
+    checks:
+      - { kind: human, ref: sprint-postmortem, status: planned }
+
+  # ── Exemplars to preserve ────────────────────────────────────────────────
+  - id: I-E1
+    kind: exemplar
+    statement: Background workers finish slices while the governor stays in the big-picture conversation.
+    source: session.r3
+    checks:
+      - { kind: metric, ref: governor-minutes-per-order, status: planned }
+  - id: I-E2
+    kind: exemplar
+    statement: Batched Open Decisions posed as plain, crisp choices.
+    source: session.r3
+    checks:
+      - { kind: schema, ref: od.plain-options, status: planned }
+  - id: I-E3
+    kind: exemplar
+    statement: Cattle discipline — everything reproducible from git (see I-O1..O3).
+    source: session.r3
+    checks:
+      - { kind: ci, ref: uv-sync-locked, status: exists }
+
+# Conflicts surfaced by this capture — governor resolves before spec approval.
+conflicts:
+  - id: CONFLICT-1
+    between: [I-A5, backlog.A27]
+    summary: >
+      A27 puts reusable durable-state pieces in lab_shared with Smart Writer V2
+      as the only consumer this sprint; I-A5 says lab_shared only with two or
+      more consumers.
+    status: open
+  - id: CONFLICT-2
+    between: [I-B1, constitution.G]
+    summary: >
+      I-B1 says continue conservatively on ambiguity; the constitution says
+      stop on open governor decisions. Scope of "keep going" vs "stop" needed.
+    status: open
+  - id: CONFLICT-3
+    between: [session.r4.arch_patterns, constitution.fail-closed]
+    summary: >
+      "Fail closed" pervades the constitution but was not selected as
+      religion, and the top pre-mortem risk is gates being too strict.
+    status: open
