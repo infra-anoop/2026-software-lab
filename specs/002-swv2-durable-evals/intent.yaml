@@ -1,0 +1,238 @@
+# Intent — 002 Smart Writer V2: durable state + measured quality
+#
+# Captured: 2026-10-03, governor intent session (2 rounds). Delta against the
+# frozen v2.0 baseline (specs/smart-writer-v2/). Factory intents (I-*) in
+# specs/001-factory-v2/intent.yaml apply to all work here.
+# Same check kinds as 001: ci | hook | lint | schema | metric | review | human | test | eval
+# Status: resolved -> governor approves with spec.md
+
+schema_version: 1
+feature: 002-swv2-durable-evals
+baseline: specs/smart-writer-v2/spec.md
+status: resolved
+
+north_star:
+  id: SW-N1
+  statement: >
+    Every change to Smart Writer V2 is measured against draft quality as a
+    calibrated, busy program officer would judge it, and the quality movement
+    of each PR is visible before merge.
+  checks:
+    - { kind: eval, ref: eval-ci-per-pr, status: planned }
+    - { kind: metric, ref: judge-governor-agreement, status: planned }
+
+open_content:   # content the spec must carry as Open Decisions (do not invent)
+  - judge-governor agreement threshold required before the eval gate blocks
+  - bake-off "small margin" for best-value model choice
+  - real per-draft spend ceiling (after bake-off measurement; $3 outer limit already locked)
+
+intents:
+  # ── Quality: what "good" means (judge rubric) ────────────────────────────
+  - id: SW-Q1
+    kind: quality
+    statement: Funder fit — specific to what this funder cares about, not generic charity prose.
+    source: session.r1
+    checks: [{ kind: eval, ref: rubric.funder_fit, status: planned }]
+  - id: SW-Q2
+    kind: quality
+    statement: Persuasive narrative — the reader feels the need.
+    source: session.r1
+    checks: [{ kind: eval, ref: rubric.narrative, status: planned }]
+  - id: SW-Q3
+    kind: quality
+    statement: Evidence of impact — outcomes, numbers, proof.
+    source: session.r1
+    checks: [{ kind: eval, ref: rubric.evidence, status: planned }]
+  - id: SW-Q4
+    kind: quality
+    statement: Sounds like the organization, not like an AI.
+    source: session.r1
+    checks: [{ kind: eval, ref: rubric.voice, status: planned }]
+  - id: SW-Q5
+    kind: quality
+    statement: The judge reads as a busy foundation program officer skimming 50 asks this week.
+    source: session.r1
+    checks: [{ kind: test, ref: judge-persona-fixture, status: planned }]
+  - id: SW-Q6
+    kind: quality
+    statement: >
+      Grounding stays a pipeline invariant (baseline F3 / SC-003 / SC-004),
+      checked structurally through claim provenance — not by the judge.
+    source: [session.r1, baseline.F3]
+    checks: [{ kind: test, ref: claim-provenance-real-path, status: planned }]
+  - id: SW-Q7
+    kind: quality
+    statement: >
+      The judge is calibrated against the governor's hand ratings (10–15
+      drafts); the eval gate does not block until agreement meets the
+      threshold (open content).
+    source: [session.r2.premortem, charter]
+    checks:
+      - { kind: metric, ref: judge-governor-agreement, status: planned }
+      - { kind: human, ref: calibration-session, status: planned }
+  - id: SW-Q8
+    kind: quality
+    statement: >
+      The golden set is synthesized from public funder RFPs and synthetic orgs,
+      reviewed by the governor, and includes grant scenarios plus at least one
+      non-grant smoke scenario (baseline F2).
+    source: [charter, baseline.F2]
+    checks:
+      - { kind: schema, ref: golden-set-schema, status: planned }
+      - { kind: human, ref: golden-set-review, status: planned }
+
+  # ── Eval gating ──────────────────────────────────────────────────────────
+  - id: SW-E1
+    kind: rule
+    statement: >
+      A PR that lowers draft quality beyond measured run-to-run noise is
+      blocked; the orchestrator may override with a reason (factory I-M1).
+    source: session.r2
+    checks:
+      - { kind: ci, ref: eval-regression-gate, status: planned }
+      - { kind: metric, ref: eval-noise-band, status: planned }
+  - id: SW-E2
+    kind: rule
+    statement: Per-PR eval runs cost at most about $1–2; a larger run is nightly. Spend limits fail closed.
+    source: charter
+    checks: [{ kind: ci, ref: eval-budget-guard, status: planned }]
+  - id: SW-E3
+    kind: rule
+    statement: The judge is a different model family (second provider) from the writer.
+    source: charter
+    checks: [{ kind: lint, ref: judge-family-differs, status: planned }]
+
+  # ── Models ───────────────────────────────────────────────────────────────
+  - id: SW-M1
+    kind: rule
+    statement: Models are configured per role (writer, assessor, extraction, judge) through typed Settings; no hardcoded model ids.
+    source: [charter, factory.I-A3]
+    checks: [{ kind: lint, ref: no-hardcoded-model-ids, status: planned }]
+  - id: SW-M2
+    kind: rule
+    statement: Bake-off picks, per role, the cheapest model within a small margin of the best eval quality (margin = open content).
+    source: session.r2
+    checks:
+      - { kind: eval, ref: bakeoff-report, status: planned }
+      - { kind: human, ref: bakeoff-lock, status: planned }
+  - id: SW-M3
+    kind: rule
+    statement: Model swaps never go unnoticed — any change to model configuration triggers the full eval set.
+    source: [session.r2.premortem-adjacent, charter]
+    checks: [{ kind: ci, ref: model-change-full-eval, status: planned }]
+
+  # ── Limits ───────────────────────────────────────────────────────────────
+  - id: SW-L1
+    kind: rule
+    statement: >
+      Hard outer spend limit $3 per draft (one generate or revise job incl.
+      inner loop); hitting it stops the job (fail closed — spend). The real
+      ceiling is set after bake-off measurement.
+    source: session.r2
+    checks: [{ kind: test, ref: job-spend-limit, status: planned }]
+  - id: SW-L2
+    kind: rule
+    statement: A complete draft arrives within about 10 minutes.
+    source: session.r2
+    checks: [{ kind: metric, ref: draft-latency-p95, status: planned }]
+
+  # ── Durability ───────────────────────────────────────────────────────────
+  - id: SW-D1
+    kind: rule
+    statement: Conversations and every draft version survive deploys and restarts.
+    source: [session.r1, backlog.A27]
+    checks:
+      - { kind: test, ref: restart-persistence-integration, status: planned }
+      - { kind: ci, ref: post-deploy-persistence-smoke, status: planned }
+  - id: SW-D2
+    kind: rule
+    statement: Uploaded materials survive deploys and restarts.
+    source: [session.r1, backlog.A27]
+    checks: [{ kind: test, ref: upload-persistence-integration, status: planned }]
+  - id: SW-D3
+    kind: rule
+    statement: >
+      Jobs checkpoint per pipeline step; after a restart an interrupted job
+      resumes, or is explicitly marked failed — never silently lost. Resume is
+      a learning-driven bonus, not a user promise.
+    source: [session.r2, backlog.A27]
+    checks: [{ kind: test, ref: interrupted-job-resume-or-fail, status: planned }]
+  - id: SW-D4
+    kind: rule
+    statement: >
+      Ownership is an anonymous per-browser key; each browser sees only its own
+      conversations. Losing the key means losing access — acceptable until
+      accounts arrive.
+    source: [session.r1, charter]
+    checks: [{ kind: test, ref: browser-key-isolation, status: planned }]
+  - id: SW-D5
+    kind: rule
+    statement: Conversations and uploads are deleted 30 days after last use.
+    source: session.r1
+    checks: [{ kind: test, ref: retention-purge, status: planned }]
+  - id: SW-D6
+    kind: rule
+    statement: >
+      Moving to durable state must not break production: versioned migrations,
+      proven against a real database in CI and on staging before production,
+      with a rollback path.
+    source: [session.r2.premortem, backlog.A28]
+    checks:
+      - { kind: ci, ref: migrations-against-postgres, status: planned }
+      - { kind: ci, ref: staging-before-production, status: planned }
+
+  # ── Test and ship hygiene ────────────────────────────────────────────────
+  - id: SW-T1
+    kind: rule
+    statement: >
+      No test-only branches in app code: remove API-key sniffing and the
+      duplicate LLM-free pipeline; tests swap models at the framework boundary.
+    source: [charter, factory.I-A8]
+    checks: [{ kind: lint, ref: test-seam-ban, status: planned }]
+  - id: SW-T2
+    kind: rule
+    statement: Tests exercise the real pipeline graph end to end, with models substituted only at the model boundary.
+    source: charter
+    checks: [{ kind: ci, ref: graph-node-coverage, status: planned }]
+  - id: SW-S1
+    kind: rule
+    statement: The UI is built inside the image; built assets are not committed.
+    source: charter
+    checks: [{ kind: ci, ref: no-committed-ui-build, status: planned }]
+  - id: SW-B1
+    kind: rule
+    statement: Baseline v2.0 behavior (baseline SC-001..007 and its acceptance catalog) is preserved.
+    source: baseline
+    checks: [{ kind: ci, ref: baseline-contract-suite, status: exists }]
+
+  # ── Anti-goals (this version) ────────────────────────────────────────────
+  - id: SW-X1
+    kind: anti_goal
+    statement: No accounts or sign-in (later workspace direction).
+    source: charter
+    checks: [{ kind: review, ref: rubric.scope, status: planned }]
+  - id: SW-X2
+    kind: anti_goal
+    statement: No document editor, streaming, or export (later workspace direction).
+    source: charter
+    checks: [{ kind: review, ref: rubric.scope, status: planned }]
+  - id: SW-X3
+    kind: anti_goal
+    statement: No funder-intelligence research (later direction).
+    source: charter
+    checks: [{ kind: review, ref: rubric.scope, status: planned }]
+  - id: SW-X4
+    kind: anti_goal
+    statement: V1 and Research Auditor do not adopt the shared pieces this sprint.
+    source: [charter, backlog.A27]
+    checks: [{ kind: ci, ref: diff-within-owned-paths, status: planned }]
+
+conflicts:
+  - id: CONFLICT-1
+    between: [backlog.A27 checkpointer, session.r1 survive (in-flight not selected)]
+    resolution: Keep the checkpointer for learning value; resume is a bonus; interrupted jobs must resume or fail explicitly (SW-D3).
+    status: resolved
+
+confirmations:
+  - date: 2026-10-03
+    item: Judge rubric excludes grounding; grounding stays a structural pipeline invariant (SW-Q6).
