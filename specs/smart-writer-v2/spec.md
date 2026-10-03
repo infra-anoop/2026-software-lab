@@ -1,5 +1,7 @@
 # Feature Specification: Smart Writer V2
 
+> **Frozen baseline (2026-10-03):** shipped v2.0. Do not amend in place except errata. Changes go in new feature folders as deltas against this spec (e.g. `specs/002-swv2-durable-evals/`). Sprint context: `notes/sprints/2026-10-sprint-02.md`.
+
 **Feature Branch**: `smart-writer-v2`
 
 **Created**: 2026-09-10

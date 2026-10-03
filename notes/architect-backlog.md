@@ -4,6 +4,16 @@ Owned here. Other agents get a scoped prompt; they do not pick from this list un
 
 Last review: Section 3 fully closed — all won’t-do / accept residual (A11, A12, A14, A9, A10, A4, A5). A5 ops: deleted zombie Railway project `capable-miracle`.
 
+## Decisions locked (sprint 02 — 2026-10-03)
+
+Charter: `notes/sprints/2026-10-sprint-02.md`.
+
+| ID | Decision |
+|---|---|
+| **A27** | **Supersedes A9 (graduate to durable state).** SWV2 first: conversations / messages / artifacts / InternalRunState → Postgres (Supabase); uploads → Supabase Storage; jobs resumable via **LangGraph Postgres checkpointer**. Ownership = anonymous per-browser key. Reusable pieces live in `modules/lab_shared`; V1 / RA adopt in a later sprint (they keep A9 behavior until then). In-process rate limiter stays; single replica remains acceptable. |
+| **A28** | **Retires A14 greenfield-only schema.** Durable user data requires real versioned migrations. Applies to new SWV2 schema now; existing V1 / RA `runs` / `turns` tables unchanged until they adopt. |
+| **A29** | **Keep `smart-writer` (V1) and `research-auditor`.** Not retired — engine comparison bench (PydanticAI / LangGraph / JobRunner patterns). |
+
 ## Decisions locked (platform secrets)
 
 | ID | Decision |
@@ -16,8 +26,8 @@ Last review: Section 3 fully closed — all won’t-do / accept residual (A11, A
 | **Lifecycle** | **Bootstrap** (A26 provision → A23 sync → A24 verify via `bootstrap/<app>/<env>` tag or UI) ≠ **rotate** (`sync/<app>/<env>` tag or UI) ≠ **code deploy** (`v*` all-apps **or** `ship/<app>/<env>` one-app image pin). Conscious choice to init deploy infra. |
 | **A11** | **`/ready` = OpenAI only.** `*_AUDIT_SECRET` stays optional for ready; unset still 503s `/audit`. Green ready ≠ audits work. Revisit only if platform checks must mean “audit product live.” |
 | **A12** | **Leave hybrid A.** Settings + catalogs for declared/gate knobs; leftover `getenv` in SW agents/prompts/retrieval, Logfire `main.py`, `lab_shared` Supabase client accepted. Boy-scout on touch; no dedicated migration epic. |
-| **A14** | **Keep P6 schema knobs.** No `UNIQUE(run_id,step)`; `runs.status` CHECK stays `running`/`completed`/`failed`; greenfield `IF NOT EXISTS` only (recreate project if incompatible change). |
-| **A9** | **Accept in-memory jobs.** `job_id` ephemeral (restart drops; not shared across replicas). Keep Railway replica count 1 for audit services. Multi-browser concurrency = process-local `JobRunner` (tune queue/concurrency/rate), not a shared queue. |
+| **A14** | *(Superseded for new schema by **A28**, 2026-10-03.)* **Keep P6 schema knobs.** No `UNIQUE(run_id,step)`; `runs.status` CHECK stays `running`/`completed`/`failed`; greenfield `IF NOT EXISTS` only (recreate project if incompatible change). |
+| **A9** | *(Superseded by **A27**, 2026-10-03; V1 / RA until they adopt.)* **Accept in-memory jobs.** `job_id` ephemeral (restart drops; not shared across replicas). Keep Railway replica count 1 for audit services. Multi-browser concurrency = process-local `JobRunner` (tune queue/concurrency/rate), not a shared queue. |
 | **A10** | **Accept best-effort timeout.** `asyncio.wait_for` → job `timed_out`; in-flight OpenAI may still run. Prefer tuning timeout/iterations/concurrency over cancel plumbing. |
 | **A4** | **Won’t-do / watch.** Keep dual start paths (flake `Cmd` + Railway YAML `start_command`; Railway wins). They match today; fix on drift. No CI equality assert, no single-source rewrite. |
 | **A5** | **Tolerate residual as code; fix zombies in ops.** Pattern A image pin only. No git auto-deploy on lab services. Deleted leftover project `capable-miracle` / `Archived-research-auditor` (source of build-failure emails). Live project remains `2026-software-lab`. |
@@ -28,7 +38,7 @@ Work top-down. **Discuss** = lock a product/ops choice before coding. **Straight
 
 | Order | ID | Mode | Order notes |
 |---|---|---|---|
-| — | *(none)* | — | Section 3 discusses complete. Next work is net-new, not this residual list. |
+| — | *(none)* | — | Section 3 discusses complete. Next work: sprint 02 charter (`notes/sprints/2026-10-sprint-02.md`). |
 
 ## Open — architect / operator
 
@@ -77,8 +87,8 @@ Work top-down. **Discuss** = lock a product/ops choice before coding. **Straight
 | A8 | Won’t-do (2-app lab): offline boot stays default image only. Cmd-check all apps + per-app ship + prod smoke cover the P2 failure mode. |
 | A11 | Won’t-do: `/ready` stays OpenAI-only; `*_AUDIT_SECRET` optional for ready, required for successful `/audit`. First-run “secret not configured” is vault seed/sync, not a ready-probe change. |
 | A12 | Won’t-do: leave Settings/getenv hybrid A; boy-scout on touch; no dedicated migration epic. |
-| A14 | Won’t-do: keep P6 knobs — no UNIQUE(run_id,step); tight status CHECK; greenfield only (recreate if schema must change). |
-| A9 | Won’t-do: accept in-memory `JobRunner`; job_id ephemeral; keep single replica for `/audit`; multi-browser = tune concurrency/queue, not Redis/DB. |
+| A14 | *(Superseded for new schema by A28.)* Won’t-do: keep P6 knobs — no UNIQUE(run_id,step); tight status CHECK; greenfield only (recreate if schema must change). |
+| A9 | *(Superseded by A27.)* Won’t-do: accept in-memory `JobRunner`; job_id ephemeral; keep single replica for `/audit`; multi-browser = tune concurrency/queue, not Redis/DB. |
 | A10 | Won’t-do: accept `timed_out` without deep in-flight LLM cancel; tune timeout/iterations/concurrency instead. |
 | A5 | Won’t-do as code epic: Pattern A only; ops deleted zombie project `capable-miracle` (Archived-research-auditor build emails). Live = `2026-software-lab`. |
 | A4 | Won’t-do / watch: dual start paths stay; match by discipline; no CI equality assert until drift actually hurts. |
