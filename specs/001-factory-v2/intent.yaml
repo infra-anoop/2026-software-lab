@@ -407,7 +407,7 @@ intents:
       - { kind: ci, ref: order-blocked-on-open-human-od, status: planned }
   - id: I-X4
     kind: anti_goal
-    statement: Not a race to maximize parallel agents — at most 3–4 concurrent workers.
+    statement: Not a race to maximize parallel agents — at most 3 concurrent workers (locked F2).
     source: session.r3
     checks:
       - { kind: ci, ref: spawn-concurrency-cap, status: planned }
@@ -458,13 +458,20 @@ conflicts:
   - id: CONFLICT-3
     between: [session.r4.arch_patterns, constitution.fail-closed]
     summary: Fail-closed pervades the constitution but is not religion; top pre-mortem risk is over-strict gates.
-    resolution: Narrow — fail closed only for spend, secrets, irreversible ops, governor-owned decisions (I-P9).
+    resolution: >
+      Narrow — governor-only blocking for spend, secrets, irreversible ops,
+      governor-owned decisions (I-P9). Refined by review F1/R1: all other gates
+      are drift gates that still block but the orchestrator may override with a
+      logged reason (I-M1).
     constitution_impact: sweep all fail-closed language
     status: resolved
   - id: CONFLICT-4
     between: [session.r4.correction_cadence, I-G1]
     summary: Post-mortem-only codification lets a corrected drift recur all sprint.
-    resolution: Post-mortem by default; a repeated correction triggers an immediate rule proposal (I-P7).
+    resolution: >
+      Post-mortem by default; a repeated correction triggers an immediate rule
+      proposal (I-P7). Repeat = orchestrator links it to a pattern or prior
+      correction when recording; governor confirms in batch (review F7).
     constitution_impact: none
     status: resolved
 

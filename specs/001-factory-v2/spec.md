@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-03
 
-**Status**: Draft
+**Status**: Approved (2026-10-03 — all review Blockers/Debates locked by governor or agent per review-locks table)
 
 **Input**: Governor intent session 2026-10-03 → [`intent.yaml`](./intent.yaml) (49 intents, conflicts resolved). Sprint charter: [`notes/sprints/2026-10-sprint-02.md`](../../notes/sprints/2026-10-sprint-02.md).
 
@@ -65,7 +65,7 @@ As the governor, every drift pattern I personally caught in sprint 01 is now cau
 
 **Why this priority**: These are observed failures, not hypotheticals — the strongest evidence of where intent leaks. (I-G1, I-B3, I-B4, I-B5, I-B6, I-B7, I-B8, I-A8, I-P2)
 
-**Independent Test**: A suite of seeded-violation PRs — one per sprint-01 pattern — each is blocked or flagged by machine without governor involvement.
+**Independent Test**: A suite of seeded-violation PRs — one per sprint-01 pattern — each is blocked by machine without governor involvement.
 
 **Acceptance Scenarios**:
 
@@ -74,8 +74,9 @@ As the governor, every drift pattern I personally caught in sprint 01 is now cau
 3. **Given** a PR touching files outside its work order's owned paths, **When** checks run, **Then** it is blocked.
 4. **Given** spec/plan/tasks text that parks required work ("Later", "optional", "deferred") without an Open Decision reference, **When** checks run, **Then** it is blocked.
 5. **Given** a work order honoring a named lock, **When** it is issued without a fidelity declaration for that lock, **Then** it is refused.
-6. **Given** a decision request to the governor containing task/finding ids or internal jargon, **When** validated, **Then** it is flagged.
+6. **Given** a decision request to the governor containing task/finding ids or internal jargon, **When** validated, **Then** it is rejected before it reaches the governor.
 7. **Given** an acceptance row marked automatic, **When** checks run, **Then** it must link to a real test or eval id, or the PR is blocked.
+8. **Given** a work order that declares letter fidelity to a named lock, **When** its PR's output uses a different tool or host, or thinner behavior, than the lock names, **Then** the PR is blocked.
 
 ---
 
@@ -85,14 +86,15 @@ As the governor, gates bite, but when one is wrong the orchestrator can override
 
 **Why this priority**: The governor's top pre-mortem risk is gates being too strict and agents stalling on them. (I-M1, I-P9, I-G5)
 
-**Independent Test**: Trigger a gate; override it with a reason; the override appears on the board and in the per-gate count; an override without a reason is rejected; a gate declared fail-closed outside the allowed categories is rejected.
+**Independent Test**: Trigger a drift gate; the orchestrator overrides it with a reason; the override appears on the board and in the per-gate count; an override without a reason is rejected; an orchestrator override of a governor-only gate is rejected; a gate registered as governor-only outside the four allowed categories is rejected.
 
 **Acceptance Scenarios**:
 
-1. **Given** a blocking gate, **When** the orchestrator overrides it with a reason, **Then** the PR proceeds and the override is surfaced to the governor and counted.
+1. **Given** a blocking drift gate, **When** the orchestrator overrides it with a reason, **Then** the PR proceeds and the override is surfaced to the governor and counted.
 2. **Given** an override without a reason, **When** submitted, **Then** it is rejected.
-3. **Given** a gate definition, **When** registered, **Then** it may be fail-closed only for spend, secrets, irreversible operations, or governor-owned decisions; otherwise it fails toward a logged deviation.
-4. **Given** an in-session editor hook, **When** registered, **Then** an equivalent repository-side check exists, so any agent tool meets the same gates.
+3. **Given** a gate definition, **When** registered, **Then** it declares one of two classes: **drift** (blocks; orchestrator may override with a reason) or **governor-only** (blocks; only the governor may override) — and governor-only is allowed only for spend, secrets, irreversible operations, or governor-owned decisions.
+4. **Given** a governor-only gate, **When** the orchestrator or a worker attempts an override, **Then** it is rejected.
+5. **Given** an in-session editor hook, **When** registered, **Then** an equivalent repository-side check exists, so any agent tool meets the same gates.
 
 ---
 
@@ -136,12 +138,12 @@ As the governor, I don't have to write down my religion upfront. My corrections 
 
 **Why this priority**: This is the factory's north star (I-N1) — intent capture as a loop. P2 only because it needs the bus (US1) and gates (US3/US4) to exist first; it must be live before sprint close. (I-N1, I-P5, I-P7, I-P8)
 
-**Independent Test**: Record two equivalent corrections; a rule proposal appears; attempt to close the sprint without a post-mortem dispositioning every correction — refused; a rule-file change without governor approval cannot merge.
+**Independent Test**: Record a correction that the orchestrator links to an earlier one; a rule proposal appears; the governor's batch shows the link for confirmation; attempt to close the sprint without a post-mortem dispositioning every correction — refused; a rule-file change without governor approval cannot merge.
 
 **Acceptance Scenarios**:
 
 1. **Given** a governor correction, **When** it happens, **Then** a correction record exists in git.
-2. **Given** the same correction a second time, **When** recorded, **Then** a rule/check proposal is raised immediately.
+2. **Given** a correction the orchestrator links (when recording it) to an existing pattern id or prior correction, **When** recorded, **Then** a rule/check proposal is raised immediately, and the link appears in the governor's next decision batch for confirmation; a rejected link withdraws the proposal.
 3. **Given** sprint close, **When** attempted, **Then** it requires a post-mortem that dispositions every correction and reviews overrides, reversed locks, and rework.
 4. **Given** a change to factory rules or gates, **When** merged, **Then** governor approval is required.
 
@@ -158,7 +160,7 @@ As the governor, the constitution and agent guidance shrink to what is not yet e
 **Acceptance Scenarios**:
 
 1. **Given** process docs, **When** checked, **Then** every MUST/NEVER statement cites an enforcing check or is marked governor-judged.
-2. **Given** the constitution, **When** this feature completes, **Then** it is version 2.0 and reflects the resolved conflicts (shared-code rule, ambiguity split, narrow fail-closed).
+2. **Given** the constitution, **When** this feature completes, **Then** it is version 2.0 and reflects the resolved conflicts (shared-code rule, ambiguity split, two-class fail-mode taxonomy, repeat-correction trigger).
 
 ---
 
@@ -199,7 +201,7 @@ As the governor, the factory tooling runs in a fresh repo of mine with only conf
 
 - **FR-006**: A work order MUST declare goal, intent ids, owned paths, checks, honored locks with fidelity, size estimate within the autonomy horizon (1 hour this sprint), and stop conditions. (I-G2, I-B5)
 - **FR-007**: Issuing a work order MUST be refused while it depends on an open governor-owned decision. (I-X3)
-- **FR-008**: Spawning MUST be refused beyond the concurrency cap (3–4 active workers). (I-X4)
+- **FR-008**: Spawning MUST be refused beyond the concurrency cap of **3** active workers. (I-X4)
 - **FR-009**: A worker MUST NOT be able to report done while its work order's checks fail. (I-G2)
 - **FR-010**: Escalations MUST be classed: governor-owned product/architecture ambiguity = real-time blocker; all else = conservative choice + deviation recorded in the handoff. (I-B1, I-B2)
 - **FR-011**: Acceptance MUST be decided from check results per intent plus a verdict from a reviewer of a different model family; worker self-reports MUST NOT count as evidence. (I-P3, I-G2)
@@ -218,7 +220,7 @@ As the governor, the factory tooling runs in a fresh repo of mine with only conf
 
 **Gate framework**
 
-- **FR-020**: Every gate MUST be registered with a fail mode; fail-closed is allowed only for spend, secrets, irreversible operations, and governor-owned decisions. (I-P9)
+- **FR-020**: Every gate MUST be registered with one of two classes. **Drift** gates block merge; the orchestrator may override with a reason. **Governor-only** gates block merge; only the governor may override. Governor-only is allowed only for spend, secrets, irreversible operations, and governor-owned decisions. Overrides of either class are recorded and counted (FR-021). (I-P9, I-M1)
 - **FR-021**: The orchestrator MUST be able to override a gate only with a written reason; every override MUST be surfaced to the governor and counted per gate. (I-M1)
 - **FR-022**: Every in-session editor hook MUST have a repository-side equivalent check. (I-G5)
 
@@ -236,7 +238,7 @@ As the governor, the factory tooling runs in a fresh repo of mine with only conf
 
 **Religion-mining loop and rules-as-code**
 
-- **FR-029**: Governor corrections and rejections MUST be recorded as correction messages; a repeated correction MUST trigger an immediate rule/check proposal. (I-P7)
+- **FR-029**: Governor corrections and rejections MUST be recorded as correction messages; a repeated correction MUST trigger an immediate rule/check proposal. A correction is "repeated" when the orchestrator, while recording it, links it to an existing pattern id or prior correction; the governor confirms or rejects each link in the next decision batch. (I-P7)
 - **FR-030**: Sprint close MUST require a post-mortem dispositioning every correction and reviewing overrides, reversed locks, and rework. (I-P7, I-P8)
 - **FR-031**: Changes to factory rules and gates MUST require governor approval to merge. (I-P5)
 - **FR-032**: Every MUST/NEVER in the governed process documents — the constitution, `AGENTS.md`, always-applied editor rules, and `docs/agent-os/` — MUST carry `[check: <id>]` or `[governor-judged]`. Other documents are out of scope for this gate. (I-P6, I-X2)
@@ -275,7 +277,7 @@ As the governor, the factory tooling runs in a fresh repo of mine with only conf
 ### Failable outcome classes
 
 - **SC-001 Visibility**: At any moment, one board answers in flight / blocked / waiting on governor, and in spot checks it agrees with repository/PR/check reality 100% of the time; zero hand-maintained status fields exist in bus messages. (US1)
-- **SC-002 Seeded drift caught**: For each sprint-01 drift pattern (substitution, hidden deferral, fake-green tests, test seams in app code, out-of-scope edits, jargon to governor), a seeded-violation PR is blocked or flagged by machine — 100% of seeds, zero governor involvement. (US3)
+- **SC-002 Seeded drift caught**: For each sprint-01 drift pattern (undeclared substitution, declared-but-violated lock, hidden deferral, fake-green tests, test seams in app code, out-of-scope edits, jargon to governor), a seeded-violation PR or message is blocked by machine — 100% of seeds, zero governor involvement. (US3)
 - **SC-003 Hand-off integrity**: For every work order this sprint, the PR's acceptance shows per-intent check results and a different-family reviewer verdict; no work order was issued while depending on an open governor decision; no worker reported done with failing checks. (US2)
 - **SC-004 Override visibility**: 100% of gate overrides carry a reason and appear on the board and in per-gate counts; zero overrides without a reason. (US4)
 - **SC-005 Traceability**: (a) Presence: 100% of intents have ≥1 mapping; removing all mappings from any intent fails the check. (b) Effective coverage: by sprint close, ≥ 90% of intents are backed by an implemented, passing non-human check or an explicit governor-judged mapping. (US5)
@@ -286,6 +288,7 @@ As the governor, the factory tooling runs in a fresh repo of mine with only conf
 - **SC-010 No routing**: Across the sprint, zero instances of the governor relaying content between agents or being asked what to do next (each instance the governor reports is recorded as a correction tagged routing). (I-B4)
 - **SC-011 Capture budget**: Governor minutes spent on intent capture are recorded per feature; each feature is ≤ about 60 minutes. (I-M2)
 - **SC-012 Bootstrap evidence**: Every Wave 1 PR has a bootstrap verdict and retroactive gate results; every retroactive failure is remediated or overridden with a reason before Wave 2 work orders are issued. (FR-037)
+- **SC-013 Wave 1 time-box**: Wave 1 exits within 5 working days of its first work order (3 targeted, 2 slip) with every P1 check implemented and passing; start and exit dates come from run records. All P2 checks are implemented and passing by sprint close. (I-M3)
 
 ### Aspirational (judged at post-mortem — not sole pass/fail)
 
@@ -298,7 +301,7 @@ Check instances: [`acceptance.md`](./acceptance.md). Grows from runs; seeded-vio
 
 ## Check scheduling *(finish bar for this version)*
 
-Ranking rule: **P1** = catches a drift pattern observed in sprint 01, or is foundational for other gates; **P2** = governor's stated religion not yet observed failing, or the mining loop; **P3** = intended but nothing in sprint 02 depends on it. P1 and P2 are this version's finish bar. P3 rows are proposed out of this version via **D1** — governor confirms or pulls in.
+Ranking rule: **P1** = catches a drift pattern observed in sprint 01, or is foundational for other gates; **P2** = governor's stated religion not yet observed failing, or the mining loop; **P3** = intended but nothing in sprint 02 depends on it. **Wave 1 exits on P1** (SC-013); P1 and P2 together are this version's finish bar at sprint close. P3 rows are out of this version (**D1**).
 
 | Priority | Wave | Checks (refs in `intent.yaml`) |
 |----------|------|--------------------------------|
@@ -327,13 +330,13 @@ Reports: [`SPEC_REVIEW.md`](./SPEC_REVIEW.md) (F1–F10), [`PROCESS_REVIEW.md`](
 
 | ID | Status | Lock |
 |----|--------|------|
-| **F1 + R1** | await governor | Fail-mode taxonomy vs drift gates that block |
-| **F2** | await governor | Worker cap: 3 or 4 |
+| **F1 + R1** | locked (governor 2026-10-03) | Two classes: drift gates block, orchestrator may override with reason; governor-only gates (spend, secrets, irreversible, governor decisions) block, only governor overrides — US4, FR-020 |
+| **F2** | locked (governor 2026-10-03) | Cap = 3 active workers — FR-008 |
 | **F3** | locked (agent — restores intent letter) | Reviewer isolation added: US2 #8, FR-011a, acceptance `handoff.reviewer_isolated` |
-| **F4** | locked (agent) | Finish evidence added for no-routing (SC-010), capture budget (SC-011); Wave 1 time-box evidence pending F6 |
-| **F5** | await governor | Seeds: block vs flag; add declared-lock substitution seed |
-| **F6 + R6** | await governor | Wave 1 exit vs version finish bar |
-| **F7** | await governor | How repeated corrections are recognized |
+| **F4** | locked (agent) | Finish evidence added for no-routing (SC-010), capture budget (SC-011), Wave 1 time-box (SC-013) |
+| **F5** | locked (governor 2026-10-03) | Every seed blocks; jargon decision requests rejected before reaching governor; declared-lock substitution seed added — US3 #6/#8, SC-002 |
+| **F6 + R6** | locked (governor 2026-10-03) | Wave 1 exits on P1 (3 days + ≤2 slip); P2 required by sprint close — SC-013, check scheduling |
+| **F7** | locked (governor 2026-10-03) | Orchestrator links repeats when recording; governor confirms links in batch — US7 #2, FR-029 |
 | **F8** | locked (agent, process) | FR-032 bounded to governed documents; accepted forms `[check: <id>]` / `[governor-judged]` |
 | **F9** | Later → plan | Bus transport alternatives stay in plan Architecture |
 | **F10 + R5** | locked (agent) | Catalog gains `evidence` column; FR-018 lifecycle: `planned` until the implementing work order, real id before its PR merges |
