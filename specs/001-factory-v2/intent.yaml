@@ -16,7 +16,7 @@
 
 schema_version: 1
 feature: 001-factory-v2
-status: draft
+status: resolved   # session + conflicts resolved 2026-10-03; governor approves with spec.md
 
 north_star:
   id: I-N1
@@ -77,13 +77,16 @@ intents:
   - id: I-B1
     kind: rule
     statement: >
-      When intent and the work order don't answer a question, the worker picks
-      the most conservative option (least scope, reversible, no new
-      dependency/service, matches existing patterns), records it as a
-      deviation in the handoff, and continues.
-    source: session.r1
+      Ambiguity is split by owner. If the question touches a governor-owned
+      product or architecture decision (an Open Decision, or anything
+      architecture-affecting), the worker stops and escalates in real time as
+      a blocker. Otherwise it picks the most conservative option (least scope,
+      reversible, no new dependency/service, matches existing patterns),
+      records it as a deviation in the handoff, and continues.
+    source: [session.r1, resolution.CONFLICT-2]
     checks:
       - { kind: schema, ref: handoff.deviations-required, status: planned }
+      - { kind: schema, ref: message.escalation-class, status: planned }
       - { kind: review, ref: rubric.undeclared-decisions, status: planned }
   - id: I-B2
     kind: rule
@@ -171,11 +174,13 @@ intents:
   - id: I-A5
     kind: religion
     domain: architecture
-    statement: Code goes into lab_shared only when two or more apps use it.
-    source: [session.r4, constitution.III]
+    statement: >
+      Code goes into lab_shared when it is designed to be shared — used by two
+      or more apps, or deliberately built for reuse. Each lab_shared module
+      declares its intended consumers.
+    source: [session.r4, constitution.III, resolution.CONFLICT-1]
     checks:
-      - { kind: ci, ref: lab-shared-consumer-count, status: planned }
-    conflict: CONFLICT-1
+      - { kind: ci, ref: lab-shared-declares-consumers, status: planned }
   - id: I-A6
     kind: religion
     domain: architecture
@@ -292,10 +297,12 @@ intents:
     statement: >
       Every governor correction or rejection is logged as a correction record;
       the sprint post-mortem dispositions each one into a proposed rule/check
-      (or explicit no-op).
-    source: session.r2-r4
+      (or explicit no-op). If the same correction recurs, the rule is proposed
+      immediately rather than waiting for the post-mortem.
+    source: [session.r2-r4, resolution.CONFLICT-4]
     checks:
       - { kind: schema, ref: message.correction, status: planned }
+      - { kind: metric, ref: repeated-corrections, status: planned }
       - { kind: ci, ref: sprint-close-requires-postmortem, status: planned }
   - id: I-P8
     kind: religion
@@ -305,6 +312,17 @@ intents:
     checks:
       - { kind: ci, ref: sprint-close-requires-postmortem, status: planned }
       - { kind: human, ref: sprint-postmortem, status: planned }
+
+  - id: I-P9
+    kind: religion
+    domain: process
+    statement: >
+      Fail closed only where it protects money (spend), secrets, irreversible
+      operations, and governor-owned decisions. Everywhere else, proceed with
+      a logged deviation.
+    source: resolution.CONFLICT-3
+    checks:
+      - { kind: schema, ref: gate.fail-mode-category, status: planned }  # gate registry: fail_mode=closed only for those categories
 
   # ── Ops religion ─────────────────────────────────────────────────────────
   - id: I-O1
@@ -420,24 +438,39 @@ intents:
     checks:
       - { kind: ci, ref: uv-sync-locked, status: exists }
 
-# Conflicts surfaced by this capture — governor resolves before spec approval.
+# Conflicts surfaced by this capture — resolved by governor 2026-10-03.
+# Constitution edits implied here land in constitution 2.0 (Wave 1).
 conflicts:
   - id: CONFLICT-1
     between: [I-A5, backlog.A27]
     summary: >
       A27 puts reusable durable-state pieces in lab_shared with Smart Writer V2
-      as the only consumer this sprint; I-A5 says lab_shared only with two or
-      more consumers.
-    status: open
+      as the only consumer this sprint; original rule said two or more consumers.
+    resolution: Relax — lab_shared allowed for code designed for reuse; modules declare intended consumers (I-A5).
+    constitution_impact: amend III
+    status: resolved
   - id: CONFLICT-2
     between: [I-B1, constitution.G]
-    summary: >
-      I-B1 says continue conservatively on ambiguity; the constitution says
-      stop on open governor decisions. Scope of "keep going" vs "stop" needed.
-    status: open
+    summary: Continue conservatively on ambiguity vs stop on open governor decisions.
+    resolution: Split by owner — governor-owned product/architecture questions stop as real-time blockers; all else conservative + logged deviation (I-B1).
+    constitution_impact: amend G (implement fail-closed scope)
+    status: resolved
   - id: CONFLICT-3
     between: [session.r4.arch_patterns, constitution.fail-closed]
-    summary: >
-      "Fail closed" pervades the constitution but was not selected as
-      religion, and the top pre-mortem risk is gates being too strict.
-    status: open
+    summary: Fail-closed pervades the constitution but is not religion; top pre-mortem risk is over-strict gates.
+    resolution: Narrow — fail closed only for spend, secrets, irreversible ops, governor-owned decisions (I-P9).
+    constitution_impact: sweep all fail-closed language
+    status: resolved
+  - id: CONFLICT-4
+    between: [session.r4.correction_cadence, I-G1]
+    summary: Post-mortem-only codification lets a corrected drift recur all sprint.
+    resolution: Post-mortem by default; a repeated correction triggers an immediate rule proposal (I-P7).
+    constitution_impact: none
+    status: resolved
+
+# Governor confirmations
+confirmations:
+  - date: 2026-10-03
+    item: >
+      Ideal outcome = hand off and walk away (I-G2) + intent-to-deployed with
+      3–4 decision points (I-G3); near-term enabler = machines catch drift (I-G1).
