@@ -1,0 +1,168 @@
+# Implementation Plan: Smart Writer V2 — durable state + measured quality (delta)
+
+**Branch**: `002-swv2-durable-evals` (work orders → one branch + PR each) | **Date**: 2026-10-03 | **Spec**: [`spec.md`](./spec.md) (Approved)
+
+**Input**: spec, [`intent.yaml`](./intent.yaml), [`research.md`](./research.md), baseline plan [`../smart-writer-v2/plan.md`](../smart-writer-v2/plan.md), backlog A27–A29, factory plan [`../001-factory-v2/plan.md`](../001-factory-v2/plan.md) (gates this work runs under).
+
+**Lab rule (constitution §E):** Architecture + Phased delivery; human approval after P* triage before tasks.
+
+## Summary
+
+Make every piece of user work durable (Postgres + Storage in a dedicated Supabase project, versioned migrations proven on staging, resumable jobs via the LangGraph Postgres checkpointer, anonymous cookie ownership with 30-day visible retention). Make quality measurable: a Gemini program-officer judge plus a source-support checker in pydantic-evals, gated per PR against a nightly noise band, calibrated to the governor. Remove the test seam, so tests run the shipped graph with models substituted at the boundary. Models come from per-role config with a per-job cost meter, and the UI is built in the image.
+
+## Architecture *(mandatory — first-class)*
+
+### System building blocks
+
+- **UI / clients**: existing Next.js UI (static export, same-origin). Adds a conversation list, a deletion date, and the browser-only notice.
+- **API / application services**: existing FastAPI app. New modules:
+  - `app/persistence/` (repositories: `ConversationRepo`, `ArtifactRepo`, `RunStateRepo`, `UploadRepo`, `JobRepo`; Postgres implementations; in-memory test implementations injected only by tests).
+  - `app/storage_adapter.py` (Supabase Storage via httpx).
+  - `app/ownership.py` (cookie issue and verify).
+  - `app/retention.py` (sweeper + `last_used_at` touch).
+  - `app/models_config.py` (role → model id from Settings).
+  - `app/spend.py` (cost meter + ceiling).
+- **Orchestration / jobs**: **P1 lock: the same named LangGraph nodes** (`infer → materials → web → scored_loop → provenance`; `scored_revise`), compiled with `AsyncPostgresSaver`. `JobRunner` stays the executor. The durable `jobs` table is the record of truth, and a startup recovery pass resumes or fails jobs (research § Jobs).
+- **Data stores**: Supabase Postgres (app schema `public` per env, plus `langgraph` schema for checkpoints) and a private Storage bucket `uploads`.
+- **External systems**: OpenAI (and any non-Gemini bake-off winners) at runtime; Gemini (judge, support checker) in eval CI only; Tavily (unchanged); Logfire (traces + eval results); Supabase; Railway.
+
+**Shared (`modules/lab_shared`, designed for reuse; each module declares consumers `[smart-writer-v2]` now, intended `[smart-writer, research-auditor]` later — I-A5):**
+- `lab_shared.db` — psycopg pool from typed settings, health check.
+- `lab_shared.checkpoint` — `AsyncPostgresSaver` setup and teardown.
+- `lab_shared.model_config` — price table + `CostMeter`.
+- `lab_shared.evals` — noise band, per-dimension gate decision, spend ledger.
+
+App-specific (schema, repositories, golden set, judge rubric) stays in the app.
+
+### Boundaries & responsibilities
+
+| Block | Owns | Does not own |
+|-------|------|--------------|
+| `entrypoints/http.py` | Routing, cookie/secret checks, mapping to services | SQL, model calls, retention policy |
+| `persistence/*` | SQL + transactions per aggregate; cascade semantics | Business rules (caps, retention timing) |
+| `storage_adapter` | Upload bytes put/get/delete | Ownership checks |
+| `ownership` | Token issue, hash, lookup; `owner_id` for requests | Retention |
+| `retention` | `touch(conversation)` on every use; hourly sweep (Storage first, then row) | Which routes count as use (declared in `entrypoints` per FR-004 list) |
+| `orchestrator/*` | Graphs, nodes, checkpointer config | Job records (JobRepo) |
+| `spend` + `lab_shared.model_config` | Cost accounting per job; stop before exceeding the ceiling | Choosing models |
+| `evals/` (app) | Golden set, subset list, judge and support evaluators, calibration sheets | Gate math (`lab_shared.evals`) |
+| CI `swv2-evals.yml` | Per-PR subset run, nightly full ×3, ledger, job summary, check run | Merging decisions beyond its check |
+
+### Topology & runtime custody
+
+- **Runtimes / hosts**: per environment, one Railway service `smart-writer-v2` serving FastAPI and the static UI (baseline D5) plus one Supabase database (form per **D5**). Environments: production (exists) and **staging (new)**.
+- **How UI calls API**: same-origin `fetch`; the `swv2_owner` HttpOnly cookie is sent automatically; preview audit secret unchanged.
+- **Secret custody**: the service holds `SMART_WRITER_V2_DATABASE_URL`, `SMART_WRITER_V2_SUPABASE_URL`, `SMART_WRITER_V2_SUPABASE_SECRET_KEY`, and the provider keys. The browser holds only the opaque owner cookie (HttpOnly) and the preview secret (baseline). GitHub Actions holds `OPENAI_API_KEY`, `GEMINI_API_KEY`, and `SMART_WRITER_V2_STAGING_DATABASE_URL` (migration proof).
+- **Cattle manifests**: `deploy/railway/{production,staging}/smart-writer-v2.yml`, `deploy/secrets/schema.yaml`, `apps/smart-writer-v2/db/migrations/`, `flake.nix` (UI build), `.github/workflows/swv2-evals.yml`, and the migration job in the PR pipeline.
+
+### Staging database *(architecture decision — spec D5, `who: human`)*
+
+The production SWV2 project uses one Supabase free-tier slot. Supabase allows two active free projects per organization, and V1 and Research Auditor already share one.
+
+| Option | What changes | Cost | Ops steps (governor) | Risk |
+|--------|--------------|------|----------------------|------|
+| **A. Staging schema inside the SWV2 project** (`staging` schema + `uploads-staging` bucket) — recommended | Migrations run against schema `staging` first, then `public`; the staging Railway service sets `search_path=staging` | Free | Create one SWV2 project; add the staging Railway service | A bad migration that touches shared objects (extensions, roles) could affect prod; mitigated because migrations are schema-qualified and CI lints for non-schema-qualified DDL |
+| **B. Separate staging Supabase project** | Full isolation | Needs a Pro org (~$25/mo) unless a free slot is freed | Create two projects | None material |
+| **C. Neon branch for staging** (Postgres only; Storage stays Supabase) | Free instant branches per PR | Free tier | Neon account + key | Staging DB differs from the prod vendor (not A27 letter: needs a fidelity waive) |
+
+Until D5 locks, the CI migration proof runs against the ephemeral Postgres service already in `verify-source.yml`. Production migrations stay blocked: the gate is a governor-only "irreversible" category, so this has no silent substitute.
+
+### Data & persistence
+
+- [`data-model.md`](./data-model.md): tables, cascade, `last_used_at`, jobs, checkpoint linkage.
+- Durable: all conversation-owned rows and uploads; jobs and checkpoints (deleted with the conversation). Ephemeral: rate limiter (in-process, baseline). Eval artifacts are synthetic, outside retention (FR-004), kept in GitHub artifacts (90 days) and Logfire. Bake-off records and calibration results are committed under `specs/002-swv2-durable-evals/evidence/`.
+
+### APIs & contracts
+
+- HTTP delta: [`contracts/http-api-delta.md`](./contracts/http-api-delta.md) (cookie, list conversations, `expires_at` fields, job recovery states).
+- Evals and gate: [`contracts/evals.md`](./contracts/evals.md) (golden case schema, subset, judge output schema, gate decision, ledger).
+- Baseline contracts stay in force: `specs/smart-writer-v2/contracts/`.
+
+### UI surfaces
+
+- Conversation list (owner's only), showing a deletion date per row and a persistent footer notice: "Stored in this browser only. Clearing browser data loses access. Deleted 30 days after last use."
+- The job view shows `failed: interrupted — retry` after a restart (SW-D3).
+
+### Major risks / non-goals
+
+- **Judge/proxy validity**: mitigated by the held-out slice + blinded review (FR-007/013b); positioning note in spec.
+- **Checkpoint granularity**: `scored_loop` is one node (up to 8 inner turns), so an interrupted loop restarts that node. Acceptable for "last completed step"; splitting the loop into nodes is a post-mortem candidate.
+- **Eval cost creep**: ledger + app-tree hash skip; nightly ×3 is the largest spend (estimated in bake-off; D3 informs).
+- **Cookie on Railway domain**: `Secure` + `SameSite=Lax` on the service domain; `localhost` dev uses non-Secure via Settings.
+- Non-goals: accounts, export, multi-replica, splitting `scored_loop`.
+
+## Phased delivery *(mandatory — Wave 2 lanes, cap 3 shared with factory P2)*
+
+| Phase | Lane | Goal | Architecture pieces | Exit criteria (failable) |
+|-------|------|------|---------------------|--------------------------|
+| **P0 — ops** `[HITL]` | Ops | Footprints exist | SWV2 Supabase project; staging per D5; Railway staging service via `ops_runtime_tag.py bootstrap`; GitHub Actions secrets | Secrets schema validates; staging `/health` 200; migration job can reach the staging DB |
+| **P1a — Models + tests** (first) | Models+tests | Truthful tests, config models, spend stop | Role factories, `models_config`, `spend`, seam removal, `Agent.override` fixtures, node coverage | SC-008 (zero seams, all nodes executed, baseline rows green); SC-009 (engineered overspend stops); no hardcoded model ids |
+| **P1b — Durability: storage** (parallel with P1a; disjoint paths) | Durability | Data survives and is isolated | dbmate migrations, repositories, Storage adapter, ownership cookie, retention + disclosure | SC-001, SC-002, SC-003, SC-012, SC-014 against a real Postgres in CI + staging |
+| **P1c — Ship** (parallel) | Ship | UI built in the image; latency measured | `flake.nix` buildNpmPackage; remove committed assets | FR-022 check (no built assets in git); image serves the UI in the offline boot smoke |
+| **P2a — Durability: jobs** (after P1a merges) | Durability | Jobs never silently lost | Checkpointer wiring, `jobs` table, startup recovery | SC-004 (kill mid-pipeline → resumed or failed with reason) |
+| **P2b — Evals** (after P1a merges) | Evals | Measured quality gate | Golden set `[HITL review]`, judge + support evaluators, calibration `[HITL]`, nightly ×3, per-PR gate + ledger | SC-005, SC-006, SC-007, SC-013; gate blocking only after D1 met |
+| **P3 — Bake-off** (Wave 3) | Evals | Evidence-chosen models | Bake-off runner, bundle comparison, judge-by-agreement ranking | SC-011; governor locks bake-off and D3 ceiling |
+
+**MVP definition**: after a redeploy, a browser's conversations, versions, and uploads are still there and nobody else's are visible; an interrupted job resumes or fails visibly; every app PR shows per-dimension and support scores vs main, and a seeded single-dimension regression is blocked once calibrated.
+
+## Technical Context
+
+**Language/Version**: Python 3.12; TypeScript (Next.js static export) for UI
+
+**Primary Dependencies**: FastAPI, PydanticAI (`pydantic-ai-slim[openai,google]`), LangGraph 1.0 + `langgraph-checkpoint-postgres`, psycopg 3 (`psycopg[binary,pool]`), pydantic-evals, Logfire, httpx; dbmate (Nix)
+
+**Storage**: Supabase Postgres + Supabase Storage (A27)
+
+**Testing**: pytest; unit tests with in-memory repositories (injected); integration tests against ephemeral Postgres (CI service) for repositories, migrations, cascade, recovery; `Agent.override` + `TestModel`/`FunctionModel` for all model calls; node-coverage test; evals are separate (not pytest)
+
+**Target Platform**: Railway (one service per env), Supabase, GitHub Actions
+
+**Project Type**: monorepo app `apps/smart-writer-v2` + `modules/lab_shared`
+
+**Performance Goals**: p95 draft time measured against 10 min (not gated)
+
+**Constraints**: $3 hard per draft; ~$1–2 per PR eval; single replica; changed-lines architecture lints (factory)
+
+**Scale/Scope**: ~10 users (stretch ~100)
+
+## Constitution Check
+
+- [x] Architecture complete (blocks, boundaries, data, contracts, UI)
+- [x] Topology & runtime custody locked (one service per env, same-origin, cookie, custody table); staging DB form raised as **D5**
+- [x] Phased delivery with MVP and failable exits
+- [x] `research.md` non-sibling alternatives per block (LangGraph Platform, Temporal/Inngest/Hatchet, Procrastinate, Neon, Atlas, Alembic, Braintrust/LangSmith, promptfoo/Inspect, OpenRouter/LiteLLM, Supabase Anonymous Sign-ins, Vercel)
+- [x] Orchestrator P1 lock: named LangGraph nodes, unchanged + checkpointer
+- [ ] P* review triaged — pending spawn
+- [x] No tasks or implementation started
+- [x] Secrets: names only; schema + Settings; CI-only keys declared
+- [x] Registry unchanged (same app id); staging footprint via ops packet (P0 `[HITL]`)
+- [x] Locks to the letter: A27 (Supabase Storage, checkpointer), D5 baseline one-service, D4 Gemini
+- [ ] **D5** staging database: open, `who: human`; blocks the P0 staging footprint and production migrations only
+
+## Project Structure
+
+```text
+specs/002-swv2-durable-evals/
+├── spec.md · intent.yaml · acceptance.md · SPEC_REVIEW.md
+├── plan.md · research.md · data-model.md · quickstart.md
+├── contracts/{http-api-delta,evals}.md
+└── evidence/                # bake-off records, calibration + blinded review results (committed)
+
+apps/smart-writer-v2/
+├── app/{persistence/,storage_adapter.py,ownership.py,retention.py,models_config.py,spend.py}
+├── db/migrations/ · db/schema.sql
+├── evals/{golden/,subset.yaml,judge.py,support.py,run.py,calibrate.py}
+└── web/                     # source only; no out/ or app/static/ui in git
+modules/lab_shared/src/lab_shared/{db.py,checkpoint.py,model_config.py,evals.py}
+deploy/railway/staging/smart-writer-v2.yml
+.github/workflows/swv2-evals.yml
+```
+
+**Structure Decision**: the app owns product-specific schema, evals, and policies; `lab_shared` gets only the four engine pieces V1/RA will plausibly adopt (I-A5 declared consumers).
+
+## Complexity Tracking
+
+| Violation | Why Needed | Simpler Alternative Rejected Because |
+|-----------|------------|-------------------------------------|
+| New staging environment | FR-006 (staging before prod) | Ephemeral CI Postgres alone does not prove against the real vendor/config |
+| Second runtime model family (Gemini) in CI | SW-E3 judge independence | Same-family judge rejected by spec D4 |

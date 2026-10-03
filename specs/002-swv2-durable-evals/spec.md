@@ -245,6 +245,7 @@ US4 spend ceiling (FR-017) lands with the Models + tests lane.
 | **D2** | Best-value rule: cheapest within a small margin of best quality | Margin size | human | Before bake-off lock | **locked** (2026-10-03) — not distinguishable from the best beyond measured noise, on every dimension | content-only | letter |
 | **D3** | Hard outer limit $3 per draft; real ceiling from measurement | Real per-draft ceiling | human | After bake-off measurement, before production uses new models | open (by design — governor sets after measurement) | content-only | |
 | **D4** | Judge is a different model family from the writer; needs a second provider key in the vault | Which provider/family judges | human | Before Evals lane | **locked** (2026-10-03) — **Google Gemini** judges; writer candidates exclude Gemini | arch (vault secret, provider adapter) | letter |
+| **D5** | Migrations proven on staging before production (FR-006); SWV2 has no staging footprint today | Staging database form: schema inside the SWV2 project / separate Supabase project / Neon branch — consequences in plan "Staging database" | human | Before the staging footprint is created and before any production migration | open (raised by plan 2026-10-03) | **arch** (cost, ops steps, vendor letter) | letter |
 
 ## Review locks *(mandatory before Approved)*
 
