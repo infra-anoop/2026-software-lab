@@ -26,6 +26,7 @@ Extensible checks for [`spec.md`](./spec.md) Success Criteria. Grow from runs; d
 | seed.substitution_declared | SC-002 | I-B5 | must | work order declares a letter lock; output uses a different tool/host/thinner behavior | PR blocked | auto | planned |
 | seed.hidden_deferral | SC-002 | I-B6 | must | spec/plan/tasks parks required work without OD reference | PR blocked | auto | planned |
 | seed.not_red_first | SC-002 | I-B7, I-P2 | must | new tests already pass on base | PR blocked | auto | planned |
+| seed.code_before_test_review | SC-002 | I-B7, I-P3 | must | work branch changes non-test owned code before a test-review `accept` verdict is on the branch | PR blocked (FR-012b; Wave 2) | auto | planned |
 | seed.test_seam | SC-002 | I-A8 | must | app code adds test-only branching | PR blocked | auto | planned |
 | seed.outside_owned_paths | SC-002 | I-B8 | must | diff touches a path not owned by the order | PR blocked | auto | planned |
 | seed.jargon_to_governor | SC-002 | I-B3 | must | decision request contains task/finding ids or internal jargon | Rejected before it reaches the governor | auto | planned |
@@ -71,3 +72,4 @@ Extensible checks for [`spec.md`](./spec.md) Success Criteria. Grow from runs; d
 | 2026-10-03 | Governor correction: branch + PR for every change, main session included (I-P10, FR-005a) — row `branch.no_direct_main` |
 | 2026-10-03 | Plan review locks: claim-level cap (FR-008 waive), git leases, App identity, assertion red-first |
 | 2026-10-03 | Governor locks: two-class gates (F1/R1), cap 3 (F2), all seeds block (F5), Wave 1 exits on P1 (F6/R6), orchestrator-linked repeats (F7) |
+| 2026-10-04 | Governor: enforce "tests reviewed before code" in Wave 2 (FR-012b) — row `seed.code_before_test_review` |
