@@ -1,147 +1,113 @@
-# Handoff — 2026-10-04-factory-v2-slice-a (interim)
+# Handoff — 2026-10-04-factory-v2-slice-a
 
 | Field | Value |
 |-------|-------|
 | Branch | `wo/wo-20261004-factory-slice-a` |
-| State | **red; T* round 3 applied; round-4 confirmation requested (T033)** |
-| Author model | Claude family (worker). Bootstrap / T* verdict must come from a GPT-family reviewer (D3, FR-037) |
-| Head | see `git log` on this branch (tests `aa2bc5a`; triage + bus + this note after it) |
-| Base | `origin/main` @ `c2af7f2` (includes CP0 merge `8cd8cb7`) |
+| State | **implemented; all Slice A tests green; PR not opened** (orchestrator opens it and spawns the bootstrap verdict) |
+| Author model | Claude family (worker). The bootstrap verdict must come from a GPT-family reviewer (D3, FR-037) |
+| Base | `origin/main` @ `b1760ec`, merged at `8235354`. Round-4 T* accept merged `--no-ff` at `b3a2a37` before any implementation commit |
 | Frozen CP0 files | not edited |
 
-Pause here. The orchestrator spawns the T* reviewer on T017–T032 (`notes/packets/<date>-factory-v2-slice-a-test-review-t.md`) and resumes this worker for T021–T025 / T034–T038 after triage.
+## What changed (T021–T025, T034–T038)
 
-## T* round 1 applied; round-2 review requested
+Code under `scripts/factory/src/factory/`. All of it is new except the two CLI modules, which replace stubs.
 
-Round 1 (gpt-5.6-sol, openai) **rejected** at `40efa3b` (`specs/001-factory-v2/TEST_REVIEW_SLICE_A.md`, review commit `650bbf3`, merged here as `a59c8c5`). The orchestrator accepted T-A1…T-A9 with the reviewer's resolutions (agent-adjudicated; T-A4 is evidence for the locked D4-A, no new governor decision). Per-finding changes: § Triage (orchestrator, round 1) in that file. Bus: `bus/orders/wo-20261004-factory-slice-a/verdict-01.yaml` (the reject, transcribed by this worker on orchestrator instruction; content unchanged) and `amendment-01.yaml` (triage + owned paths for the review file and this order's bus dir, as P0 `amend-02/03`). Both pass `factory check schema` (bus-wide and `--path`).
+| Area | Module | Task |
+|------|--------|------|
+| GitHub REST (`GitHubPort`, httpx, Bearer token from `EnvSettings`) | `github/rest.py` | T021 |
+| Read model over git: every `origin/wo/*` order plus `main`'s bus; effective order = order + amendments | `lifecycle/view.py` | T022 |
+| Lifecycle derivation (writes nothing) | `lifecycle/derive.py` | T022 |
+| Board JSON + markdown; `status`, `decisions` | `board/render.py`, `cli/board.py` | T023 |
+| Bookkeeping-commit counter | `metrics/history.py` | T024 |
+| `order new`, `order issue`, `claim`, `release`, `handoff`, `pr open`, `verdict`, `bus pr` | `orders/{scaffold,lease,review,messages,paths,errors}.py`, `cli/orders.py` | T034 |
+| git plumbing (`hash-object` / `mktree` / `commit-tree` / plain push; never touches the caller's index) | `orders/git.py` | T034 |
+| Scorecard + `scorecard` command | `metrics/scorecard.py`, `cli/board.py` | T035 |
+| Identity: `recorded` never verifies; `verified` requires an APPROVED review by `governor_login` | `identity/adapter.py` | T036 |
+| App JWT (PyJWT RS256, `iat` = now−60 s, `exp` = now+9 min) → installation token; refuses an already-expired token; credential-helper answer | `identity/app_token.py` | T036 |
+| `tooling:` section (`factory` → `codespace`, names `FACTORY_GITHUB_APP_ID` / `FACTORY_GITHUB_APP_PRIVATE_KEY`, no values) and its validator + tests | `deploy/secrets/schema.yaml`, `scripts/validate_secrets_schema.py`, `scripts/test_validate_secrets_schema.py` | T037 |
+| Dependency `pyjwt[crypto]>=2.9,<3` (`uv.lock`: pyjwt 2.15.1, cryptography); research decision row; plan Primary Dependencies line | `pyproject.toml`, `uv.lock`, `research.md`, `plan.md` | amend-02 |
+| Evidence cells for the 11 Slice A rows (T025/T038); Slice A checkboxes ticked (T021–T025, T033–T038) | `acceptance.md`, `tasks.md` | T025, T038 |
 
-| Check | Result |
-|-------|--------|
-| Slice A 11 files | **65 failed, 0 passed** (was 50); every failure is a CLI exit-code assertion or `pytest.fail` for the missing module at the call site; 0 collection errors, 0 xfail |
-| Full `uv run pytest -q` | **181 failed, 237 passed** (the 237 are unchanged) |
-| CI selector `-m "not contract and not seed"` | 39 failed, 224 passed, 155 deselected |
-| `ruff check .` / `ruff format --check tests/contract tests/unit` | PASS |
-| Satisfiability check (throwaway, not committed) | minimal `app_token` (openssl-signed) and REST status stubs made the 5 JWT/status tests pass; a reversed signature and a no-op status writer each made them fail. Stubs deleted |
-| Frozen CP0 files | not edited. No dependency added |
+## Red → green commit pairs
 
-Signature changes the implementation must match (new modules, not frozen): `mint_installation_token(*, app_id, private_key, installation_id, api_url, now)` returns an object with `.token` and `.expires_at` (UTC), and refuses a token already expired at `now`; `compute_scorecard` adds `wave1_working_days` and `wave1_within_timebox`, and `wave1_exit` is the date of the last order's merge into `main` once every order is merged. Board placement, required-check set and working-day convention: see the Triage section.
-
-Stop again here: round-2 T* is spawned by the orchestrator. No implement (T034+) until it is triaged.
-
-## T* round 2 applied; round-3 confirmation requested
-
-Round 2 (gpt-5.6-sol, openai) narrowly **rejected** at `7a320aa` (review `b26e09f`, merged as `3c32028`; `verdict-02.yaml` is the reviewer's own). It accepted the board placement, the working-day convention, the `mint_installation_token(now=)` shape and the openssl test oracle. Orchestrator triage: § Triage (orchestrator, round 2) and `amendment-02.yaml` (passes `factory check schema`).
-
-- T-A2-1: the required set is now only the `factory/<gate>` status for each gate in the order's `checks` (green, or failed and overridden for that gate). `check-run-failed` was removed, and `mixed-runs` became `unrelated-run-pending` (accepted). Non-factory required runs are deferred to after T066 (listed under Later).
-- T-A2-2: the override count is `red-first-proof == 1`, and any other gate may appear with a non-negative integer.
-- T-A2-3 and T-A2-4: noted, no change.
-- JWT signing dependency: `pyjwt[crypto]` (`>=2.9,<3`), authorized by `amend-02`, which also widens the owned paths to `pyproject.toml`, `uv.lock`, a `research.md` row and the `plan.md` Primary Dependencies line. **Not added yet**; the dependency, the research row and the plan line land with T034+. The open question above about RS256 signing is resolved by this.
-
-| Check | Result |
-|-------|--------|
-| Slice A 11 files | **64 failed, 0 passed**; 0 collection errors, 0 xfail |
-| Full `uv run pytest -q` | **180 failed, 237 passed** (the 237 are unchanged) |
-| `ruff check .` / `ruff format --check tests/contract tests/unit` | PASS |
-
-Stop: round-3 confirmation is spawned by the orchestrator. No implement (T034+) until it is recorded.
-
-## T* round 3 applied; round-4 confirmation requested
-
-Round 3 (gpt-5.6-sol, openai) **rejected** at `d79fbb6` (which includes the orchestrator's change requiring other gates' override counts to be `0`). Review `f21b742` was merged as `bc205c8`, and `verdict-03.yaml` is the reviewer's own. Orchestrator triage: § Triage (orchestrator, round 3) and `amendment-03.yaml` (passes `factory check schema`).
-
-- T-A3-1 (lifecycle): `test_empty_checks_never_accepted`. An order with `checks: []` plus an accept verdict and everything green stays `in_review`.
-- T-A3-1 (issuance): `test_order_issue_refuses_empty_checks`. `order issue` exits 2, the error names `checks`, nothing is pushed, and `main` does not move. **Issuance refusal went in**, at `order issue` only (`order new` has no checks input, and P0's `test_order_new_exit_0` must stay valid).
-- T-A3-1 (helpers): the Slice A helpers in `test_handoff.py` and `test_pr_and_verdict.py` now name `diff-within-owned-paths`. The three P0 `test_cli_contract.py` uses of `checks=[]` issue through git rather than the CLI, so they are unaffected and were not edited.
-- T-A3-2: the triage heading is now `### After T066`, and `tasks.md` gains the single line `T066a` right after T066.
-
-| Check | Result |
-|-------|--------|
-| Slice A 11 files | **66 failed, 0 passed**; 0 collection errors, 0 xfail |
-| Full `uv run pytest -q` | **182 failed, 237 passed** (the 237 are unchanged) |
-| `ruff check .` / `ruff format --check tests/contract tests/unit` | PASS |
-
-Implementation must match: lifecycle never derives `accepted` for an order with empty `checks`; `order issue` refuses an empty `checks` list with a plain message naming the field.
-
-Stop: round-4 confirmation is spawned by the orchestrator. No implement (T034+) until it is recorded.
-
-## Commits
-
-| SHA | Role |
-|-----|------|
-| `350c15c` | packet Status → `in_progress` (CP0 merged 8cd8cb7; P0 T* accepted) |
-| `7dc2359` | **red** tests T017–T020, T026–T032 + recorded GitHub fixtures + this slice's `tasks.md` checkboxes |
-
-No green implement commit yet. Red/green pairs will be listed after T*.
-
-## What landed (tests only)
-
-- T017 `tests/contract/test_status.py` — one order per lifecycle state; board JSON sections `in_flight` / `blocked` / `waiting_on_governor` / `ready` / `overrides_per_gate` / `unverified_governor_actions`; fixture bus files have no forbidden status keys.
-- T018 `tests/unit/test_lifecycle.py` — data-model § Lifecycle rules; `derive_snapshot(repo, github, settings=, now=)` must write nothing.
-- T019 `tests/unit/test_github_adapter.py` + `tests/fixtures/github_recorded/*.json` — `GitHubPort` mapped from recorded REST.
-- T020 `tests/unit/test_no_bookkeeping.py` — `count_bookkeeping_commits(repo, since=)`.
-- T026–T030 contract tests for `order new/issue`, `claim`/`release` (incl. concurrent FF: exactly one wins), `handoff` (deviations, blocker_governor → exit 2 + board wait, run-complete), `pr open`/`verdict`, `bus pr`.
-- T031 `tests/unit/test_scorecard.py` — `compute_scorecard`: drift, first-pass, decision points, governor minutes, rework, Wave 1 dates, FR-035 totals.
-- T032 `tests/unit/test_identity.py` — recorded unverified; verified needs `governor_login` APPROVED review; App JWT + recorded installation-token exchange.
-
-T017–T020 and T026–T032 are ticked in `tasks.md` (tests written, red). Implementation tasks remain open.
+| Red (tests committed failing) | Green |
+|-------------------------------|-------|
+| `7dc2359` T017–T020, T026–T032; T* fixes `aa2bc5a`, `ee992a0`, `d79fbb6`, `656b065`; accepted at `7d2467a` | `afd6fdc` (all 66 Slice A tests), plus `1313d28` (race flake, below) |
+| `66ca359` T037 tooling tests (4 failed against the old validator, checked by stashing the impl) | `1d47681` |
 
 ## Commands and results
 
-Toolchain: `. /tmp/factory-env.sh` (Nix-store `uv` 0.4.30 + Python 3.12.8). `uv sync --locked` PASS. No `pip install`.
+Run in `scripts/factory` via `nix develop ../.. -c uv run …`.
 
-| DoD | Command | Result |
-|-----|---------|--------|
-| collect | `uv run pytest --co` on the 11 new files | **51 collected**, then folded to **50** after merging the green fixture-only status check into the red board test. 0 collection/import errors |
-| new tests | `uv run pytest` on those 11 files | **50 failed**, 0 passed. Failures are `AssertionError` (CLI still exit 3) or `pytest.fail` (`Failed: factory.*.* is not implemented`). 0 `ERROR`, 0 `xfail` |
-| full | `uv run pytest -q` | **166 failed, 237 passed** (was 116/237 at CP0 Amendment 3; +50 new red) |
-| CI selector | `uv run pytest -q -m "not contract and not seed"` | **28 failed, 224 passed, 151 deselected** — the 28 new unit tests are unmarked, so `factory-tests` will be red on this PR until implement. Conservative: did not mark unit tests `contract` to hide them |
-| lint | `ruff check .` / `ruff format --check` on the new files | PASS |
+| Check | Result |
+|-------|--------|
+| Slice A 11 files | **66 passed, 0 failed** |
+| Race test `test_claim_fast_forward_exactly_one_of_two_concurrent_wins`, run 25 times | 25/25 pass (before `1313d28`: 3 of 8 failed) |
+| Full `pytest -q` | **341 passed, 78 failed** (was 237 / 182). +104 = the 66 Slice A tests + 38 P0 contract tests for Slice A commands. All 237 previously passing tests still pass |
+| CI selector `-m "not contract and not seed"` | **263 passed, 0 failed**, 156 deselected |
+| `ruff check .` / `ruff format --check .` | PASS / PASS (67 files) |
+| `scripts/test_validate_secrets_schema.py` (root, `uv run --with pytest --with pyyaml`) | 14 passed |
+| `uv run scripts/validate_secrets_schema.py` | `secrets schema OK` |
+| `factory decisions` / `factory scorecard --json` on this repo | exit 0. 0 orders: the bootstrap orders were issued as packets, so no branch carries a bus `order.yaml` yet |
+| No `os.getenv` / `os.environ` outside `factory/config/` | confirmed (ruff TID251 + grep) |
 
-## Expected signatures (so implement matches the red tests)
+## Tests still red, by owner
 
-| Export | Call |
-|--------|------|
-| `factory.lifecycle.derive.derive_snapshot` | `(repo: Path, github: GitHubPort, *, settings=None, now=None) -> LifecycleSnapshot` |
-| `factory.github.rest.build_github` | `(settings, env) -> GitHubPort` (httpx; tests inject `httpx.Client` transport) |
-| `factory.metrics.history.count_bookkeeping_commits` | `(repo, *, since: str) -> int` |
-| `factory.metrics.scorecard.compute_scorecard` | `(repo, *, settings=None) -> dict` with keys `drift`, `first_pass_acceptance`, `decision_points_per_feature`, `governor_minutes`, `governor_minutes_estimated`, `rework_loops`, `wave1_start`, `wave1_exit`, plus FR-035 totals |
-| `factory.identity.adapter.build_identity` | `(settings, github) -> IdentityPort` |
-| `factory.identity.app_token.mint_installation_token` | JWT from App id + PEM, POST `/app/installations/{id}/access_tokens` |
+| Test(s) | Owner | Why |
+|---------|-------|-----|
+| `test_cli_contract.py::test_handoff_refuses_while_a_gate_fails` | **Slice B** | Slice A command, but the refusal comes from `diff-within-owned-paths` (`factory.gates.drift.owned_paths`), which is not on this branch. `handoff` runs it as soon as it is importable |
+| `test_cli_contract.py`: `override` (4), `gate run`, `hook` (2), `check hooks/registry/immutability`, `retro`, plus their `test_json_envelope` cases | Slice C | commands not implemented here |
+| `test_cli_contract.py::test_check_intent_exit_0` + `test_json_envelope[check intent]` | Slice B | |
+| `test_cli_contract.py`: `correction new`, `sprint close` (2), plus their envelope cases | US7 (Wave 2) | |
+| `tests/seeds/test_seeds.py` (52) | Slice B | drift gates |
 
-Board JSON (inside the `--json` envelope `data`): snake_case section names as listed above. Scorecard formulas used in T031: drift = share of `run_complete` orders with no drift correction (2 runs, 1 correction → 0.5); first-pass = share whose first verdict is accept (0.5); decision points = locks per `feature`; `governor_minutes` summed from locks and flagged estimated; `rework_loops` = reject-first orders; `wave1_start` from earliest issue; `wave1_exit` is `None` while an order is still open/rejected.
+78 = 26 contract (25 Slice B/C/US7 + the handoff refusal above) + 52 seeds.
 
-Gates for handoff local refusal: a change outside owned paths must make `factory handoff` exit 2. Slice B owns `diff-within-owned-paths`; until that gate exists this test stays red even after CLI wiring unless the command fail-closes when `run_gate` raises `GateEntrypointError`. Conservative choice: keep the test; implementer should treat unimplemented registered gates as failing the handoff (FR-009).
+Every P0 contract and envelope test for a Slice A command passes, except the Slice B-dependent handoff refusal above.
 
-## Manual equivalents of P1 gates (bootstrap, FR-037)
+## Deviations (why + conservative choice)
 
-| Gate | Manual check | Result |
-|------|--------------|--------|
-| `red-first-proof` | These tests are committed failing (50 assertion/`Failed`). No matching impl in this commit | pass (shown by hand) |
-| `diff-within-owned-paths` | `git diff --name-only origin/main...HEAD` | packet, this handoff, `tasks.md` checkboxes, listed test files, `github_recorded/**`. Nothing in frozen CP0 paths or other slices |
-| `test-seam-ban` | no `PYTEST_CURRENT_TEST` / test flags in new src (no new src) | n/a |
-| `bus.no-handwritten-status` | T017 walks every `bus/` YAML on every branch of the fixture | asserted in the red test |
-| `order-fidelity-declared` / `lock.letter-tokens` | no product impl this commit | n/a |
-| `decision-request-no-ids` | none raised | n/a |
-
-`git diff --no-renames` (Amendment 3): no renames in this slice.
-
-## Deviations
-
-1. Worktree is `/tmp/cursor-worktrees/factory-slice-a/repo` (sandbox blocks `~/.cursor/worktrees`). Leftover local branch was rebased onto `origin/main` (`c2af7f2`).
-2. Board JSON keys and scorecard formulas are locked by the tests because the contracts name sections in prose, not a schema. T* may debate the names; changing them is a test amendment, not a frozen-interface amendment.
-3. Concurrent claim uses two working copies + `ThreadPoolExecutor` calling `factory.cli.app.run` (not two `FactoryCli`s) so capsys is not shared.
+1. **`handoff` skips gates that are not importable yet** (`GateEntrypointError`). In round 0 I recommended fail-closed. Fail-closed would turn the accepted exit-0 tests red until Slices B and C land: Slice A `test_handoff_writes_run_complete_event`, P0 `test_handoff_exit_0`, and the `handoff` JSON envelope. The skipped gates are printed ("not enforced locally yet") and returned as `gates_not_enforced` in JSON. CI `factory-gates` stays the authority. Conservative part: every P1 gate with scope `changed_lines` or `repo` runs (not just the order's `checks`), and any failure refuses.
+2. **`test_handoff_refuses_while_a_registered_gate_fails` passes for the wrong reason.** Its `_claimed` fixture never commits a handoff, so `handoff` refuses with "no handoff" before any gate runs. Per the rules I did not edit the accepted test. For the gate behaviour, the evidence cell cites the P0 test (red until Slice B), not this one. Suggested follow-up T* fix: commit a valid handoff in that test.
+3. **Claim leases come from git only.** An order holds a slot from its claim until a release event or until its order file is on `main`. The concurrency test runs without a GitHub fake, and the packet makes git the lease authority. So a PR closed unmerged with no release event still holds a slot until `factory release` (the board shows it `released`). Fix: release it.
+4. **A lost claim race refreshes the loser's view** (`1313d28`). After a rejected push, `claim`/`release`/`verdict`/`handoff` fetch before refusing, so the loser's `origin/wo/<id>` shows the winning claim. Without this the race test failed in 3 of 8 runs, whenever the second clone won.
+5. **`order new` additions.** `--check` (default: every P1 gate id, matching the `factory/<gate>` statuses CI posts), `--owned-path` (default: backticked paths in the task lines), `--intent` and `--actor-model` (default `unrecorded`; `release` too). All are optional, so the contract's options are unchanged. A task tagged `[OD:<id>]` touching a locked decision needs `--lock`; the letter tokens come from the text after "—" in the spec's Open Decisions `status` cell. An unlocked decision refuses outright.
+6. **`handoff` writes `run-complete.yaml`** with `cost_usd: null` (estimated), `governor_interrupts: 0`, and `wall_minutes` from `claimed_at` to now. It only does this when the file is absent, so a worker that records real cost commits its own. The handoff must already be committed on `wo/<id>`; it is read from HEAD, not the working tree.
+7. **The scorecard reads git only** (no `GitHubPort` in `compute_scorecard`). "Merged" means the order file landed on `main` (first-parent). `--sprint` is echoed but does not filter yet (sprint scoping is US7). Extra keys: `orders`, `runs_complete`, `overrides_per_gate`, `corrections`, `bookkeeping_commits`.
+8. **Paging and blockers.** REST lists take one page of 100. A `blocker_governor` question counts as answered once a decision lock on `main` lists the order id in `refs`.
+9. **Credential helper.** `identity/app_token.git_credential_response` returns the git credential-protocol answer, but nothing installs it into git config yet. The App does not exist (T065), and contracts/cli.md has no command for it.
 
 ## Open questions
 
 | Class | Question |
 |-------|----------|
-| non_blocking | Should unimplemented registered gates fail `factory handoff` (recommended, FR-009 fail-closed) or skip until slice B lands? |
-| non_blocking | CI job `factory-tests` uses `-m "not contract and not seed"`, so the 28 new unit tests will fail that job on this PR. Drop the selector at CP1 (P0 comment) or keep the PR red until implement? |
-| non_blocking | Scorecard `wave1_exit`: I treated "still rejected / unmerged" as not exited. Confirm before T035. |
-| non_blocking | T032/T-A4 implement needs RS256 signing. `factory` has no crypto dependency, and `scripts/factory/pyproject.toml` / `uv.lock` are not in this packet's owned paths. Either an amendment adds `cryptography` (or `pyjwt[crypto]`) via `uv add`, or the implementation signs with the `openssl` CLI (already required by the tests). Orchestrator to pick before T034+; I will not substitute silently. |
+| non_blocking | When Slices B and C land, `handoff` will run about ten local P1 gates. P0's exit-0 handoff fixture changes `calc.py` with no test, so `red-first-proof` / `catalog-test-linkage` may refuse it. Should handoff run only the order's `checks` plus `diff-within-owned-paths`? (P0's refusal test uses `checks: []`, so "all registered gates" is what the tests require today.) |
+| non_blocking | T* follow-up for deviation 2 (commit a valid handoff in the Slice A gate-refusal test)? |
+| non_blocking | Should a PR closed unmerged also free a claim slot? That needs GitHub in `claim`. Today it takes an explicit `release`. |
 
-No `blocker_governor` questions. No frozen-interface amendment requested.
+No `blocker_governor` questions.
+
+## Manual equivalents of P1 gates (bootstrap verdict input, FR-037)
+
+| Gate | Manual check | Result |
+|------|--------------|--------|
+| `red-first-proof` | Tests landed failing at `7dc2359` (and T* fix commits) before `afd6fdc`. T037 tests failed 4/14 against the old validator before `1d47681` | pass |
+| `diff-within-owned-paths` | `git diff --name-only origin/main...HEAD`: Slice A src dirs, `cli/board.py`, `cli/orders.py`, the Slice A tests + `github_recorded/**`, `pyproject.toml`, `uv.lock`, the secrets schema + validator + test, `acceptance.md`, `tasks.md`, `research.md`, `plan.md`, `TEST_REVIEW_SLICE_A.md`, this order's bus dir, the packet + this handoff. No frozen CP0 file, no other slice's path | pass |
+| `test-seam-ban` | `rg 'PYTEST\|pytest\|TESTING\|FakeGitHub\|is_test'` over the new src: no matches. Tests substitute adapters only through `DEPS` / `httpx.Client` | pass |
+| `bus.no-handwritten-status` / `bus.schema` | Written events are built through `parse_message` (forbidden keys rejected); `test_status` walks every bus YAML on every fixture branch | pass |
+| `order-fidelity-declared` / `lock.letter-tokens` | No order touches a named lock in this slice's own work. `order new` refuses a touched lock without `--lock` (T026) | n/a / tested |
+| `decision-request-no-ids` | Refusals shown to the governor carry the decision prompt only; tests assert no `T0xx` / `FR-0xx` | pass |
+| `deferral-words-need-od` | No "later/TODO/defer" introduced in spec, plan, or tasks text | pass |
+
+## History (T* rounds)
+
+T017–T032 went red at `7dc2359`. Four T* rounds by gpt-5.6-sol (openai) followed; triage for each is in `specs/001-factory-v2/TEST_REVIEW_SLICE_A.md`, with `verdict-01..04.yaml` and `amendment-01..03.yaml` in `bus/orders/wo-20261004-factory-slice-a/`:
+
+- Round 1 rejected; T-A1…T-A9 applied at `aa2bc5a`.
+- Round 2 rejected: the required set narrowed to the order's `factory/<gate>` statuses; pyjwt authorized.
+- Round 3 rejected: empty `checks` is never accepted, and `order issue` refuses it.
+- Round 4 accepted at `7d2467a`.
 
 ## Stop
 
-**red; T* requested (T033).** Do not implement until the orchestrator records T* triage.
+The orchestrator opens the PR and spawns the bootstrap verdict. This worker did not open a PR.

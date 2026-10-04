@@ -5,7 +5,7 @@
 | Field | Value |
 |-------|-------|
 | Packet id | `2026-10-04-factory-v2-slice-a` (order id `wo-20261004-factory-slice-a`) |
-| Status | in_progress — CP0 merged 8cd8cb7; P0 T* accepted (verdict-04) |
+| Status | implemented — Slice A tests green; PR not opened (orchestrator) |
 | Feature / spec | `specs/001-factory-v2/` |
 | Branch | `wo/wo-20261004-factory-slice-a` (isolated worktree) |
 | Agent mode | **background** |
@@ -46,11 +46,11 @@ Implement bus, board, orders, claims, identity, scorecard against the frozen P0 
 
 ## Definition of Done
 
-- [ ] Red first: every new test was committed failing (assertion failure) before the commit that makes it pass; list the pairs of commits in the handoff
-- [ ] `uv run --project scripts/factory pytest` green for this slice's tests; `ruff check scripts/factory` clean; type hints on all signatures; no `os.getenv` outside `factory/config/`
-- [ ] `specs/001-factory-v2/acceptance.md` evidence filled (real test ids) for this slice's rows; `tasks.md` checkboxes ticked for this slice's tasks only
-- [ ] Handoff `notes/packets/<this-packet-id>.handoff.md`: what changed, commands + results, deviations (why + conservative choice), open questions (`blocker_governor` / `non_blocking`), manual equivalents of P1 gates run by hand (bootstrap verdict input, FR-037)
-- [ ] Commits on the packet branch only; no push to `main`; no force-push
+- [x] Red first: every new test was committed failing (assertion failure) before the commit that makes it pass; list the pairs of commits in the handoff
+- [x] `uv run --project scripts/factory pytest` green for this slice's tests; `ruff check scripts/factory` clean; type hints on all signatures; no `os.getenv` outside `factory/config/`
+- [x] `specs/001-factory-v2/acceptance.md` evidence filled (real test ids) for this slice's rows; `tasks.md` checkboxes ticked for this slice's tasks only
+- [x] Handoff `notes/packets/<this-packet-id>.handoff.md`: what changed, commands + results, deviations (why + conservative choice), open questions (`blocker_governor` / `non_blocking`), manual equivalents of P1 gates run by hand (bootstrap verdict input, FR-037)
+- [x] Commits on the packet branch only; no push to `main`; no force-push
 
 ## Out of scope
 
