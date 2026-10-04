@@ -5,7 +5,7 @@
 | Field | Value |
 |-------|-------|
 | Packet id | `2026-10-04-factory-v2-slice-b` (order id `wo-20261004-factory-slice-b`) |
-| Status | blocked — until CP0 merges and the P0 test review (T016) is triaged |
+| Status | in_progress — CP0 merged (`8cd8cb7`), P0 test review triaged; phase 1 = red tests, then T* (T041/T062) |
 | Feature / spec | `specs/001-factory-v2/` |
 | Branch | `wo/wo-20261004-factory-slice-b` (isolated worktree) |
 | Agent mode | **background** |
