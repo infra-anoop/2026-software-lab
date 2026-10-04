@@ -169,9 +169,9 @@ Agent-adjudicated (2026-10-04); every round-2 finding is process-tagged. Bus: `w
 
 **JWT dependency (decided in `amend-02`, not added in this run):** the implementation signs the RS256 App JWT with `pyjwt[crypto]` (`>=2.9,<3`, which pulls `cryptography`). The owned paths now include `scripts/factory/pyproject.toml`, `uv.lock`, a new decision row in `research.md`, and the Primary Dependencies line in `plan.md`. Rejected alternatives: shelling out to the `openssl` CLI (a runtime binary dependency plus hand-rolled JWT encoding), and `githubkit`, a non-sibling full GitHub SDK with built-in App auth (it replaces the thin httpx adapter with a much larger surface).
 
-### Later
+### After T066
 
-- After T066 (branch protection, CP2), the factory can read branch-protection required checks. Non-factory required check runs join the required set then, with lifecycle cases for a failed and a pending required run.
+- After T066 (branch protection, CP2) the factory can read branch-protection required checks; T066a then adds non-factory required check runs to the required set, with lifecycle cases for a failed and a pending required run.
 
 ## Round 3 review
 
@@ -207,3 +207,13 @@ The `unrelated-run-pending` case correctly removes the round-2 over-constraint, 
 | `uv run ruff format --check tests/contract tests/unit` | PASS — 19 files already formatted. |
 | `factory check schema` | PASS — `schema ok`. |
 | Frozen CP0 files | PASS — no frozen interface edits. |
+
+## Triage (orchestrator, round 3)
+
+Agent-adjudicated (2026-10-04); every round-3 finding is process-tagged. Bus: `wo-20261004-factory-slice-a.verdict-03` (reviewer) and `.amend-03` (this triage). The reviewed head already included the orchestrator's `d79fbb6` (other gates' override counts must be `0`).
+
+| ID | Disposition | Decided by | Resolution |
+|----|-------------|------------|------------|
+| T-A3-1 | accept — lifecycle rule plus issuance refusal | orchestrator (process) | Lifecycle: `test_lifecycle.py::test_empty_checks_never_accepted` (an order with `checks: []`, an accept verdict, green `factory/*` statuses and a green check run stays `in_review`). Issuance: `test_orders.py::test_order_issue_refuses_empty_checks` (`factory order issue` exits 2; the JSON error message names `checks` and carries no ids; no `wo/<id>` branch is pushed and `main` does not move). The refusal sits at `order issue` only, because `order new` has no checks input and the P0 contract test `test_order_new_exit_0` must stay valid. Every existing `checks=[]` fixture still works without a frozen-file edit: the Slice A helpers (`test_handoff.py::_claimed`, `test_pr_and_verdict.py::claimed_with_handoff`) now name the registered gate `diff-within-owned-paths`, and the three P0 `test_cli_contract.py` uses issue through `RepoBuilder.issue_order` (git, not the CLI), so the refusal does not apply to them; they were not edited |
+| T-A3-2 | accept | orchestrator (process) | Round-2 heading renamed to `### After T066`. `tasks.md` gains a single line, `T066a`, immediately after T066: lifecycle reads branch-protection required checks and adds non-factory required runs, with failed-run and pending-run tests (both stay `in_review`) |
+| T-A3-3 | noted — strength | orchestrator (process) | No action |

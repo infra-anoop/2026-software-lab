@@ -194,6 +194,7 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 
 - [ ] T065 [HITL] Governor creates the GitHub App (repo contents/PRs/checks/statuses read-write), installs it on this repo, stores `FACTORY_GITHUB_APP_ID` + `FACTORY_GITHUB_APP_PRIVATE_KEY` in Infisical (names from T037); orchestrator then flips `identity.mode = "verified"` in `factory.toml` — before Phase 9
 - [ ] T066 [HITL] Governor sets branch protection on `main`: **require a pull request before merging, with bypass off for everyone including admins** (I-P10), require each `factory/<gate-id>` P1 status + existing checks, require code-owner review; orchestrator snapshots settings to `deploy/github/branch-protection.json`, and gate `branch-protection-require-pr` (slice C, `scripts/factory/src/factory/gates/repo/branch_protection.py`, test first) checks the snapshot holds the expected settings (live drift check is P3 → sprint 03 per D1)
+- [ ] T066a [US1] After T066: lifecycle (`scripts/factory/src/factory/lifecycle/`) reads the branch's required checks from GitHub branch protection and adds non-factory required check runs to the acceptance set; tests in `scripts/factory/tests/unit/test_lifecycle.py` for a failed required run and a pending required run (both stay `in_review`)
 - [ ] T067 [P] Add `.github/CODEOWNERS` naming `governor_login` on every `rule_paths` entry from `factory.toml`
 
 ---
