@@ -264,3 +264,57 @@ The new seeds sit in a separate commit after the model change, so every seed fai
 | non_blocking | **The round-2 review branch is not merged.** `verdict-02.yaml` and the Round 2 section of `TEST_REVIEW.md` are only on `origin/review/wo-20261003-factory-p0-r2`, and amend-01's `refs` names `verdict-02` by id. Merge it if the work branch should carry the whole bus history. |
 
 The Amendment 1 open question about what counts as "added code" is resolved: the data-model Lock line now defines code lines.
+
+## Amendment 3 — T* round 3 (verdict-03: reject) fix for T8
+
+Round 3 (`origin/review/wo-20261003-factory-p0-r3` at `8f6594e`) found T2 and T7 resolved. It raised T8: the round-2 "removed" rule blocked deleting one of several token lines even when the remaining code still honors the lock. The governor adjudicated T8 on 2026-10-04 as a **per-file rule**. Both Amendment 2 open questions are closed: the orchestrator's `2cda4c9` merged the round-2 review history and recorded `amend-02`, which covers `TEST_REVIEW.md` and this order's bus directory.
+
+### What changed
+
+- **Merges.** I fast-forwarded to the orchestrator's `2cda4c9`, then merged `origin/review/wo-20261003-factory-p0-r3`. That merge was also a fast-forward to `8f6594e`, so there were no conflicts. `TEST_REVIEW.md` keeps the Triage table, followed by Round 2 and Round 3 as the reviewer wrote them.
+- **Lock line (`192a12a`, covered by the Lock-line scope in amend-01).**
+  - **New removal rule (a), per file:** a change is blocked when a code file that honored a token at base no longer honors it at head, whether the token was edited away or the file was deleted, unless an added code line elsewhere in the change honors it (a move).
+  - **What passes:** deleting some of a file's occurrences while that file still honors the token.
+  - **Unchanged:** "Code lines" are now defined over file contents as well as diff lines (same exclusions: `bus/`, `*.md`, comment-only lines). The `--no-renames` requirement is now written on the Lock line. The weakened rule (b) is unchanged.
+- **Seeds (`f56a138`).**
+  - `test_seed_lock_token_removed` is red (3 cases):
+    - `only_file`: the token is removed from the only file that has it and is not added anywhere else.
+    - `only_file_restated_in_comment`: the only occurrence becomes a comment.
+    - `other_file_still_has_it`: `deploy.sh` loses the token while a changed `release.sh` still has it. This is blocked by the letter of the per-file rule, and it is the only seed a presence-only gate lets through.
+  - New passing guards in `test_seed_lock_thinner_near_miss_passes`:
+    - `t8_repro_one_of_two_lines_deleted`: the reviewer's repro, the old `[deleted]` seed.
+    - `several_occurrences_deleted_file_still_has_token`: two of three lines deleted.
+    - `occurrence_commented_out_file_still_has_token`: the old `[restated_only_in_comment]` fixture, which now passes.
+    - `token_moved_to_another_file` is kept.
+- **Triage row.** `TEST_REVIEW.md` has a T8 row: "accept — per-file removal rule", decided by "governor 2026-10-04", with the commits above as the resolution.
+
+### Rule consistency check (reference gate, not committed)
+
+I wrote a throwaway `lock.letter-tokens` that implements the Lock line, then deleted it.
+- **Full rule:** all 23 lock seeds behaved as expected.
+- **Removal rule off:** only `other_file_still_has_it` was let through.
+- **Removal and presence rules off:** all removal and outside-code seeds were let through.
+- **Weakened rule off:** exactly the 3 weakened seeds that keep the token present were let through.
+- **Round-2 rule (deleted line with no restoring added line):** all 3 new T8 guards fail, so the guards catch the false positive.
+
+### Commands and results (Amendment 3)
+
+| DoD | Command | Result |
+|-----|---------|--------|
+| 1 | `cd scripts/factory && uv sync --locked` | PASS |
+| bus | `uv run factory check schema` (covers amend-01/02 and verdict-01/02/03) | PASS: `schema ok` |
+| 2a | `uv run factory check schema --path tests/fixtures/messages/` | PASS: `schema ok` |
+| 4 | `uv run pytest -q -m "not contract and not seed"` | 224 passed, 129 deselected |
+| 4 | `uv run pytest -q tests/contract tests/seeds` | 116 failed, 13 passed. All 116 are `AssertionError`s. 0 collection or import errors, 0 `xfail` |
+| — | `uv run pytest -q` (full) | **237 passed, 116 failed**: the earlier 112 plus 1 new red removal seed and 3 new guards, which also go through `run_seed` and stay red until the gate exists |
+| 5 | `uv run ruff check .` / `ruff format --check .` | clean |
+| owned paths | `git diff --name-only 8c50726..HEAD` | worker edits: `test_seeds.py`, the data-model Lock line, the `TEST_REVIEW.md` Triage table, and this handoff. The rest are merged review and orchestrator files |
+
+### Deviations (Amendment 3)
+
+1. **I added a whole T8 Triage row on the orchestrator's instruction.** amend-02 limits worker edits in `TEST_REVIEW.md` to the Resolution column of the Triage table. The Disposition and Decided-by cells repeat the governor's adjudication word for word. No new amendment was asked for, so I did not record one. The orchestrator can add an `amend-03` if the reviewer needs the row authorship on record.
+2. **`other_file_still_has_it` is blocked.** It follows the letter of the adjudication: the token disappears from a file that had it, and no added line elsewhere has it. That holds even though another changed file still honors the lock. If the governor meant the gentler reading (the reviewer's option A, "honored anywhere at head"), this one seed flips to a passing guard.
+
+### Open questions (Amendment 3)
+
+None that block. Deviation 2 is the only reading call left.
