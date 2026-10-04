@@ -9,23 +9,17 @@
 
 The schemas are owned by the role that runs the script (`postgres` in the SQL editor); the login gets `USAGE` + `CREATE` on them and owns every object it creates. It cannot create or drop schemas, and cannot read `public` tables or the other environment.
 
-## Run (governor, once per environment)
+## Run (automated — governor decision 2026-10-03)
 
-1. `openssl rand -hex 24` → a 48-character password (hex: no URL escaping needed).
-2. Supabase → project `2026-software-lab` → **SQL Editor** → new query → paste `env_roles.sql`.
-3. Edit the two `EDIT` lines (`env`, `pw`), run. Expect `NOTICE: ok: login swv2_<env> …`.
-4. Close the query without saving it (it contains the password).
-5. Save the connection string in Infisical (project `2026-software-lab`, env `production`, path `/`):
-   - production → `SMART_WRITER_V2_DATABASE_URL`
-   - staging → `SMART_WRITER_V2_STAGING_DATABASE_URL`
+Nobody runs this file by hand. The ops tag `db/smart-writer-v2/<environment>` (packet `notes/packets/2026-10-03-lab-db-bootstrap.md`; spec 002 T109–T112) does it:
 
-   Form (Supabase **Connect** → **Session pooler**, port 5432; the user is `<login>.<project-ref>`):
+1. It reads `SUPABASE_ACCESS_TOKEN` and the environment's password from Infisical (read-only CI login). The passwords are `SMART_WRITER_V2_DB_PASSWORD` and `SMART_WRITER_V2_STAGING_DB_PASSWORD`, seeded by the governor.
+2. It sends this file to the Supabase Management API with the two `EDIT` values filled in.
+3. It logs in as the new login and proves isolation.
 
-   ```text
-   postgresql://swv2_prod.oguydvttuzbbiovvnxoj:<password>@<pooler-host>:5432/postgres
-   ```
+Re-running is a no-op when the login already works. Rotation: change the password in Infisical, then re-push the tag. There is no stored connection-string secret; the app connects from the non-secret parts in `deploy/db/smart-writer-v2.yml` plus the password.
 
-Re-running with a new password rotates it (update the Infisical value afterwards).
+Break-glass only: paste the file into the Supabase SQL editor with the two `EDIT` values set to the environment and its Infisical password, and close the query without saving.
 
 ## Tests
 

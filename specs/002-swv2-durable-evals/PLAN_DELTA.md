@@ -103,3 +103,14 @@ Interpretation recorded (letter): "the writer moves to Anthropic" = an Anthropic
 - No new feature directory solely for OD fills
 - No stock `/speckit-plan` setup replacing `plan.md`
 - Human chat line: "Architecture delta reconcile done" (D4); D8–D10 posed as plain choices
+
+## Database credentials (governor 2026-10-03)
+
+- **Locks:**
+  - the database logins are created by an ops tag through the Supabase Management API, using a project-scoped access token (`SUPABASE_ACCESS_TOKEN`);
+  - the governor seeds the two passwords in Infisical;
+  - CI only reads Infisical, never writes it.
+- **Architecture effect:** connection secrets change from a stored URL (`SMART_WRITER_V2_DATABASE_URL`) to a password (`SMART_WRITER_V2_DB_PASSWORD`, staging key `SMART_WRITER_V2_STAGING_DB_PASSWORD`) plus non-secret parts declared in git (`deploy/db/smart-writer-v2.yml`). No component boundary changes: pools, checkpointer and queue still get one connection per environment from Settings.
+- **Amended in place:** `tasks.md` (P0 delta note; T007, T014–T016, T018, T019, T044, T050, T051, T109–T112), `plan.md` § Secret custody, `research.md` (names).
+- **Packet:** `notes/packets/2026-10-03-lab-db-bootstrap.md`.
+- **Re-analyze:** run `/speckit-analyze` before P1b durability implement (T043+).
