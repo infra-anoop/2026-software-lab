@@ -195,3 +195,72 @@ The T2 lock seeds were committed together with the model change. Before it, two 
 | non_blocking | **Plural jargon:** should plural forms (`slices`, `packets`) block? The seeds don't decide this; the near-miss cases only fix that `sliced` and `packaging` pass. |
 
 These earlier open questions are now resolved: commit-status read (T1), Gate `scope: pr` (T4), and the jargon list (T5, governor accepted it).
+
+## Amendment 2 — T* re-review (verdict-02: reject) fixes
+
+The round-2 re-review (`origin/review/wo-20261003-factory-p0-r2` at `9dd9c90`) found T1 and T3–T6 resolved and left two items open: T2 (governor: strict letter fidelity, thinner behavior must be automatic) and T7 (spec edits outside the owned paths). Before fixing them I merged `origin/main` (PRs #10–#13). The merge commit is `d14caf0` and had no conflicts. I did not merge the round-2 review branch.
+
+### What changed
+
+- **T2: thinner behavior is now mechanical.** The data-model Lock line defines the rule and the seeds test it. The `acceptance.md` row stays as it is.
+  - `Lock` gains an optional `direction: min|max`. It applies to every **numeric token** of the lock, meaning a token that holds exactly one number, such as `cap 3`, `max_attempts: 2`, `$5`, or `70%`. `min` means the number is a floor, `max` means a ceiling, and leaving it unset means the number must match exactly. `direction` needs `fidelity: letter` and at least one numeric token. `models.py` exports `LOCK_NUMBER_RE` and `is_numeric_token` so slice B uses the same definition. I regenerated `order.schema.json`.
+  - The rule on the Lock line looks only at *code lines*. A code line is a diff line outside `bus/` and outside `*.md` files that is not just a comment (`#`, `//`, `/*`, `*`, `--`). An added code line *honors* a token when it contains the token, case-insensitively. For a numeric token with a `direction`, it can also honor the token through a *counterpart*: a line where the text around the number matches the token (ignoring case and whitespace) and the number is equal or stronger. The PR is blocked in two cases:
+    - **(a) removed:** a deleted code line contains a token, and no added code line honors it.
+    - **(b) weakened:** an added counterpart of a numeric token uses a different number when `direction` is unset, a smaller number for `min`, or a larger number for `max`.
+  - New red seeds (6):
+    - `test_seed_lock_token_removed[deleted]`: one of two `railway up` lines is deleted.
+    - `test_seed_lock_token_removed[restated_only_in_comment]`: the deleted line comes back only as a comment.
+    - `test_seed_lock_numeric_token_weakened[min_floor_lowered]`: `fail_under=60` is added next to the `fail_under = 70` floor, with different spacing.
+    - `test_seed_lock_numeric_token_weakened[max_ceiling_raised]`: `$12` is added next to the `$5` ceiling.
+    - `test_seed_lock_numeric_token_weakened[exact_changed]`: `--cap 4` is added next to `cap 3`.
+    - `test_seed_lock_numeric_token_weakened[exact_lowered_in_place]`: `cap 3` is changed to `cap 2`.
+  - New near-miss guards that must pass (6), all in `test_seed_lock_thinner_near_miss_passes`: `min_floor_raised` (70 → 80), `max_ceiling_lowered` ($5 → $3), `token_restated_in_edited_line`, `numeric_token_restated_unchanged`, `token_moved_to_another_file`, and `unrelated_numbers` (`port = 8080`, plus `fail_under_ratio = 0.5`, which shares a prefix with the token).
+  - All the new blocked seeds except `exact_lowered_in_place` leave every token present at head. A gate that only checks presence and substitutes therefore lets them through.
+  - The `test_seed_declared_lock_violated` docstring no longer hands thinner behavior to the reviewer.
+- **T7: the owned-paths amendment.** I recorded `wo-20261003-factory-p0.amend-01` at `bus/orders/wo-20261003-factory-p0/amendment-01.yaml`. Its fields are `kind: amendment`, `actor: orchestrator`, `actor_verified: false`, and `supersedes: [owned_paths]`. The new value is the packet's original list with the data-model entry widened to the Lock and Gate lines, plus `specs/001-factory-v2/contracts/cli.md`. Because `owned_paths` are globs, YAML comments in the file state the line scope of each entry. The packet's Owned paths now list both edits with "(via amend-01)" and point to the amendment.
+
+### Red-first pairs (Amendment 2)
+
+| Finding | Red commit (assertion) | Green commit |
+|---------|------------------------|--------------|
+| T2 models | `3fb79e4`: 12 failed, all `Lock has no direction field` or `bus models export no is_numeric_token` | `085ccf8` |
+| T2 seeds | `3ebb520`: 12 new seeds, each failing `gate lock.letter-tokens is not implemented` | slice B |
+
+The new seeds sit in a separate commit after the model change, so every seed fails by assertion and none fails while building its fixture.
+
+**Rule consistency check (not committed).** I wrote a throwaway reference `lock.letter-tokens` that implements the Lock-line rule, ran all 19 lock seeds against it, and then deleted it.
+- With the full rule, all 19 behaved as expected.
+- With rules (a) and (b) turned off, exactly the 5 new blocked seeds that keep every token present at head were let through.
+- **Note for slice B:** use `git diff --no-renames`. With rename detection on, a moved file has no +/- lines, so `token_moved_to_another_file` fails.
+
+### Commands and results (Amendment 2)
+
+| DoD | Command | Result |
+|-----|---------|--------|
+| 1 | `cd scripts/factory && uv sync --locked` | PASS |
+| bus | `uv run factory check schema` (includes `amendment-01.yaml` and `verdict-01.yaml`) | PASS: `schema ok`, exit 0 |
+| 2a | `uv run factory check schema --path tests/fixtures/messages/` | PASS: `schema ok` |
+| 2c | `factory check schema --write` after the `Lock.direction` change | only `order.schema.json` changed. It is committed and the check is fresh |
+| 3 | `uv run pytest -q tests/unit/test_bus_models.py` | 165 passed |
+| 4 | `uv run pytest -q -m "not contract and not seed"` | 224 passed, 125 deselected |
+| 4 | `uv run pytest -q tests/contract tests/seeds` | 112 failed, 13 passed. All 112 are `AssertionError`s. 0 collection or import errors, 0 `xfail` |
+| — | `uv run pytest -q` (full) | **237 passed, 112 failed**: the earlier 225/100 plus 12 green model tests and 12 red seeds |
+| 5 | `uv run ruff check .` / `ruff format --check .` | clean |
+| 6 | `os.getenv` / `os.environ` outside `config/` | none |
+| owned paths | `git diff --name-only origin/main...HEAD` | within the paths amended by amend-01, plus `bus/orders/wo-20261003-factory-p0/**`, this packet and handoff, and `TEST_REVIEW.md` (see the open question below) |
+
+### Deviations (Amendment 2)
+
+1. **The amendment file is named `amendment-01.yaml`, not `amend-01.yaml`.** The message id is `wo-20261003-factory-p0.amend-01`, but `contracts/messages.md` § Layout and the bus store expect the file `amendment-NN.yaml`. Under the name `amend-01.yaml`, `factory check schema` fails with exit 1 ("belongs at …/amendment-01.yaml"). The conservative choice was to follow the frozen layout so the file validates.
+2. **`actor_model: claude-opus-5.5` and `actor_verified: false`.** The worker recorded the message on the orchestrator's instruction, so nothing verifies the actor. The orchestrator should correct the model if it is different.
+3. **Line scope lives in YAML comments, not in `owned_paths`.** The model types `owned_paths` as globs, so a string like "data-model.md (Lock and Gate lines only)" would not match the file. The scope is stated in the amendment's comments and in the packet.
+4. **`direction` is set per lock, not per token.** This keeps the model change to one field. If two numeric tokens need different directions, they go in separate locks.
+
+### Open questions (Amendment 2)
+
+| Class | Question |
+|-------|----------|
+| non_blocking | **`TEST_REVIEW.md` ownership.** In round 1, on the orchestrator's instruction, I filled the Resolution column of the orchestrator's triage table in `specs/001-factory-v2/TEST_REVIEW.md`. amend-01 lists exactly the two authorized paths and does not cover this file. If the owned-path record should cover it, the orchestrator can add an `amend-02` or treat review artifacts as orchestrator-owned. |
+| non_blocking | **The round-2 review branch is not merged.** `verdict-02.yaml` and the Round 2 section of `TEST_REVIEW.md` are only on `origin/review/wo-20261003-factory-p0-r2`, and amend-01's `refs` names `verdict-02` by id. Merge it if the work branch should carry the whole bus history. |
+
+The Amendment 1 open question about what counts as "added code" is resolved: the data-model Lock line now defines code lines.
