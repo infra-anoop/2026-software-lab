@@ -1,0 +1,176 @@
+{
+  "$defs": {
+    "CheckRunEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "gate_or_test": {
+          "minLength": 1,
+          "title": "Gate Or Test",
+          "type": "string"
+        },
+        "result": {
+          "minLength": 1,
+          "title": "Result",
+          "type": "string"
+        }
+      },
+      "required": [
+        "gate_or_test",
+        "result"
+      ],
+      "title": "CheckRunEntry",
+      "type": "object"
+    },
+    "Deviation": {
+      "additionalProperties": false,
+      "properties": {
+        "conservative_choice": {
+          "minLength": 1,
+          "title": "Conservative Choice",
+          "type": "string"
+        },
+        "what": {
+          "minLength": 1,
+          "title": "What",
+          "type": "string"
+        },
+        "why": {
+          "minLength": 1,
+          "title": "Why",
+          "type": "string"
+        }
+      },
+      "required": [
+        "what",
+        "why",
+        "conservative_choice"
+      ],
+      "title": "Deviation",
+      "type": "object"
+    },
+    "OpenQuestion": {
+      "additionalProperties": false,
+      "properties": {
+        "class": {
+          "enum": [
+            "blocker_governor",
+            "non_blocking"
+          ],
+          "title": "Class",
+          "type": "string"
+        },
+        "question": {
+          "minLength": 1,
+          "title": "Question",
+          "type": "string"
+        }
+      },
+      "required": [
+        "question",
+        "class"
+      ],
+      "title": "OpenQuestion",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "`kind: handoff`, id `<order-id>.handoff`. Self-report is not evidence (FR-011).",
+  "properties": {
+    "actor": {
+      "enum": [
+        "governor",
+        "orchestrator",
+        "worker",
+        "reviewer"
+      ],
+      "title": "Actor",
+      "type": "string"
+    },
+    "actor_model": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Actor Model"
+    },
+    "actor_verified": {
+      "default": false,
+      "title": "Actor Verified",
+      "type": "boolean"
+    },
+    "author_model": {
+      "minLength": 1,
+      "title": "Author Model",
+      "type": "string"
+    },
+    "checks_run": {
+      "items": {
+        "$ref": "#/$defs/CheckRunEntry"
+      },
+      "title": "Checks Run",
+      "type": "array"
+    },
+    "created": {
+      "format": "date-time",
+      "title": "Created",
+      "type": "string"
+    },
+    "deviations": {
+      "items": {
+        "$ref": "#/$defs/Deviation"
+      },
+      "title": "Deviations",
+      "type": "array"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "kind": {
+      "const": "handoff",
+      "title": "Kind",
+      "type": "string"
+    },
+    "open_questions": {
+      "items": {
+        "$ref": "#/$defs/OpenQuestion"
+      },
+      "title": "Open Questions",
+      "type": "array"
+    },
+    "refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Refs",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "summary": {
+      "minLength": 1,
+      "title": "Summary",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "kind",
+    "id",
+    "created",
+    "actor",
+    "summary",
+    "deviations",
+    "author_model"
+  ],
+  "title": "Handoff",
+  "type": "object"
+}
