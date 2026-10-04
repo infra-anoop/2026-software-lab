@@ -7,7 +7,10 @@ one external-failure case (exit 4). Red until the owning slice lands (CP1), exce
 
 from __future__ import annotations
 
+import json
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -568,3 +571,245 @@ def test_sprint_close_refuses_undispositioned_correction(
     repo.push("main")
     result = factory_cli("sprint", "close", "--sprint", "2026-10-sprint-02", repo=repo.path)
     assert_exit(result, exit_codes.REFUSED)
+
+
+# --- --json envelope over every command (review T3) -------------------------------------------
+#
+# contracts/cli.md § JSON envelope: with `--json`, stdout is exactly one JSON object,
+# `{"ok": true, "command", "data"}` on exit 0 or `{"ok": false, "command", "error"}`
+# otherwise. `factory hook` is exempt (its stdout is the Cursor hook protocol).
+
+Scenario = Callable[[RepoBuilder], tuple[list[str], Path]]
+
+
+def _status(repo: RepoBuilder) -> tuple[list[str], Path]:
+    issue(repo, oid("board"))
+    return ["status"], repo.path
+
+
+def _decisions(repo: RepoBuilder) -> tuple[list[str], Path]:
+    open_human_decision(repo)
+    return ["decisions"], repo.path
+
+
+def _scorecard(repo: RepoBuilder) -> tuple[list[str], Path]:
+    return ["scorecard"], repo.path
+
+
+def _order_new(repo: RepoBuilder) -> tuple[list[str], Path]:
+    repo.add_demo_feature()
+    args = ["order", "new", "--feature", "demo-feature", "--from-task", "T002"]
+    return [*args, "--lock", "D1=letter", "--size-minutes", "45"], repo.path
+
+
+def _order_issue(repo: RepoBuilder) -> tuple[list[str], Path]:
+    repo.write_message(order(oid("issue")))
+    return ["order", "issue", oid("issue")], repo.path
+
+
+def _claim(repo: RepoBuilder) -> tuple[list[str], Path]:
+    issue(repo, oid("claimable"))
+    return ["claim", oid("claimable"), "--actor-model", "claude-opus-5.5"], repo.path
+
+
+def _claim_at_cap(repo: RepoBuilder) -> tuple[list[str], Path]:
+    for n in range(3):
+        issue(repo, oid(f"active-{n}"))
+        claim_event(repo, oid(f"active-{n}"))
+    issue(repo, oid("fourth"))
+    return ["claim", oid("fourth"), "--actor-model", "claude-opus-5.5"], repo.path
+
+
+def _release(repo: RepoBuilder) -> tuple[list[str], Path]:
+    issue(repo, oid("released"))
+    claim_event(repo, oid("released"))
+    return ["release", oid("released"), "--reason", "abandoned"], repo.path
+
+
+def _handoff(repo: RepoBuilder) -> tuple[list[str], Path]:
+    repo.add_demo_feature()
+    claimed_with_handoff(repo, oid("handed"))
+    repo.checkout(f"wo/{oid('handed')}")
+    return ["handoff", oid("handed")], repo.path
+
+
+def _pr_open(repo: RepoBuilder) -> tuple[list[str], Path]:
+    repo.add_demo_feature()
+    claimed_with_handoff(repo, oid("pr"))
+    repo.checkout(f"wo/{oid('pr')}")
+    return ["pr", "open", oid("pr")], repo.path
+
+
+def _verdict(repo: RepoBuilder) -> tuple[list[str], Path]:
+    repo.add_demo_feature()
+    claimed_with_handoff(repo, oid("judged"))
+    path = verdict_file(repo, oid("judged"))
+    repo.checkout(f"wo/{oid('judged')}")
+    return ["verdict", oid("judged"), "--file", str(path)], repo.path
+
+
+def _bus_pr(repo: RepoBuilder) -> tuple[list[str], Path]:
+    written = repo.write_message(message("decision_request", decision_id="web-view"))
+    return ["bus", "pr", "--message", written], repo.path
+
+
+def _override_args(order_id: str, reason: str) -> list[str]:
+    return [
+        "override",
+        order_id,
+        "--gate",
+        "red-first-proof",
+        "--reason",
+        reason,
+        "--actor-model",
+        "claude-opus-5.5",
+        "--pr",
+        "1",
+    ]
+
+
+def _override(repo: RepoBuilder) -> tuple[list[str], Path]:
+    issue(repo, oid("override"))
+    claim_event(repo, oid("override"))
+    repo.checkout(f"wo/{oid('override')}")
+    reason = "Base suite broken by an unrelated module; new test verified red by hand."
+    return _override_args(oid("override"), reason), repo.path
+
+
+def _override_empty_reason(repo: RepoBuilder) -> tuple[list[str], Path]:
+    issue(repo, oid("noreason"))
+    claim_event(repo, oid("noreason"))
+    repo.checkout(f"wo/{oid('noreason')}")
+    return _override_args(oid("noreason"), " "), repo.path
+
+
+def _gate_run(repo: RepoBuilder) -> tuple[list[str], Path]:
+    pair = repo.base_head_pair({}, {"README.md": "# fixture repo, edited\n"})
+    args = ["gate", "run", "--gate", "bus.schema"]
+    return [*args, "--base", pair.base_sha, "--head", pair.head_sha], repo.path
+
+
+def _check_schema(repo: RepoBuilder) -> tuple[list[str], Path]:
+    repo.write_message(order(oid("ok")))
+    return ["check", "schema"], repo.path
+
+
+def _check_schema_failing(repo: RepoBuilder) -> tuple[list[str], Path]:
+    repo.write_message(order(oid("bad"), progress="50%"), validate=False)
+    return ["check", "schema"], repo.path
+
+
+def _check_intent(repo: RepoBuilder) -> tuple[list[str], Path]:
+    repo.write(
+        "specs/demo-feature/intent.yaml",
+        "schema_version: 1\nfeature: demo-feature\nintents:\n"
+        "  - id: I-D1\n    kind: goal\n    statement: Bus files validate.\n"
+        "    checks:\n      - { kind: ci, ref: bus.schema, status: exists }\n",
+    )
+    repo.commit("intent")
+    return ["check", "intent"], repo.path
+
+
+def _check_hooks(repo: RepoBuilder) -> tuple[list[str], Path]:
+    return ["check", "hooks"], repo.path
+
+
+def _check_registry(repo: RepoBuilder) -> tuple[list[str], Path]:
+    return ["check", "registry"], REPO_ROOT
+
+
+def _check_immutability(repo: RepoBuilder) -> tuple[list[str], Path]:
+    pair = repo.base_head_pair(
+        {}, {f"bus/orders/{oid('new')}/order.yaml": yaml_text(order(oid("new")))}
+    )
+    args = ["check", "immutability", "--base", pair.base_sha, "--head", pair.head_sha]
+    return args, repo.path
+
+
+def _retro(repo: RepoBuilder) -> tuple[list[str], Path]:
+    return ["retro", "--since", "main"], repo.path
+
+
+def _correction_new(repo: RepoBuilder) -> tuple[list[str], Path]:
+    what = "Worker swapped the named host for another one."
+    args = ["correction", "new", "--target", oid("any"), "--what", what, "--tag", "drift"]
+    return args, repo.path
+
+
+def _sprint_close(repo: RepoBuilder) -> tuple[list[str], Path]:
+    return ["sprint", "close", "--sprint", "2026-10-sprint-02"], repo.path
+
+
+def _missing_config(repo: RepoBuilder) -> tuple[list[str], Path]:
+    empty = repo.root / "no-config"
+    empty.mkdir()
+    return ["check", "schema"], empty
+
+
+def _unknown_option(repo: RepoBuilder) -> tuple[list[str], Path]:
+    return ["check", "schema", "--no-such-option"], repo.path
+
+
+JSON_SCENARIOS: list[tuple[str, Scenario, int]] = [
+    ("status", _status, exit_codes.OK),
+    ("decisions", _decisions, exit_codes.OK),
+    ("scorecard", _scorecard, exit_codes.OK),
+    ("order new", _order_new, exit_codes.OK),
+    ("order issue", _order_issue, exit_codes.OK),
+    ("claim", _claim, exit_codes.OK),
+    ("claim", _claim_at_cap, exit_codes.REFUSED),
+    ("release", _release, exit_codes.OK),
+    ("handoff", _handoff, exit_codes.OK),
+    ("pr open", _pr_open, exit_codes.OK),
+    ("verdict", _verdict, exit_codes.OK),
+    ("bus pr", _bus_pr, exit_codes.OK),
+    ("override", _override, exit_codes.OK),
+    ("override", _override_empty_reason, exit_codes.REFUSED),
+    ("gate run", _gate_run, exit_codes.OK),
+    ("check schema", _check_schema, exit_codes.OK),
+    ("check schema", _check_schema_failing, exit_codes.GATE_FAILURE),
+    ("check schema", _missing_config, exit_codes.USAGE),
+    ("check schema", _unknown_option, exit_codes.USAGE),
+    ("check intent", _check_intent, exit_codes.OK),
+    ("check hooks", _check_hooks, exit_codes.OK),
+    ("check registry", _check_registry, exit_codes.OK),
+    ("check immutability", _check_immutability, exit_codes.OK),
+    ("retro", _retro, exit_codes.OK),
+    ("correction new", _correction_new, exit_codes.OK),
+    ("sprint close", _sprint_close, exit_codes.REFUSED),
+]
+
+
+def parse_envelope(result: CliResult) -> dict[str, Any]:
+    try:
+        envelope = json.loads(result.stdout)
+    except ValueError as exc:
+        raise AssertionError(
+            f"--json stdout is not one JSON document: {result.stdout!r}\nstderr: {result.stderr}"
+        ) from exc
+    assert isinstance(envelope, dict), envelope
+    return envelope
+
+
+@pytest.mark.parametrize(
+    ("command", "scenario", "expected"),
+    JSON_SCENARIOS,
+    ids=[f"{command}-{scenario.__name__.lstrip('_')}" for command, scenario, _ in JSON_SCENARIOS],
+)
+def test_json_envelope(
+    repo: RepoBuilder, factory_cli: FactoryCli, command: str, scenario: Scenario, expected: int
+) -> None:
+    args, repo_path = scenario(repo)
+    result = factory_cli(*args, "--json", repo=repo_path)
+    assert_exit(result, expected)
+    envelope = parse_envelope(result)
+    assert envelope.get("command") == command, envelope
+    if expected == exit_codes.OK:
+        assert set(envelope) == {"ok", "command", "data"}, envelope
+        assert envelope["ok"] is True
+    else:
+        assert set(envelope) == {"ok", "command", "error"}, envelope
+        assert envelope["ok"] is False
+        error = envelope["error"]
+        assert isinstance(error, dict) and error.get("code") == expected, envelope
+        assert isinstance(error.get("message"), str) and error["message"].strip(), envelope
