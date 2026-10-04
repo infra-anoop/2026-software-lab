@@ -15,7 +15,14 @@ from factory.bus.schema import (
     write_schemas,
 )
 from factory.cli import exit_codes
-from factory.cli.common import JsonOpt, RepoOpt, emit, not_implemented, resolve_repo
+from factory.cli.common import (
+    CommandError,
+    JsonOpt,
+    RepoOpt,
+    emit,
+    not_implemented,
+    resolve_repo,
+)
 from factory.config.settings import load_settings
 
 
@@ -43,11 +50,12 @@ def check_schema(
     else:
         problems += validate_bus(root, settings)
     text = "\n".join([*(f"wrote {p}" for p in written), *problems]) or "schema ok"
-    emit(
-        {"ok": not problems, "problems": problems, "written": written}, as_json=json_out, text=text
-    )
+    report = {"problems": problems, "written": written}
     if problems:
-        raise typer.Exit(exit_codes.GATE_FAILURE)
+        if not json_out:
+            typer.echo(text)
+        raise CommandError(exit_codes.GATE_FAILURE, f"{len(problems)} schema problem(s)", report)
+    emit("check schema", as_json=json_out, text=text, data=report)
 
 
 def check_hooks(json_out: JsonOpt = False, repo: RepoOpt = None) -> None:

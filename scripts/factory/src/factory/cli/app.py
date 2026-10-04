@@ -13,6 +13,7 @@ import typer
 
 from factory.bus.store import BusError
 from factory.cli import board, checks, exit_codes, gates, intent, mining, orders
+from factory.cli.common import CliError, CommandError, JsonEnvelope
 from factory.config.settings import ConfigError
 from factory.gates.registry import RegistryError
 
@@ -76,6 +77,24 @@ sprint_app.command("close")(mining.sprint_close)
 app.add_typer(sprint_app, name="sprint")
 
 
+GROUPS = frozenset(group.name for group in app.registered_groups if group.name)
+
+
+def command_path(args: Sequence[str]) -> str:
+    """The command path named by `args` (`check schema`, `claim`), as in the envelope."""
+    words = [args[0]] if args and not args[0].startswith("-") else []
+    if words and words[0] in GROUPS and len(args) > 1 and not args[1].startswith("-"):
+        words.append(args[1])
+    return " ".join(words) or "factory"
+
+
+def _report(args: Sequence[str], error: CliError) -> int:
+    typer.echo(error.message, err=True)
+    if "--json" in args:
+        typer.echo(JsonEnvelope(ok=False, command=command_path(args), error=error).render())
+    return error.code
+
+
 def run(argv: Sequence[str] | None = None) -> int:
     """Run the CLI and return its exit code (usage errors map to 3, not click's 2)."""
     command = typer.main.get_command(app)
@@ -84,19 +103,17 @@ def run(argv: Sequence[str] | None = None) -> int:
         result = command.main(args=args, prog_name="factory", standalone_mode=False)
     except typer.Exit as exc:
         return exc.exit_code
+    except CommandError as exc:
+        return _report(args, exc.error)
     except typer.TyperException as exc:
-        if exc.format_message():
-            typer.echo(f"usage error: {exc.format_message()}", err=True)
-        return exit_codes.USAGE
+        message = f"usage error: {exc.format_message() or 'invalid arguments'}"
+        return _report(args, CliError(code=exit_codes.USAGE, message=message))
     except typer.Abort:
-        typer.echo("aborted", err=True)
-        return exit_codes.USAGE
+        return _report(args, CliError(code=exit_codes.USAGE, message="aborted"))
     except ConfigError as exc:
-        typer.echo(f"config error: {exc}", err=True)
-        return exit_codes.USAGE
+        return _report(args, CliError(code=exit_codes.USAGE, message=f"config error: {exc}"))
     except (BusError, RegistryError) as exc:
-        typer.echo(str(exc), err=True)
-        return exit_codes.GATE_FAILURE
+        return _report(args, CliError(code=exit_codes.GATE_FAILURE, message=str(exc)))
     return result if isinstance(result, int) else exit_codes.OK
 
 
