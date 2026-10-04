@@ -1,0 +1,84 @@
+{
+  "additionalProperties": false,
+  "description": "`kind: amendment`, id `<order-id>.amend-NN`; effective order = order + amendments.",
+  "properties": {
+    "actor": {
+      "enum": [
+        "governor",
+        "orchestrator",
+        "worker",
+        "reviewer"
+      ],
+      "title": "Actor",
+      "type": "string"
+    },
+    "actor_model": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Actor Model"
+    },
+    "actor_verified": {
+      "default": false,
+      "title": "Actor Verified",
+      "type": "boolean"
+    },
+    "created": {
+      "format": "date-time",
+      "title": "Created",
+      "type": "string"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "kind": {
+      "const": "amendment",
+      "title": "Kind",
+      "type": "string"
+    },
+    "refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Refs",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "supersedes": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Supersedes",
+      "type": "array"
+    },
+    "values": {
+      "additionalProperties": true,
+      "title": "Values",
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "kind",
+    "id",
+    "created",
+    "actor",
+    "supersedes",
+    "values"
+  ],
+  "title": "Amendment",
+  "type": "object"
+}

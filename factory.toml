@@ -1,0 +1,50 @@
+# Factory v2 repo config (specs/001-factory-v2). Loaded by factory.config.settings.
+# Every repo-specific value the factory needs lives here (FR-036).
+
+bus_dir = "bus"
+spec_roots = ["specs"]
+app_roots = ["apps"]
+rule_paths = [
+  ".specify/memory/constitution.md",
+  "AGENTS.md",
+  ".cursor/rules/**",
+  "docs/agent-os/**",
+  "scripts/factory/gates.yaml",
+  "scripts/factory/rubrics/**",
+]
+
+# Governor locks (spec F2, Wave 1 packet): active workers and unattended run length.
+concurrency_cap = 3
+autonomy_horizon_minutes = 60
+# An order is stale when claimed, no PR, and no commit for > stale_multiplier x size_minutes.
+stale_multiplier = 3
+
+governor_login = "infra-anoop"
+
+[families]
+# Model-name prefix -> model family (reviewer family must differ from author family).
+claude = "anthropic"
+gpt = "openai"
+gemini = "google"
+
+[identity]
+# D4-A: "recorded" until the GitHub App is live, then the orchestrator flips to "verified".
+mode = "recorded"
+
+[github]
+repository = "infra-anoop/2026-software-lab"
+api_url = "https://api.github.com"
+
+[decision_lint]
+# Internal terms that must not appear in decision-request prompts or option labels
+# (in addition to the id regexes in contracts/messages.md).
+jargon = [
+  "packet",
+  "worktree",
+  "subagent",
+  "slice",
+  "fidelity",
+  "owned paths",
+  "acceptance catalog",
+  "finish bar",
+]

@@ -1,0 +1,209 @@
+# Gate registry (specs/001-factory-v2/contracts/gates.md; model: factory.gates.registry).
+# Each gate reports CI status `factory/<id>`. Entrypoints are `module:function` taking a
+# `factory.api.GateContext` and returning `factory.api.GateResult`; a module may not exist
+# until its slice lands. Slices append or adjust only their own rows.
+schema_version: 1
+gates:
+  # --- P1: bus ------------------------------------------------------------------------
+  - id: bus.schema
+    class: drift
+    category: drift
+    intents: [I-M2]
+    ci_job: factory-gates
+    priority: P1
+    scope: repo
+    entrypoint: factory.gates.repo.bus_schema:run
+  - id: bus.immutable
+    class: drift
+    category: drift
+    intents: [I-M2]
+    ci_job: factory-gates
+    priority: P1
+    scope: changed_lines
+    entrypoint: factory.gates.pr.bus_immutable:run
+  - id: bus.no-handwritten-status
+    class: drift
+    category: drift
+    intents: [I-M2]
+    ci_job: factory-gates
+    priority: P1
+    scope: changed_lines
+    entrypoint: factory.gates.pr.no_status:run
+
+  # --- P1: intent traceability (slice B) ----------------------------------------------
+  - id: factory-check-intent
+    class: drift
+    category: drift
+    intents: [I-N1, I-P4]
+    ci_job: factory-gates
+    priority: P1
+    scope: repo
+    entrypoint: factory.intent.coverage:presence_gate
+
+  # --- P1: drift gates (slice B) ------------------------------------------------------
+  - id: red-first-proof
+    class: drift
+    category: drift
+    intents: [I-B7, I-P2]
+    ci_job: factory-gates
+    priority: P1
+    scope: changed_lines
+    entrypoint: factory.gates.drift.red_first:run
+  - id: test-seam-ban
+    class: drift
+    category: drift
+    intents: [I-A8]
+    ci_job: factory-gates
+    priority: P1
+    scope: changed_lines
+    entrypoint: factory.gates.drift.test_seam:run
+  - id: diff-within-owned-paths
+    class: drift
+    category: drift
+    intents: [I-B8, I-A8]
+    ci_job: factory-gates
+    priority: P1
+    scope: changed_lines
+    entrypoint: factory.gates.drift.owned_paths:run
+  - id: deferral-words-need-od
+    class: drift
+    category: drift
+    intents: [I-B6]
+    ci_job: factory-gates
+    priority: P1
+    scope: changed_lines
+    entrypoint: factory.gates.drift.deferral_words:run
+  - id: order-fidelity-declared
+    class: drift
+    category: drift
+    intents: [I-B5]
+    ci_job: factory-gates
+    priority: P1
+    scope: changed_lines
+    entrypoint: factory.gates.drift.fidelity:run_order_fidelity_declared
+  - id: lock.letter-tokens
+    class: drift
+    category: drift
+    intents: [I-B5]
+    ci_job: factory-gates
+    priority: P1
+    scope: changed_lines
+    entrypoint: factory.gates.drift.fidelity:run_lock_letter_tokens
+  - id: decision-request-no-ids
+    class: drift
+    category: drift
+    intents: [I-B3]
+    ci_job: factory-gates
+    priority: P1
+    scope: changed_lines
+    entrypoint: factory.gates.drift.decision_ids:run
+  - id: catalog-test-linkage
+    class: drift
+    category: drift
+    intents: [I-B7]
+    ci_job: factory-gates
+    priority: P1
+    scope: changed_lines
+    entrypoint: factory.gates.drift.catalog_linkage:run
+
+  # --- P1: PR gates (slice C) ---------------------------------------------------------
+  - id: pr-links-order
+    class: drift
+    category: drift
+    intents: [I-P1]
+    ci_job: factory-gates
+    priority: P1
+    scope: pr
+    entrypoint: factory.gates.pr.links_order:run
+  - id: order-blocked-on-open-human-od
+    class: governor-only
+    category: governor_decision
+    intents: [I-X3]
+    ci_job: factory-gates
+    priority: P1
+    scope: pr
+    entrypoint: factory.gates.pr.open_od:run
+  - id: spawn-concurrency-cap
+    class: drift
+    category: drift
+    intents: [I-X4]
+    ci_job: factory-gates
+    priority: P1
+    scope: pr
+    entrypoint: factory.gates.pr.concurrency_cap:run
+  - id: verdict.reviewer-family-differs
+    class: drift
+    category: drift
+    intents: [I-P3]
+    ci_job: factory-gates
+    priority: P1
+    scope: pr
+    entrypoint: factory.gates.pr.verdict:run_reviewer_family_differs
+  - id: verdict.inputs-isolated
+    class: drift
+    category: drift
+    intents: [I-P3]
+    ci_job: factory-gates
+    priority: P1
+    scope: pr
+    entrypoint: factory.gates.pr.verdict:run_inputs_isolated
+  - id: message.override
+    class: governor-only
+    category: governor_decision
+    intents: [I-M1, I-P9]
+    ci_job: factory-gates
+    priority: P1
+    scope: pr
+    entrypoint: factory.gates.pr.override_msg:run
+
+  # --- P1: repo gates (slice C) -------------------------------------------------------
+  - id: gate.fail-mode-category
+    class: drift
+    category: drift
+    intents: [I-P9]
+    ci_job: factory-gates
+    priority: P1
+    scope: repo
+    entrypoint: factory.gates.repo.fail_mode:run
+  - id: hook-has-ci-twin
+    class: drift
+    category: drift
+    intents: [I-G5]
+    ci_job: factory-gates
+    priority: P1
+    scope: repo
+    entrypoint: factory.gates.repo.hook_twin:run
+  - id: factory-status-test
+    class: drift
+    category: drift
+    intents: [I-M4]
+    ci_job: factory-tests
+    priority: P1
+    scope: repo
+    entrypoint: factory.gates.repo.status_test:run
+
+  # --- P1: existing lab checks (wrapped by slice C, T059) -----------------------------
+  - id: validate-secrets-schema
+    class: governor-only
+    category: secrets
+    intents: [I-O2, I-A3]
+    ci_job: verify
+    priority: P1
+    scope: repo
+    entrypoint: factory.gates.repo.existing:validate_secrets_schema
+  - id: validate-deploy-env
+    class: drift
+    category: drift
+    intents: [I-O1]
+    ci_job: verify
+    priority: P1
+    scope: repo
+    entrypoint: factory.gates.repo.existing:validate_deploy_env
+  - id: uv-sync-locked
+    class: drift
+    category: drift
+    intents: [I-O3]
+    ci_job: verify
+    priority: P1
+    scope: repo
+    entrypoint: factory.gates.repo.existing:uv_sync_locked

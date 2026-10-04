@@ -1,0 +1,83 @@
+{
+  "additionalProperties": false,
+  "description": "`kind: claim`, id `<order-id>.claim`; a fast-forward push to `wo/<order-id>`.",
+  "properties": {
+    "actor": {
+      "enum": [
+        "governor",
+        "orchestrator",
+        "worker",
+        "reviewer"
+      ],
+      "title": "Actor",
+      "type": "string"
+    },
+    "actor_model": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Actor Model"
+    },
+    "actor_verified": {
+      "default": false,
+      "title": "Actor Verified",
+      "type": "boolean"
+    },
+    "claimed_at": {
+      "format": "date-time",
+      "title": "Claimed At",
+      "type": "string"
+    },
+    "created": {
+      "format": "date-time",
+      "title": "Created",
+      "type": "string"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "kind": {
+      "const": "claim",
+      "title": "Kind",
+      "type": "string"
+    },
+    "refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Refs",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "worker_runtime": {
+      "enum": [
+        "local_subagent",
+        "cloud_agent"
+      ],
+      "title": "Worker Runtime",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "kind",
+    "id",
+    "created",
+    "actor",
+    "claimed_at",
+    "worker_runtime"
+  ],
+  "title": "Claim",
+  "type": "object"
+}

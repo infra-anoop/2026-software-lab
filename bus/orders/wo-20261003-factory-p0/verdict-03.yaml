@@ -1,0 +1,56 @@
+schema_version: 1
+kind: verdict
+id: wo-20261003-factory-p0.verdict-03
+created: 2026-10-04T05:56:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - notes/packets/2026-10-03-factory-v2-p0-test-review-t.md
+  - specs/001-factory-v2/TEST_REVIEW.md
+  - wo-20261003-factory-p0.verdict-02
+  - wo-20261003-factory-p0.amend-01
+  - wo-20261003-factory-p0.amend-02
+decision: reject
+findings:
+  - id: T8
+    severity: debate
+    tag: product
+    text: >-
+      The mechanical removal rule blocks deletion of any token-bearing line
+      unless an added line restates the token, even when unchanged code still
+      honors the named tool or host lock. The seed therefore invents a required
+      invocation count or worker-service behavior not named by its railway lock.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: notes/packets/2026-10-03-factory-v2-p0-test-review-t.md
+    sha: 2cda4c9ffdcf585938b4e54230834f1b71a54e98
+  - path: notes/packets/2026-10-03-factory-v2-p0-contracts.md
+    sha: 2cda4c9ffdcf585938b4e54230834f1b71a54e98
+  - path: notes/packets/2026-10-03-factory-v2-p0-contracts.handoff.md
+    sha: 2cda4c9ffdcf585938b4e54230834f1b71a54e98
+  - path: specs/001-factory-v2/spec.md
+    sha: 2cda4c9ffdcf585938b4e54230834f1b71a54e98
+  - path: specs/001-factory-v2/acceptance.md
+    sha: 2cda4c9ffdcf585938b4e54230834f1b71a54e98
+  - path: specs/001-factory-v2/data-model.md
+    sha: 2cda4c9ffdcf585938b4e54230834f1b71a54e98
+  - path: scripts/factory/src/factory/bus/models.py
+    sha: 2cda4c9ffdcf585938b4e54230834f1b71a54e98
+  - path: scripts/factory/tests/seeds/test_seeds.py
+    sha: 2cda4c9ffdcf585938b4e54230834f1b71a54e98
+  - path: bus/orders/wo-20261003-factory-p0/amendment-01.yaml
+    sha: 2cda4c9ffdcf585938b4e54230834f1b71a54e98
+  - path: bus/orders/wo-20261003-factory-p0/amendment-02.yaml
+    sha: 2cda4c9ffdcf585938b4e54230834f1b71a54e98
+bootstrap: true
+manual_equivalents:
+  - "T2: resolved; six mechanical thinner-behavior seeds and six near-miss guards are assertion-red before slice B"
+  - "T7: resolved; amendment-01 and amendment-02 validate and authorize the effective changed paths"
+  - "T8: new product debate; deleting one of multiple railway uses blocks despite unchanged code honoring the railway token"
+  - "uv-sync-locked: pass"
+  - "factory tests: 237 passed and 112 expected assertion failures; no collection/import failures"
+  - "ruff: pass"
+  - "factory schema: pass for the full bus and fixture messages"
+  - "diff-within-owned-paths: pass against the packet plus both amendments and documented line scopes"

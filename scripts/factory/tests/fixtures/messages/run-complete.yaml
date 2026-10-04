@@ -1,0 +1,12 @@
+schema_version: 1
+kind: run_complete
+id: wo-20261005-red-first-gate.run-complete
+created: 2026-10-05T16:00:00Z
+actor: worker
+actor_model: claude-opus-5.5
+wall_minutes: 52
+governor_interrupts: 0
+cost_usd: 1.8
+cost_usd_estimated: true
+deviations_count: 1
+refs: [wo-20261005-red-first-gate]

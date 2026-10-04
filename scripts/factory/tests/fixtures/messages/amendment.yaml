@@ -1,0 +1,11 @@
+schema_version: 1
+kind: amendment
+id: wo-20261005-red-first-gate.amend-01
+created: 2026-10-05T15:00:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+supersedes: [size_minutes, stop_conditions]
+values:
+  size_minutes: 45
+  stop_conditions: ["needs a change outside owned paths"]
+refs: [wo-20261005-red-first-gate]

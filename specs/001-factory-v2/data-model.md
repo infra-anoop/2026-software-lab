@@ -33,7 +33,7 @@ Forbidden keys in any message: `status`, `state`, `done`, `progress` (FR-003, I-
 | `tasks` | list[str] | Spec Kit task ids covered (optional link to `tasks.md`) |
 | `worker_runtime` | enum | `local_subagent` \| `cloud_agent` |
 
-**Lock**: `{ id, letter_tokens: list[str], fidelity: letter|intent|waived, waiver_ref?: str }`. `letter_tokens` are the named things (tool, host, cap) the output must contain or honor. `fidelity: waived` requires `waiver_ref` to a governor decision lock.
+**Lock**: `{ id, letter_tokens: list[str], fidelity: letter|intent|waived, waiver_ref?: str, substitutes?: list[str], direction?: min|max }`. `letter_tokens` are the named things (tool, host, cap) the output must contain or honor; `fidelity: letter` requires a non-empty `letter_tokens`. `substitutes` are known alternatives (e.g. another host) that must not appear in the added code; none may repeat a letter token. `fidelity: waived` requires `waiver_ref` to a governor decision lock. A **numeric token** holds exactly one number (`cap 3`, `max_attempts: 2`, `$5`, `70%`); `direction` (only with `fidelity: letter` and a numeric token) applies to every numeric token of the lock: `min` = the number is a floor, `max` = a ceiling, unset = exact. **Thinner behavior is mechanical** (`lock.letter-tokens`), over *code lines* = lines of files outside `bus/` and `*.md`, excluding comment-only lines (`#`, `//`, `/*`, `*`, `--`), with renames off (`git diff --no-renames`): a token is *honored* by a code line containing it case-insensitively, or, for a numeric token with `direction`, by a *counterpart* line (the token's text around the number matches case- and whitespace-insensitively) whose number is equal or stronger; the PR is blocked when (a) **removed** (per file) — a code file with a code line honoring a token at base has none at head (edited away or file deleted), and no added code line elsewhere in the change honors it (a move), or (b) **weakened** — an added counterpart of a numeric token carries a different number (unset), a smaller one (`min`), or a larger one (`max`). Deleting some of a file's occurrences while that file still honors the token, raising a floor, lowering a ceiling, restating or moving a token, and numbers on non-counterpart lines pass.
 
 ## Amendment (`kind: amendment`, id `<order-id>.amend-NN`)
 
@@ -86,7 +86,7 @@ Rework loops, overrides, and first-pass acceptance are derived from verdicts and
 
 ## Gate (registry entry, `scripts/factory/gates.yaml`)
 
-`id`, `class: drift|governor-only`, `category: drift|spend|secrets|irreversible|governor_decision`, `intents: list`, `ci_job`, `hook_twin_of?`, `priority: P1|P2|P3`, `scope: changed_lines|repo`. Rule: `class: governor-only` ⇔ `category ∈ {spend, secrets, irreversible, governor_decision}`.
+`id`, `class: drift|governor-only`, `category: drift|spend|secrets|irreversible|governor_decision`, `intents: list`, `ci_job`, `hook_twin_of?`, `priority: P1|P2|P3`, `scope: changed_lines|repo|pr`, `entrypoint: "module:function"`. Rule: `class: governor-only` ⇔ `category ∈ {spend, secrets, irreversible, governor_decision}`.
 
 ## Lifecycle (derived — never stored)
 

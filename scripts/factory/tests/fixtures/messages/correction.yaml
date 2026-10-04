@@ -1,0 +1,11 @@
+schema_version: 1
+kind: correction
+id: corr-20261005-thin-substitute
+created: 2026-10-05T19:00:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+target: wo-20261005-red-first-gate
+what_was_wrong: Worker replaced the named tool with a lighter stand-in without asking.
+tag: drift
+links_to: PAT-004
+refs: [wo-20261005-red-first-gate]

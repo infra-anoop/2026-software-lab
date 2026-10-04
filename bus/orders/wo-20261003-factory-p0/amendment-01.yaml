@@ -1,0 +1,29 @@
+# Orchestrator-authorized expansion of the P0 order's owned paths (re-review T7).
+# Recorded by the P0 worker on the orchestrator's instruction (2026-10-04).
+# owned_paths are globs, so line scope is stated here and in the packet:
+#   .github/workflows/verify-source.yml   -> only the `pytest scripts/` line
+#   specs/001-factory-v2/data-model.md    -> only the Lock and Gate lines
+#   specs/001-factory-v2/tasks.md         -> only the T001-T015 checkboxes
+#   specs/001-factory-v2/contracts/cli.md -> only the JSON envelope section
+schema_version: 1
+kind: amendment
+id: wo-20261003-factory-p0.amend-01
+created: 2026-10-04T05:30:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/packets/2026-10-03-factory-v2-p0-contracts.md
+  - specs/001-factory-v2/TEST_REVIEW.md
+  - wo-20261003-factory-p0.verdict-02
+supersedes: [owned_paths]
+values:
+  owned_paths:
+    - "scripts/factory/**"
+    - "factory.toml"
+    - "bus/**/.gitkeep"
+    - ".github/workflows/factory-gates.yml"
+    - ".github/workflows/verify-source.yml"
+    - "specs/001-factory-v2/data-model.md"
+    - "specs/001-factory-v2/tasks.md"
+    - "specs/001-factory-v2/contracts/cli.md"

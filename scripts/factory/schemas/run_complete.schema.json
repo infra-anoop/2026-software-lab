@@ -1,0 +1,104 @@
+{
+  "additionalProperties": false,
+  "description": "`kind: run_complete`, id `<order-id>.run-complete`.",
+  "properties": {
+    "actor": {
+      "enum": [
+        "governor",
+        "orchestrator",
+        "worker",
+        "reviewer"
+      ],
+      "title": "Actor",
+      "type": "string"
+    },
+    "actor_model": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Actor Model"
+    },
+    "actor_verified": {
+      "default": false,
+      "title": "Actor Verified",
+      "type": "boolean"
+    },
+    "cost_usd": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cost Usd"
+    },
+    "cost_usd_estimated": {
+      "default": true,
+      "title": "Cost Usd Estimated",
+      "type": "boolean"
+    },
+    "created": {
+      "format": "date-time",
+      "title": "Created",
+      "type": "string"
+    },
+    "deviations_count": {
+      "minimum": 0,
+      "title": "Deviations Count",
+      "type": "integer"
+    },
+    "governor_interrupts": {
+      "minimum": 0,
+      "title": "Governor Interrupts",
+      "type": "integer"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "kind": {
+      "const": "run_complete",
+      "title": "Kind",
+      "type": "string"
+    },
+    "refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Refs",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "wall_minutes": {
+      "minimum": 0,
+      "title": "Wall Minutes",
+      "type": "number"
+    }
+  },
+  "required": [
+    "schema_version",
+    "kind",
+    "id",
+    "created",
+    "actor",
+    "wall_minutes",
+    "governor_interrupts",
+    "deviations_count"
+  ],
+  "title": "RunComplete",
+  "type": "object"
+}

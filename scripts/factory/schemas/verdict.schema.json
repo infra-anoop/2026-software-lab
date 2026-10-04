@@ -1,0 +1,194 @@
+{
+  "$defs": {
+    "Finding": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "pattern_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pattern Id"
+        },
+        "severity": {
+          "enum": [
+            "blocker",
+            "debate",
+            "later",
+            "nit"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "tag": {
+          "enum": [
+            "product",
+            "process",
+            "arch"
+          ],
+          "title": "Tag",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "severity",
+        "tag",
+        "text"
+      ],
+      "title": "Finding",
+      "type": "object"
+    },
+    "VerdictInput": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "sha": {
+          "pattern": "^[0-9a-f]{7,40}$",
+          "title": "Sha",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "sha"
+      ],
+      "title": "VerdictInput",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "`kind: verdict`, id `<order-id>.verdict-NN`.",
+  "properties": {
+    "actor": {
+      "enum": [
+        "governor",
+        "orchestrator",
+        "worker",
+        "reviewer"
+      ],
+      "title": "Actor",
+      "type": "string"
+    },
+    "actor_model": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Actor Model"
+    },
+    "actor_verified": {
+      "default": false,
+      "title": "Actor Verified",
+      "type": "boolean"
+    },
+    "bootstrap": {
+      "default": false,
+      "title": "Bootstrap",
+      "type": "boolean"
+    },
+    "created": {
+      "format": "date-time",
+      "title": "Created",
+      "type": "string"
+    },
+    "decision": {
+      "enum": [
+        "accept",
+        "reject"
+      ],
+      "title": "Decision",
+      "type": "string"
+    },
+    "findings": {
+      "items": {
+        "$ref": "#/$defs/Finding"
+      },
+      "title": "Findings",
+      "type": "array"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "inputs": {
+      "items": {
+        "$ref": "#/$defs/VerdictInput"
+      },
+      "title": "Inputs",
+      "type": "array"
+    },
+    "kind": {
+      "const": "verdict",
+      "title": "Kind",
+      "type": "string"
+    },
+    "manual_equivalents": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Manual Equivalents",
+      "type": "array"
+    },
+    "refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Refs",
+      "type": "array"
+    },
+    "reviewer_family": {
+      "minLength": 1,
+      "title": "Reviewer Family",
+      "type": "string"
+    },
+    "reviewer_model": {
+      "minLength": 1,
+      "title": "Reviewer Model",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "kind",
+    "id",
+    "created",
+    "actor",
+    "decision",
+    "reviewer_model",
+    "reviewer_family",
+    "inputs"
+  ],
+  "title": "Verdict",
+  "type": "object"
+}

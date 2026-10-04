@@ -1,0 +1,50 @@
+schema_version: 1
+kind: verdict
+id: wo-20261003-factory-p0.verdict-04
+created: 2026-10-04T06:55:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - notes/packets/2026-10-03-factory-v2-p0-test-review-t.md
+  - specs/001-factory-v2/TEST_REVIEW.md
+  - wo-20261003-factory-p0.verdict-03
+  - wo-20261003-factory-p0.amend-03
+decision: accept
+findings: []
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: notes/packets/2026-10-03-factory-v2-p0-test-review-t.md
+    sha: 4e7d8f11bb2e25632e89805e8f60445a0f010670
+  - path: notes/packets/2026-10-03-factory-v2-p0-contracts.md
+    sha: 4e7d8f11bb2e25632e89805e8f60445a0f010670
+  - path: notes/packets/2026-10-03-factory-v2-p0-contracts.handoff.md
+    sha: 4e7d8f11bb2e25632e89805e8f60445a0f010670
+  - path: specs/001-factory-v2/spec.md
+    sha: 4e7d8f11bb2e25632e89805e8f60445a0f010670
+  - path: specs/001-factory-v2/acceptance.md
+    sha: 4e7d8f11bb2e25632e89805e8f60445a0f010670
+  - path: specs/001-factory-v2/data-model.md
+    sha: 4e7d8f11bb2e25632e89805e8f60445a0f010670
+  - path: specs/001-factory-v2/TEST_REVIEW.md
+    sha: 4e7d8f11bb2e25632e89805e8f60445a0f010670
+  - path: scripts/factory/tests/seeds/test_seeds.py
+    sha: 4e7d8f11bb2e25632e89805e8f60445a0f010670
+  - path: bus/orders/wo-20261003-factory-p0/amendment-01.yaml
+    sha: 4e7d8f11bb2e25632e89805e8f60445a0f010670
+  - path: bus/orders/wo-20261003-factory-p0/amendment-02.yaml
+    sha: 4e7d8f11bb2e25632e89805e8f60445a0f010670
+  - path: bus/orders/wo-20261003-factory-p0/amendment-03.yaml
+    sha: 4e7d8f11bb2e25632e89805e8f60445a0f010670
+bootstrap: true
+manual_equivalents:
+  - "T8: resolved; blocked and passing fixtures match the governor's per-file removal adjudication"
+  - "round-3 repro: now a passing guard when the edited file still honors railway"
+  - "cross-file case: blocked when one base file loses railway and no added line restores it, even if another changed file retains railway"
+  - "token move: passing guard under git diff --no-renames"
+  - "uv-sync-locked: pass"
+  - "factory tests: 237 passed and 116 expected assertion failures; no collection/import failures"
+  - "ruff: pass"
+  - "factory schema: pass for the full bus and fixture messages"
+  - "diff-within-owned-paths: pass against the packet plus amendments 01-03"
