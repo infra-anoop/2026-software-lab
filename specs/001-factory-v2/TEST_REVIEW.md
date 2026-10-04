@@ -159,3 +159,35 @@ No other new test weakness was found. The T1 conformance test is behavioral rath
 | `uv run ruff check .` | PASS |
 | `uv run factory check schema --path tests/fixtures/messages/` | PASS — `schema ok` |
 | changed paths vs authorized ownership | FAIL — the Lock line in `data-model.md` and `contracts/cli.md` are outside the recorded order ownership (T7) |
+
+## Round 3 — re-review at `2cda4c9`
+
+### Verdict
+
+**Reject.** T2 and T7 are resolved as originally written: thinner behavior now has explicit automatic red seeds plus false-positive guards, and validated amendments authorize the previously out-of-scope contract/review paths. However, the new mechanical definition over-constrains a named tool/host token by treating deletion of any token-bearing line as a lock violation even when unchanged code still honors that lock. That new product Debate must be resolved before slice B implements the frozen rule.
+
+### Finding resolutions
+
+| ID | Resolution | Evidence |
+|----|------------|----------|
+| T2 | **Resolved** | The Lock contract now defines removed-token and numeric weakening mechanics, `direction: min\|max`, code-line exclusions, and stronger/equal counterparts. Six new blocked seeds cover deleted/restated-only-in-comment behavior and exact/min/max numeric weakening; five of the six retain the token at head and therefore defeat presence-only gates. Six guard fixtures cover stronger bounds, unchanged/restated/moved tokens, and unrelated numbers. Model validation and regenerated schema are green. |
+| T7 | **Resolved** | `amendment-01.yaml` validates at the frozen layout and authorizes the Lock-line and CLI-contract edits. Orchestrator `amendment-02.yaml` supersedes ownership again to include `TEST_REVIEW.md` and the order's bus directory. The worker changes stay within the effective ownership and documented line scopes; the packet/handoff are required control artifacts. |
+
+### New findings
+
+| ID | Severity | Tag | Lens | Locus | Finding | Suggested resolution |
+|----|----------|-----|------|-------|---------|----------------------|
+| T8 | Debate | product | Wrong-thing / false-positive fidelity gate | `data-model.md` Lock rule; `test_seed_lock_token_removed[deleted]` | The removal rule blocks whenever a deleted code line contains a token and no **added** line honors it. Its seed deletes one of two `railway up` lines while an unchanged `railway up --service demo` line remains. The declared lock names only `railway`, not the worker service or a required invocation count, so the output still honors the named host/tool lock. This turns an unrecorded behavior assumption into a merge block and can reject legitimate deletion of duplicate or obsolete uses. | **product:** either (A) block removal only when no code line at head honors the token, adding a passing guard for deleting one of multiple token-bearing lines, or (B) make the seed's lock token name the required behavior (`railway up --service worker`) so its deletion is genuinely thinner. Recommend A for tool/host tokens. |
+
+The numeric seeds are not vacuous: each fixture changes a counterpart while preserving the original token where intended, and the guards distinguish stronger bounds and unrelated numeric prefixes. The expected-red harness still fails before reaching those assertions because slice B's gate is absent, which is the intended CP0 red-first state.
+
+### Commands
+
+| Command | Result |
+|---------|--------|
+| `cd scripts/factory && uv sync --locked` | PASS — 25 locked packages installed |
+| `uv run pytest -q` | Expected RED — **112 failed, 237 passed**; failures are assertions from unimplemented contract/seed behavior, with no collection/import failures |
+| `uv run ruff check .` | PASS |
+| `uv run factory check schema` | PASS — includes both amendments and prior verdicts |
+| `uv run factory check schema --path tests/fixtures/messages/` | PASS |
+| changed paths vs effective ownership and line scopes | PASS |
