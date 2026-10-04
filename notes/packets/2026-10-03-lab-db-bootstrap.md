@@ -1,0 +1,139 @@
+# Work packet — lab database login bootstrap (ops tag)
+
+## Meta
+
+| Field | Value |
+|-------|-------|
+| Packet id | `2026-10-03-lab-db-bootstrap` |
+| Status | ready |
+| Feature / spec | `specs/002-swv2-durable-evals/` (P0 ops: T013 done, T018 amended, T109–T112) |
+| Branch | `packet/2026-10-03-lab-db-bootstrap` |
+| Agent mode | **background** |
+| Spawn | `docs/agent-os/SPAWN_WORKER.md` + `_WORKER_PROMPT.md` |
+
+## Goal
+
+Creating or checking an app's per-environment database login in the shared lab Supabase project becomes one ops tag push. CI reads the password the governor stored in Infisical and runs `apps/smart-writer-v2/db/bootstrap/env_roles.sql` through the Supabase Management API with it. It then proves the login works and is isolated. Nobody hand-assembles a connection string, and CI never writes to Infisical.
+
+Governor decisions (2026-10-03):
+- automate in the existing ops-tag pipeline instead of hand steps;
+- the Management API with a project-scoped access token instead of an admin connection string;
+- the governor stores the two passwords in Infisical, so the automation only reads (no writer identity, no GitHub environment, no `/generated` folder).
+
+## Context to read first
+
+- `AGENTS.md`, `docs/agent-os/SPAWN_WORKER.md`
+- `notes/architect-backlog.md` A20/A21 (Infisical OIDC), A23/A24/A26 (ops tags), **A30** (vault naming), **A31** (shared Supabase project)
+- `.github/workflows/ops-runtime.yml`, `scripts/ops_runtime_tag.py` (+ its tests), `scripts/infisical_oidc_login.py`, `scripts/secrets_sync/vault_infisical.py`, `scripts/secrets_sync/protocols.py`
+- `apps/smart-writer-v2/db/bootstrap/env_roles.sql` + `README.md` (verified on Postgres 17 as a non-superuser CREATEROLE role, like Supabase's `postgres`)
+- `specs/002-swv2-durable-evals/data-model.md` § Environments, `tasks.md` T013/T018/T109–T112
+
+## Design (letter)
+
+1. **Declaration** `deploy/db/smart-writer-v2.yml` (names and non-secret parts only):
+   - `supabase_project_ref: oguydvttuzbbiovvnxoj` (project `2026-software-lab`).
+   - `access_token_vault_ref: {project: 2026-software-lab, env: production, path: /, key: SUPABASE_ACCESS_TOKEN}`. This is a Supabase personal access token scoped to that project only, with Database Read-Write and Connection Pooling Read; the governor stored it 2026-10-03.
+   - `bootstrap_sql: apps/smart-writer-v2/db/bootstrap/env_roles.sql`
+   - Per environment: `production → login swv2_prod, password_vault_ref {env: production, path: /, key: SMART_WRITER_V2_DB_PASSWORD}`, and `staging → login swv2_staging, password_vault_ref {…, key: SMART_WRITER_V2_STAGING_DB_PASSWORD}`. The governor seeds both with `openssl rand -hex 24`.
+   - Connection parts: port `5432` (session pooler), database `postgres`, user `<login>.<project_ref>`. The host is read from the pooler-config API at run time and is not declared.
+2. **Tag kind `db/<app_id>/<environment>`** in `scripts/ops_runtime_tag.py`: parse, create and push like `sync`/`bootstrap`; valid only when `deploy/db/<app_id>.yml` exists. **`bootstrap/<app>/<env>`** runs the db step after provision and before sync, only when that file exists.
+3. **`scripts/db_bootstrap.py ensure --app-id <id> --environment <env>`** (PEP 723 inline deps like the sibling scripts; httpx + psycopg 3):
+   - Read the access token and the env password from Infisical with the existing **read-only** OIDC token. Validate the password against a 48-hex-character regex and fail closed otherwise.
+   - Get the session-pooler host: `GET https://api.supabase.com/v1/projects/{ref}/config/database/pooler` → `db_host` (the entry with `database_type: PRIMARY`).
+   - **Idempotent:** probe (below) as `<login>.<ref>` with the vault password. If it passes, do nothing and exit 0.
+   - Otherwise render the SQL, replacing only the two `EDIT` assignments after validating `env ∈ {prod, staging}` and the password. Run it with `POST https://api.supabase.com/v1/projects/{ref}/database/query` `{"query": …}`. This is a beta endpoint: any non-2xx fails loudly with the step name. Then probe again; a failure is an error.
+   - Behind a `SqlRunner` protocol: `ManagementApiRunner` (production) and `PsycopgRunner` (the pg tests, which run the same SQL as a non-superuser CREATEROLE admin).
+   - Probe as the login, connecting with psycopg keyword parameters (host, port, user, password, dbname; no URL, no escaping):
+     - `current_user`;
+     - the `search_path` starts with the app schema;
+     - create and drop a temp table in the app schema;
+     - `SELECT` on the other environment's app schema (when it exists) and on `public.runs` (when it exists) raises `InsufficientPrivilege`.
+   - Rotation: the governor edits the Infisical value and re-pushes the tag. The probe fails with the old password, so the script re-runs the SQL, which sets the new one.
+   - **Never print or log** the token or the passwords. Use `::add-mask::` under GitHub Actions and never write them to `GITHUB_ENV`/`GITHUB_OUTPUT`. Errors name the step, never the value.
+4. **No Infisical write code.** Reuse `scripts/secrets_sync/vault_infisical.py` for reads, unchanged.
+5. **Workflow** `ops-runtime.yml`: add `db/**` to the tag triggers and a "Database login (ensure)" step for `kind == db`, and for `kind == bootstrap` when `deploy/db/<app>.yml` exists. It runs before sync, with the existing OIDC token. No new GitHub environment or variables.
+6. **App side (connection from parts), out of scope here:** spec 002's Settings compose the connection from the declared parts plus `SMART_WRITER_V2_DB_PASSWORD` (T014/T016 follow the rename recorded in `tasks.md`).
+
+## Tests first (red before impl; T* review between)
+
+- `scripts/test_db_bootstrap.py` (unit, no network):
+  - connection-parts composition (`<login>.<ref>`, port 5432, host from a fake pooler response; a missing PRIMARY entry fails closed);
+  - SQL render validation (bad env or non-hex password refused; the placeholder can never be emitted);
+  - the idempotent no-op decision;
+  - Management API calls (fake `httpx.MockTransport`): the right paths and bearer header; non-2xx fails with the step name; the token never appears in errors;
+  - an invalid vault password (not 48-hex, or missing) fails closed before any SQL runs;
+  - no secret value appears in captured stdout/stderr/logs on success or on each failure path.
+- `scripts/test_ops_runtime_tag.py` (extend): the `db/<app>/<env>` parse/create, and rejection when `deploy/db/<app>.yml` is absent.
+- `scripts/test_db_bootstrap_pg.py` (real Postgres, marked; skipped without `LAB_TEST_PG_ADMIN_URL`):
+  - a non-superuser CREATEROLE admin like Supabase's;
+  - ensure for prod, then staging; a re-run is a no-op;
+  - rotation: a changed vault password makes the probe fail, the re-run sets it, and the old password is rejected;
+  - the probe catches a deliberately over-granted login.
+  - CI: new workflow `.github/workflows/db-bootstrap-tests.yml` with a `postgres:17` service creating that admin role; runs on PRs touching the owned paths.
+
+After the red tests are committed, write `notes/packets/2026-10-03-lab-db-bootstrap-test-review-t.md`, push, and **stop** with handoff "red; T* requested". The orchestrator spawns the reviewer and resumes you.
+
+## Owned paths (may edit)
+
+- `scripts/db_bootstrap.py`, `scripts/test_db_bootstrap.py`, `scripts/test_db_bootstrap_pg.py`
+- `scripts/ops_runtime_tag.py`, `scripts/test_ops_runtime_tag.py`
+- `.github/workflows/ops-runtime.yml`, `.github/workflows/db-bootstrap-tests.yml` (new)
+- `deploy/db/**` (new)
+- `apps/smart-writer-v2/db/bootstrap/**` (README run section → "push the ops tag"; SQL only if a test proves a defect)
+- `notes/packets/2026-10-03-lab-db-bootstrap*`, `specs/002-swv2-durable-evals/tasks.md` (tick T109–T112 only)
+
+## Forbidden paths
+
+- `deploy/secrets/schema.yaml` and its validator (factory slice A owns it during Wave 1; spec 002 T014 adds the runtime mapping later)
+- `scripts/factory/**`, `bus/**`, other apps, rule/process paths (constitution, `AGENTS.md`, `.cursor/rules/`, `docs/agent-os/`)
+
+## Parallelism
+
+| Field | Value |
+|-------|-------|
+| `[P]` tasks in this packet | no (one worker) |
+| Disjoint from other in-flight packets? | yes (factory P0 owns `scripts/factory/**`, `factory.toml`, `bus/**`, `factory-gates.yml`, and only an `--ignore` line in `verify-source.yml`; this packet does not touch `verify-source.yml`) |
+
+## Definition of Done
+
+- [ ] Red tests committed first; T* review triaged in the review packet before implement
+- [ ] `uv run --script` / `uv run pytest scripts/test_db_bootstrap.py scripts/test_ops_runtime_tag.py` green; pg tests green locally (`nix shell nixpkgs#postgresql_17`) and in the new workflow
+- [ ] `uv run ruff check scripts/` clean
+- [ ] Dry run documented: `scripts/db_bootstrap.py ensure --dry-run` prints planned names only (login, schemas, output key), no values
+- [ ] PR opened with summary; no live tag pushed (the orchestrator pushes the first live tag after the governor's one-time steps)
+
+## Out of scope
+
+- Pushing a live `db/**` or `bootstrap/**` tag
+- Writing to Infisical (governor decision: read-only automation)
+- Runtime mapping into Railway (spec 002 T014/T020)
+- Changing any `public` table or the `smart-writer-prod` / `research-auditor-prod` projects
+
+## Governor locks required
+
+| Lock | Value or `blocked until human` |
+|------|--------------------------------|
+| Automate DB login bootstrap via ops tag | locked 2026-10-03 (governor: "automate") |
+| Management API + scoped token `SUPABASE_ACCESS_TOKEN` | locked 2026-10-03; token stored by the governor |
+| Passwords seeded by the governor; automation read-only | locked 2026-10-03; `SMART_WRITER_V2_DB_PASSWORD` / `SMART_WRITER_V2_STAGING_DB_PASSWORD` stored by the governor before the live run (not needed for DoD) |
+
+## Fidelity (constitution §I — required)
+
+| Lock | fidelity | How this packet honors it |
+|------|----------|---------------------------|
+| A31 shared project, own schemas/login, never `public` | letter | Runs the committed `env_roles.sql` unchanged; the probe proves isolation |
+| A30 naming | letter | Plain `SUPABASE_ACCESS_TOKEN` (lab-shared); app and app+env prefixes for the passwords |
+| A20/A21 OIDC, no GitHub repo secrets | letter | Reuses the `ops-runtime.yml` OIDC token; adds no repo secrets |
+| Cattle (A23/A26) | letter | Declaration in git; tag-triggered; idempotent |
+
+## Stop / escalate if
+
+- The Supabase Management API paths cannot be confirmed from Supabase's docs
+- Any test needs a live Supabase or Infisical call
+- DoD needs paths outside Owned paths
+
+## Handoff notes (agent fills at end)
+
+- What changed:
+- Tests run:
+- Open questions for human:
