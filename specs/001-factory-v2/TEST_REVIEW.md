@@ -192,3 +192,30 @@ The numeric seeds are not vacuous: each fixture changes a counterpart while pres
 | `uv run factory check schema` | PASS — includes both amendments and prior verdicts |
 | `uv run factory check schema --path tests/fixtures/messages/` | PASS |
 | changed paths vs effective ownership and line scopes | PASS |
+
+## Round 4 — re-review at `4e7d8f1`
+
+### Verdict
+
+**Accept.** T8 is resolved according to the governor's recorded per-file rule. The Lock contract, blocked seeds, and passing guards agree on occurrence deletion within a file, token disappearance from one file while another file still has it, and cross-file moves. Amendments 01–03 validate and cover the effective changed paths. No new findings.
+
+### Finding resolution
+
+| ID | Resolution | Evidence |
+|----|------------|----------|
+| T8 | **Resolved** | The Lock line now blocks when a base file that honored a token no longer honors it at head, unless an added code line elsewhere restores it as a move. `only_file`, `only_file_restated_in_comment`, and the governor-selected `other_file_still_has_it` cases are blocked. The round-3 repro, deleting several occurrences while the same file still honors the token, and commenting one occurrence while that file still honors it are passing guards. `token_moved_to_another_file` remains a passing guard, with `git diff --no-renames` frozen in the contract. |
+
+### New findings
+
+None.
+
+### Commands
+
+| Command | Result |
+|---------|--------|
+| `cd scripts/factory && uv sync --locked` | PASS — 25 locked packages installed |
+| `uv run pytest -q` | Expected RED — **116 failed, 237 passed**; all failures are assertions from unimplemented contract/seed behavior, with no collection/import failures |
+| `uv run ruff check .` | PASS |
+| `uv run factory check schema` | PASS |
+| `uv run factory check schema --path tests/fixtures/messages/` | PASS |
+| changed paths vs packet + amendments 01–03 | PASS |
