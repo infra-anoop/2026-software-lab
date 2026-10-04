@@ -22,13 +22,16 @@ north_star:
     - { kind: metric, ref: judge-governor-agreement, status: planned }
 
 open_content:   # content the spec must carry as Open Decisions (do not invent)
-  - real per-draft spend ceiling (after bake-off measurement; $3 outer limit already locked)
+  - real per-draft spend ceiling (after bake-off measurement; $3 outer limit already locked)   # D3
+  - interim default Anthropic writer model until the bake-off lock   # D8
+  - which of assessor / infer / extraction must also stay off OpenAI   # D9
+  - interim OpenAI judge and support-checker models until the bake-off   # D10
 
 # Locked at spec review 2026-10-03 (spec D1, D2, D4 + review F1–F6):
 locks:
   - judge agreement: within 1 point (5-point scale) on >= 80% of calibration drafts, every dimension
   - bake-off margin: not distinguishable from the best beyond measured noise, every dimension
-  - judge family: Google Gemini; writer candidates exclude Gemini
+  - judge family: OpenAI (judge + support checker); writer is Anthropic; writer candidates exclude OpenAI   # D4 re-locked 2026-10-03 (was Google Gemini)
   - gate: any single dimension beyond its noise blocks; no offsetting
   - source support: non-compensable regression gate, different-family checker
   - held-out slice never used for selection; blinded governor review each post-mortem
@@ -118,7 +121,7 @@ intents:
   # ── Models ───────────────────────────────────────────────────────────────
   - id: SW-M1
     kind: rule
-    statement: Models are configured per role (writer, assessor, extraction, judge) through typed Settings; no hardcoded model ids.
+    statement: Models are configured per role (writer, assessor, infer, extraction, judge) through typed Settings; no hardcoded model ids.
     source: [charter, factory.I-A3]
     checks: [{ kind: lint, ref: no-hardcoded-model-ids, status: planned }]
   - id: SW-M2
@@ -249,3 +252,8 @@ conflicts:
 confirmations:
   - date: 2026-10-03
     item: Judge rubric excludes grounding; grounding stays a structural pipeline invariant (SW-Q6).
+  - date: 2026-10-03
+    item: >
+      Governor re-locked D4 after plan approval — OpenAI judges, the writer moves
+      to Anthropic (SW-E3 shape unchanged). Reconcile in PLAN_DELTA.md; interim
+      models and role families open as D8–D10.
