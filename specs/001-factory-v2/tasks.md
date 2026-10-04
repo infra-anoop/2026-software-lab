@@ -61,7 +61,7 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 - [ ] T015 Unit tests for models in `scripts/factory/tests/unit/test_bus_models.py` (forbidden keys at any depth; extra keys rejected; each constraint quoted in T006) — green at CP0 together with T006–T008
 - [ ] T016 Write review packet `notes/packets/<date>-factory-v2-p0-test-review-t.md` and **spawn** the T* reviewer (GPT family) on T013–T015 per `docs/agent-os/SPAWN_REVIEWER.md` + `TEST_REVIEW_PROMPT.md`; triage into `specs/001-factory-v2/TEST_REVIEW.md` before slice packets go `ready`
 
-- [ ] T016a Write the three slice work packets `notes/packets/<date>-factory-v2-slice-{a,b,c}.md` from `notes/packets/_TEMPLATE.md`: owned paths from § Owned paths per slice, DoD = that slice's tests green + catalog evidence filled, Fidelity table (letter for every named lock: cap 3, 70% mutation, GPT reviewer family, GitHub App identity, Semgrep CE / import-linter / mutmut 3), bootstrap-verdict requirement (FR-037)
+- [x] T016a Write the three slice work packets `notes/packets/<date>-factory-v2-slice-{a,b,c}.md` from `notes/packets/_TEMPLATE.md`: owned paths from § Owned paths per slice, DoD = that slice's tests green + catalog evidence filled, Fidelity table (letter for every named lock: cap 3, 70% mutation, GPT reviewer family, GitHub App identity, Semgrep CE / import-linter / mutmut 3), bootstrap-verdict requirement (FR-037)
 
 **Checkpoint CP0**: `factory check schema` exits 0 on the sample messages; JSON Schemas generated; contract + seeds tests collected and red for unimplemented commands; T* triaged.
 
