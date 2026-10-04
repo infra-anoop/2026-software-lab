@@ -1,0 +1,24 @@
+schema_version: 1
+kind: decision_request
+id: board-web-view
+created: 2026-10-05T12:00:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+owner: governor
+prompt: Do you want a web page that shows the board, or is the terminal view enough this sprint?
+options:
+  - label: Terminal view only
+    consequences:
+      services: []
+      cost: free
+  - label: Add a read-only web page
+    consequences:
+      services: [static page host]
+      secrets: [host deploy token]
+      ops_steps: [create the site, connect it to the repo]
+      cost: free tier
+recommended: Terminal view only
+blocking: false
+arch_impact: true
+feature: 001-factory-v2
+refs: [specs/001-factory-v2/research.md]

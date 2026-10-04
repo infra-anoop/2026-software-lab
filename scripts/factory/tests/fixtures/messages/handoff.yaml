@@ -1,0 +1,21 @@
+schema_version: 1
+kind: handoff
+id: wo-20261005-red-first-gate.handoff
+created: 2026-10-05T16:00:00Z
+actor: worker
+actor_model: claude-opus-5.5
+summary: |
+  Added gate red-first-proof with base/head collection diff.
+  Unit tests cover the five edge cases from research.md.
+checks_run:
+  - gate_or_test: red-first-proof
+    result: pass
+deviations:
+  - what: Base collection runs with --co -q instead of a plugin
+    why: Keeps the gate free of pytest internals
+    conservative_choice: Treat any unparsable collection line as base broken
+open_questions:
+  - question: Should base-broken results block or warn?
+    class: non_blocking
+author_model: claude-opus-5.5
+refs: [wo-20261005-red-first-gate]

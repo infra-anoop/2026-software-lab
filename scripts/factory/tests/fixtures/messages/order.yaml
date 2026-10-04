@@ -1,0 +1,21 @@
+schema_version: 1
+kind: order
+id: wo-20261005-red-first-gate
+created: 2026-10-05T14:00:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+feature: 001-factory-v2
+goal: Implement the red-first proof gate in CI.
+intents: [I-B7, I-P2]
+owned_paths: ["scripts/factory/src/factory/gates/drift/red_first.py", "scripts/factory/tests/**/test_red_first*.py"]
+checks: [red-first-proof, seed.not_red_first]
+locks:
+  - id: D2
+    letter_tokens: ["70%"]
+    fidelity: letter
+size_minutes: 60
+stop_conditions: ["needs a change outside owned paths", "needs a governor decision"]
+depends_on_decisions: []
+tasks: [T042]
+worker_runtime: local_subagent
+refs: [specs/001-factory-v2/tasks.md]
