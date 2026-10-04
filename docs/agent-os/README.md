@@ -41,6 +41,8 @@ Lab taste = thin **overlays** in constitution + template overrides — not a sec
 | Spawn reviewers | `docs/agent-os/SPAWN_REVIEWER.md` |
 | Spawn workers (§H) | `docs/agent-os/SPAWN_WORKER.md` + `notes/packets/_WORKER_PROMPT.md` |
 | Slash-style skills | `.cursor/skills/speckit-*` |
+| Main-session kickoff (framing, read state, review, governor rules) | `.cursor/skills/lab-kickoff/SKILL.md` |
+| Intent session before each sprint/feature spec → `intent.yaml` | `.cursor/skills/lab-intent-session/SKILL.md` |
 | Spec review brief (product) | `docs/agent-os/SPEC_REVIEW_PROMPT.md` |
 | Spec review brief (process) | `docs/agent-os/PROCESS_REVIEW_PROMPT.md` |
 | Plan review brief (architecture) | `docs/agent-os/PLAN_REVIEW_PROMPT.md` |
