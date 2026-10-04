@@ -5,7 +5,7 @@
 | Field | Value |
 |-------|-------|
 | Packet id | `2026-10-04-swv2-p0-staging-footprint` |
-| Status | in_progress (governor steps done; agent steps T020, T112 pending) |
+| Status | in_progress (governor steps done; T112 done 2026-10-04; agent step T020 pending) |
 | Feature / spec | `specs/002-swv2-durable-evals/` (P0 ops) |
 | Branch | per step (`orch/*`, `packet/*`); live runs are ops tags |
 | Agent mode | session (governor walkthrough) + background (ops worker for T020) |
@@ -42,10 +42,14 @@ Smart Writer V2 has everything it needs outside the repo: storage, database logi
 | 2026-10-03 23:06 | T019 | Infisical `production` `/`: `ANTHROPIC_API_KEY` (workspace `2026-software-lab`, prepaid credits, auto-reload off) | Governor confirmed |
 | 2026-10-03 23:04 | T019 | GitHub variable `INFISICAL_MACHINE_IDENTITY_ID` exists | Run 35539381829 (Sync runtime secrets, 2026-09-20) logged "Using Infisical OIDC (machine identity)" |
 | 2026-10-03 23:16 | T021 | GitHub environment `swv2-production-migrate`: required reviewer `infra-anoop`, prevent-self-review off, admin bypass off, deployment rule tag `ship/smart-writer-v2/production` | Orchestrator read it back via the REST environments API |
+| 2026-10-04 11:40 | T112 | First `db/smart-writer-v2/staging` run (37225335757) failed at Infisical OIDC login (HTTP 403): the machine identity's OIDC Subject trusted only `refs/heads/main`; this was the first tag-triggered `ops-runtime.yml` run (earlier secret syncs were `workflow_dispatch` on `main`). Nothing reached the database | Run log: Infisical auth step failed; ensure step skipped |
+| 2026-10-04 12:22 | T112 | Governor set the Infisical machine identity's OIDC Subject to `repo:infra-anoop/2026-software-lab:ref:refs/{heads/main,tags/sync/*,tags/bootstrap/*,tags/db/*}` (audiences/claims unchanged). Unblocks every ops-tag family, not only `db/` | Governor confirmed; next tag run logged in via OIDC |
+| 2026-10-04 12:24 | T112 | `db/smart-writer-v2/staging` (run 37228069765): probe failed → `env_roles.sql` applied via Management API → probe passed; `ok: swv2_staging applied` | Run log |
+| 2026-10-04 12:26 | T112 | `db/smart-writer-v2/production` (run 37233353978): `ok: swv2_prod applied` after probe passed | Run log |
+| 2026-10-04 12:27 | T112 | Staging re-push (run 37233389998): `probe passed; nothing to do`, `ok: swv2_staging noop` — idempotent | Run log |
 
 ## Open items
 
-- **T112** live database-login run: after the lab-db-bootstrap packet merges.
 - **T020** staging service + sync: ops worker, after T007/T014/T015 land.
 - **Gate coverage (for T052):** the lab-wide `v*` release (`ship-registry.yml`) also deploys registry apps. T052 must make sure a `v*` release carrying unapplied SWV2 migrations either waits on `swv2-production-migrate` or skips SWV2. Today only `ship-one.yml` is planned to use the gate.
 - Terminal scrollback: the governor was advised to clear the terminal where the passwords were generated.
