@@ -83,3 +83,43 @@ The suite is honestly red and has strong coverage of password validation, SQL re
 - Real Postgres 17.11 (`lab_admin NOSUPERUSER CREATEROLE`, `CREATE` on the database and `public`, scram host auth): **14 failed, 1 passed** (admin fidelity); every failure is `NotImplementedError`. Without `LAB_TEST_PG_ADMIN_URL`: **15 skipped**.
 - New fixture SQL checked by hand with psql as `lab_admin`: the decoy can connect, sees the prod `search_path`, creates and drops a table in `swv2_prod`, and is denied on `public.runs` and `swv2_staging`. `REVOKE CREATE` blocks `CREATE TABLE swv2_prod.t`; `REVOKE USAGE` still allows that `CREATE TABLE` but blocks lookup/drop. Reset drops every `swv2_*` role and schema.
 - `uvx ruff check` on the three packet files: clean. `pytest scripts/ --ignore=scripts/factory` (as `verify-source.yml`): only this packet's red tests fail.
+
+## Round 2 review
+
+### Verdict
+
+**reject**
+
+The round-1 blockers and accepted process findings are genuinely resolved in the tests, and the suite remains honestly red for missing implementation behavior. One isolation hole remains: a probe that never rejects `CREATE` on `public` can still pass every adversarial probe test and let `ensure` return a false no-op. The new whole-exception-chain assertion also over-constrains safe Python exception handling: `raise ... from None` suppresses a secret-bearing context from rendered tracebacks but deliberately retains it in `__context__`, which the helper still traverses.
+
+### Findings
+
+| ID | Severity | Tag | Locus | Finding | Suggested resolution |
+|----|----------|-----|-------|---------|----------------------|
+| R2-1 | Blocker | product | `scripts/test_db_bootstrap_pg.py` probe negatives | The suite proves denial of `SELECT` on `public.runs`, but never grants the login `CREATE` on `public` and asks `probe_login` to reject it. A login can be correctly identified, isolated from both environments' data, and still create objects in `public`; a weak probe then passes and `ensure` returns `noop`, violating A31 and the SQL's explicit public-write guard. | Add a real-Postgres negative that grants `CREATE ON SCHEMA public` directly to the app login and requires `ProbeError` (and preferably an `ensure` fail-closed assertion). Keep it capability-based. |
+| R2-2 | Debate | process | `scripts/test_db_bootstrap.py::_assert_error_chain_scrubbed` | The test walks `__context__` even when `__suppress_context__` is true. In Python, `raise DbBootstrapError(...) from None` safely excludes the original secret-bearing exception from the rendered traceback but leaves it in `__context__`; therefore the test rejects the packet's implied safe implementation and requires unusual context-clearing or raising outside the handler. | Assert against `traceback.format_exception(...)`, or traverse `__cause__` and only an unsuppressed `__context__`. Keep direct error text, captured output, logs, and rendered tracebacks secret-free. |
+| R2-3 | Nit | process | B1–B6 triage changes across the three test files | **Strength:** B1–B4 and B6 are resolved in executable assertions, not merely in prose: Railway selection is skipped for `db`; wrong and lookalike identities plus own-schema write loss fail; raw/typed pooler and probe failures carry sentinels; live read-only vault wiring is exercised; private helper-name tests are gone. B5's API, rotation, and Postgres coverage remains intact. | Retain these changes. |
+| R2-4 | Nit | process | Red-state commands and packet test files | **Strength:** collection is clean, there are no `xfail` markers, the stub produces the expected unit and Postgres red counts, and the broader source run confines all failures to this packet's tests. | Retain the red-first shape. |
+
+### Round-2 choice judgments
+
+1. **Raw `resolve_parts` exception → `pooler` step:** accept. The collaborator has a single declared responsibility, so `ensure` can classify the boundary without depending on raw exception text.
+2. **No secret in the entire exception object chain:** reject as currently tested; R2-2 distinguishes hidden object state from what a traceback renders. The externally observable no-leak requirement remains correct.
+3. **Construct `InfisicalCloudBackend(token=$INFISICAL_TOKEN)` at call time with live defaults:** accept. It verifies the locked existing read-only backend, fresh runtime token lookup, and production collaborator wiring without making a cloud call.
+
+### Fresh adversarial pass
+
+- A probe that checks identity, search path, own-schema writes, cross-environment reads, and `public.runs` reads—but ignores `CREATE` on `public`—goes green today. R2-1 is the remaining privilege hole.
+- Production/staging identity confusion, rotation, idempotency, missing `PRIMARY`, malformed vault passwords, and SQL/API secret-body paths now have meaningful negative cases.
+- Pure `USAGE` on the other environment remains a stricter probe assertion than the letter's stated `SELECT` check, but it matches the committed SQL's “nothing granted on the other environment's schemas” outcome and is not blocking.
+- The exact backend/default-wiring test is appropriately narrow because those collaborators are frozen interfaces and the packet explicitly requires reuse of the existing Infisical reader.
+
+### Verification record
+
+- `nix develop -c uv run --with pytest --with 'psycopg[binary]>=3.2' --with 'pyyaml>=6' --with 'httpx>=0.27' pytest -q scripts/test_db_bootstrap.py scripts/test_ops_runtime_tag.py` — **90 failed, 28 passed**; no collection errors.
+- Throwaway PostgreSQL 17.11 cluster with `lab_admin NOSUPERUSER CREATEROLE`, database/public `CREATE`, and `LAB_TEST_PG_ADMIN_URL`; same dependency set; `pytest -q scripts/test_db_bootstrap_pg.py` — **14 failed, 1 passed**; all failures are missing stub behavior.
+- Without `LAB_TEST_PG_ADMIN_URL`, `pytest -q scripts/test_db_bootstrap_pg.py` — **15 skipped**.
+- `nix develop -c uvx ruff check scripts/db_bootstrap.py scripts/test_db_bootstrap.py scripts/test_db_bootstrap_pg.py` — **passed**.
+- `nix develop -c env -u LAB_TEST_PG_ADMIN_URL uv run --with pytest --with 'psycopg[binary]>=3.2' --with 'pyyaml>=6' --with 'httpx>=0.27' pytest -q scripts/ --ignore=scripts/factory` — **90 failed, 118 passed, 17 skipped**; every failure is in `test_db_bootstrap.py` or the new `db` cases in `test_ops_runtime_tag.py`.
+- `rg 'xfail|pytest\.mark\.xfail'` over the three packet test files — **0 matches**.
+- Python exception-semantics check — `raise ... from None` left the original exception in suppressed `__context__`, while `traceback.format_exception` contained no sentinel secret.
