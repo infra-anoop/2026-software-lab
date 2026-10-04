@@ -43,6 +43,10 @@ def push_or_fail(repo: Path, sha: str, branch: str, *, lost: str) -> None:
     try:
         git.push(repo, sha, branch)
     except git.PushRejected as exc:
+        try:
+            git.fetch(repo)
+        except git.GitError:
+            pass
         raise Refused(lost) from exc
     except git.GitError as exc:
         raise External(f"push to origin failed: {exc}") from exc
