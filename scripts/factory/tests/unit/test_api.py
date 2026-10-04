@@ -75,6 +75,44 @@ def test_fake_github_implements_github_port() -> None:
     assert isinstance(FakeGitHub(), GitHubPort)
 
 
+def test_github_port_reads_commit_statuses() -> None:
+    assert callable(getattr(GitHubPort, "list_commit_statuses", None)), (
+        "GitHubPort writes commit statuses but has no operation to read them back"
+    )
+
+
+def assert_commit_status_read_after_write(port: GitHubPort) -> None:
+    """Port conformance: statuses written by the gate runner are what lifecycle reads."""
+    sha = "a" * 40
+    other = "b" * 40
+    port.set_commit_status(sha, "factory/red-first-proof", "pending", "running")
+    port.set_commit_status(
+        sha, "factory/red-first-proof", "success", "red first", "https://ci.test/1"
+    )
+    port.set_commit_status(sha, "factory/test-seam-ban", "failure", "seam in app/llm.py")
+    port.set_commit_status(other, "factory/test-seam-ban", "success", "clean")
+    read = getattr(port, "list_commit_statuses", None)
+    status_type = getattr(api, "CommitStatus", None)
+    assert read is not None and status_type is not None, "no commit-status read on the port"
+    statuses = read(sha)
+    assert all(isinstance(s, status_type) for s in statuses)
+    by_context = {s.context: s for s in statuses}
+    assert len(statuses) == len(by_context), "expected the latest status per context only"
+    assert set(by_context) == {"factory/red-first-proof", "factory/test-seam-ban"}
+    latest = by_context["factory/red-first-proof"]
+    assert (latest.state, latest.description, latest.target_url) == (
+        "success",
+        "red first",
+        "https://ci.test/1",
+    )
+    assert by_context["factory/test-seam-ban"].state == "failure"
+    assert read("c" * 40) == []
+
+
+def test_fake_github_commit_status_read_after_write() -> None:
+    assert_commit_status_read_after_write(FakeGitHub())
+
+
 def test_order_states_match_data_model() -> None:
     assert {s.value for s in OrderState} == {
         "issued",
