@@ -15,11 +15,16 @@
 
 **Held-out custody (sealed):** `heldout` cases live under `evals/golden/heldout/`. The eval runner refuses to load them unless invoked as `evals.run --postmortem` with sprint id; `eval.heldout_sealed` scans every workflow and run config for that path. Their drafts and scores are first generated at the post-mortem.
 
-## Judge output (`ProgramOfficerJudge`, Gemini)
+## Model families (D4 — re-locked 2026-10-03)
+
+- Judge and support checker: **OpenAI** model ids only (`SMART_WRITER_V2_MODEL_JUDGE`, `SMART_WRITER_V2_MODEL_SUPPORT` in `evals/settings.py`); a non-OpenAI id is refused. Interim models from the first live run until the bake-off: **D10**. At the bake-off, judge candidates are ranked by agreement with the governor's calibration ratings (FR-015).
+- Drafts under evaluation come from the shipped graph, whose writer is an **Anthropic** model (`app/models_config.py`); the runner refuses to score when the writer's family equals the judge's or the support checker's (`eval.judge_family`).
+
+## Judge output (`ProgramOfficerJudge`, OpenAI)
 
 `{funder_fit, narrative, evidence_of_impact, voice}`: each `{score: 1..5 int, rationale}`. The persona prompt is versioned in `evals/prompts/program_officer.md`. The judge sees the RFP excerpt and the draft only.
 
-## Support output (`SourceSupport`, Gemini)
+## Support output (`SourceSupport`, OpenAI)
 
 Input per cited claim: the claim text plus the **exact captured source text** from `provenance_records.source_text` (for uploads/materials, the hashed file; for nightly web runs, the page text captured during that run and stored in the run artifact). Unresolvable references are `unsupported`.
 Output: `{claim, source_sha256, verdict: supported|unsupported, quote?}`.

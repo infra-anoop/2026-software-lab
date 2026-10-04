@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-03
 
-**Status**: Approved (2026-10-03 — review Blocker and Debates locked per review-locks table; D3 open by design until bake-off)
+**Status**: Approved (2026-10-03 — review Blocker and Debates locked per review-locks table; D3 open by design until bake-off). Amended in place 2026-10-03: D4 re-locked (OpenAI judges, Anthropic writes) with new Open Decisions D8–D10 → [`PLAN_DELTA.md`](./PLAN_DELTA.md)
 
 **Input**: Governor intent session 2026-10-03 → [`intent.yaml`](./intent.yaml). Sprint charter: [`notes/sprints/2026-10-sprint-02.md`](../../notes/sprints/2026-10-sprint-02.md). Backlog locks A27 (durable state), A28 (real migrations).
 
@@ -50,7 +50,7 @@ As the governor, every PR that touches Smart Writer V2 shows how draft quality m
 3. **Given** a change that does not affect drafts, **When** checks finish, **Then** it is not blocked (no false positive from noise).
 4. **Given** the judge, **When** compared with the governor's hand ratings of 10–15 drafts, **Then** it is within 1 point (5-point scale) of the governor on ≥ 80% of drafts for every dimension (**D1**) before the gate is allowed to block.
 5. **Given** the golden set, **When** reviewed by the governor, **Then** it contains realistic grant scenarios built from public funder RFPs plus at least one non-grant smoke scenario.
-6. **Given** the judge, **When** configured, **Then** it is from a different model family than the writer (Google Gemini — **D4**).
+6. **Given** the judge, **When** configured, **Then** it is from a different model family than the writer (judge and support checker: OpenAI; writer: Anthropic — **D4**); configuring an OpenAI model as the writer is refused.
 7. **Given** the golden set, **When** split, **Then** a sealed held-out slice exists that is never used for prompt, model, or judge selection; its drafts are generated and scored **only at the post-mortem** (no nightly or per-PR runs).
 8. **Given** a post-mortem, **When** held, **Then** the governor blind-reviews about 5 drafts (including held-out ones) and the agreement with judge scores is recorded.
 9. **Given** a draft's cited claims, **When** evaluated, **Then** each is checked for whether its source actually supports it, by a model of a different family than the writer; a support rate worse than main beyond noise blocks the PR regardless of quality scores; the governor spot-checks a sample of support judgments at post-mortem.
@@ -90,7 +90,7 @@ As the governor, no single draft can cost more than $3; time to a complete draft
 
 ### User Story 5 — The right models, chosen by evidence (Priority: P2)
 
-As the governor, each pipeline role (writer, assessor, extraction, judge) uses a configured model chosen by evidence: per-role bake-offs pick the cheapest candidate not distinguishable from the best beyond noise, the chosen bundle is then checked end to end, and any model change re-runs the full eval set.
+As the governor, each pipeline role (writer, assessor, infer, extraction, judge) uses a configured model chosen by evidence: per-role bake-offs pick the cheapest candidate not distinguishable from the best beyond noise, the chosen bundle is then checked end to end, and any model change re-runs the full eval set.
 
 **Why this priority**: Models are hardcoded to one 2024-era model in five places; choices should be evidence-driven. P2 because it depends on US2. (SW-M1..M3)
 
@@ -159,7 +159,7 @@ As the governor, the UI is built as part of producing the deployable image; buil
 
 - **FR-007**: The product MUST have a golden set of grant scenarios (public funder RFPs + synthetic orgs) plus ≥1 non-grant smoke scenario, reviewed by the governor. The set MUST include a held-out slice never used for prompt, model, or judge selection. (SW-Q8)
 - **FR-008**: A judge MUST score drafts on funder fit, persuasive narrative, evidence of impact, and organizational voice, reading as a busy program officer. (SW-Q1..Q5)
-- **FR-009**: The judge MUST be from a different model family than the writer — Google Gemini (**D4**); writer candidates therefore exclude Gemini. (SW-E3)
+- **FR-009**: The judge MUST be from a different model family than the writer — the judge and the support checker are OpenAI models and the writer is an Anthropic model (**D4**); writer candidates therefore exclude OpenAI. Which other pipeline roles must also stay off OpenAI is **D9**. (SW-E3)
 - **FR-010**: Judge agreement with the governor's hand ratings MUST be measured as the share of calibration drafts where judge and governor are within 1 point on a 5-point scale, per dimension; the eval gate MUST NOT block until that share is ≥ 80% for every dimension (**D1**). (SW-Q7)
 - **FR-011**: Every PR touching the app MUST report per-dimension and source-support scores against main within ~$1–2 eval spend, on a per-PR subset covering every scenario category outside the held-out slice (selection/rotation defined in plan). The full tuning set runs nightly (never the held-out slice); a nightly-only regression opens a board item per Edge Cases. (SW-N1, SW-E2)
 - **FR-012**: Each PR eval MUST score main and the PR side by side on the same subset (paired). A PR MUST be blocked if any single dimension drops vs main by more than that dimension's noise band, calibrated from paired no-change comparisons (statistic defined in plan); gains in other dimensions MUST NOT offset. The gate MUST stay report-only until about 10 no-change comparisons show it rarely false-alarms (threshold in plan). Overridable by the orchestrator with a reason. (SW-E1)
@@ -170,7 +170,7 @@ As the governor, the UI is built as part of producing the deployable image; buil
 **Models**
 
 - **FR-014**: Each role's model MUST come from typed configuration; no hardcoded model ids. (SW-M1)
-- **FR-015**: A per-role bake-off MUST choose the cheapest candidate not distinguishable from the best beyond measured noise on every dimension (**D2**); the selected bundle MUST then beat or match the current bundle end to end; judge candidates MUST be ranked by agreement with governor calibration ratings, not their own scores; the governor locks the result. (SW-M2)
+- **FR-015**: A per-role bake-off MUST choose the cheapest candidate not distinguishable from the best beyond measured noise on every dimension (**D2**); the selected bundle MUST then beat or match the current bundle end to end; judge candidates MUST be ranked by agreement with governor calibration ratings, not their own scores; candidate families follow D4 (writer: Anthropic; judge and support checker: OpenAI) and D9 (other roles); the governor locks the result. (SW-M2)
 - **FR-016**: Any model configuration change MUST trigger the full eval set. (SW-M3)
 
 **Limits**
@@ -246,7 +246,10 @@ US4 spend ceiling (FR-017) lands with the Models + tests lane.
 | **D3** | Hard outer limit $3 per draft; real ceiling from measurement | Real per-draft ceiling | human | After bake-off measurement, before production uses new models | open (by design — governor sets after measurement; governor confirmed 2026-10-03: stays open until the bake-off reports costs, all building except the production model switch proceeds) | content-only | |
 | **D6** | Model-change PRs run the full eval set (FR-011), which can exceed the per-PR budget | Spend budget for a model-change PR's full run | human | Before the eval workflow ships | **locked** (2026-10-03) — **$10** per model-change PR; beyond that the run waits for governor approval | content-only | letter |
 | **D7** | The nightly full tuning run has no spend cap | Nightly spend cap | human | Before the eval workflow ships | **locked** (2026-10-03) — **$5** per night; if the estimate is higher the run is skipped and flagged on the factory board | content-only | letter |
-| **D4** | Judge is a different model family from the writer; needs a second provider key in the vault | Which provider/family judges | human | Before Evals lane | **locked** (2026-10-03) — **Google Gemini** judges; writer candidates exclude Gemini | arch (vault secret, provider adapter) | letter |
+| **D4** | Judge is a different model family from the writer; needs a second provider key in the vault | Which provider/family judges | human | Before Evals lane | **re-locked** (2026-10-03, governor) — **OpenAI** judges (judge + support checker); the **writer is Anthropic**; bake-off writer candidates exclude OpenAI. Vault/CI key for the writer side: `ANTHROPIC_API_KEY` (production, staging, eval CI); `OPENAI_API_KEY` stays (judge in eval CI). Superseded lock (2026-10-03): Google Gemini judges, writer candidates exclude Gemini. Reconcile → [`PLAN_DELTA.md`](./PLAN_DELTA.md) | architecture-affecting (runtime provider + vault secret + provider adapter) | letter |
+| **D8** | The writer is Anthropic (D4); the eval baseline (plan P2b) must score Anthropic drafts before the bake-off (P3) picks the writer, so the models work (P1a) ships an Anthropic default | Which Anthropic model is the interim default writer until the bake-off lock (also the interim model for any role D9 moves off OpenAI, unless the governor names another) — options and cost-per-draft in [`FINISH_BAR.md`](./FINISH_BAR.md) § Delta 2026-10-03 | human | Before the P1a models default ships (tasks T105 before T030) | open | | |
+| **D9** | Only the writer's family is fixed by D4; the assessor (scores each inner turn and steers the writer's revisions), infer (slots, ranking, search query), and extraction (claim → source mapping) roles never author draft text | Which of assessor / infer / extraction must also stay off OpenAI (and therefore off the judge's family) — options in [`FINISH_BAR.md`](./FINISH_BAR.md) § Delta 2026-10-03 | human | Before the P1a models default ships (tasks T106 before T030; T026 role-family clause) | open | | |
+| **D10** | Judge and support checker are OpenAI (D4); at the bake-off, judge candidates are ranked by agreement with the governor's calibration ratings (FR-015, US5 #4); no OpenAI model is named for the eval baseline before then | Which OpenAI model judges, and which checks source support, from the first live eval run (P2b) until the bake-off re-ranks judges — options in [`FINISH_BAR.md`](./FINISH_BAR.md) § Delta 2026-10-03 | human | Before the eval settings default ships and before any live eval run (tasks T107 before T082) | open | | |
 | **D5** | Migrations proven on staging before production (FR-006); SWV2 has no staging footprint today | Staging database form: schema inside the SWV2 project / separate Supabase project / Neon branch — consequences in plan "Staging database" | human | Before the staging footprint is created and before any production migration | **locked** (2026-10-03) — **staging schemas inside the SWV2 Supabase project** (app, checkpoints, queue), a separate database login per environment, separate upload bucket | **arch** (cost, ops steps, vendor letter) | letter |
 
 ## Review locks *(mandatory before Approved)*
@@ -265,11 +268,12 @@ Report: [`SPEC_REVIEW.md`](./SPEC_REVIEW.md) (F1–F9). Reviewer family: GPT.
 | **F8** | locked (agent) / Later → plan | Nightly-only regression opens an orchestrator-owned board item reported on later PRs (Edge Cases, FR-011); plan sets time bound |
 | **F9** | accepted | Strength: baseline preservation — keep references through plan and tasks |
 | **Plan review** | locked (governor 2026-10-03) | Sealed held-out (US2 #7, SC-013); paired PR comparison + report-only until no-change false-alarm check (FR-012); Postgres job queue; D5 staging schemas — see plan review locks |
+| **D4 re-lock** | locked (governor 2026-10-03; recorded by orchestrator) | OpenAI judges and checks support; Anthropic writes; judge ≠ writer family unchanged at letter fidelity (US2 #6, FR-009, FR-013a); interim models and role families raised as D8–D10; §G.1 reconcile → [`PLAN_DELTA.md`](./PLAN_DELTA.md) |
 
 ## Assumptions
 
 - Postgres via Supabase (A27) in a dedicated project for this app (backlog P6: one project per app) — ops HITL: governor creates the project; names go in the secrets schema.
-- Google Gemini API key in the vault for the judge and support checker (D4) — ops HITL.
+- Anthropic API key (`ANTHROPIC_API_KEY`) in the vault for the writer — production, staging, and eval CI (D4) — ops HITL. The OpenAI key already in the vault also serves the judge and support checker in eval CI (D4).
 - Uploads move to object storage in the same Supabase project.
 - Single Railway replica remains acceptable; the in-process rate limiter stays in memory.
 - Baseline D7 upload limits unchanged.
