@@ -113,3 +113,14 @@ What would have to be true for the suite to be right anyway: T013 is treated str
 5. Frozen files owned by no slice: accepted; amendment path is explicit.
 6. Missing commit-status read: T1 blocker.
 7. Adapter factory paths: accepted as a minimal frozen convention.
+
+## Triage (orchestrator, 2026-10-03)
+
+| ID | Disposition | Decided by | Resolution |
+|----|-------------|------------|------------|
+| T1 | accept — amend CP0 | orchestrator (arch) | |
+| T2 | accept — strict (semantic) letter fidelity, as spec US3 #8 / SC-002 already say | governor 2026-10-03 | |
+| T3 | accept | orchestrator (process) | |
+| T4 | accept | orchestrator (arch) | |
+| T5 | accept the eight-term jargon list as is; future misses are added as governor corrections | governor 2026-10-03 | |
+| T6 | accept — discover repo root | orchestrator (process) | |
