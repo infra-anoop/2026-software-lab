@@ -324,6 +324,17 @@ intents:
     checks:
       - { kind: schema, ref: gate.fail-mode-category, status: planned }  # gate registry: fail_mode=closed only for those categories
 
+  - id: I-P10
+    kind: religion
+    domain: process
+    statement: >
+      Every change reaches main through a branch and a PR — workers and the
+      main session alike. Nothing is committed on or pushed to main directly.
+    source: governor.2026-10-03 (correction — the pre-Spec-Kit rule "one packet → one branch → one PR" was lost in the 2026-09-12 rewrite)
+    checks:
+      - { kind: hook, ref: shell-guard, status: planned }  # denies commit on main / push to main
+      - { kind: ci, ref: branch-protection-require-pr, status: planned }  # GitHub setting, no bypass; snapshot in deploy/github/branch-protection.json
+
   # ── Ops religion ─────────────────────────────────────────────────────────
   - id: I-O1
     kind: religion

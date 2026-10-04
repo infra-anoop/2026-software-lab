@@ -19,6 +19,7 @@ Extensible checks for [`spec.md`](./spec.md) Success Criteria. Grow from runs; d
 
 | id | class | intents | severity | when | shall | how | evidence |
 |----|-------|---------|----------|------|-------|-----|----------|
+| branch.no_direct_main | SC-003 | I-P10 | must | any actor, including the main session | Commit on `main` / push to `main` refused by the editor hook; GitHub requires a PR with no bypass; snapshot matches | auto | planned |
 | board.matches_reality | SC-001 | I-M4 | must | work orders in each lifecycle state | Board state equals state derived from branch/PR/checks for every order | auto | planned |
 | bus.no_handwritten_status | SC-001 | I-M2 | must | any bus message | Schema rejects hand-maintained status fields | auto | planned |
 | seed.substitution_undeclared | SC-002 | I-B5 | must | work order touches a named lock without fidelity declaration | Issuing is refused | auto | planned |
@@ -67,5 +68,6 @@ Extensible checks for [`spec.md`](./spec.md) Success Criteria. Grow from runs; d
 |------|--------|
 | 2026-10-03 | Bootstrap from spec SC-001..009 + US6 seeded fixtures |
 | 2026-10-03 | Review triage: `evidence` column + lifecycle (F10/R5); presence vs effective coverage (R2); reviewer isolation (F3); routing, capture budget (F4); constitution rows (R3); bootstrap (R4); declared-substitution seed (F5) |
+| 2026-10-03 | Governor correction: branch + PR for every change, main session included (I-P10, FR-005a) — row `branch.no_direct_main` |
 | 2026-10-03 | Plan review locks: claim-level cap (FR-008 waive), git leases, App identity, assertion red-first |
 | 2026-10-03 | Governor locks: two-class gates (F1/R1), cap 3 (F2), all seeds block (F5), Wave 1 exits on P1 (F6/R6), orchestrator-linked repeats (F7) |

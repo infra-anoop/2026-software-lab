@@ -196,6 +196,7 @@ As the governor, the factory tooling runs in a fresh repo of mine with only conf
 - **FR-003**: Work state MUST be derived from repository, PR, and check reality — not from hand-maintained fields. (I-M2, I-M4)
 - **FR-004**: The factory MUST provide one board answering in flight / blocked / waiting on governor, including governor decisions posed in plain language. (I-M4, I-B3)
 - **FR-005**: One work order MUST map to one branch and one PR. (I-P1)
+- **FR-005a**: Every change MUST reach `main` through a branch and a PR, including the main session's own edits; direct commits/pushes to `main` MUST be refused. The orchestrator may merge on green; rule/process paths also need governor approval (FR-031). (I-P10 — governor correction 2026-10-03)
 
 **Work orders, workers, reviewers**
 
