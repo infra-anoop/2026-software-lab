@@ -77,13 +77,90 @@ def test_open_pr_is_in_review(repo: RepoBuilder) -> None:
     assert item.pr_number == 1
 
 
-def test_accepted_needs_verdict_and_green_checks(repo: RepoBuilder) -> None:
+REQUIRED_CHECKS = ["red-first-proof", "test-seam-ban"]
+GREEN_STATUSES = {"red-first-proof": "success", "test-seam-ban": "success"}
+GREEN_RUNS = {"factory-tests": ("completed", "success")}
+
+# Required set = a `factory/<gate-id>` commit status for every id in the order's `checks`
+# (success, or failed and overridden for that gate) AND every check run on the PR head
+# completed with success.
+CHECK_CASES = {
+    "all-green": (GREEN_STATUSES, GREEN_RUNS, None, OrderState.ACCEPTED),
+    "failed-overridden": (
+        {**GREEN_STATUSES, "red-first-proof": "failure"},
+        GREEN_RUNS,
+        "red-first-proof",
+        OrderState.ACCEPTED,
+    ),
+    "status-failed": (
+        {**GREEN_STATUSES, "red-first-proof": "failure"},
+        GREEN_RUNS,
+        None,
+        OrderState.IN_REVIEW,
+    ),
+    "status-pending": (
+        {**GREEN_STATUSES, "test-seam-ban": "pending"},
+        GREEN_RUNS,
+        None,
+        OrderState.IN_REVIEW,
+    ),
+    "status-missing": ({"test-seam-ban": "success"}, GREEN_RUNS, None, OrderState.IN_REVIEW),
+    "override-other-gate": (
+        {**GREEN_STATUSES, "red-first-proof": "failure"},
+        GREEN_RUNS,
+        "test-seam-ban",
+        OrderState.IN_REVIEW,
+    ),
+    "check-run-failed": (
+        GREEN_STATUSES,
+        {"factory-tests": ("completed", "failure")},
+        None,
+        OrderState.IN_REVIEW,
+    ),
+    "mixed-runs": (
+        GREEN_STATUSES,
+        {**GREEN_RUNS, "verify": ("in_progress", None)},
+        None,
+        OrderState.IN_REVIEW,
+    ),
+}
+
+
+@pytest.mark.parametrize(
+    ("statuses", "runs", "overridden", "expected"),
+    list(CHECK_CASES.values()),
+    ids=list(CHECK_CASES),
+)
+def test_accepted_needs_verdict_and_full_required_check_set(
+    repo: RepoBuilder,
+    statuses: dict[str, str],
+    runs: dict[str, tuple[str, str | None]],
+    overridden: str | None,
+    expected: OrderState,
+) -> None:
     order_id = oid("accepted")
-    repo.issue_order(order(order_id, owned_paths=[f"apps/demo/{order_id}/**"]))
+    repo.issue_order(
+        order(order_id, owned_paths=[f"apps/demo/{order_id}/**"], checks=REQUIRED_CHECKS)
+    )
     repo.add_event(order_id, message("claim", order_id=order_id))
     repo.add_event(order_id, message("handoff", order_id=order_id))
     pr = repo.make_pr(f"wo/{order_id}")
-    repo.github.add_check_run(pr.head_sha, "factory-tests", conclusion="success")
+    for gate, value in statuses.items():
+        repo.github.set_commit_status(pr.head_sha, f"factory/{gate}", value, f"{gate}: {value}")
+    for name, (run_status, conclusion) in runs.items():
+        repo.github.add_check_run(pr.head_sha, name, run_status=run_status, conclusion=conclusion)
+    if overridden:
+        repo.add_event(
+            order_id,
+            message(
+                "override",
+                order_id=order_id,
+                gate=overridden,
+                pr=pr.number,
+                reason="Base suite broken by an unrelated module; verified by hand.",
+                gate_class="drift",
+            ),
+        )
     repo.add_event(
         order_id,
         message(
@@ -94,7 +171,7 @@ def test_accepted_needs_verdict_and_green_checks(repo: RepoBuilder) -> None:
         ),
     )
     item = by_id(snapshot(repo), order_id)
-    assert item.state == OrderState.ACCEPTED
+    assert item.state == expected
 
 
 def test_rejected_latest_verdict(repo: RepoBuilder) -> None:
@@ -176,11 +253,7 @@ def test_stale_overlay_after_three_times_size_still_counts_toward_cap(
         repo.issue_order(order(extra, owned_paths=[f"apps/demo/{extra}/**"]))
         repo.add_event(extra, message("claim", order_id=extra))
     snap = snapshot(repo, now=now)
-    active = [
-        o
-        for o in snap.orders
-        if o.state in {OrderState.CLAIMED, OrderState.IN_REVIEW} and o.state != OrderState.RELEASED
-    ]
+    active = [o for o in snap.orders if o.state in {OrderState.CLAIMED, OrderState.IN_REVIEW}]
     assert any(o.order_id == order_id for o in active), "stale still counts toward the cap"
 
 

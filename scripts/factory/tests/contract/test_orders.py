@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 
 import pytest
+import yaml
 
 from factory.cli import exit_codes
 from tests.fixtures.cli_runner import FactoryCli
@@ -69,19 +70,23 @@ def test_order_issue_first_commit_is_only_the_order_file(
     repo: RepoBuilder, factory_cli: FactoryCli
 ) -> None:
     order_id = oid("issue-shape")
-    repo.write_message(order(order_id, owned_paths=[f"apps/demo/{order_id}/**"]))
+    payload = order(order_id, owned_paths=[f"apps/demo/{order_id}/**"])
+    order_path = repo.write_message(payload)
     main_before = repo.head_sha("main")
     result = factory_cli("order", "issue", order_id, repo=repo.path)
     assert result.exit_code == exit_codes.OK, (
         f"expected exit 0, got {result.exit_code}\n{result.stdout}\n{result.stderr}"
     )
-    branch = f"wo/{order_id}"
-    first = repo.git("rev-list", "--max-parents=0", f"origin/{branch}")
-    if not first:
-        first = repo.git("rev-list", "--reverse", f"origin/main..origin/{branch}").splitlines()[0]
-    names = repo.git("diff-tree", "--no-commit-id", "--name-only", "-r", first).splitlines()
-    assert names == [f"bus/orders/{order_id}/order.yaml"], names
     assert repo.head_sha("origin/main") == main_before, "order issue must never push main"
+    branch = f"wo/{order_id}"
+    branch_only = repo.git("rev-list", "--reverse", f"origin/main..origin/{branch}").splitlines()
+    assert branch_only, f"origin/{branch} has no commit beyond origin/main"
+    first = branch_only[0]
+    parents = repo.git("rev-list", "--parents", "-n", "1", first).split()[1:]
+    assert parents == [main_before], f"first order commit must branch from main: {parents}"
+    changes = repo.git("diff-tree", "--no-commit-id", "--name-status", "-r", first).splitlines()
+    assert changes == [f"A\t{order_path}"], changes
+    assert yaml.safe_load(repo.git("show", f"{first}:{order_path}")) == payload
 
 
 def test_order_issue_refuses_open_human_decision_in_plain_language(

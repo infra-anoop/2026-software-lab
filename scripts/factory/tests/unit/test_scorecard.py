@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import importlib
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -164,6 +164,84 @@ def test_scorecard_computes_intent_yaml_metrics(repo: RepoBuilder) -> None:
     assert str(start).startswith("2026-10-01")
     # Wave 1 has not exited: one order still open / rejected
     assert card["wave1_exit"] is None
+
+
+WAVE1_START = datetime(2026, 10, 1, 9, 0, tzinfo=UTC)  # Thursday = working day 1
+
+
+def _git_dates(when: datetime) -> dict[str, str]:
+    stamp = when.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S+0000")
+    return {"GIT_AUTHOR_DATE": stamp, "GIT_COMMITTER_DATE": stamp}
+
+
+def _land(repo: RepoBuilder, order_id: str, when: datetime) -> None:
+    """Merge `wo/<order-id>` into main at `when` (what a GitHub merge leaves in git)."""
+    repo.checkout("main")
+    repo.git(
+        "merge",
+        "--no-ff",
+        "-q",
+        "-m",
+        f"Merge wo/{order_id}",
+        f"wo/{order_id}",
+        env=_git_dates(when),
+    )
+    repo.push("main")
+
+
+def _seed_completed_wave(repo: RepoBuilder, exit_at: datetime) -> None:
+    """Two orders, each run complete, accepted, and merged; the second merge is `exit_at`."""
+    issues = [WAVE1_START, WAVE1_START + timedelta(days=1, hours=6)]
+    landings = [WAVE1_START + timedelta(days=1, hours=5), exit_at]
+    for n, (issued_at, landed_at) in enumerate(zip(issues, landings, strict=True)):
+        order_id = oid(f"wave-{n}")
+        repo.issue_order(
+            order(order_id, feature=FEATURE, owned_paths=[f"apps/demo/{order_id}/**"]),
+            when=issued_at,
+        )
+        repo.add_event(order_id, message("claim", order_id=order_id), when=issued_at)
+        repo.add_event(
+            order_id,
+            message("run_complete", order_id=order_id, wall_minutes=30),
+            when=issued_at + timedelta(hours=1),
+        )
+        pr = repo.make_pr(f"wo/{order_id}", open=False, merged=True)
+        repo.add_event(
+            order_id,
+            message(
+                "verdict",
+                order_id=order_id,
+                decision="accept",
+                inputs=[{"path": f"bus/orders/{order_id}/order.yaml", "sha": pr.head_sha}],
+            ),
+            when=issued_at + timedelta(hours=2),
+        )
+        _land(repo, order_id, landed_at)
+
+
+# Working days count the start day as day 1 and skip Saturday/Sunday (SC-013: 5 working days).
+# Thu 1 Oct = 1, Fri 2 = 2, Mon 5 = 3, Tue 6 = 4, Wed 7 = 5, Thu 8 = 6.
+EXIT_CASES = {
+    "fifth-working-day": (datetime(2026, 10, 7, 17, 0, tzinfo=UTC), "2026-10-07", 5, True),
+    "sixth-working-day": (datetime(2026, 10, 8, 9, 0, tzinfo=UTC), "2026-10-08", 6, False),
+}
+
+
+@pytest.mark.parametrize(
+    ("exit_at", "exit_date", "working_days", "within"),
+    list(EXIT_CASES.values()),
+    ids=list(EXIT_CASES),
+)
+def test_scorecard_wave1_exit_when_every_order_merged(
+    repo: RepoBuilder, exit_at: datetime, exit_date: str, working_days: int, within: bool
+) -> None:
+    _seed_completed_wave(repo, exit_at)
+    card = load_scorecard()(repo.path, settings=repo.settings)
+    assert str(card["wave1_start"]).startswith("2026-10-01"), card["wave1_start"]
+    assert card["wave1_exit"] is not None, "every order merged: Wave 1 has exited"
+    assert str(card["wave1_exit"]).startswith(exit_date), card["wave1_exit"]
+    assert card.get("wave1_working_days") == working_days, card.get("wave1_working_days")
+    assert card.get("wave1_within_timebox") is within
 
 
 def test_scorecard_includes_fr035_run_totals(repo: RepoBuilder) -> None:

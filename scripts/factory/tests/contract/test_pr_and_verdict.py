@@ -8,6 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+import yaml
 
 from factory.cli import exit_codes
 from tests.fixtures.cli_runner import FactoryCli
@@ -109,3 +110,75 @@ def test_verdict_refuses_input_that_is_not_a_git_path(
     combined = result.stdout + result.stderr
     lowered = combined.lower()
     assert "git" in lowered or "transcript" in lowered or "input" in lowered
+
+
+VERDICT_FIELDS = (
+    "id",
+    "decision",
+    "findings",
+    "reviewer_model",
+    "reviewer_family",
+    "inputs",
+    "bootstrap",
+)
+
+
+def test_verdict_commits_valid_different_family_verdict(
+    repo: RepoBuilder, factory_cli: FactoryCli
+) -> None:
+    order_id = claimed_with_handoff(repo, "accepted-verdict")
+    head = repo.head_sha(f"wo/{order_id}")
+    path = verdict_path(
+        repo,
+        order_id,
+        actor_model="gpt-5.6-sol",
+        reviewer_model="gpt-5.6-sol",
+        reviewer_family="openai",
+        inputs=[
+            {"path": f"bus/orders/{order_id}/order.yaml", "sha": head},
+            {"path": "apps/demo/app/calc.py", "sha": head},
+        ],
+    )
+    submitted = yaml.safe_load(path.read_text(encoding="utf-8"))
+    repo.checkout(f"wo/{order_id}")
+    result = factory_cli("verdict", order_id, "--file", str(path), repo=repo.path)
+    assert result.exit_code == exit_codes.OK, (
+        f"expected exit 0, got {result.exit_code}\n{result.stdout}\n{result.stderr}"
+    )
+    new_commits = repo.git("rev-list", f"{head}..wo/{order_id}").splitlines()
+    assert len(new_commits) == 1, f"verdict must be exactly one commit on the branch: {new_commits}"
+    verdict_file = f"bus/orders/{order_id}/verdict-01.yaml"
+    changes = repo.git("diff-tree", "--no-commit-id", "--name-status", "-r", new_commits[0])
+    assert changes.splitlines() == [f"A\t{verdict_file}"], changes
+    committed = yaml.safe_load(repo.git("show", f"wo/{order_id}:{verdict_file}"))
+    for field in VERDICT_FIELDS:
+        assert committed.get(field) == submitted.get(field), f"{field}: {committed.get(field)!r}"
+
+
+@pytest.mark.parametrize(
+    "bad_input",
+    ["missing-path", "missing-sha"],
+)
+def test_verdict_refuses_input_absent_from_git(
+    repo: RepoBuilder, factory_cli: FactoryCli, bad_input: str
+) -> None:
+    order_id = claimed_with_handoff(repo, f"absent-{bad_input}")
+    head = repo.head_sha(f"wo/{order_id}")
+    if bad_input == "missing-path":
+        missing = {"path": "apps/demo/app/missing.py", "sha": head}
+        named = missing["path"]
+    else:
+        missing = {"path": f"bus/orders/{order_id}/order.yaml", "sha": "f" * 40}
+        named = "f" * 7
+    path = verdict_path(
+        repo,
+        order_id,
+        inputs=[{"path": f"bus/orders/{order_id}/order.yaml", "sha": head}, missing],
+    )
+    repo.checkout(f"wo/{order_id}")
+    result = factory_cli("verdict", order_id, "--file", str(path), repo=repo.path)
+    assert result.exit_code == exit_codes.REFUSED, (
+        f"expected exit 2, got {result.exit_code}\n{result.stdout}\n{result.stderr}"
+    )
+    assert named in result.stdout + result.stderr, "refusal must name the absent input"
+    assert repo.head_sha(f"wo/{order_id}") == head, "refused verdict must commit nothing"

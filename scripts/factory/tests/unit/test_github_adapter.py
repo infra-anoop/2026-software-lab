@@ -18,6 +18,8 @@ from tests.unit.test_api import assert_commit_status_read_after_write
 RECORDED = Path(__file__).resolve().parents[1] / "fixtures" / "github_recorded"
 HEAD = "wo/wo-20261007-recorded"
 SHA = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+TOKEN = "ghs_test_recorded"
+REPO_PATH = "/repos/fixture/demo"
 
 
 def load_rest() -> Any:
@@ -31,38 +33,57 @@ def recorded(name: str) -> Any:
     return json.loads((RECORDED / name).read_text(encoding="utf-8"))
 
 
-def recorded_transport() -> httpx.MockTransport:
-    pulls = recorded("pulls_by_head.json")
-    reviews = recorded("pull_reviews.json")
-    checks = recorded("check_runs.json")
-    statuses = recorded("combined_status.json")
-    created = recorded("create_pull.json")
-    status_created = recorded("create_status.json")
+class RecordedGitHub:
+    """Recorded REST responses plus a commit-status store fed only by captured POSTs."""
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def __init__(self, *, seed_recorded_statuses: bool = True) -> None:
+        self.requests: list[httpx.Request] = []
+        self.statuses: dict[str, dict[str, dict[str, Any]]] = {}
+        if seed_recorded_statuses:
+            combined = recorded("combined_status.json")
+            self.statuses[combined["sha"]] = {s["context"]: s for s in combined["statuses"]}
+
+    def handler(self, request: httpx.Request) -> httpx.Response:
+        self.requests.append(request)
         path = request.url.path
         if request.method == "GET" and path.endswith("/pulls"):
-            return httpx.Response(200, json=pulls)
+            return httpx.Response(200, json=recorded("pulls_by_head.json"))
         if request.method == "GET" and path.endswith("/reviews"):
-            return httpx.Response(200, json=reviews)
+            return httpx.Response(200, json=recorded("pull_reviews.json"))
         if request.method == "GET" and path.endswith("/check-runs"):
-            return httpx.Response(200, json=checks)
-        if request.method == "GET" and path.rstrip("/").endswith("/status"):
-            return httpx.Response(200, json=statuses)
+            return httpx.Response(200, json=recorded("check_runs.json"))
+        if request.method == "GET" and path.startswith(f"{REPO_PATH}/commits/"):
+            sha = path.removeprefix(f"{REPO_PATH}/commits/").removesuffix("/status")
+            if path.endswith("/status") and "/" not in sha:
+                listed = list(self.statuses.get(sha, {}).values())
+                state = "pending" if not listed else listed[-1]["state"]
+                return httpx.Response(
+                    200,
+                    json={"state": state, "sha": sha, "statuses": listed},
+                )
         if request.method == "POST" and path.endswith("/pulls"):
-            return httpx.Response(201, json=created)
-        if request.method == "POST" and "/statuses/" in path:
-            return httpx.Response(201, json=status_created)
+            return httpx.Response(201, json=recorded("create_pull.json"))
+        if request.method == "POST" and path.startswith(f"{REPO_PATH}/statuses/"):
+            sha = path.removeprefix(f"{REPO_PATH}/statuses/")
+            body = json.loads(request.content)
+            written = {
+                "context": body.get("context", "default"),
+                "state": body["state"],
+                "description": body.get("description", ""),
+                "target_url": body.get("target_url"),
+            }
+            self.statuses.setdefault(sha, {})[written["context"]] = written
+            return httpx.Response(201, json=written)
         return httpx.Response(404, json={"message": f"unrecorded {request.method} {path}"})
 
-    return httpx.MockTransport(handler)
 
-
-def build_port(repo: RepoBuilder, monkeypatch: pytest.MonkeyPatch) -> GitHubPort:
+def build_port(
+    repo: RepoBuilder, monkeypatch: pytest.MonkeyPatch, recorder: RecordedGitHub | None = None
+) -> GitHubPort:
     rest = load_rest()
     build = getattr(rest, "build_github", None)
     assert callable(build), "factory.github.rest must export build_github(settings, env)"
-    transport = recorded_transport()
+    transport = httpx.MockTransport((recorder or RecordedGitHub()).handler)
     original = httpx.Client
 
     def client_with_transport(*args: Any, **kwargs: Any) -> httpx.Client:
@@ -70,7 +91,7 @@ def build_port(repo: RepoBuilder, monkeypatch: pytest.MonkeyPatch) -> GitHubPort
         return original(*args, **kwargs)
 
     monkeypatch.setattr(httpx, "Client", client_with_transport)
-    env = load_env({"GITHUB_TOKEN": "ghs_test_recorded"})
+    env = load_env({"GITHUB_TOKEN": TOKEN})
     assert isinstance(env, EnvSettings)
     port = build(repo.settings, env)
     assert isinstance(port, GitHubPort)
@@ -142,17 +163,39 @@ def test_create_pr_maps_recorded_payload(
     assert "wo-20261007-new-pr" in pr.body
 
 
+def test_set_commit_status_posts_exact_request(
+    repo: RepoBuilder, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    recorder = RecordedGitHub(seed_recorded_statuses=False)
+    port = build_port(repo, monkeypatch, recorder)
+    port.set_commit_status(
+        SHA, "factory/order-fidelity-declared", "failure", "lock D1 undeclared", "https://ci.test/9"
+    )
+    posts = [r for r in recorder.requests if r.method == "POST"]
+    assert len(posts) == 1, [f"{r.method} {r.url.path}" for r in recorder.requests]
+    post = posts[0]
+    assert post.url.host == "api.github.test"
+    assert post.url.path == f"{REPO_PATH}/statuses/{SHA}"
+    assert post.headers.get("Authorization") in {f"Bearer {TOKEN}", f"token {TOKEN}"}
+    assert json.loads(post.content) == {
+        "context": "factory/order-fidelity-declared",
+        "state": "failure",
+        "description": "lock D1 undeclared",
+        "target_url": "https://ci.test/9",
+    }
+
+
 def test_adapter_commit_status_round_trip(
     repo: RepoBuilder, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Writes go to GitHub; reads use the port. In-memory FakeGitHub already covers the helper.
-
-    Against the REST adapter, posting a status must be a real httpx call (recorded 201).
-    """
-    port = build_port(repo, monkeypatch)
-    port.set_commit_status(
-        SHA, "factory/red-first-proof", "success", "red first", "https://ci.test/1"
-    )
-    statuses = port.list_commit_statuses(SHA)
-    assert any(item.context.startswith("factory/") for item in statuses)
-    _ = assert_commit_status_read_after_write
+    """The REST adapter passes the port conformance helper: reads return what POSTs wrote."""
+    recorder = RecordedGitHub(seed_recorded_statuses=False)
+    port = build_port(repo, monkeypatch, recorder)
+    assert_commit_status_read_after_write(port)
+    posted = [r.url.path for r in recorder.requests if r.method == "POST"]
+    assert posted == [
+        f"{REPO_PATH}/statuses/{SHA}",
+        f"{REPO_PATH}/statuses/{SHA}",
+        f"{REPO_PATH}/statuses/{SHA}",
+        f"{REPO_PATH}/statuses/{'b' * 40}",
+    ], posted

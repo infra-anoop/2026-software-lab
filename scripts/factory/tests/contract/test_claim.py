@@ -8,6 +8,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -77,6 +78,32 @@ def test_claim_refuses_at_active_cap_of_three(repo: RepoBuilder, factory_cli: Fa
         f"expected exit 2, got {result.exit_code}\n{result.stdout}\n{result.stderr}"
     )
     assert "3" in result.stdout or "3" in result.stderr
+
+
+def test_stale_claim_still_counts_toward_cap(repo: RepoBuilder, factory_cli: FactoryCli) -> None:
+    for n in range(2):
+        fresh = _issue(repo, f"fresh-{n}")
+        repo.add_event(fresh, message("claim", order_id=fresh))
+    claimed_at = datetime(2026, 10, 1, 12, 0, tzinfo=UTC)
+    stale = oid("stale")
+    repo.issue_order(
+        order(stale, owned_paths=[f"apps/demo/{stale}/**"], size_minutes=10),
+        when=claimed_at - timedelta(minutes=5),
+    )
+    repo.add_event(
+        stale,
+        message("claim", order_id=stale, claimed_at=claimed_at.isoformat().replace("+00:00", "Z")),
+        when=claimed_at,
+    )
+    fourth = _issue(repo, "fourth-after-stale")
+    before = repo.head_sha(f"origin/wo/{fourth}")
+    result = factory_cli("claim", fourth, "--actor-model", "claude-opus-5.5", repo=repo.path)
+    assert result.exit_code == exit_codes.REFUSED, (
+        f"a stale claim must still hold a slot: exit {result.exit_code}\n"
+        f"{result.stdout}\n{result.stderr}"
+    )
+    assert "3" in result.stdout or "3" in result.stderr
+    assert repo.head_sha(f"origin/wo/{fourth}") == before, "refused claim must push nothing"
 
 
 def test_release_frees_capacity(repo: RepoBuilder, factory_cli: FactoryCli) -> None:

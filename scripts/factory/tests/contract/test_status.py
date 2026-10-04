@@ -16,7 +16,7 @@ from factory.bus.models import FORBIDDEN_KEYS, find_forbidden_key
 from factory.cli import exit_codes
 from tests.fixtures.cli_runner import CliResult, FactoryCli
 from tests.fixtures.fake_github import FakeGitHub
-from tests.fixtures.repo_builder import GOVERNOR_LOGIN, RepoBuilder, message, order
+from tests.fixtures.repo_builder import RepoBuilder, message, order
 
 pytestmark = pytest.mark.contract
 
@@ -30,6 +30,22 @@ BOARD_SECTIONS = (
     "overrides_per_gate",
     "unverified_governor_actions",
 )
+ORDER_SECTIONS = ("in_flight", "blocked", "waiting_on_governor", "ready")
+REQUIRED_CHECKS = ["red-first-proof", "test-seam-ban"]
+
+# slug -> (only section the order may appear in, rendered state, rendered overlays).
+# `None` = terminal: the order is on no order section of the board.
+EXPECTED: dict[str, tuple[str | None, str | None, frozenset[str]]] = {
+    "issued": ("ready", "issued", frozenset()),
+    "claimed": ("in_flight", "claimed", frozenset()),
+    "review": ("in_flight", "in_review", frozenset()),
+    "accepted": ("in_flight", "accepted", frozenset()),
+    "rejected": ("blocked", "rejected", frozenset()),
+    "merged": (None, None, frozenset()),
+    "released": (None, None, frozenset()),
+    "stale": ("in_flight", "claimed", frozenset({"stale"})),
+    "blocked": ("waiting_on_governor", "issued", frozenset({"blocked_on_governor"})),
+}
 
 
 def oid(slug: str) -> str:
@@ -111,12 +127,19 @@ def _seed_board(repo: RepoBuilder, github: FakeGitHub) -> dict[str, str]:
     )
 
     accepted = ids["accepted"]
-    repo.issue_order(order(accepted, owned_paths=[f"apps/demo/{accepted}/**"]))
+    repo.issue_order(
+        order(accepted, owned_paths=[f"apps/demo/{accepted}/**"], checks=REQUIRED_CHECKS)
+    )
     repo.add_event(accepted, message("claim", order_id=accepted))
     repo.add_event(accepted, message("handoff", order_id=accepted))
     repo.add_event(accepted, message("run_complete", order_id=accepted))
     accepted_pr = repo.make_pr(f"wo/{accepted}", title=accepted)
     github.add_check_run(accepted_pr.head_sha, "factory-tests", conclusion="success")
+    github.set_commit_status(accepted_pr.head_sha, "factory/test-seam-ban", "success", "clean")
+    # red-first-proof fails on the PR and is overridden by the governor below.
+    github.set_commit_status(
+        accepted_pr.head_sha, "factory/red-first-proof", "failure", "base suite red"
+    )
     repo.add_event(
         accepted,
         message(
@@ -215,40 +238,35 @@ def test_status_json_sections_match_each_lifecycle_state(
             assert where is None, f"{ref}:{path} has forbidden key {where} ({FORBIDDEN_KEYS})"
     board = parse_board(factory_cli("status", "--json", repo=repo.path))
 
-    assert ids["issued"] in _ids(board["ready"])
-    assert ids["claimed"] in _ids(board["in_flight"])
+    homes = {name: _ids(board[name]) for name in ORDER_SECTIONS}
+    for slug, (home, state, overlays) in EXPECTED.items():
+        order_id = ids[slug]
+        found_in = sorted(name for name, members in homes.items() if order_id in members)
+        expected_in = [home] if home else []
+        assert found_in == expected_in, (
+            f"{slug} ({order_id}) must be on {expected_in or 'no order section'}, found {found_in}"
+        )
+        if home is None:
+            continue
+        card = _card(board[home], order_id)
+        assert card.get("state") == state, f"{slug}: rendered state {card.get('state')!r}"
+        rendered = frozenset(card.get("overlays") or [])
+        assert rendered == overlays, f"{slug}: rendered overlays {sorted(rendered)}"
+
     review_card = _card(board["in_flight"], ids["review"])
-    assert review_card.get("state") == "in_review"
     checks = review_card.get("checks") or review_card.get("check_progress")
     assert checks, f"in_review card must show running checks: {review_card}"
-
-    assert ids["accepted"] in _ids(board["in_flight"])
-    assert ids["rejected"] in (_ids(board["blocked"]) | _ids(board["in_flight"]))
-    assert ids["merged"] not in _ids(board["ready"])
-    assert ids["released"] not in _ids(board["in_flight"])
-    assert ids["released"] not in _ids(board["ready"])
-
-    stale_home = _ids(board["in_flight"]) | _ids(board["blocked"])
-    assert ids["stale"] in stale_home
-    stale_card = (
-        _card(board["in_flight"], ids["stale"])
-        if ids["stale"] in _ids(board["in_flight"])
-        else _card(board["blocked"], ids["stale"])
-    )
-    overlays = stale_card.get("overlays") or []
-    assert "stale" in overlays or stale_card.get("state") == "stale"
+    assert "factory-tests" in json.dumps(checks), checks
 
     waiting = board["waiting_on_governor"]
-    assert ids["blocked"] in _ids(waiting)
     prompt = json.dumps(waiting)
     assert "Which host should the demo deploy to?" in prompt
     assert "T017" not in prompt and "FR-007" not in prompt
 
     overrides = board["overrides_per_gate"]
-    assert isinstance(overrides, dict), overrides
-    assert overrides.get("red-first-proof") == 1
+    assert overrides == {"red-first-proof": 1}, overrides
 
     unverified = board["unverified_governor_actions"]
-    assert isinstance(unverified, list) and unverified, unverified
+    assert isinstance(unverified, list) and len(unverified) == 1, unverified
     blob = json.dumps(unverified)
-    assert GOVERNOR_LOGIN in blob or "override" in blob.lower() or ids["accepted"] in blob
+    assert ids["accepted"] in blob and "red-first-proof" in blob, unverified
