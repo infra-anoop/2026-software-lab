@@ -217,3 +217,39 @@ Agent-adjudicated (2026-10-04); every round-3 finding is process-tagged. Bus: `w
 | T-A3-1 | accept — lifecycle rule plus issuance refusal | orchestrator (process) | Lifecycle: `test_lifecycle.py::test_empty_checks_never_accepted` (an order with `checks: []`, an accept verdict, green `factory/*` statuses and a green check run stays `in_review`). Issuance: `test_orders.py::test_order_issue_refuses_empty_checks` (`factory order issue` exits 2; the JSON error message names `checks` and carries no ids; no `wo/<id>` branch is pushed and `main` does not move). The refusal sits at `order issue` only, because `order new` has no checks input and the P0 contract test `test_order_new_exit_0` must stay valid. Every existing `checks=[]` fixture still works without a frozen-file edit: the Slice A helpers (`test_handoff.py::_claimed`, `test_pr_and_verdict.py::claimed_with_handoff`) now name the registered gate `diff-within-owned-paths`, and the three P0 `test_cli_contract.py` uses issue through `RepoBuilder.issue_order` (git, not the CLI), so the refusal does not apply to them; they were not edited |
 | T-A3-2 | accept | orchestrator (process) | Round-2 heading renamed to `### After T066`. `tasks.md` gains a single line, `T066a`, immediately after T066: lifecycle reads branch-protection required checks and adds non-factory required runs, with failed-run and pending-run tests (both stay `in_review`) |
 | T-A3-3 | noted — strength | orchestrator (process) | No action |
+
+## Round 4 review
+
+### Verdict
+
+**Verdict: accept.**
+
+Both lines of defense are now executable: issuance refuses empty checks before pushing a work branch, and lifecycle independently refuses to derive `accepted` from an empty check set even when a verdict and unrelated green evidence exist. The order-issue placement is sufficient because `order new` is only a scaffold; the policy boundary is issuance, and lifecycle protects repositories created through lower-level/test paths. T066a makes the deferred non-factory required-run work explicit and failable.
+
+### Findings
+
+| ID | Severity | Tag | Locus | Finding | Suggested resolution |
+|----|----------|-----|-------|---------|----------------------|
+| T-A4-1 | Nit | process | `tests/contract/test_orders.py::test_order_issue_refuses_empty_checks` | The refusal correctly names `checks`, returns JSON exit 2, leaves `main` unchanged, and pushes no work branch. Its “no IDs” assertion spot-checks only `T026` and `FR-011`; another internal id form could still leak without failing this test. This does not weaken the empty-check policy. | Reuse the decision-id regex set or assert absence of all `T/F/R/P/D`, `FR-`, `SC-`, `US`, and `§` forms in the error message when next touching this test. |
+| T-A4-2 | Nit | process | Round-3 remediation set; `amendment-03.yaml`; T066a | Strength: `test_empty_checks_never_accepted` defeats vacuous acceptance despite green unrelated statuses/runs; Slice A helpers now carry a real gate; unchanged P0 direct-git fixtures remain valid test scaffolding and cannot bypass either product defense; T066a names lifecycle ingestion plus failed and pending required-run tests. Amendment 03 faithfully restates amendment 02's owned paths and round-3 triage. | No blocking change. Proceed to implementation. |
+
+### Confirmation judgments
+
+- **Issuance placement:** sufficient. `order new` may produce an incomplete local scaffold, but `order issue` is the authoritative transition and now refuses empty checks without pushing or moving `main`.
+- **Lifecycle defense:** sufficient and independent. Even a lower-level/imported empty-check order with an accept verdict and green unrelated evidence remains `in_review`.
+- **P0 `checks=[]` fixtures:** acceptable. They are frozen lower-level CLI fixtures, bypass issuance intentionally, and do not assert accepted lifecycle state.
+- **Slice A helpers:** corrected to the registered `diff-within-owned-paths` gate.
+- **T066a:** present exactly once immediately after T066; it names branch-protection required-check ingestion and failed/pending non-factory required-run cases, both remaining `in_review`.
+- **Amendment 03:** faithful; owned paths match amendment 02 and include only the previously authorized dependency/design paths plus existing Slice A/review paths.
+
+### Verification record
+
+| Check | Result |
+|-------|--------|
+| Reviewed head | `e42b379a6f0fc3d8f7a6306fd0b6cd1bf2da9b2a` |
+| Slice A 11-file run | Expected RED: **66 failed, 0 passed**; no collection errors or xfails. |
+| Full suite | Expected RED: **182 failed, 237 passed**; no collection errors or xfails. |
+| `uv run ruff check .` | PASS. |
+| `uv run ruff format --check tests/contract tests/unit` | PASS — 19 files already formatted. |
+| `factory check schema` | PASS — `schema ok`. |
+| Diff hygiene | PASS — `git diff --check d79fbb6..e42b379`. |
