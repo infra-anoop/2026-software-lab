@@ -20,7 +20,7 @@ Delta catalog. Baseline rows in [`../smart-writer-v2/acceptance.md`](../smart-wr
 | eval.report_only_until_calibrated | SC-006 | SW-E1 | must | < 10 no-change comparisons, or > 1 false alarm among the last 10 | Gate reports, does not block | auto | planned |
 | eval.zero_citation | SC-006 | SW-Q6 | must | draft with no cited claims on a case with source materials | Support rate counts as 0 | auto | planned |
 | eval.calibrated | SC-007 | SW-Q7 | must | calibration ratings exist | Within 1 point on ≥ 80% of drafts, every dimension, before gate blocks | hybrid | planned |
-| eval.judge_family | SC-005 | SW-E3 | must | judge / support checker configured | Family ≠ writer family | auto | planned |
+| eval.judge_family | SC-005 | SW-E3 | must | judge / support checker / writer configured | Judge and support checker are OpenAI, writer is Anthropic (D4); an OpenAI writer id is refused; the eval runner refuses when any judge family equals the writer family | auto | planned |
 | eval.golden_set_reviewed | SC-005 | SW-Q8 | must | golden set | Governor-reviewed; grant + ≥1 non-grant; held-out slice tagged | human | n/a |
 | eval.heldout_sealed | SC-013 | SW-Q8 | must | every eval run config before post-mortem (per-PR, nightly, bake-off, prompt, judge selection) | Zero held-out scenarios included | auto | planned |
 | eval.blinded_review | SC-013 | SW-Q7 | must | sprint post-mortem | Blinded review of ~5 drafts + support spot-check recorded | human | n/a |
@@ -42,3 +42,4 @@ Delta catalog. Baseline rows in [`../smart-writer-v2/acceptance.md`](../smart-wr
 | 2026-10-03 | Bootstrap from spec SC-001..012 |
 | 2026-10-03 | Plan review: sealed held-out, paired comparison, report-only calibration, zero-citation rule |
 | 2026-10-03 | Review locks: evidence column; per-dimension blocking; support gate; held-out + blinded review; retention refresh/disclosure/cascade; judge-by-agreement; bundle check |
+| 2026-10-03 | D4 re-lock (PLAN_DELTA): `eval.judge_family` names OpenAI judge + support checker and Anthropic writer; OpenAI writer id refused |

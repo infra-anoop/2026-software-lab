@@ -7,6 +7,7 @@ alwaysApply: true
 
 Follow `AGENTS.md` and `.specify/memory/constitution.md`.
 Human map: `docs/agent-os/README.md`.
+Main session starts by following `.cursor/skills/lab-kickoff/SKILL.md`; a new sprint or feature starts with `.cursor/skills/lab-intent-session/SKILL.md` before `/speckit-specify`.
 
 ## Default loop
 

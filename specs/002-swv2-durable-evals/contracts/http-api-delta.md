@@ -14,7 +14,9 @@ Baseline: [`../../smart-writer-v2/contracts/http-api.md`](../../smart-writer-v2/
 | `GET /v1/conversations` | **New.** Owner's conversations: `[{conversation_id, title?, updated_at, last_used_at, expires_at}]`, newest first. Does not touch retention. |
 | `GET /v1/conversations/{id}` | Adds `last_used_at`, `expires_at`. Touches retention. |
 | `POST /v1/conversations/{id}/messages`, uploads, job enqueue | Touch retention (unchanged shapes). |
-| `GET /v1/jobs/{id}` | `status` may be `failed` with `fail_reason: "interrupted_retry"` after restart; adds `cost_usd`. Job snapshot `loop` shape unchanged (baseline D8). |
+| `GET /v1/jobs/{id}` | `status` may be `failed` with `fail_reason: "interrupted_retry"` after restart; adds `cost_usd`. Job snapshot `loop` shape unchanged (baseline D8). Resolves the owner through the job's conversation; another owner's job → **404** (same rule as conversations, FR-003). |
+
+`fail_reason` values: `interrupted_retry` | `spend_ceiling` | `spend_unpriced` | `conversation_deleted` (data-model § Use, § Job execution; plan § Spend ceiling).
 
 ## Spend stop
 

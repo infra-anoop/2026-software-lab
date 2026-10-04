@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [x] No [NEEDS CLARIFICATION] markers remain (deferred content in Open Decisions D1–D4)
+- [x] No [NEEDS CLARIFICATION] markers remain (open content tracked in Open Decisions D1–D10)
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic

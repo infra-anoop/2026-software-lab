@@ -31,6 +31,7 @@ A gate that fails looks for `bus/orders/<order-id>/override-NN.yaml` with `gate:
 | `message.override` | governor-only | governor_decision | I-M1, I-P9 | PR |
 | `gate.fail-mode-category` | drift | drift | I-P9 | repo |
 | `hook-has-ci-twin` | drift | drift | I-G5 | repo |
+| `branch-protection-require-pr` | governor-only | irreversible | I-P10 | repo — compares `deploy/github/branch-protection.json` with the expected settings: PR required, bypass off for everyone, required `factory/*` checks, code-owner review |
 | `factory-status-test` | drift | drift | I-M4 | repo (unit) |
 | existing: `validate-secrets-schema` | governor-only | secrets | I-O2, I-A3 | repo |
 | existing: `validate-deploy-env`, `uv-sync-locked` | drift | drift | I-O1, I-O3 | repo |

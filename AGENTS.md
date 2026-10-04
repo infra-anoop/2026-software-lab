@@ -100,6 +100,7 @@ Constitution → Specify → [Clarify] → independent review → Plan → [Plan
 8. Executable apps: failing contract/catalog-auto tests before matching impl; **spawn** T* when those tests exist; after product locks, continue (constitution §V / §F).
 9. **Orchestrator / workers (§H):** Main session dialogues and spawns; default implement/ops = packet + **background worker** (`SPAWN_WORKER.md`). `[P]` + disjoint paths → parallel workers automatically. Tiny-glue exception only.
 10. **Fidelity (§I):** Packet Fidelity table required; disclose-or-stop before spawn if substituting a letter lock.
+11. **Branch + PR for every change — including the main session.** Never commit on or push to `main`. The orchestrator merges its own PRs on green checks; changes to rule/process paths (constitution, `AGENTS.md`, `.cursor/rules/`, `docs/agent-os/`, factory gates/rubrics) also need the governor's approving review. [check: shell-guard] [check: branch-protection-require-pr]
 
 ---
 
