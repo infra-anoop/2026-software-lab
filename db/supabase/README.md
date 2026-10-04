@@ -40,13 +40,11 @@ Both are **optional**. If unset:
 
 `GET /ready` stays **OpenAI-only** — it does **not** require Supabase. Do not change that.
 
-## One Supabase project per app (recommended)
+## One shared lab project (backlog A31 — supersedes the earlier one-project-per-app recommendation)
 
-Both apps use the **same table names** `runs` and `turns`. If both point at one Supabase project, traces share those tables (mixed `agent` / `topic` values).
+All lab apps use the Supabase project **`2026-software-lab`**. smart-writer (V1) and research-auditor share `public.runs` / `public.turns` (mixed `agent` / `topic` values) plus `public.research_audits`, via the shared vault keys `SUPABASE_URL` / `SUPABASE_SECRET_KEY`. New durable apps (Smart Writer V2 first) get their **own schemas, login and bucket** in the same project — see `apps/smart-writer-v2/db/` — and never use `public`.
 
-**Recommended:** one Supabase project per app.
-
-**Alternative:** accept a shared trace store. Do **not** rename tables in Python without a deliberate product change. An `app` discriminator column is out of scope for P6 (would require updating both `SupabaseRepo` classes and tests).
+For V1 / RA: accept the shared trace store. Do **not** rename tables in Python without a deliberate product change. An `app` discriminator column is out of scope for P6 (would require updating both `SupabaseRepo` classes and tests).
 
 ## Table notes
 

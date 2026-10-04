@@ -40,7 +40,7 @@ locks:
   - held-out sealed until post-mortem
   - paired main-vs-PR eval; report-only until <=1 false alarm in last 10 no-change pairs
   - jobs on Procrastinate (Postgres queue) + LangGraph checkpointer
-  - staging = per-env schemas + logins inside the SWV2 Supabase project (D5)
+  - staging = per-env schemas + logins inside the shared lab Supabase project 2026-software-lab (D5, backlog A31)
 
 intents:
   # ── Quality: what "good" means (judge rubric) ────────────────────────────

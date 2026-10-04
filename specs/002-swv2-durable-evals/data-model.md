@@ -2,12 +2,12 @@
 
 Baseline entities ([`../smart-writer-v2/data-model.md`](../smart-writer-v2/data-model.md)) become durable.
 
-## Environments (D5 locked: schemas inside the SWV2 Supabase project)
+## Environments (D5 locked: schemas inside the shared lab Supabase project `2026-software-lab` — backlog A31)
 
 | Env | App schema | Checkpoint schema | Queue schema | DB login | Upload bucket |
 |-----|-----------|-------------------|--------------|----------|---------------|
-| production | `swv2_prod` | `swv2_prod_langgraph` | `swv2_prod_queue` | `swv2_prod` | `uploads-prod` |
-| staging | `swv2_staging` | `swv2_staging_langgraph` | `swv2_staging_queue` | `swv2_staging` | `uploads-staging` |
+| production | `swv2_prod` | `swv2_prod_langgraph` | `swv2_prod_queue` | `swv2_prod` | `swv2-uploads-prod` |
+| staging | `swv2_staging` | `swv2_staging_langgraph` | `swv2_staging_queue` | `swv2_staging` | `swv2-uploads-staging` |
 
 Each login owns its own three schemas — `USAGE`, `CREATE` and DML on its own three schemas only, nothing elsewhere — and has `search_path` set to them at the role level. The checkpointer and queue connect with that login, so their tables are created in the env's own schemas; each pool sets its own schema first in `search_path` (app pool → app schema, checkpointer → checkpoint schema, queue → queue schema) so setup DDL lands in the right one. Migrations are schema-qualified: they are written once with an `{{app_schema}}` token that `app/migrate.py` renders per environment (from the connected login) before dbmate runs. A CI lint rejects unqualified DDL, and an isolation test proves the staging login cannot read `swv2_prod*`. Production migrations run only after the same migration succeeded on staging (governor-only "irreversible" gate).
 
