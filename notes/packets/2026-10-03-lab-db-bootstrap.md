@@ -134,6 +134,30 @@ After the red tests are committed, write `notes/packets/2026-10-03-lab-db-bootst
 
 ## Handoff notes (agent fills at end)
 
+**Status: red; T* requested** (phase 1 = T109 red tests + T110 review packet `notes/packets/2026-10-03-lab-db-bootstrap-test-review-t.md`). Written against design revision `84812a4` (Management API, governor-seeded passwords, read-only CI). No implementation logic; no Infisical write code; no tag pushed.
+
 - What changed:
-- Tests run:
-- Open questions for human:
+  - Red tests: `scripts/test_db_bootstrap.py` (72), `scripts/test_db_bootstrap_pg.py` (11, real Postgres), 21 new cases in `scripts/test_ops_runtime_tag.py`; CI job `.github/workflows/db-bootstrap-tests.yml` (`postgres:17` + `lab_admin` NOSUPERUSER CREATEROLE).
+  - Interface stub `scripts/db_bootstrap.py` (every function raises `NotImplementedError`): `LoginPlan`, `ConnParts`, `SqlRunner`, `ManagementApiRunner`, `PsycopgRunner`, `EnsureDeps`, `EnsureResult`, `DbBootstrapError`/`ProbeError`, `load_plan`, `render_sql`, `fetch_pooler_host`, `connection_parts`, `probe_login`, `ensure`, `main`.
+  - Supabase Management API confirmed from Supabase's published OpenAPI (`https://api.supabase.com/api/v1-json`, 2026-10-04): `GET /v1/projects/{ref}/config/database/pooler` → array of `{database_type: PRIMARY|READ_REPLICA, db_host, db_port, pool_mode, …}`; `POST /v1/projects/{ref}/database/query` body `{query, parameters?, read_only?}`, `201` on success, marked Beta. Both bearer-authenticated.
+  - Test-encoded choices the letter does not state (for T* to judge):
+    1. A `db/<app>/<env>` tag runs only the database step (no provision / sync / verify), because `db/smart-writer-v2/staging` must work while staging has no secrets-schema entry or Railway footprint.
+    2. `db` tag validation needs only `deploy/db/<app>.yml` with that environment declared; no secrets-schema or registry check.
+    3. `ops_runtime_tag.py parse --github-output` emits `db_bootstrap=true|false` for bootstrap tags; the workflow's `if:` conditions use only `steps.tag.outputs.*` (the test evaluates them). The database step references no `secrets.*` / `vars.*` and the job gets no `environment:`.
+    4. New names: `ort.has_db_declaration`, `ort.validate_db_app_environment`; declaration YAML keys `supabase_project_ref`, `access_token_vault_ref`, `bootstrap_sql` (letter) and `environments` (test-chosen; per-environment key names left to the implementation, read through `load_plan`).
+    5. Order: read token + password → validate password → pooler host → probe → (SQL → probe). An invalid or missing password, or a missing token, stops before any call (the spy log stays empty). `EnsureResult.action` is `noop` or `applied`.
+    6. Errors may name the vault key (`SMART_WRITER_V2_DB_PASSWORD`, `SUPABASE_ACCESS_TOKEN`) but never a value. Collaborator exception text is never echoed (the fakes put secrets in it). A Management API error carries the HTTP status but not the response body (Supabase echoes the failing SQL, which contains the password).
+    7. Outside Actions no `::add-mask::` line appears; under Actions only `::add-mask::` lines may carry values, and the token and the password read from the vault must be masked (even a password that then fails validation).
+    8. The pg tests run the same SQL through `PsycopgRunner` as the non-superuser admin, and resolve connection parts from the admin URL with the plain login name (local Postgres has no pooler); `<login>.<ref>` is unit-tested only. The pg admin also needs `CREATE` on schema `public` (to create the stand-in `public.runs`).
+    9. A probe against a login that does not exist, or with a wrong password, must raise `ProbeError` (not a raw psycopg error), so `ensure` treats it as "apply".
+- Tests run (local, Postgres 17.11 via `nix shell nixpkgs#postgresql_17`, `scram-sha-256` host auth, `lab_admin` NOSUPERUSER CREATEROLE):
+  - `scripts/test_db_bootstrap.py`: 70 failed, 2 passed (workflow shape; no Infisical write code)
+  - `scripts/test_db_bootstrap_pg.py`: 10 failed, 1 passed (admin fidelity); 11 skipped without `LAB_TEST_PG_ADMIN_URL`
+  - `scripts/test_ops_runtime_tag.py`: 18 failed (new), 25 passed (22 existing + 3 new)
+  - Failure kinds (98): `NotImplementedError` 78, assertions 12, missing `ort` attribute 3, today's parser rejecting the `db` kind (`OpsTagError`) 3, argparse rejecting the `db` subcommand 2. No collection errors. `pytest scripts/`: no other test regressed.
+  - Checked by hand (psql as `lab_admin`) that `env_roles.sql` runs for both environments and that the pg fixture's cleanup works as the non-superuser admin with over-grants and login-owned tables present.
+- Open questions for human: none blocking. Notes for the orchestrator:
+  - The branch moved to the revised design while phase 1 ran; tests written against the first design were discarded (kept only on a local branch, never pushed).
+  - DoD "`uv run ruff check scripts/` clean" cannot hold as written: ruff 0.16 defaults report 77 findings in existing scripts outside this packet. The new workflow runs ruff on this packet's new files only (clean); `test_ops_runtime_tag.py` keeps one existing `RUF100`.
+  - `verify-source.yml` runs `pytest scripts/`, so these red tests turn it red on any PR from this branch until T111 lands. No PR opened in phase 1.
+  - Live-run note (not a test): the pooler-config entry also carries `db_port` and `pool_mode`, which may describe the transaction pooler (6543). Per the letter, only `db_host` is used; the port is the declared session port 5432. T112's first live probe confirms that host + 5432 works.
