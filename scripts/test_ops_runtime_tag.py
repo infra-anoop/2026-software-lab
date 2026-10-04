@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -255,3 +256,219 @@ def test_break_glass_dispatch_workflows_retained() -> None:
         assert "workflow_dispatch" in triggers
         text = path.read_text(encoding="utf-8")
         assert "ops tag" in text.lower() or "ops-runtime" in text.lower()
+
+
+# ── db/<app_id>/<environment> (spec 002 T109; packet 2026-10-03-lab-db-bootstrap) ──
+
+
+def test_parse_valid_db() -> None:
+    tag = ort.parse_ops_tag("db/smart-writer-v2/staging")
+    assert tag.kind == "db"
+    assert tag.app_id == "smart-writer-v2"
+    assert tag.environment == "staging"
+    assert tag.name == "db/smart-writer-v2/staging"
+
+
+def test_parse_rejects_db_extra_segments() -> None:
+    with pytest.raises(ort.OpsTagError, match="extra|invalid|expected"):
+        ort.parse_ops_tag("db/smart-writer-v2/production/extra")
+
+
+def test_parse_rejects_db_bad_environment() -> None:
+    with pytest.raises(ort.OpsTagError, match="environment"):
+        ort.parse_ops_tag("db/smart-writer-v2/prod")
+
+
+def test_build_ops_tag_db_roundtrip() -> None:
+    tag = ort.build_ops_tag("db", "smart-writer-v2", "production")
+    assert tag.kind == "db"
+    assert ort.parse_ops_tag(tag.name) == tag
+
+
+def test_db_tag_uses_ops_runtime_workflow() -> None:
+    assert ort.workflow_for_tag("db/smart-writer-v2/production") == "ops-runtime.yml"
+    assert ort.workflow_for_tag(ort.parse_ops_tag("db/smart-writer-v2/staging")) == (
+        "ops-runtime.yml"
+    )
+
+
+def test_dry_run_db_staging(capsys: pytest.CaptureFixture[str]) -> None:
+    code = ort.main(
+        ["db", "--app-id", "smart-writer-v2", "--environment", "staging", "--dry-run"]
+    )
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "db/smart-writer-v2/staging" in out
+    assert "dry-run" in out
+    assert "ops-runtime.yml" in out
+
+
+def test_dry_run_db_without_declaration_fails(capsys: pytest.CaptureFixture[str]) -> None:
+    code = ort.main(
+        ["db", "--app-id", "research-auditor", "--environment", "production", "--dry-run"]
+    )
+    assert code == 1
+    assert "deploy/db/research-auditor.yml" in capsys.readouterr().err
+
+
+def test_parse_cli_db_github_output(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    code = ort.main(
+        ["parse", "--ref-name", "db/smart-writer-v2/staging", "--github-output"]
+    )
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "kind=db" in out
+    assert "app_id=smart-writer-v2" in out
+    assert "environment=staging" in out
+
+
+def test_parse_cli_db_without_declaration_fails(capsys: pytest.CaptureFixture[str]) -> None:
+    code = ort.main(["parse", "--ref-name", "db/research-auditor/production"])
+    assert code == 1
+    assert "deploy/db/research-auditor.yml" in capsys.readouterr().err
+
+
+def test_parse_db_staging_does_not_require_secrets_schema(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """smart-writer-v2 staging has no secrets-schema row; a db tag must still parse."""
+    code = ort.main(["parse", "--ref-name", "db/smart-writer-v2/staging"])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "kind=db" in out
+    assert "environment=staging" in out
+
+
+def test_dry_run_sync_staging_still_requires_secrets_schema(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Contrast: sync still fail-closes on a missing secrets-schema environment."""
+    code = ort.main(
+        ["sync", "--app-id", "smart-writer-v2", "--environment", "staging", "--dry-run"]
+    )
+    assert code == 1
+    err = capsys.readouterr().err.lower()
+    assert "schema" in err or "environment" in err
+
+
+@pytest.mark.parametrize(
+    ("ref", "flag"),
+    [
+        ("bootstrap/smart-writer-v2/production", "db_bootstrap=true"),
+        ("bootstrap/research-auditor/production", "db_bootstrap=false"),
+    ],
+)
+def test_parse_cli_bootstrap_reports_db_bootstrap_flag(
+    ref: str, flag: str, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    code = ort.main(["parse", "--ref-name", ref, "--github-output"])
+    assert code == 0
+    assert flag in capsys.readouterr().out.splitlines()
+
+
+def _ops_steps() -> list[dict]:
+    data = _load_yaml(OPS_WF)
+    steps = data["jobs"]["ops"]["steps"]
+    assert isinstance(steps, list)
+    return steps
+
+
+def _step_index(steps: list[dict], name_part: str) -> int:
+    hits = [i for i, s in enumerate(steps) if name_part.lower() in str(s.get("name", "")).lower()]
+    assert len(hits) == 1, f"expected exactly one step named like {name_part!r}, got {hits}"
+    return hits[0]
+
+
+def _step_runs(step: dict, outputs: dict[str, str]) -> bool:
+    """Evaluate a step ``if:`` that only uses steps.tag.outputs.*, ==, !=, &&, ||, !, ()."""
+    expr = step.get("if")
+    if expr is None:
+        return True
+    s = str(expr).strip()
+    m = re.fullmatch(r"\$\{\{(.*)\}\}", s, flags=re.DOTALL)
+    if m:
+        s = m.group(1)
+    s = re.sub(
+        r"steps\.tag\.outputs\.(\w+)",
+        lambda mm: repr(outputs.get(mm.group(1), "")),
+        s,
+    )
+    s = s.replace("success()", "True").replace("&&", " and ").replace("||", " or ")
+    s = re.sub(r"!(?!=)", " not ", s)
+    assert re.fullmatch(r"[\s\w'\-/=!()]*", s), f"unsupported if: expression {expr!r}"
+    return bool(eval(s, {"__builtins__": {}}, {}))
+
+
+def test_ops_runtime_triggers_include_db_tags() -> None:
+    triggers = _load_yaml(OPS_WF).get("on", _load_yaml(OPS_WF).get(True))
+    assert "db/**" in triggers["push"]["tags"]
+
+
+def test_ops_runtime_db_kind_runs_only_the_database_step() -> None:
+    steps = _ops_steps()
+    out = {"kind": "db", "app_id": "smart-writer-v2", "environment": "staging"}
+    assert _step_runs(steps[_step_index(steps, "Checkout")], out)
+    assert _step_runs(steps[_step_index(steps, "Install uv")], out)
+    assert _step_runs(steps[_step_index(steps, "Parse and validate")], out)
+    assert _step_runs(steps[_step_index(steps, "Infisical auth")], out)
+    assert _step_runs(steps[_step_index(steps, "Database login (ensure)")], out)
+    assert not _step_runs(steps[_step_index(steps, "Select Railway token")], out)
+    assert not _step_runs(steps[_step_index(steps, "Provision")], out)
+    assert not _step_runs(steps[_step_index(steps, "Sync (apply)")], out)
+    assert not _step_runs(steps[_step_index(steps, "Verify bootstrap")], out)
+
+
+def test_ops_runtime_sync_kind_skips_database_step() -> None:
+    steps = _ops_steps()
+    out = {"kind": "sync", "app_id": "smart-writer-v2", "environment": "production"}
+    assert not _step_runs(steps[_step_index(steps, "Database login (ensure)")], out)
+    assert _step_runs(steps[_step_index(steps, "Select Railway token")], out)
+    assert _step_runs(steps[_step_index(steps, "Sync (apply)")], out)
+
+
+def test_ops_runtime_bootstrap_runs_database_step_between_provision_and_sync() -> None:
+    steps = _ops_steps()
+    out = {
+        "kind": "bootstrap",
+        "app_id": "smart-writer-v2",
+        "environment": "production",
+        "db_bootstrap": "true",
+    }
+    i_prov = _step_index(steps, "Provision")
+    i_db = _step_index(steps, "Database login (ensure)")
+    i_sync = _step_index(steps, "Sync (apply)")
+    assert i_prov < i_db < i_sync
+    for i in (i_prov, i_db, i_sync):
+        assert _step_runs(steps[i], out)
+
+
+def test_ops_runtime_bootstrap_without_declaration_skips_database_step() -> None:
+    steps = _ops_steps()
+    out = {
+        "kind": "bootstrap",
+        "app_id": "research-auditor",
+        "environment": "production",
+        "db_bootstrap": "false",
+    }
+    assert not _step_runs(steps[_step_index(steps, "Database login (ensure)")], out)
+    assert _step_runs(steps[_step_index(steps, "Sync (apply)")], out)
+
+
+def test_ops_runtime_database_step_shape() -> None:
+    steps = _ops_steps()
+    step = steps[_step_index(steps, "Database login (ensure)")]
+    run = str(step.get("run", ""))
+    assert "db_bootstrap.py ensure" in " ".join(run.split())
+    assert "steps.tag.outputs.app_id" in run
+    assert "steps.tag.outputs.environment" in run
+    assert "GITHUB_ENV" not in run and "GITHUB_OUTPUT" not in run
+    env = step.get("env") or {}
+    assert "INFISICAL_TOKEN" in env
+    assert "RAILWAY_TOKEN" not in env
+    step_text = yaml.safe_dump(step)
+    assert "secrets." not in step_text and "vars." not in step_text
+    assert "environment" not in _load_yaml(OPS_WF)["jobs"]["ops"]
