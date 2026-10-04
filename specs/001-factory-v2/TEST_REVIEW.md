@@ -124,3 +124,38 @@ What would have to be true for the suite to be right anyway: T013 is treated str
 | T4 | accept | orchestrator (arch) | data-model Gate `scope: changed_lines\|repo\|pr` (`332381d`) |
 | T5 | accept the eight-term jargon list as is; future misses are added as governor corrections | governor 2026-10-03 | Seed split (`1619456`): `test_seed_decision_request_quotes_an_id[T\|F\|R\|P\|D\|FR\|SC\|US\|section-sign]`, `…_id_in_option_label`, `…_uses_configured_jargon[<each of the 8 terms>]` (parameterized from `factory.toml`; fixture config now derives its list from it), `…_jargon_is_case_insensitive`, near-miss passes `…_near_miss_allowed[packaging\|sliced-bread\|t-shirt-python-3.12\|p2p-us-budget]`; blocking cases also require the gate message to name the offender |
 | T6 | accept — discover repo root | orchestrator (process) | `config.settings.find_repo_root` walks from the CWD up to the git root; `cli.common.resolve_repo` used when `--repo` is omitted; relative `--path` resolves against the CWD. Tests in `test_settings.py` (red `50315d5` → green `f51929c`); packet-exact command from `scripts/factory` now exits 0 |
+
+## Round 2 — re-review at `b878606`
+
+### Verdict
+
+**Reject.** T1, T3, T4, T5, and T6 are resolved with direct test and code evidence. T2 is improved but not resolved at the governor's strict semantic fidelity: the automatic catalog row still includes thinner behavior, while the new seed explicitly delegates that case to a reviewer. The amendment also changed frozen spec contracts outside the order's owned paths without adding a bus amendment.
+
+### Finding resolutions
+
+| ID | Resolution | Evidence |
+|----|------------|----------|
+| T1 | **Resolved** | `GitHubPort.list_commit_statuses()` and typed `CommitStatus` now cover the missing read API. `assert_commit_status_read_after_write()` verifies latest-per-context, SHA isolation, field preservation, and empty results against `FakeGitHub`; the unit suite passes. |
+| T2 | **Not resolved** | `Lock` now rejects empty/blank letter tokens, models distinct registered substitutes, and seeds token-only-in-comment/deleted-line/order/docs plus Fly substitution and a passing Railway case. But `acceptance.md` `seed.substitution_declared` and US3 scenario 8 require blocking a different tool/host/**thinner behavior** automatically; `test_seed_declared_lock_violated` explicitly says thinner behavior is left to reviewer judgment. Greening these tests can therefore leave the auto catalog promise false. |
+| T3 | **Resolved** | `test_json_envelope` covers 26 success/refusal/usage/config scenarios across every non-hook command group and validates exact success/error envelope keys, command path, error code, and non-blank message. The still-unimplemented scenarios fail first on the expected exit assertion, then will exercise envelope shape when slices implement them. |
+| T4 | **Resolved** | The Gate contract now includes `scope: changed_lines\|repo\|pr`, matching the registry and PR-scoped gates. |
+| T5 | **Resolved** | Tests independently cover all id forms, option labels, each of the governor-approved eight configured terms, case insensitivity, offender naming, and four near-miss passing guards. The fixture reads the repository jargon list rather than a stale copy. |
+| T6 | **Resolved** | Repo discovery walks from CWD only to the git root, explicit `--repo` wins, and relative schema paths remain CWD-relative. The packet-exact command now exits 0 with `schema ok`; tests cover nested discovery, git-root confinement, and explicit override. |
+
+### New findings
+
+| ID | Severity | Tag | Lens | Locus | Finding | Suggested resolution |
+|----|----------|-----|------|-------|---------|----------------------|
+| T7 | Blocker | process | Owned-path enforcement | commits `8e2f3b7`, `c8fd90a`; `specs/001-factory-v2/data-model.md`, `contracts/cli.md` | The fixes changed frozen spec contracts outside the P0 order's owned paths. The original packet allowed only the data-model Gate line for `entrypoint`; it did not authorize the Lock line or `contracts/cli.md`. No `<order-id>.amend-NN` bus message records expanded ownership, despite the handoff calling this “Amendment 1.” This contradicts FR-014 and the bootstrap owned-path manual equivalent. | Add and validate an order amendment authorizing the exact spec paths/changes, or move the contract edits to an appropriately owned orchestrator order before accepting the bootstrap verdict. |
+
+No other new test weakness was found. The T1 conformance test is behavioral rather than protocol-presence-only; the T3 tests do not pass vacuously; and the T5 passing guards constrain obvious false positives.
+
+### Commands
+
+| Command | Result |
+|---------|--------|
+| `cd scripts/factory && uv sync --locked` | PASS — 25 packages installed/audited from the lock |
+| `uv run pytest -q` | Expected RED — **100 failed, 225 passed**; all failures are `AssertionError`; no collection, `ImportError`, or `ModuleNotFoundError` failures |
+| `uv run ruff check .` | PASS |
+| `uv run factory check schema --path tests/fixtures/messages/` | PASS — `schema ok` |
+| changed paths vs authorized ownership | FAIL — the Lock line in `data-model.md` and `contracts/cli.md` are outside the recorded order ownership (T7) |
