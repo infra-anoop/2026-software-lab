@@ -8,6 +8,7 @@ issue orders on `wo/<order-id>` branches, open fake PRs, and build base/head pai
 from __future__ import annotations
 
 import copy
+import json
 import shutil
 import subprocess
 from collections.abc import Mapping
@@ -18,6 +19,7 @@ from typing import Any, NamedTuple
 import yaml
 from pydantic import BaseModel
 
+from factory import PROJECT_DIR
 from factory.api import GateContext, PullRequest
 from factory.bus.models import ORDER_SCOPED_KINDS, parse_message
 from factory.bus.store import expected_path, load_all
@@ -41,6 +43,8 @@ SAMPLE_FILES = {
 SAMPLE_ORDER_ID = "wo-20261005-red-first-gate"
 SAMPLE_DECISION_ID = "board-web-view"
 GOVERNOR_LOGIN = "fixture-governor"
+REPO_ROOT = PROJECT_DIR.parents[1]
+REPO_JARGON = load_settings(REPO_ROOT).decision_lint.jargon
 
 FIXTURE_TOML = """\
 bus_dir = "bus"
@@ -65,7 +69,7 @@ repository = "fixture/demo"
 api_url = "https://api.github.test"
 
 [decision_lint]
-jargon = ["packet", "worktree", "subagent", "slice", "fidelity", "owned paths"]
+jargon = {jargon}
 """
 
 DEMO_SPEC = """\
@@ -181,6 +185,7 @@ class RepoBuilder:
                 autonomy_horizon_minutes=autonomy_horizon_minutes,
                 governor_login=GOVERNOR_LOGIN,
                 identity_mode=identity_mode,
+                jargon=json.dumps(REPO_JARGON),
             ),
         )
         self.write("README.md", "# fixture repo\n")

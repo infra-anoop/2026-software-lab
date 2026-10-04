@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 
 from factory.api import GateContext, GateEntrypointError, GateResult, run_gate
-from tests.fixtures.repo_builder import RepoBuilder, message, order, yaml_text
+from tests.fixtures.repo_builder import REPO_JARGON, RepoBuilder, message, order, yaml_text
 
 pytestmark = pytest.mark.seed
 
@@ -126,6 +126,7 @@ def test_seed_declared_lock_violated(repo: RepoBuilder) -> None:
             "Deploy the demo app.",
         ),
     ],
+    ids=["comment", "deleted_line", "order_file", "docs"],
 )
 def test_seed_lock_token_only_outside_code(
     repo: RepoBuilder,
@@ -227,18 +228,90 @@ def test_seed_outside_owned_paths(repo: RepoBuilder) -> None:
     )
 
 
-def test_seed_jargon_to_governor(repo: RepoBuilder) -> None:
-    """A decision request quotes task, finding, and requirement ids at the governor."""
+PLAIN_LABELS = ("Keep the current host", "Move to the cheaper host")
+
+
+def decision_context(
+    repo: RepoBuilder, prompt: str, labels: tuple[str, str] = PLAIN_LABELS
+) -> GateContext:
     request = message(
         "decision_request",
         decision_id="pick-host",
-        prompt="Lock D1 per T042 and FR-016 before the slice B packet ships?",
-        options=[{"label": "Keep P3 as is"}, {"label": "Pull SC-002 forward"}],
-        recommended="Keep P3 as is",
+        prompt=prompt,
+        options=[{"label": label} for label in labels],
+        recommended=labels[0],
         arch_impact=False,
     )
     pair = repo.base_head_pair({}, {"bus/decisions/pick-host/request.yaml": yaml_text(request)})
-    assert_blocked("decision-request-no-ids", repo.gate_context(pair))
+    return repo.gate_context(pair)
+
+
+def assert_blocked_naming(gate_id: str, ctx: GateContext, offender: str) -> None:
+    assert_blocked(gate_id, ctx)
+    messages = run_seed(gate_id, ctx).messages
+    assert any(offender.lower() in line.lower() for line in messages), (
+        f"{gate_id} blocked but did not name {offender!r}: {messages}"
+    )
+
+
+@pytest.mark.parametrize(
+    ("pattern", "offender", "prompt"),
+    [
+        (r"\b[TFRPD]\d+\b", "T042", "Should T042 ship before the demo on Friday?"),
+        (r"\b[TFRPD]\d+\b", "F3", "Is F3 worth fixing before the demo on Friday?"),
+        (r"\b[TFRPD]\d+\b", "R2", "Should we act on R2 before the demo on Friday?"),
+        (r"\b[TFRPD]\d+\b", "P7", "Can P7 wait until after the demo on Friday?"),
+        (r"\b[TFRPD]\d+\b", "D1", "Do you still want D1 for the demo on Friday?"),
+        (r"FR-\d+", "FR-016", "Does FR-016 still hold for the demo on Friday?"),
+        (r"SC-\d+", "SC-002", "Is SC-002 met well enough for the demo on Friday?"),
+        (r"US\d+", "US3", "Should US3 be in the demo on Friday?"),
+        ("§", "§", "Does constitution §G apply to the demo on Friday?"),
+    ],
+    ids=["T", "F", "R", "P", "D", "FR", "SC", "US", "section-sign"],
+)
+def test_seed_decision_request_quotes_an_id(
+    repo: RepoBuilder, pattern: str, offender: str, prompt: str
+) -> None:
+    """One id pattern from contracts/messages.md per case, in otherwise plain language."""
+    assert_blocked_naming("decision-request-no-ids", decision_context(repo, prompt), offender)
+
+
+def test_seed_decision_request_id_in_option_label(repo: RepoBuilder) -> None:
+    """Option labels are governor-facing text too."""
+    ctx = decision_context(
+        repo, "Which host should the demo use on Friday?", ("Keep the current host", "Do T042")
+    )
+    assert_blocked_naming("decision-request-no-ids", ctx, "T042")
+
+
+@pytest.mark.parametrize("term", REPO_JARGON)
+def test_seed_decision_request_uses_configured_jargon(repo: RepoBuilder, term: str) -> None:
+    """Every term in the repo's `factory.toml [decision_lint].jargon` blocks on its own
+    (governor accepted the eight-term list 2026-10-03; misses become corrections)."""
+    ctx = decision_context(repo, f"Should the {term} be ready before the demo on Friday?")
+    assert ctx.config.decision_lint.jargon == REPO_JARGON
+    assert_blocked_naming("decision-request-no-ids", ctx, term)
+
+
+def test_seed_decision_request_jargon_is_case_insensitive(repo: RepoBuilder) -> None:
+    ctx = decision_context(repo, "Is the Worktree ready before the demo on Friday?")
+    assert_blocked_naming("decision-request-no-ids", ctx, "worktree")
+
+
+@pytest.mark.parametrize(
+    "prompt",
+    [
+        "Should we finish packaging the release before the demo on Friday?",
+        "Is a second host the best idea since sliced bread?",
+        "Should the T-shirt order go out with Python 3.12 support?",
+        "Keep peer-to-peer (P2P) sync on within the 2026 US budget?",
+    ],
+    ids=["packaging", "sliced-bread", "t-shirt-python-3.12", "p2p-us-budget"],
+)
+def test_seed_decision_request_near_miss_allowed(repo: RepoBuilder, prompt: str) -> None:
+    """False-positive guard: words that merely resemble a term or an id pass."""
+    result = run_seed("decision-request-no-ids", decision_context(repo, prompt))
+    assert result.passed is True, result.messages
 
 
 def test_seed_catalog_unlinked(repo: RepoBuilder) -> None:
