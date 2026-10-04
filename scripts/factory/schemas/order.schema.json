@@ -3,6 +3,22 @@
     "Lock": {
       "additionalProperties": false,
       "properties": {
+        "direction": {
+          "anyOf": [
+            {
+              "enum": [
+                "min",
+                "max"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Direction"
+        },
         "fidelity": {
           "enum": [
             "letter",

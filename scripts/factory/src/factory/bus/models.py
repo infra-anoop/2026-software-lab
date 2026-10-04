@@ -45,6 +45,7 @@ MESSAGE_KINDS: tuple[str, ...] = get_args(MessageKind)
 Actor = Literal["governor", "orchestrator", "worker", "reviewer"]
 WorkerRuntime = Literal["local_subagent", "cloud_agent"]
 Fidelity = Literal["letter", "intent", "waived"]
+LockDirection = Literal["min", "max"]
 Severity = Literal["blocker", "debate", "later", "nit"]
 FindingTag = Literal["product", "process", "arch"]
 QuestionClass = Literal["blocker_governor", "non_blocking"]
@@ -141,12 +142,21 @@ class Envelope(BusModel):
 # --- WorkOrder ------------------------------------------------------------------------
 
 
+LOCK_NUMBER_RE = re.compile(r"\d+(?:\.\d+)?")
+
+
+def is_numeric_token(token: str) -> bool:
+    """A numeric letter token holds exactly one number (`cap 3`, `$5`, `70%`)."""
+    return len(LOCK_NUMBER_RE.findall(token)) == 1
+
+
 class Lock(BusModel):
     id: NonEmptyStr
     letter_tokens: list[str]
     fidelity: Fidelity
     waiver_ref: str | None = None
     substitutes: list[str] = Field(default_factory=list)
+    direction: LockDirection | None = None
 
     @model_validator(mode="after")
     def _fidelity_rules(self) -> Self:
@@ -161,6 +171,10 @@ class Lock(BusModel):
         tokens = {token.strip().lower() for token in self.letter_tokens}
         if tokens & {s.strip().lower() for s in self.substitutes}:
             raise ValueError("substitutes must not repeat a letter token")
+        if self.direction and not (
+            self.fidelity == "letter" and any(map(is_numeric_token, self.letter_tokens))
+        ):
+            raise ValueError("direction requires fidelity 'letter' and a numeric letter token")
         return self
 
 
