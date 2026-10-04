@@ -100,3 +100,58 @@ Agent-adjudicated (2026-10-04). Every finding is process-tagged except T-A4, whi
 | T-A9 | accept | orchestrator (process) | Shape kept: new modules are still imported inside the tests (`importlib` + `pytest.fail` at the call site); 65 Slice A tests collect and fail (0 errors, 0 xfail); full suite 181 failed / 237 passed (the 237 are unchanged); `ruff check .` and `ruff format --check` pass |
 
 Test-shape choices above that a round-2 reviewer may debate (none changes a frozen CP0 interface): the board placement of rejected (`blocked`) and stale (`in_flight`); the required-check set definition; the working-day convention; and the `mint_installation_token(now=)` → `.token` / `.expires_at` signature.
+
+## Round 2 review
+
+### Verdict
+
+**Verdict: reject — one test-shape Blocker remains before implementation.**
+
+T-A1 through T-A4 and T-A6 through T-A8 are resolved by executable assertions, and T-A5 now has the requested positive and negative cases. The new T-A5 policy, however, treats every check run visible on the PR as required; that is stricter than the frozen lifecycle contract, which says **required checks** must be green or overridden. The red-first counts, lint, formatting, frozen-interface check, and OpenSSL availability all reproduce.
+
+### Findings
+
+| ID | Severity | Tag | Locus | Finding | Suggested resolution |
+|----|----------|-----|-------|---------|----------------------|
+| T-A2-1 | Blocker | process | `tests/unit/test_lifecycle.py::test_accepted_needs_verdict_and_full_required_check_set`; `CHECK_CASES`; data-model Lifecycle | The test defines acceptance as every `factory/<gate>` named by `order.checks` being green/validly overridden **plus every check run on the head being green**. The frozen contract says “required checks green (or overridden),” not “all observed checks.” A conforming implementation that ignores an unrelated, advisory, skipped, or still-running non-required check run fails `mixed-runs`. The suite currently has no source of truth identifying which check runs are required, so it cannot honestly elevate all of them. | Keep exact `factory/<gate>` coverage for every order check. For check runs, introduce a contract/configured required-name set and test only those, or remove the all-runs requirement until branch-protection required checks are available. Add one green required run plus one unrelated pending run and require acceptance. |
+| T-A2-2 | Debate | process | `tests/contract/test_status.py::test_status_json_sections_match_each_lifecycle_state`; `overrides_per_gate` | `overrides == {"red-first-proof": 1}` requires a sparse map, but the plan only requires counts per gate. A conforming dense renderer that also reports `"test-seam-ban": 0` fails despite preserving every count. This does not change what the governor gets; it is an unnecessary representation lock. | Assert `overrides["red-first-proof"] == 1` and that every additional value is a non-negative integer, unless the contract is amended to require sparse output. |
+| T-A2-3 | Nit | process | `bus/orders/wo-20261004-factory-slice-a/verdict-01.yaml` | The round-one verdict faithfully preserves the decision, IDs, severities, tags, material findings, reviewer identity, reviewed SHA, bootstrap flag, and manual evidence. Its header says “transcribed verbatim” / “content unchanged,” although the finding prose is condensed from the review table. There is no substantive drift. | For future transcriptions, say “faithfully summarized” unless the bytes are actually copied verbatim. No correction is needed for adjudication. |
+| T-A2-4 | Nit | process | T-A1–T-A8 remediation set | Strength: T-A1 exact placement, T-A2 branch ancestry, T-A3 stateful status POST, T-A4 cryptographic JWT check, T-A6 completed-wave dates, T-A7 stale-cap refusal, and T-A8 valid/invalid verdict paths each fail at the intended callable seam. No frozen CP0 interface was edited. | Preserve these assertions while narrowing T-A2-1 and T-A2-2. |
+
+### Round-one resolution check
+
+| Round-one finding | Round-2 judgment |
+|-------------------|------------------|
+| T-A1 board placement | Resolved in executable assertions. The specific placement choice is accepted: rejected work is blocked; stale work remains in flight with a stale overlay; merged/released work is terminal and absent from the current-work sections. |
+| T-A2 branch-first commit | Resolved. The test selects the first branch-only commit, checks its `main` parent, exact added path, and content. |
+| T-A3 REST status write | Resolved. The transport records POSTs, asserts host/path/auth/body, and read-after-write fails for a no-op writer. |
+| T-A4 GitHub App token | Resolved for the original gap. RS256 signature, issuer, time bounds, installation path, returned token/expiry, and expired-response refusal are executable. |
+| T-A5 required checks | Negative-path gap resolved, but the newly chosen “all check runs” definition is an over-constraint (T-A2-1). |
+| T-A6 Wave 1 exit | Resolved. The working-day convention is accepted: the project checkpoint tables count the first order day as working day 1, so Thu 1 Oct → Wed 7 Oct is day 5 and Thu 8 Oct is day 6. |
+| T-A7 stale consumes cap | Resolved by a CLI refusal test that also proves no push occurred. |
+| T-A8 valid verdict path | Resolved with one successful commit and independent missing-path/missing-SHA refusals. |
+
+### Test-shape judgments
+
+- **(a) Board placement — accept.** It matches the linear state machine and the board's current-work sections. T-A2-2 concerns only sparse-versus-dense override counts, not placement.
+- **(b) Required-check set — over-constraint.** Gate statuses named by `order.checks` are required. Arbitrary observed check runs are not automatically required under the frozen contract.
+- **(c) Working-day convention — accept.** Counting the first work-order day as day 1 matches CP0/CP1/CP2's “working day from first order” framing and the five-day maximum.
+- **(d) Token signature/result shape — accept.** `factory.identity.app_token` is new Slice A code; adding keyword `now` and returning `.token` / `.expires_at` changes none of `api.py`, `bus/`, `config/`, `cli/app.py`, `cli/exit_codes.py`, or `gates/registry.py`.
+- **OpenSSL oracle — accept.** `openssl dgst -sha256 -verify` independently checks the JWT bytes and does not depend on whether implementation signing uses PyJWT/cryptography or the CLI. OpenSSL 3.3.3 is present in `nix develop`; `ubuntu-latest` also supplies the stable `openssl dgst` interface. The tampered-input control proves the oracle is live.
+
+### Fresh adversarial pass
+
+The strongest still-green wrong implementation would enumerate every GitHub check run and refuse acceptance when any unrelated run is pending. That behavior passes the new tests but violates the narrower “required checks” lifecycle lock and can leave accepted work permanently in review because of advisory integrations. At the other extreme, the remediated tests now prevent the original no-op status writer, unsigned fake JWT, constant-`None` Wave 1 exit, stale-cap exclusion, always-refuse verdict, and misrendered board implementations.
+
+### Verification record
+
+| Check | Result |
+|-------|--------|
+| Reviewed head | `7a320aadb93be1c4445ef8c8a72e4e5b419d9bef` |
+| Round-one verdict transcription | Substantively faithful; see T-A2-3. |
+| Slice A 11-file run | Expected RED: **65 failed, 0 passed**; no collection errors or xfails. |
+| Full suite | Expected RED: **181 failed, 237 passed**; no collection errors or xfails. |
+| `uv run ruff check .` | PASS. |
+| `uv run ruff format --check tests/contract tests/unit` | PASS — 19 files already formatted. |
+| OpenSSL in Nix | PASS — OpenSSL 3.3.3. |
+| Frozen CP0 files | PASS — no edits to `api.py`, `bus/`, `config/`, `cli/app.py`, `cli/exit_codes.py`, or `gates/registry.py`; the new bus verdict/amendment files are order records, not edits to `factory.bus`. |
