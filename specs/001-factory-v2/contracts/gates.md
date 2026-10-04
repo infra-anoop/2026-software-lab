@@ -38,6 +38,11 @@ A gate that fails looks for `bus/orders/<order-id>/override-NN.yaml` with `gate:
 
 **Deferral-words rule detail:** in `specs/**` and `notes/sprints/**`, the words *later, optional, deferred, TBD, future, stretch* need, on the same line or table row, one of: an Open Decision id that exists (`D\d+`), a pointer `→ <artifact>` to an existing file or phase (`→ plan`, `→ sprint 03` with a waived OD), or `[governor-judged]`. Spec-review tables ("Later → plan") satisfy it by pointer. Words inside backtick code spans (enum values, quoted rule text) are exempt.
 
+**Catalog-linkage rule detail:** every `how: auto` row in an `acceptance.md` carries `evidence`. A row whose id is in the PR's effective order `checks` must name existing evidence, not `planned` (FR-018). Rows the PR adds or edits and the order's rows are judged; untouched rows are not. Evidence is judged at the PR head in git, and Markdown backticks around the value are ignored. Two forms are accepted (governor 2026-10-04):
+
+- **pytest node id** `<repo-relative path>::<test name>`: the file exists at head and defines that test.
+- **eval case** `eval:<repo-relative path>#<case-id>`: the file exists at head and contains a case with `id == <case-id>`. The file is YAML or JSON (a top-level list, or a `cases:` list, of mappings with an `id` key) or JSONL (one object per line with `id`). A reference with no `#`, an absolute path, or a `..` segment is malformed and blocks.
+
 ## P2 registry (Wave 2, by sprint close)
 
 `import-layers`, `agent-has-output-type`, `banned-getenv-outside-config`, `vendor-imports-only-in-adapters`, `generic-identifier-ban`, `lab-shared-declares-consumers`, `new-dependency-needs-decision-ref`, `research-decision-has-nonsibling-alt`, `od.arch-options-have-consequences`, `od.plain-options`, `message.correction` + `repeated-corrections`, `sprint-close-requires-postmortem`, `codeowners-governor-on-rule-paths` (governor-only, per D4), `process-rule-cites-check`, `mutation-changed-lines` (70%), `block-system-path-edits` (hook + CI twin).

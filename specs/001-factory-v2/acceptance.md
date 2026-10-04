@@ -2,7 +2,7 @@
 
 Extensible checks for [`spec.md`](./spec.md) Success Criteria. Grow from runs; do not bury in scripts or prompts.
 
-**Evidence lifecycle (FR-018):** every `auto` row carries `evidence`. The sentinel `planned` is allowed until the work order that implements the row; that work order's PR must not merge until `evidence` names an existing test or eval id.
+**Evidence lifecycle (FR-018):** every `auto` row carries `evidence`. The sentinel `planned` is allowed until the work order that implements the row; that work order's PR must not merge until `evidence` names an existing pytest node id (`<path>::<test>`) or eval case (`eval:<path>#<case-id>`), as defined in [`contracts/gates.md`](./contracts/gates.md) § Catalog-linkage rule detail.
 
 | Field | Meaning |
 |-------|---------|
@@ -13,7 +13,7 @@ Extensible checks for [`spec.md`](./spec.md) Success Criteria. Grow from runs; d
 | when | Preconditions |
 | shall | Failable statement |
 | how | `auto` \| `human` \| `hybrid` |
-| evidence | Test/eval id, or `planned` (see lifecycle), or `n/a` for `human` |
+| evidence | pytest node id `<path>::<test>`, eval case `eval:<path>#<case-id>`, `planned` (see lifecycle), or `n/a` for `human` |
 
 ## Checks
 

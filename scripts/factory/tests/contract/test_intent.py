@@ -8,13 +8,19 @@ non-empty, a `scripts/factory/gates.yaml` row lists it in `intents`, or an
 Effective coverage (SC-005b, catalog `trace.effective_coverage`): the share of intents
 backed by an implemented check (registered in the repo's `gates.yaml` with an
 importable entrypoint) whose latest `factory/<gate-id>` commit status on HEAD is
-`success`, or by an explicit governor-judged mapping (`kind: human`). Self-reported
-`status: exists` in `intent.yaml` is not evidence.
+`success`, or by an explicit governor-judged mapping. Self-reported `status: exists`
+on a `ci`/`lint`/`metric` check is not evidence. A `kind: human` mapping is
+governor-judged only with `status: exists`; `planned` never counts (T-B6, governor
+2026-10-04). The status flips when the PR recording the governor's judgment changes it.
+
+Threshold (T-B4, governor 2026-10-04): `--coverage` is report-only and exits 0 at any
+share. `--coverage --require-target` is the sprint-close mode: exit 1 below 90%, exit 0
+at or above it.
 
 `--json` data (command-specific, contracts/cli.md § JSON envelope): `intents` (every
 intent id read), `unmapped` (ids without a mapping); with `--coverage`, `coverage`
 with `share`, `covered`, `uncovered`. On a presence failure the error `details`
-carry `unmapped`.
+carry `unmapped`; on a `--require-target` failure they carry `coverage`.
 """
 
 from __future__ import annotations
@@ -243,10 +249,19 @@ def test_flow_and_block_style_checks_are_both_read(
     assert error["details"]["unmapped"] == ["I-D3"], error
 
 
+def intent_ids_in(path: Path) -> set[str]:
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    entries = [data.get("north_star") or {}, *(data.get("intents") or [])]
+    return {str(entry["id"]) for entry in entries if entry.get("id")}
+
+
 def test_presence_holds_on_this_repository(factory_cli: FactoryCli) -> None:
+    """Every intent id in every discovered `specs/*/intent.yaml`, and nothing else."""
+    per_file = {p: intent_ids_in(p) for p in sorted(REPO_ROOT.glob("specs/*/intent.yaml"))}
+    assert len(per_file) >= 2 and all(per_file.values()), per_file
     data = ok_data(check_intent(factory_cli, REPO_ROOT, "--json"))
     assert data["unmapped"] == [], data
-    assert {"I-N1", "I-B7", "I-P10", "SW-N1", "SW-Q1"} <= set(data["intents"]), data
+    assert set(data["intents"]) == set().union(*per_file.values()), data
 
 
 # --- gate factory-check-intent (head commit is the input) -----------------------------------
@@ -339,3 +354,83 @@ def test_coverage_drops_when_a_passing_check_starts_failing(
     after = coverage_data(factory_cli, repo.path)
     assert after["share"] == pytest.approx(0.5), after
     assert set(after["uncovered"]) == {"I-D1"}, after
+
+
+def human(status: str) -> dict[str, str]:
+    return {"kind": "human", "ref": "sprint-postmortem", "status": status}
+
+
+def test_planned_human_mapping_is_not_governor_judged(
+    repo: RepoBuilder, factory_cli: FactoryCli
+) -> None:
+    path = "specs/demo-feature/intent.yaml"
+    commit_files(
+        repo,
+        {
+            path: intent_file(
+                "demo-feature", intent("I-D1", human("exists")), intent("I-D2", human("planned"))
+            )
+        },
+    )
+    before = coverage_data(factory_cli, repo.path)
+    assert set(before["covered"]) == {"I-D1"}, before
+    assert set(before["uncovered"]) == {"I-D2"}, before
+    assert before["share"] == pytest.approx(0.5), before
+    commit_files(
+        repo,
+        {
+            path: intent_file(
+                "demo-feature", intent("I-D1", human("exists")), intent("I-D2", human("exists"))
+            )
+        },
+    )
+    after = coverage_data(factory_cli, repo.path)
+    assert set(after["covered"]) == {"I-D1", "I-D2"}, after
+    assert after["share"] == pytest.approx(1.0), after
+
+
+def coverage_fixture(repo: RepoBuilder, factory_cli: FactoryCli, passing: int, total: int) -> None:
+    """`total` intents; the first `passing` are backed by a passing gate, the rest
+    (at least one) by a failing one."""
+    assert 0 < passing < total
+    ids = [f"I-D{n}" for n in range(1, total + 1)]
+    head = commit_files(
+        repo,
+        {
+            "specs/demo-feature/intent.yaml": intent_file(
+                "demo-feature",
+                *(
+                    intent(i, ci("g-live" if n < passing else "g-failing"))
+                    for n, i in enumerate(ids)
+                ),
+            ),
+            REGISTRY: registry(
+                gate_row("g-live", ids[:passing]), gate_row("g-failing", ids[passing:])
+            ),
+        },
+    )
+    post_status(factory_cli, head, "g-live", "success")
+    post_status(factory_cli, head, "g-failing", "failure")
+
+
+def test_require_target_fails_below_ninety_percent(
+    repo: RepoBuilder, factory_cli: FactoryCli
+) -> None:
+    coverage_fixture(repo, factory_cli, 17, 19)
+    assert coverage_data(factory_cli, repo.path)["share"] == pytest.approx(17 / 19)
+    result = check_intent(factory_cli, repo.path, "--coverage", "--require-target", "--json")
+    error = failed_error(result)
+    assert error["details"]["coverage"]["share"] == pytest.approx(17 / 19), error
+
+
+@pytest.mark.parametrize(
+    ("passing", "total"), [(9, 10), (19, 20)], ids=["exactly-ninety", "above-ninety"]
+)
+def test_require_target_passes_at_or_above_ninety_percent(
+    repo: RepoBuilder, factory_cli: FactoryCli, passing: int, total: int
+) -> None:
+    coverage_fixture(repo, factory_cli, passing, total)
+    result = check_intent(factory_cli, repo.path, "--coverage", "--require-target", "--json")
+    coverage = ok_data(result).get("coverage")
+    assert isinstance(coverage, dict), result
+    assert coverage["share"] == pytest.approx(passing / total), coverage

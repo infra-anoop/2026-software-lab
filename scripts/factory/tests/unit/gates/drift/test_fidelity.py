@@ -3,6 +3,8 @@
 `order-fidelity-declared`: every named lock the effective order's owned paths or goal
 touch has a Lock entry. The demo feature's locked letter decision D1 (host = Railway)
 is touched by task T002, which is tagged `[OD:D1]` and names `deploy/railway/demo.toml`.
+A goal touches D1 when it names the decision id or its locked value (`Railway`, the bold
+value in D1's status cell) as a whole word; `D10` and `trailways` do not (T-B1).
 
 `lock.letter-tokens`: for each `fidelity: letter` lock, the PR's code lines honor
 every token, no registered substitute appears in added code, and no token is removed
@@ -93,6 +95,44 @@ def test_declared_blocks_when_owned_paths_alone_touch_the_lock(repo: RepoBuilder
     even when the order lists no task."""
     ctx = declared_ctx(repo, tasks=[], owned_paths=["deploy/railway/demo.toml"], locks=[])
     assert_blocks(DECLARED, ctx, "D1")
+
+
+GOALS_TOUCHING_D1 = pytest.mark.parametrize(
+    "goal",
+    ["Deploy the demo app on Railway before Friday.", "Settle the deploy host per D1 this week."],
+    ids=["names-locked-value", "names-decision-id"],
+)
+
+
+@GOALS_TOUCHING_D1
+def test_declared_blocks_when_only_the_goal_touches_the_lock(repo: RepoBuilder, goal: str) -> None:
+    """Neither the task list nor the owned paths touch D1; the goal alone does."""
+    ctx = declared_ctx(
+        repo, goal=goal, tasks=["T001"], owned_paths=["apps/demo/app/calc.py"], locks=[]
+    )
+    assert_blocks(DECLARED, ctx, "D1")
+
+
+@GOALS_TOUCHING_D1
+def test_declared_passes_when_the_goal_touched_lock_is_declared(
+    repo: RepoBuilder, goal: str
+) -> None:
+    ctx = declared_ctx(
+        repo, goal=goal, tasks=["T001"], owned_paths=["apps/demo/app/calc.py"], locks=[RAILWAY_LOCK]
+    )
+    assert_passes(DECLARED, ctx)
+
+
+@pytest.mark.parametrize(
+    "goal",
+    ["Add the trailways() fare lookup to calc.py.", "Fix the D10 retry count in calc.py."],
+    ids=["value-inside-a-word", "longer-decision-id"],
+)
+def test_declared_goal_near_miss_does_not_touch_the_lock(repo: RepoBuilder, goal: str) -> None:
+    ctx = declared_ctx(
+        repo, goal=goal, tasks=["T001"], owned_paths=["apps/demo/app/calc.py"], locks=[]
+    )
+    assert_passes(DECLARED, ctx)
 
 
 def test_declared_judges_the_effective_order_after_amendments(repo: RepoBuilder) -> None:

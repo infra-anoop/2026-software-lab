@@ -8,6 +8,11 @@ waived OD), or `[governor-judged]`. Spec-review tables ("Later → plan") satisf
 pointer. Words inside backtick code spans (enum values, quoted rule text) are exempt.
 
 The gate is changed-scope: only added lines are judged.
+
+Phase pointers (T-B3): `→ plan` is a phase. `→ sprint NN` counts only with an OD on the
+same line whose status is waived; the OD id serving that pointer does not also satisfy
+the OD-id clause, or every unwaived sprint pointer would pass. A pointer to anything
+that is neither an existing file nor a phase (`→ backlog`) does not count.
 """
 
 from __future__ import annotations
@@ -98,6 +103,53 @@ def test_open_decision_added_in_the_same_change_counts(repo: RepoBuilder) -> Non
 def test_passes_with_a_phase_pointer(repo: RepoBuilder) -> None:
     table = "\n| id | disposition |\n|----|-------------|\n| F9 | Later → plan |\n"
     assert_passes(GATE, plan_ctx(repo, table))
+
+
+SPEC = "specs/demo-feature/spec.md"
+OD_STATUSES = {
+    "waived": "**waived** (2026-10-03) — out of this version; scheduled for sprint 03",
+    "open": "open",
+    "locked": "**locked** (2026-10-01) — **CSV only**",
+}
+SPRINT_POINTER = "- CSV export is deferred → sprint 03 (D1).\n"
+
+
+def sprint_ctx(repo: RepoBuilder, added: str, d1_status: str) -> GateContext:
+    """The demo spec's D1 row on base and head carries `d1_status`."""
+    repo.add_demo_feature()
+    spec = (repo.path / SPEC).read_text(encoding="utf-8")
+    row = next(line for line in spec.splitlines() if line.startswith("| **D1** |"))
+    cells = row.split(" | ")
+    cells[5] = OD_STATUSES[d1_status]
+    spec = spec.replace(row, " | ".join(cells))
+    pair = repo.base_head_pair({SPEC: spec, PLAN: BASE_PLAN}, {PLAN: BASE_PLAN + added})
+    return repo.gate_context(pair, pr_number=1)
+
+
+def test_passes_with_a_sprint_pointer_and_a_waived_decision(repo: RepoBuilder) -> None:
+    assert_passes(GATE, sprint_ctx(repo, SPRINT_POINTER, "waived"))
+
+
+@pytest.mark.parametrize("d1_status", ["open", "locked"])
+def test_blocks_a_sprint_pointer_whose_decision_is_not_waived(
+    repo: RepoBuilder, d1_status: str
+) -> None:
+    assert_blocks(GATE, sprint_ctx(repo, SPRINT_POINTER, d1_status), "deferred")
+
+
+def test_blocks_a_sprint_pointer_without_a_decision(repo: RepoBuilder) -> None:
+    """A waived D1 exists in the spec, but the line cites none."""
+    line = "- CSV export is deferred → sprint 03.\n"
+    assert_blocks(GATE, sprint_ctx(repo, line, "waived"), "deferred")
+
+
+@pytest.mark.parametrize(
+    "line",
+    ["- CSV export is deferred → backlog.\n", "- Polish is optional → someday\n"],
+    ids=["backlog", "someday"],
+)
+def test_blocks_a_pointer_to_a_phase_that_does_not_exist(repo: RepoBuilder, line: str) -> None:
+    assert_blocks(GATE, plan_ctx(repo, line), PLAN)
 
 
 def test_passes_with_a_pointer_to_an_existing_file(repo: RepoBuilder) -> None:

@@ -2,14 +2,17 @@
 
 Regexes verbatim from contracts/messages.md (`\\b[TFRPD]\\d+\\b`, `FR-\\d+`, `SC-\\d+`,
 `US\\d+`, `§`) plus `factory.toml [decision_lint].jargon`, applied to `prompt` and
-`options[].label` of decision requests the change adds. The seeds in `tests/seeds`
-cover each regex, each configured term, case, and near misses; this file covers
-field scoping, change scoping, and reporting.
+`options[].label` of decision requests the change adds or modifies. A modified request
+is judged whole, at head (T-B2); untouched requests on the base are exempt. The seeds
+in `tests/seeds` cover each regex, each configured term, case, and near misses; this
+file covers field scoping, change scoping, and reporting.
 """
 
 from __future__ import annotations
 
 from typing import Any
+
+import pytest
 
 from factory.api import GateContext
 from tests.fixtures.repo_builder import RepoBuilder, message, yaml_text
@@ -86,6 +89,45 @@ def test_only_requests_added_by_the_change_are_judged(repo: RepoBuilder) -> None
     legacy = request("old-question", prompt="Is T042 ready for the demo on Friday?")
     ctx = decision_ctx(repo, {"pick-host": request("pick-host")}, base={"old-question": legacy})
     assert_passes(GATE, ctx)
+
+
+@pytest.mark.parametrize(
+    ("edited", "needle"),
+    [
+        ({"prompt": "Is T042 ready for the demo on Friday?"}, "T042"),
+        ({"labels": ["Keep the current host", "Move to the worktree host"]}, "worktree"),
+    ],
+    ids=["prompt", "option-label"],
+)
+def test_modified_request_is_judged_at_head(
+    repo: RepoBuilder, edited: dict[str, Any], needle: str
+) -> None:
+    """A clean request on the base, edited by the change to carry an id or jargon."""
+    ctx = decision_ctx(
+        repo,
+        {"pick-host": request("pick-host", **edited)},
+        base={"pick-host": request("pick-host")},
+    )
+    assert_blocks(GATE, ctx, needle, request_path("pick-host"))
+
+
+def test_clean_modification_of_a_request_passes(repo: RepoBuilder) -> None:
+    edited = request("pick-host", prompt="Which host should the demo use on Monday?")
+    ctx = decision_ctx(repo, {"pick-host": edited}, base={"pick-host": request("pick-host")})
+    assert_passes(GATE, ctx)
+
+
+def test_modified_request_is_judged_whole_not_only_its_added_lines(repo: RepoBuilder) -> None:
+    """The prompt already quoted an id on the base; editing only a label still puts the
+    whole request in front of the governor, so it is judged at head."""
+    legacy = request("pick-host", prompt="Is T042 ready for the demo on Friday?")
+    edited = request(
+        "pick-host",
+        prompt="Is T042 ready for the demo on Friday?",
+        labels=["Keep the current host", "Move to the cheapest host"],
+    )
+    ctx = decision_ctx(repo, {"pick-host": edited}, base={"pick-host": legacy})
+    assert_blocks(GATE, ctx, "T042")
 
 
 def test_one_bad_request_among_clean_ones_blocks(repo: RepoBuilder) -> None:

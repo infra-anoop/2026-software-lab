@@ -236,6 +236,7 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 - [ ] T079 [P] [US7] Unit test `scripts/factory/tests/unit/gates/test_codeowners_gate.py` — gate `codeowners-governor-on-rule-paths` (governor-only): rule-path changes need an approving review from `governor_login` (verified identity)
 - [ ] T080 [US7] Spawn T* review for T078–T079
 - [ ] T081 [US7] `scripts/factory/src/factory/mining/` (corrections, proposals, post-mortem) + `factory correction new`, `factory sprint close` in `scripts/factory/src/factory/cli/mining.py`
+  - `sprint-close-requires-postmortem`: `factory sprint close` must call `factory check intent --coverage --require-target` and must not close when it exits non-zero (SC-005b ≥ 90%; governor 2026-10-04)
 - [ ] T082 [US7] Gate `scripts/factory/src/factory/gates/pr/codeowners.py` + registry entry (class governor-only, category governor_decision)
 - [ ] T083 [US7] Evidence: `mining.correction_recorded` (hybrid) — every governor correction this sprint has a `bus/corrections/` record; checked at post-mortem
 
