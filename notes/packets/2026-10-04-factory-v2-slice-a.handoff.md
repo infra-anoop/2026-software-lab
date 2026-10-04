@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | Branch | `wo/wo-20261004-factory-slice-a` |
-| State | **red; T* round 1 applied; round-2 review requested (T033)** |
+| State | **red; T* round 2 applied; round-3 confirmation requested (T033)** |
 | Author model | Claude family (worker). Bootstrap / T* verdict must come from a GPT-family reviewer (D3, FR-037) |
 | Head | see `git log` on this branch (tests `aa2bc5a`; triage + bus + this note after it) |
 | Base | `origin/main` @ `c2af7f2` (includes CP0 merge `8cd8cb7`) |
@@ -27,6 +27,23 @@ Round 1 (gpt-5.6-sol, openai) **rejected** at `40efa3b` (`specs/001-factory-v2/T
 Signature changes the implementation must match (new modules, not frozen): `mint_installation_token(*, app_id, private_key, installation_id, api_url, now)` returns an object with `.token` and `.expires_at` (UTC), and refuses a token already expired at `now`; `compute_scorecard` adds `wave1_working_days` and `wave1_within_timebox`, and `wave1_exit` is the date of the last order's merge into `main` once every order is merged. Board placement, required-check set and working-day convention: see the Triage section.
 
 Stop again here: round-2 T* is spawned by the orchestrator. No implement (T034+) until it is triaged.
+
+## T* round 2 applied; round-3 confirmation requested
+
+Round 2 (gpt-5.6-sol, openai) narrowly **rejected** at `7a320aa` (review `b26e09f`, merged as `3c32028`; `verdict-02.yaml` is the reviewer's own). It accepted the board placement, the working-day convention, the `mint_installation_token(now=)` shape and the openssl test oracle. Orchestrator triage: § Triage (orchestrator, round 2) and `amendment-02.yaml` (passes `factory check schema`).
+
+- T-A2-1: the required set is now only the `factory/<gate>` status for each gate in the order's `checks` (green, or failed and overridden for that gate). `check-run-failed` was removed, and `mixed-runs` became `unrelated-run-pending` (accepted). Non-factory required runs are deferred to after T066 (listed under Later).
+- T-A2-2: the override count is `red-first-proof == 1`, and any other gate may appear with a non-negative integer.
+- T-A2-3 and T-A2-4: noted, no change.
+- JWT signing dependency: `pyjwt[crypto]` (`>=2.9,<3`), authorized by `amend-02`, which also widens the owned paths to `pyproject.toml`, `uv.lock`, a `research.md` row and the `plan.md` Primary Dependencies line. **Not added yet**; the dependency, the research row and the plan line land with T034+. The open question above about RS256 signing is resolved by this.
+
+| Check | Result |
+|-------|--------|
+| Slice A 11 files | **64 failed, 0 passed**; 0 collection errors, 0 xfail |
+| Full `uv run pytest -q` | **180 failed, 237 passed** (the 237 are unchanged) |
+| `ruff check .` / `ruff format --check tests/contract tests/unit` | PASS |
+
+Stop: round-3 confirmation is spawned by the orchestrator. No implement (T034+) until it is recorded.
 
 ## Commits
 
