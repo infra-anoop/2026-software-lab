@@ -63,3 +63,23 @@ The suite is honestly red and has strong coverage of password validation, SQL re
 - Add wrong-current-user and missing-own-schema-write probe negatives.
 - Add secret-bearing resolve and probe collaborator failures to the CLI leakage matrix.
 - Replace or strengthen the no-Infisical-write substring scan.
+
+## Triage
+
+**Decided by:** orchestrator, 2026-10-04. B1 and B2 are tagged product but only enforce the packet's already-locked letter (db-only tag; probe checks `current_user` and own-schema create/drop), so no new governor decision is needed. B3/B4 are process Debates, agent-adjudicated. All findings accepted; tests amended on `packet/2026-10-03-lab-db-bootstrap`; implementation still stubbed.
+
+| ID | Disposition | Decided by | Resolution (where in the tests) |
+|----|-------------|------------|---------------------------------|
+| B1 | accept | orchestrator 2026-10-04 | `test_ops_runtime_db_kind_runs_only_the_database_step`: for `kind=db`, Checkout, Install uv, Parse and validate, Infisical auth and Database login (ensure) run; **Select Railway token**, Provision, Sync and Verify do not. `test_ops_runtime_sync_kind_skips_database_step` also requires Select Railway token to still run for `sync`. |
+| B2 | accept | orchestrator 2026-10-04 | `test_db_bootstrap_pg.py`: `test_probe_fails_for_the_other_environments_login` (staging login vs prod plan); `test_probe_fails_for_a_lookalike_identity` (decoy login with the prod `search_path`, write on the prod schemas and no other access, so only an identity check catches it; the test proves the decoy really can write there); `test_probe_fails_when_login_cannot_write_own_app_schema[CREATE\|USAGE]` (plain `REVOKE` on the app schema). Capability-based: no SQL spelling is asserted. |
+| B3 | accept | orchestrator 2026-10-04 | Harness resolve failures carry the token and password in a raw `RuntimeError` and in a typed `DbBootstrapError`; probe failures carry them in `ProbeError` text; the pooler fake's error body echoes the bearer header. New `_assert_error_chain_scrubbed` checks the raised error **and its `__cause__`/`__context__` chain** (what a traceback prints) on the pooler, SQL, final-probe and Management API paths. CLI leakage matrix gains `pooler_fails_typed` (9 scenarios × local/Actions). |
+| B4 | accept | orchestrator 2026-10-04 | Prose `upsert` substring check dropped. `test_no_infisical_write_code` is an AST/import check against known writer APIs (`upsert_variables`, `RuntimeTarget`, `secrets_sync.target_*`, …). New `test_live_main_builds_read_only_vault_and_ensure_only_reads_it`: `main` without injected deps must build the existing `InfisicalCloudBackend` (spied) from `INFISICAL_TOKEN`, keep the live collaborator defaults, and the real `ensure` may access nothing on that vault but `get_secrets`. |
+| B5 | keep | orchestrator 2026-10-04 | Management API, red-state and Postgres cases retained unchanged. |
+| B6 | accept | orchestrator 2026-10-04 | Tests of `ort.has_db_declaration` / `ort.validate_db_app_environment` removed. Behavior covered by `parse`/`db --dry-run` CLI tests (declaration required; staging parses without a secrets-schema row) plus a contrast that `sync --dry-run` for staging still fails closed. |
+
+### Post-triage runs (worker, 2026-10-04, `nix shell nixpkgs#uv nixpkgs#python312` / `nixpkgs#postgresql_17`)
+
+- Unit (`test_db_bootstrap.py` + `test_ops_runtime_tag.py`): **90 failed, 28 passed**, no collection errors. Kinds: `NotImplementedError` 72, assertions 13, `OpsTagError` 3, argparse `SystemExit` 2.
+- Real Postgres 17.11 (`lab_admin NOSUPERUSER CREATEROLE`, `CREATE` on the database and `public`, scram host auth): **14 failed, 1 passed** (admin fidelity); every failure is `NotImplementedError`. Without `LAB_TEST_PG_ADMIN_URL`: **15 skipped**.
+- New fixture SQL checked by hand with psql as `lab_admin`: the decoy can connect, sees the prod `search_path`, creates and drops a table in `swv2_prod`, and is denied on `public.runs` and `swv2_staging`. `REVOKE CREATE` blocks `CREATE TABLE swv2_prod.t`; `REVOKE USAGE` still allows that `CREATE TABLE` but blocks lookup/drop. Reset drops every `swv2_*` role and schema.
+- `uvx ruff check` on the three packet files: clean. `pytest scripts/ --ignore=scripts/factory` (as `verify-source.yml`): only this packet's red tests fail.

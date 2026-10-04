@@ -5,12 +5,20 @@
 | Field | Value |
 |-------|-------|
 | Packet id | `2026-10-03-lab-db-bootstrap-test-review-t` |
-| Status | ready |
+| Status | ready — **round 2 (re-review after triage)** |
 | Gate | T* (spec 002 T110, on the T109 red tests) |
 | Brief | `docs/agent-os/TEST_REVIEW_PROMPT.md` |
 | Feature dir | `specs/002-swv2-durable-evals/` |
 | Commit | `packet/2026-10-03-lab-db-bootstrap` @ `63a600c` (red tests + interface stubs) |
 | Agent mode | spawned-reviewer, family ≠ author (author: Claude) |
+
+## Round 2 (2026-10-04)
+
+Round 1 (`a50efac`, `specs/002-swv2-durable-evals/TEST_REVIEW_DB_BOOTSTRAP.md`) rejected the suite. The orchestrator accepted every finding; see that file's **Triage** section for what changed where and the post-triage runs. Review the tip of `origin/packet/2026-10-03-lab-db-bootstrap` (the round-2 commit is named in the work packet's Handoff notes).
+
+- Check that each of B1–B4 and B6 is fixed as the Triage table claims, and that a lazy implementation can no longer pass (round 1's adversarial positions: no `current_user` / own-schema write in the probe; Railway token selection left unconditional for `db` tags).
+- Judge the new test-encoded choices: (a) `ensure` wraps a raw collaborator exception from `resolve_parts` into `DbBootstrapError` with a `pooler` step; (b) the raised error's whole `__cause__`/`__context__` chain must be free of secret values, so the implementation must not chain the original exception (e.g. `raise … from None`); (c) `main` builds the vault as `secrets_sync.vault_infisical.InfisicalCloudBackend(token=$INFISICAL_TOKEN)`, looked up at call time, and passes the module's live defaults for the other collaborators.
+- Write round-2 findings as a new section in `TEST_REVIEW_DB_BOOTSTRAP.md` (continue IDs from B6). Expected runs: unit **90 failed / 28 passed**; real Postgres **14 failed / 1 passed**; **15 skipped** without `LAB_TEST_PG_ADMIN_URL`.
 
 ## Context to read first
 
@@ -46,7 +54,7 @@
 
 ## Owned paths (may edit) — on a new branch `review/lab-db-bootstrap-t` from `origin/packet/2026-10-03-lab-db-bootstrap`
 
-- `specs/002-swv2-durable-evals/TEST_REVIEW.md` (new, or a new section if it exists; T* findings Blocker/Debate/Later/Nit with product/process tags, ≥ 1 Debate, ≥ 1 strength)
+- `specs/002-swv2-durable-evals/TEST_REVIEW_DB_BOOTSTRAP.md` (round 1 created it; round 2 adds a section. T* findings Blocker/Debate/Later/Nit with product/process tags, ≥ 1 Debate, ≥ 1 strength). For round 2, use a new branch from the packet tip, e.g. `review/lab-db-bootstrap-t2` (no force-push of the round-1 branch).
 
 ## Forbidden paths
 

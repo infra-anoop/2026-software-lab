@@ -292,22 +292,6 @@ def test_db_tag_uses_ops_runtime_workflow() -> None:
     )
 
 
-def test_has_db_declaration() -> None:
-    assert ort.has_db_declaration("smart-writer-v2", repo_root=REPO) is True
-    assert ort.has_db_declaration("research-auditor", repo_root=REPO) is False
-
-
-def test_validate_db_requires_declaration(tmp_path: Path) -> None:
-    with pytest.raises(ort.OpsTagError, match=r"deploy/db/smart-writer-v2\.yml"):
-        ort.validate_db_app_environment("smart-writer-v2", "production", repo_root=tmp_path)
-
-
-def test_validate_db_does_not_require_secrets_schema_env() -> None:
-    # smart-writer-v2 has no staging secrets-schema entry; the db tag must still be valid.
-    ort.validate_db_app_environment("smart-writer-v2", "staging", repo_root=REPO)
-    ort.validate_db_app_environment("smart-writer-v2", "production", repo_root=REPO)
-
-
 def test_dry_run_db_staging(capsys: pytest.CaptureFixture[str]) -> None:
     code = ort.main(
         ["db", "--app-id", "smart-writer-v2", "--environment", "staging", "--dry-run"]
@@ -345,6 +329,29 @@ def test_parse_cli_db_without_declaration_fails(capsys: pytest.CaptureFixture[st
     code = ort.main(["parse", "--ref-name", "db/research-auditor/production"])
     assert code == 1
     assert "deploy/db/research-auditor.yml" in capsys.readouterr().err
+
+
+def test_parse_db_staging_does_not_require_secrets_schema(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """smart-writer-v2 staging has no secrets-schema row; a db tag must still parse."""
+    code = ort.main(["parse", "--ref-name", "db/smart-writer-v2/staging"])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "kind=db" in out
+    assert "environment=staging" in out
+
+
+def test_dry_run_sync_staging_still_requires_secrets_schema(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Contrast: sync still fail-closes on a missing secrets-schema environment."""
+    code = ort.main(
+        ["sync", "--app-id", "smart-writer-v2", "--environment", "staging", "--dry-run"]
+    )
+    assert code == 1
+    err = capsys.readouterr().err.lower()
+    assert "schema" in err or "environment" in err
 
 
 @pytest.mark.parametrize(
@@ -404,8 +411,12 @@ def test_ops_runtime_triggers_include_db_tags() -> None:
 def test_ops_runtime_db_kind_runs_only_the_database_step() -> None:
     steps = _ops_steps()
     out = {"kind": "db", "app_id": "smart-writer-v2", "environment": "staging"}
-    assert _step_runs(steps[_step_index(steps, "Database login (ensure)")], out)
+    assert _step_runs(steps[_step_index(steps, "Checkout")], out)
+    assert _step_runs(steps[_step_index(steps, "Install uv")], out)
+    assert _step_runs(steps[_step_index(steps, "Parse and validate")], out)
     assert _step_runs(steps[_step_index(steps, "Infisical auth")], out)
+    assert _step_runs(steps[_step_index(steps, "Database login (ensure)")], out)
+    assert not _step_runs(steps[_step_index(steps, "Select Railway token")], out)
     assert not _step_runs(steps[_step_index(steps, "Provision")], out)
     assert not _step_runs(steps[_step_index(steps, "Sync (apply)")], out)
     assert not _step_runs(steps[_step_index(steps, "Verify bootstrap")], out)
@@ -415,6 +426,7 @@ def test_ops_runtime_sync_kind_skips_database_step() -> None:
     steps = _ops_steps()
     out = {"kind": "sync", "app_id": "smart-writer-v2", "environment": "production"}
     assert not _step_runs(steps[_step_index(steps, "Database login (ensure)")], out)
+    assert _step_runs(steps[_step_index(steps, "Select Railway token")], out)
     assert _step_runs(steps[_step_index(steps, "Sync (apply)")], out)
 
 

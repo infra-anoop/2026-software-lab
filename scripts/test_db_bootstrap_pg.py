@@ -52,6 +52,7 @@ PW_KEY = {
 SWV2_SCHEMAS = tuple(
     f"swv2_{e}{suffix}" for e in ("prod", "staging") for suffix in ("", "_langgraph", "_queue")
 )
+DECOY = "swv2_decoy"
 
 
 class MemoryVault:
@@ -135,8 +136,8 @@ def _reset() -> None:
         conn.execute("DROP TABLE IF EXISTS public.runs")
         for s in SWV2_SCHEMAS:
             conn.execute(f'DROP SCHEMA IF EXISTS "{s}" CASCADE')
-        conn.execute("DROP ROLE IF EXISTS swv2_prod")
-        conn.execute("DROP ROLE IF EXISTS swv2_staging")
+        for role in ("swv2_prod", "swv2_staging", DECOY):
+            conn.execute(f'DROP ROLE IF EXISTS "{role}"')
         conn.execute("CREATE TABLE public.runs (id int)")
 
 
@@ -258,6 +259,56 @@ def test_probe_passes_for_correct_logins() -> None:
 
 def test_probe_fails_as_probe_error_when_login_does_not_exist() -> None:
     vault = MemoryVault()
+    with pytest.raises(db.ProbeError) as ei:
+        db.probe_login(_parts(vault, "production"), _plan("production"))
+    assert vault.password("production") not in str(ei.value)
+
+
+def test_probe_fails_for_the_other_environments_login() -> None:
+    """Wrong plan: a working staging login must not satisfy the prod probe."""
+    vault = _both()
+    with pytest.raises(db.ProbeError) as ei:
+        db.probe_login(_parts(vault, "staging"), _plan("production"))
+    assert vault.password("staging") not in str(ei.value)
+    assert vault.password("production") not in str(ei.value)
+
+
+def test_probe_fails_for_a_lookalike_identity() -> None:
+    """Wrong user: a decoy login with the prod search_path, write on the prod schemas and
+    no other access passes every check except the connected identity."""
+    _both()
+    decoy_pw = secrets.token_hex(24)
+    with _admin() as conn:
+        conn.execute(f"CREATE ROLE {DECOY} LOGIN PASSWORD '{decoy_pw}'")
+        for s in ("swv2_prod", "swv2_prod_langgraph", "swv2_prod_queue"):
+            conn.execute(f"GRANT USAGE, CREATE ON SCHEMA {s} TO {DECOY}")
+        conn.execute(
+            f"ALTER ROLE {DECOY} SET search_path = swv2_prod, swv2_prod_langgraph, swv2_prod_queue"
+        )
+    p = urlsplit(ADMIN_URL)
+    decoy = db.ConnParts(
+        host=p.hostname or "localhost",
+        port=p.port or 5432,
+        user=DECOY,
+        dbname=unquote(p.path.lstrip("/")) or "postgres",
+        password=decoy_pw,
+    )
+    with _connect(decoy) as conn:
+        conn.execute("CREATE TABLE decoy_check (id int)")
+        conn.execute("DROP TABLE decoy_check")
+    with pytest.raises(db.ProbeError) as ei:
+        db.probe_login(decoy, _plan("production"))
+    assert decoy_pw not in str(ei.value)
+
+
+@pytest.mark.parametrize("privilege", ["CREATE", "USAGE"])
+def test_probe_fails_when_login_cannot_write_own_app_schema(privilege: str) -> None:
+    """Capability-based: the probe must prove it can create, use and drop an object in the
+    app schema; how it does so is up to the implementation. Without USAGE, Postgres still
+    allows CREATE TABLE in the schema but not looking the table up or dropping it."""
+    vault = _both()
+    with _admin() as conn:
+        conn.execute(f"REVOKE {privilege} ON SCHEMA swv2_prod FROM swv2_prod")
     with pytest.raises(db.ProbeError) as ei:
         db.probe_login(_parts(vault, "production"), _plan("production"))
     assert vault.password("production") not in str(ei.value)

@@ -134,6 +134,14 @@ After the red tests are committed, write `notes/packets/2026-10-03-lab-db-bootst
 
 ## Handoff notes (agent fills at end)
 
+**Status: round 1 triaged; red; T* re-review requested** (2026-10-04). Merged `origin/main` and `origin/review/lab-db-bootstrap-t`; triage recorded in `specs/002-swv2-durable-evals/TEST_REVIEW_DB_BOOTSTRAP.md` § Triage (decided by: orchestrator 2026-10-04; B1–B4 and B6 accepted, B5 kept). Review packet updated with a Round 2 section. Still no implementation logic in `scripts/db_bootstrap.py`; no tag pushed; no PR.
+
+- Test changes: Railway-token skip for `db` tags (B1); probe negatives for the other environment's login, a lookalike decoy identity, and `REVOKE CREATE` / `REVOKE USAGE` on the app schema (B2); secret-bearing resolve/pooler/probe failures with whole-error-chain scrubbing and a 9th CLI leakage scenario (B3); AST writer-API check plus live-wiring test with a read-only `InfisicalCloudBackend` spy (B4); helper-name tests replaced by `parse` / `--dry-run` behavior (B6).
+- Runs: unit 90 failed / 28 passed; real Postgres 17.11 14 failed / 1 passed (15 skipped without the URL); ruff clean on the packet files; `pytest scripts/ --ignore=scripts/factory` 90 failed / 118 passed / 17 skipped, all failures in this packet's tests. Details in the Triage section's post-triage runs.
+- New test-encoded choices for T* (listed in the review packet's Round 2): raw resolve exceptions wrapped as a `pooler` step; no secret anywhere in the error's cause/context chain; `main` builds `InfisicalCloudBackend(token=$INFISICAL_TOKEN)` at call time with live collaborator defaults.
+
+### Round 0 (red tests, phase 1)
+
 **Status: red; T* requested** (phase 1 = T109 red tests + T110 review packet `notes/packets/2026-10-03-lab-db-bootstrap-test-review-t.md`). Written against design revision `84812a4` (Management API, governor-seeded passwords, read-only CI). No implementation logic; no Infisical write code; no tag pushed.
 
 - What changed:

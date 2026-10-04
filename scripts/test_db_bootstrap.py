@@ -6,6 +6,7 @@ cases live in test_db_bootstrap_pg.py.
 
 from __future__ import annotations
 
+import ast
 import json
 import logging
 import re
@@ -88,6 +89,7 @@ class Harness:
         password_ref: VaultRef = PROD_PW_REF,
         login_ok: bool = False,
         fail_resolve: bool = False,
+        fail_resolve_typed: bool = False,
         fail_run_sql: bool = False,
         fail_final_probe: bool = False,
     ) -> None:
@@ -99,6 +101,7 @@ class Harness:
             self.vault.store[_tup(password_ref)] = password
         self.login_ok = login_ok
         self.fail_resolve = fail_resolve
+        self.fail_resolve_typed = fail_resolve_typed
         self.fail_run_sql = fail_run_sql
         self.fail_final_probe = fail_final_probe
         self.runner_tokens: list[str] = []
@@ -123,7 +126,11 @@ class Harness:
     def resolve_parts(self, plan: db.LoginPlan, token: str, password: str) -> db.ConnParts:
         self.log.append("resolve")
         if self.fail_resolve:
-            raise db.DbBootstrapError("pooler host", "no PRIMARY entry")
+            raise RuntimeError(f"pooler lookup failed token={token} password={password}")
+        if self.fail_resolve_typed:
+            raise db.DbBootstrapError(
+                "pooler host", f"HTTP 401 token={token} password={password}"
+            )
         return db.ConnParts(
             host=POOLER_HOST,
             port=5432,
@@ -139,7 +146,10 @@ class Harness:
             not self._applied and self.login_ok
         )
         if not ok:
-            raise db.ProbeError("probe", "password authentication failed")
+            raise db.ProbeError(
+                "probe",
+                f"password authentication failed token={TOKEN} password={parts.password}",
+            )
 
     @property
     def deps(self) -> db.EnsureDeps:
@@ -159,6 +169,18 @@ def _raising_deps() -> db.EnsureDeps:
         get_secrets = staticmethod(boom)
 
     return db.EnsureDeps(vault=Boom(), make_runner=boom, resolve_parts=boom, probe=boom)
+
+
+def _assert_error_chain_scrubbed(exc: BaseException) -> None:
+    """The error and everything chained to it (what a traceback would print) hold no value."""
+    seen: set[int] = set()
+    cur: BaseException | None = exc
+    while cur is not None and id(cur) not in seen:
+        seen.add(id(cur))
+        text = f"{cur!s} {cur!r} {cur.args!r}"
+        for secret in ALL_SECRETS:
+            assert secret not in text, f"secret value in {type(cur).__name__} of the error chain"
+        cur = cur.__cause__ or cur.__context__
 
 
 def _assert_no_secrets(text: str, *, allow_mask_lines: bool = False) -> None:
@@ -382,7 +404,11 @@ class FakeSupabase:
             return httpx.Response(401, json={"message": "Unauthorized"})
         if request.method == "GET" and request.url.path == POOLER_PATH:
             if self.pooler_status != 200:
-                return httpx.Response(self.pooler_status, json={"message": "nope"})
+                # Sentinel: an error body that echoes the credential must not be relayed.
+                return httpx.Response(
+                    self.pooler_status,
+                    json={"message": f"rejected {request.headers.get('Authorization')}"},
+                )
             return httpx.Response(200, json=self.pooler)
         if request.method == "POST" and request.url.path == QUERY_PATH:
             body = json.loads(request.content)
@@ -426,7 +452,8 @@ def test_fetch_pooler_host_http_error_names_step_not_token(status: int) -> None:
         db.fetch_pooler_host(REF, TOKEN, client=client, base_url=API_BASE)
     assert "pooler" in ei.value.step.lower()
     assert str(status) in str(ei.value)
-    assert TOKEN not in str(ei.value)
+    assert "rejected" not in str(ei.value)  # the response body is not echoed
+    _assert_error_chain_scrubbed(ei.value)
 
 
 def test_management_api_runner_posts_query() -> None:
@@ -457,8 +484,8 @@ def test_management_api_runner_non_2xx_fails_loudly_without_values(status: int) 
     msg = str(ei.value)
     assert ei.value.step
     assert str(status) in msg
-    assert TOKEN not in msg and PW_PROD not in msg
     assert "failed near" not in msg  # the response body is not echoed
+    _assert_error_chain_scrubbed(ei.value)
 
 
 def test_ensure_through_fake_management_api() -> None:
@@ -545,6 +572,7 @@ def test_ensure_final_probe_failure_is_an_error() -> None:
         db.ensure("smart-writer-v2", "production", h.deps, repo_root=REPO)
     assert "probe" in ei.value.step
     assert h.log == ["resolve", "probe", "run_sql", "probe"]
+    _assert_error_chain_scrubbed(ei.value)
 
 
 @pytest.mark.parametrize(
@@ -579,21 +607,22 @@ def test_ensure_missing_access_token_fails_before_anything_runs() -> None:
     assert "SUPABASE_ACCESS_TOKEN" in str(ei.value)
 
 
-def test_ensure_pooler_lookup_failure_runs_no_sql() -> None:
-    h = Harness(fail_resolve=True)
+@pytest.mark.parametrize("typed", [False, True], ids=["raw-exception", "bootstrap-error"])
+def test_ensure_pooler_lookup_failure_runs_no_sql(typed: bool) -> None:
+    h = Harness(fail_resolve=not typed, fail_resolve_typed=typed)
     with pytest.raises(db.DbBootstrapError) as ei:
         db.ensure("smart-writer-v2", "production", h.deps, repo_root=REPO)
     assert "pooler" in ei.value.step
     assert h.sql_runs == []
+    _assert_error_chain_scrubbed(ei.value)
 
 
 def test_ensure_sql_failure_names_step_not_values() -> None:
     h = Harness(fail_run_sql=True)
     with pytest.raises(db.DbBootstrapError) as ei:
         db.ensure("smart-writer-v2", "production", h.deps, repo_root=REPO)
-    msg = str(ei.value)
     assert ei.value.step
-    assert TOKEN not in msg and PW_PROD not in msg
+    _assert_error_chain_scrubbed(ei.value)
     assert h.log == ["resolve", "probe", "run_sql"]
 
 
@@ -606,6 +635,7 @@ _SCENARIOS: dict[str, tuple[Callable[[], Harness], int]] = {
     "missing_password": (lambda: Harness(password=None), 1),
     "missing_token": (lambda: Harness(token=None), 1),
     "pooler_fails": (lambda: Harness(fail_resolve=True), 1),
+    "pooler_fails_typed": (lambda: Harness(fail_resolve_typed=True), 1),
     "sql_fails": (lambda: Harness(fail_run_sql=True), 1),
     "final_probe_fails": (lambda: Harness(fail_final_probe=True), 1),
 }
@@ -748,11 +778,104 @@ def test_cli_rejects_unknown_environment() -> None:
     assert ei.value.code == 2
 
 
+_WRITER_APIS = frozenset(
+    {
+        "upsert_variables",
+        "upsert_secret",
+        "create_secret",
+        "update_secret",
+        "delete_secret",
+        "RuntimeTarget",
+    }
+)
+_WRITER_IMPORT_MODULES = frozenset(
+    {
+        "secrets_sync.target_railway",
+        "secrets_sync.target_vercel",
+    }
+)
+
+
 def test_no_infisical_write_code() -> None:
-    src = (REPO / "scripts" / "db_bootstrap.py").read_text(encoding="utf-8")
-    assert "upsert" not in src.lower()
+    """Narrow AST/import check against known writer APIs (not a prose substring scan)."""
+    path = REPO / "scripts" / "db_bootstrap.py"
+    src = path.read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    hits: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Attribute) and node.attr in _WRITER_APIS:
+            hits.append(node.attr)
+        elif isinstance(node, ast.Name) and node.id in _WRITER_APIS:
+            hits.append(node.id)
+        elif isinstance(node, ast.ImportFrom):
+            mod = node.module or ""
+            if mod in _WRITER_IMPORT_MODULES:
+                hits.append(mod)
+            hits.extend(alias.name for alias in node.names if alias.name in _WRITER_APIS)
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name in _WRITER_IMPORT_MODULES or alias.name in _WRITER_APIS:
+                    hits.append(alias.name)
+    assert hits == [], f"db_bootstrap.py uses writer APIs: {hits}"
     assert not re.search(r"\.(post|patch|put)\([^)]*infisical", src, flags=re.IGNORECASE)
     assert not (REPO / "scripts" / "secrets_sync" / "vault_infisical_writer.py").exists()
+
+
+def test_live_main_builds_read_only_vault_and_ensure_only_reads_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Live wiring (no injected deps): the vault ``main`` builds is the existing Infisical
+    reader, and the real ``ensure`` touches nothing on it but ``get_secrets``."""
+    oidc = "oidc-dummy-not-a-secret-value"
+    backing = Harness(login_ok=True)
+    inits: list[dict[str, Any]] = []
+    accessed: list[str] = []
+
+    class ReadOnlyBackendSpy:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            inits.append(dict(kwargs, _args=args))
+
+        def __getattribute__(self, name: str) -> Any:
+            if not name.startswith("_"):
+                accessed.append(name)
+            if name == "get_secrets":
+                return backing.vault.get_secrets
+            return object.__getattribute__(self, name)
+
+    import secrets_sync.vault_infisical as vault_mod
+
+    monkeypatch.setattr(vault_mod, "InfisicalCloudBackend", ReadOnlyBackendSpy)
+    if hasattr(db, "InfisicalCloudBackend"):
+        monkeypatch.setattr(db, "InfisicalCloudBackend", ReadOnlyBackendSpy)
+    monkeypatch.setenv("INFISICAL_TOKEN", oidc)
+
+    real_ensure = db.ensure
+    built: list[db.EnsureDeps] = []
+
+    def ensure_with_offline_collaborators(
+        app_id: str, environment: str, deps: db.EnsureDeps, *, repo_root: Path = REPO
+    ) -> db.EnsureResult:
+        built.append(deps)
+        offline = db.EnsureDeps(
+            vault=deps.vault,
+            make_runner=backing.make_runner,
+            resolve_parts=backing.resolve_parts,
+            probe=backing.probe,
+        )
+        return real_ensure(app_id, environment, offline, repo_root=repo_root)
+
+    monkeypatch.setattr(db, "ensure", ensure_with_offline_collaborators)
+    code = db.main(["ensure", "--app-id", "smart-writer-v2", "--environment", "production"])
+
+    assert code == 0
+    assert len(built) == 1
+    assert isinstance(built[0].vault, ReadOnlyBackendSpy)
+    assert len(inits) == 1 and inits[0].get("token") == oidc
+    assert built[0].make_runner is db.management_api_runner
+    assert built[0].resolve_parts is db.pooler_connection_parts
+    assert built[0].probe is db.probe_login
+    assert accessed and set(accessed) == {"get_secrets"}
+    assert backing.log == ["resolve", "probe"]
 
 
 def test_db_bootstrap_tests_workflow_runs_pg_tests_against_supabase_like_admin() -> None:
