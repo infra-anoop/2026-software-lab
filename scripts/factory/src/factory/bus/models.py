@@ -146,11 +146,21 @@ class Lock(BusModel):
     letter_tokens: list[str]
     fidelity: Fidelity
     waiver_ref: str | None = None
+    substitutes: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def _waiver(self) -> Self:
+    def _fidelity_rules(self) -> Self:
         if self.fidelity == "waived" and not (self.waiver_ref and self.waiver_ref.strip()):
             raise ValueError("fidelity 'waived' requires waiver_ref to a governor decision lock")
+        if self.fidelity == "letter" and (
+            not self.letter_tokens or any(not token.strip() for token in self.letter_tokens)
+        ):
+            raise ValueError("fidelity 'letter' requires non-empty, non-blank letter_tokens")
+        if any(not s.strip() for s in self.substitutes):
+            raise ValueError("substitutes must be non-blank")
+        tokens = {token.strip().lower() for token in self.letter_tokens}
+        if tokens & {s.strip().lower() for s in self.substitutes}:
+            raise ValueError("substitutes must not repeat a letter token")
         return self
 
 

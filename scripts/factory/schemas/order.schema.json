@@ -24,6 +24,13 @@
           "title": "Letter Tokens",
           "type": "array"
         },
+        "substitutes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Substitutes",
+          "type": "array"
+        },
         "waiver_ref": {
           "anyOf": [
             {

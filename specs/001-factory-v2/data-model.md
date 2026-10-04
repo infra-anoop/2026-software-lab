@@ -33,7 +33,7 @@ Forbidden keys in any message: `status`, `state`, `done`, `progress` (FR-003, I-
 | `tasks` | list[str] | Spec Kit task ids covered (optional link to `tasks.md`) |
 | `worker_runtime` | enum | `local_subagent` \| `cloud_agent` |
 
-**Lock**: `{ id, letter_tokens: list[str], fidelity: letter|intent|waived, waiver_ref?: str }`. `letter_tokens` are the named things (tool, host, cap) the output must contain or honor. `fidelity: waived` requires `waiver_ref` to a governor decision lock.
+**Lock**: `{ id, letter_tokens: list[str], fidelity: letter|intent|waived, waiver_ref?: str, substitutes?: list[str] }`. `letter_tokens` are the named things (tool, host, cap) the output must contain or honor; `fidelity: letter` requires a non-empty `letter_tokens`. `substitutes` are known alternatives (e.g. another host) that must not appear in the added code; none may repeat a letter token. `fidelity: waived` requires `waiver_ref` to a governor decision lock.
 
 ## Amendment (`kind: amendment`, id `<order-id>.amend-NN`)
 

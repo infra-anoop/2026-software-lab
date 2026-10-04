@@ -57,23 +57,111 @@ def test_seed_undeclared_substitution(repo: RepoBuilder) -> None:
     assert_blocked("order-fidelity-declared", repo.gate_context(pair, order_id=ORDER_ID))
 
 
-def test_seed_declared_lock_violated(repo: RepoBuilder) -> None:
-    """Order declares letter fidelity to Railway; the diff deploys somewhere else."""
+FLY_CONFIG = 'app = "demo"\nprimary_region = "iad"\n'
+
+
+def lock_context(
+    repo: RepoBuilder,
+    head_files: dict[str, str],
+    *,
+    base_files: dict[str, str] | None = None,
+    substitutes: list[str] | None = None,
+    goal: str = "Deploy the demo app.",
+) -> GateContext:
+    lock: dict[str, object] = {"id": "D1", "letter_tokens": ["railway"], "fidelity": "letter"}
+    if substitutes is not None:
+        lock["substitutes"] = substitutes
     repo.add_demo_feature()
+    order_file = seed_order(
+        goal=goal, tasks=["T002"], owned_paths=["deploy/**", "docs/**", "scripts/**"], locks=[lock]
+    )
     pair = repo.base_head_pair(
-        {},
-        {
-            f"{ORDER_DIR}/order.yaml": seed_order(
-                goal="Deploy the demo app.",
-                tasks=["T002"],
-                owned_paths=["deploy/**"],
-                locks=[{"id": "D1", "letter_tokens": ["railway"], "fidelity": "letter"}],
-            ),
-            "deploy/fly/demo.toml": 'app = "demo"\nprimary_region = "iad"\n',
-        },
+        base_files or {},
+        {f"{ORDER_DIR}/order.yaml": order_file, **head_files},
         head_branch=f"wo/{ORDER_ID}",
     )
-    assert_blocked("lock.letter-tokens", repo.gate_context(pair, order_id=ORDER_ID, pr_number=1))
+    return repo.gate_context(pair, order_id=ORDER_ID, pr_number=1)
+
+
+def test_seed_declared_lock_violated(repo: RepoBuilder) -> None:
+    """Order declares letter fidelity to Railway; the diff deploys somewhere else.
+
+    Letter fidelity is semantic (US3 #8, SC-002; governor lock 2026-10-03): a different
+    tool or host breaks it even when the token still appears somewhere. "Thinner
+    behavior" is judged by the independent reviewer's fidelity rubric, not by this gate;
+    a reject verdict blocks merge.
+    """
+    ctx = lock_context(repo, {"deploy/fly/demo.toml": FLY_CONFIG})
+    assert_blocked("lock.letter-tokens", ctx)
+
+
+@pytest.mark.parametrize(
+    ("where", "head_files", "base_files", "goal"),
+    [
+        (
+            "comment",
+            {"deploy/fly/demo.toml": "# was on railway before this change\n" + FLY_CONFIG},
+            None,
+            "Deploy the demo app.",
+        ),
+        (
+            "deleted_line",
+            {"deploy/demo.toml": 'provider = "fly"\n'},
+            {"deploy/demo.toml": 'provider = "railway"\n'},
+            "Deploy the demo app.",
+        ),
+        (
+            "order_file",
+            {"deploy/fly/demo.toml": FLY_CONFIG},
+            None,
+            "Deploy the demo app to Railway.",
+        ),
+        (
+            "docs",
+            {
+                "docs/deploy.md": "# Deploy\n\nThe demo app deploys to Railway.\n",
+                "deploy/fly/demo.toml": FLY_CONFIG,
+            },
+            None,
+            "Deploy the demo app.",
+        ),
+    ],
+)
+def test_seed_lock_token_only_outside_code(
+    repo: RepoBuilder,
+    where: str,
+    head_files: dict[str, str],
+    base_files: dict[str, str] | None,
+    goal: str,
+) -> None:
+    """The token appears only in a comment, a deleted line, the order file, or docs,
+    while the added code deploys with a substitute host: still a letter violation."""
+    ctx = lock_context(repo, head_files, base_files=base_files, goal=goal)
+    assert_blocked("lock.letter-tokens", ctx)
+
+
+def test_seed_lock_registered_substitute_in_added_code(repo: RepoBuilder) -> None:
+    """The token is honored, but a substitute registered on the lock is added too."""
+    ctx = lock_context(
+        repo,
+        {
+            "deploy/railway/demo.toml": '[deploy]\nstartCommand = "uvicorn app:app"\n',
+            "scripts/deploy.sh": "#!/bin/sh\nrailway up --service demo || flyctl deploy\n",
+        },
+        substitutes=["fly", "flyctl"],
+    )
+    assert_blocked("lock.letter-tokens", ctx)
+
+
+def test_seed_lock_honored_passes(repo: RepoBuilder) -> None:
+    """False-positive guard: the added code uses the named host and no substitute."""
+    ctx = lock_context(
+        repo,
+        {"scripts/deploy.sh": "#!/bin/sh\nrailway up --service demo\n"},
+        substitutes=["fly", "flyctl"],
+    )
+    result = run_seed("lock.letter-tokens", ctx)
+    assert result.passed is True, result.messages
 
 
 def test_seed_hidden_deferral(repo: RepoBuilder) -> None:
