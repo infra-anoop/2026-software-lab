@@ -5,7 +5,7 @@
 | Field | Value |
 |-------|-------|
 | Packet id | `2026-10-03-lab-db-bootstrap` |
-| Status | ready |
+| Status | implemented — green; ready for PR (orchestrator opens it) |
 | Feature / spec | `specs/002-swv2-durable-evals/` (P0 ops: T013 done, T018 amended, T109–T112) |
 | Branch | `packet/2026-10-03-lab-db-bootstrap` |
 | Agent mode | **background** |
@@ -96,10 +96,10 @@ After the red tests are committed, write `notes/packets/2026-10-03-lab-db-bootst
 
 ## Definition of Done
 
-- [ ] Red tests committed first; T* review triaged in the review packet before implement
-- [ ] `uv run --script` / `uv run pytest scripts/test_db_bootstrap.py scripts/test_ops_runtime_tag.py` green; pg tests green locally (`nix shell nixpkgs#postgresql_17`) and in the new workflow
-- [ ] `uv run ruff check scripts/` clean
-- [ ] Dry run documented: `scripts/db_bootstrap.py ensure --dry-run` prints planned names only (login, schemas, output key), no values
+- [x] Red tests committed first; T* review triaged in the review packet before implement (accepted in round 3)
+- [x] `uv run --script` / `uv run pytest scripts/test_db_bootstrap.py scripts/test_ops_runtime_tag.py` green; pg tests green locally (`nix shell nixpkgs#postgresql_17`) and in the new workflow (local green; the workflow runs on the PR)
+- [ ] `uv run ruff check scripts/` clean (packet files clean; scripts-wide still has pre-existing findings in files outside this packet, see Round 0 notes)
+- [x] Dry run documented (Handoff notes): `scripts/db_bootstrap.py ensure --dry-run` prints planned names only (login, schemas, output key), no values
 - [ ] PR opened with summary; no live tag pushed (the orchestrator pushes the first live tag after the governor's one-time steps)
 
 ## Out of scope
@@ -133,6 +133,29 @@ After the red tests are committed, write `notes/packets/2026-10-03-lab-db-bootst
 - DoD needs paths outside Owned paths
 
 ## Handoff notes (agent fills at end)
+
+**Status: T111 implemented; green; ready for PR** (2026-10-04). Merged `origin/review/lab-db-bootstrap-t-r3` (`--no-ff`; T* accepted, R3-1 to R3-3 confirmations); `origin/main` had not moved. T109–T111 ticked in `tasks.md`. No PR opened and no `db/*` or ops tag pushed (orchestrator: PR, merge on green, T112 live tags). No test was changed in this phase.
+
+- What changed:
+  - `scripts/db_bootstrap.py`: `ensure` reads the token and the environment password through the existing `InfisicalCloudBackend` (read-only, `INFISICAL_TOKEN` from the OIDC step), validates the 48-hex password, gets the `PRIMARY` `db_host` from the pooler-config API, probes as `<login>.<ref>` on 5432 / `postgres`, and only if that fails renders `env_roles.sql` (the two `EDIT` lines only, marked `-- set by scripts/db_bootstrap.py`) and posts it to the query endpoint, then probes again. The probe proves `current_user`, the `search_path` head, create/insert/select/drop in the app schema, no `CREATE` on `public`, no read on `public.runs`, and no access to the other environment's schemas or their tables. Write checks run in a transaction that is always rolled back. Every collaborator failure is re-raised `from None` with the step name and a value-scrubbed detail (raw exceptions: type name only). Management API errors carry only the HTTP status. `::add-mask::` is emitted only when `main` runs under `GITHUB_ACTIONS=true`.
+  - `deploy/db/smart-writer-v2.yml`: the non-secret declaration (project ref, token ref, SQL path, port 5432, `postgres`, and per environment `sql_env`, `login`, `password_vault_ref`).
+  - `scripts/ops_runtime_tag.py`: `db/<app>/<env>` kind (parse, `db` subcommand, dry-run, create/push) valid only when `deploy/db/<app>.yml` declares the environment (no registry or secrets-schema check); `parse` emits `db_bootstrap=true|false` for bootstrap tags. File mode set executable (ruff `EXE001`; it already had a shebang).
+  - `.github/workflows/ops-runtime.yml`: `db/**` trigger; **Database login (ensure)** after Provision and before Sync, when `kind == 'db'` or `db_bootstrap == 'true'`, with only `INFISICAL_TOKEN` from the existing OIDC step; Select Railway token and Sync skip `db` tags.
+- Tests run (Postgres 17.11 throwaway cluster, `lab_admin NOSUPERUSER CREATEROLE`, `CREATE` on the database, `CREATE ON SCHEMA public WITH GRANT OPTION`, scram host auth):
+  - unit (`test_db_bootstrap.py` + `test_ops_runtime_tag.py`): 119 passed
+  - real Postgres: 16 passed (three reruns stable); 16 skipped without `LAB_TEST_PG_ADMIN_URL`
+  - `db-bootstrap-tests.yml` file set with Postgres: 151 passed; under `GITHUB_ACTIONS=true`: unit + pg 93 passed
+  - `pytest scripts/ --ignore=scripts/factory` (as `verify-source.yml`): 209 passed, 18 skipped
+  - `uvx ruff check` on `db_bootstrap.py`, both test files and `ops_runtime_tag.py`: clean
+- Dry run (`uv run scripts/db_bootstrap.py ensure --app-id smart-writer-v2 --environment staging --dry-run`, no token needed): prints `login: swv2_staging`, the three schemas, `pooler user: swv2_staging.oguydvttuzbbiovvnxoj`, the project ref, `port: 5432  dbname: postgres`, `password key (read): SMART_WRITER_V2_STAGING_DB_PASSWORD [2026-software-lab/production/]`, `access token key (read): SUPABASE_ACCESS_TOKEN`, and the SQL path; no values.
+- For the live run (T112):
+  - Push with `nix develop -c uv run scripts/ops_runtime_tag.py db --app-id smart-writer-v2 --environment staging --push` (then `production`). No workflow inputs, no new GitHub environment, secrets or variables: the run uses the existing `vars.INFISICAL_MACHINE_IDENTITY_ID` OIDC identity. It needs read on Infisical project `2026-software-lab`, env `production`, path `/` (the same scope sync already reads) for `SUPABASE_ACCESS_TOKEN`, `SMART_WRITER_V2_STAGING_DB_PASSWORD` and `SMART_WRITER_V2_DB_PASSWORD`.
+  - Expected log lines (Database login step), first run: `db_bootstrap: swv2_staging: probe failed; applying apps/smart-writer-v2/db/bootstrap/env_roles.sql`, `db_bootstrap: swv2_staging: bootstrap SQL applied`, `db_bootstrap: swv2_staging: probe passed after apply`, `ok: swv2_staging applied`. Re-push: `db_bootstrap: swv2_staging: probe passed; nothing to do`, `ok: swv2_staging noop`. Failures print `db_bootstrap error: <step>: <detail>` on stderr (steps: `declaration`, `vault read`, `password check`, `pooler host`, `probe`, `render sql`, `database query`, `probe after apply`).
+  - A `database query` failure shows only the HTTP status (the body echoes the SQL with the password); read the failing statement in the Supabase logs. `probe after apply` lists the failed checks by name (for example `can create objects in public` if `PUBLIC` still has `CREATE` on `public`; the SQL itself also refuses that case).
+  - Unverifiable offline, confirmed by the first live run: that the query endpoint runs as `postgres` (R3-3), and that the pooler-config `PRIMARY` `db_host` accepts session connections on 5432 as `swv2_<env>.<ref>`.
+- Deviations from the packet: none in behavior. `render_sql` also replaces the trailing `-- EDIT` comment on the two assignment lines (required by the accepted test that both lines change, including `env = 'staging'`, which matches the template default). The DoD item "`ruff check scripts/` clean" holds for the packet's files only (pre-existing findings elsewhere).
+
+### Round 2 triage
 
 **Status: round 2 triaged; red; T* round-3 confirmation requested** (2026-10-04). Merged `origin/review/lab-db-bootstrap-t-r2` (`--no-ff`); triage recorded in `TEST_REVIEW_DB_BOOTSTRAP.md` § Triage (orchestrator, round 2); review packet has a Round 3 section. Still no implementation logic; no tag pushed; no PR.
 
