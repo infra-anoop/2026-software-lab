@@ -10,6 +10,7 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
+from factory.bus import models as bus_models
 from factory.bus.models import KIND_MODELS, MESSAGE_KINDS, Lock, parse_message
 
 MESSAGES_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "messages"
@@ -243,6 +244,57 @@ def test_lock_substitutes_must_be_distinct_non_blank(substitutes: list[str]) -> 
     data = sample("order")
     data["locks"][0]["substitutes"] = substitutes
     assert "substitutes" in rejects(data)
+
+
+def test_lock_direction_is_optional() -> None:
+    assert "direction" in Lock.model_fields, "Lock has no direction field"
+    data = sample("order")
+    assert parse_message(data).locks[0].direction is None
+    for direction in ("min", "max"):
+        data["locks"][0]["direction"] = direction
+        assert parse_message(data).locks[0].direction == direction
+
+
+def test_lock_direction_enum() -> None:
+    assert "direction" in Lock.model_fields, "Lock has no direction field"
+    data = sample("order")
+    data["locks"][0]["direction"] = "up"
+    assert "direction" in rejects(data)
+
+
+@pytest.mark.parametrize(
+    ("fidelity", "tokens"),
+    [
+        ("letter", ["railway"]),
+        ("letter", ["between 2 and 5"]),
+        ("intent", ["70%"]),
+    ],
+    ids=["no_number", "two_numbers", "not_letter"],
+)
+def test_lock_direction_needs_a_numeric_letter_token(fidelity: str, tokens: list[str]) -> None:
+    """`direction` only means something for a letter token holding exactly one number."""
+    assert "direction" in Lock.model_fields, "Lock has no direction field"
+    data = sample("order")
+    data["locks"][0].update(fidelity=fidelity, letter_tokens=tokens, direction="min")
+    assert "direction" in rejects(data)
+
+
+@pytest.mark.parametrize(
+    ("token", "numeric"),
+    [
+        ("70%", True),
+        ("cap 3", True),
+        ("max_attempts: 2", True),
+        ("$5", True),
+        ("gpt-5.6", True),
+        ("railway", False),
+        ("between 2 and 5", False),
+    ],
+)
+def test_numeric_letter_token(token: str, numeric: bool) -> None:
+    is_numeric_token = getattr(bus_models, "is_numeric_token", None)
+    assert is_numeric_token is not None, "bus models export no is_numeric_token"
+    assert is_numeric_token(token) is numeric
 
 
 def test_amendment_values_validated_like_order_fields() -> None:
