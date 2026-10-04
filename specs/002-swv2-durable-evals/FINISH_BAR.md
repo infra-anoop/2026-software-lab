@@ -50,7 +50,7 @@ On **B**: lock D3 = `3.00` USD (content-only), set Batch status done and **Imple
 
 | Date | New rows | Re-lock done? |
 |------|----------|---------------|
-| 2026-10-03 | **D4 re-lock** (OpenAI judges, Anthropic writes — `architecture-affecting`; §G.1 reconcile + analyze done → [`PLAN_DELTA.md`](./PLAN_DELTA.md)). New open `who: human` rows **D8** (interim Anthropic writer model), **D9** (which other roles stay off OpenAI), **D10** (interim OpenAI judge + support models) — tasks T105 / T106 / T107 | **no** — D8, D9, D10 await the governor (questions below) |
+| 2026-10-03 | **D4 re-lock** (OpenAI judges, Anthropic writes — `architecture-affecting`; §G.1 reconcile + analyze done → [`PLAN_DELTA.md`](./PLAN_DELTA.md)). New open `who: human` rows **D8** (interim Anthropic writer model), **D9** (which other roles stay off OpenAI), **D10** (interim OpenAI judge + support models) — tasks T105 / T106 / T107 | **yes** (2026-10-03) — D8 Anthropic mid tier; D9 writer + assessor off OpenAI; D10 calibration picks the judge between OpenAI's current flagship and previous generation, small model checks citations (questions below) |
 
 ### Delta 2026-10-03 — inventory
 
@@ -94,3 +94,10 @@ Cost estimates below are rough, from today's prompt sizes: about 10k input and 2
 | Next gate | governor answers above (one batch); §G.1 again only if D9 locks as C |
 | Governor answer | |
 | **Implement unblocked** | **no** for: the P1a packet (Models+tests, T022–T035 — T030 needs D8 + D9), everything after it that needs P1a merged (P2a, P2b), the P2b packet until D10 locks (T082 onward), and P3 (D3). **Narrow exception continues** (Out-of-scope excludes D3 and D8–D10) for: Phase 1–2 orchestrator glue (CP0, with T007's `ANTHROPIC_API_KEY` names), P0 ops (T013–T021, now with `ANTHROPIC_API_KEY`), the P1b packet (Durability: storage), the P1c packet (Ship), and T079 golden-set synthesis. Flips to **yes** per packet as T105 / T106 / T107 record locks |
+
+### Delta 2026-10-03 — outcome after governor locks
+
+| Field | Value |
+|-------|-------|
+| D8 / D9 / D10 | locked (content-only; D9 = B keeps OpenAI in production for infer + extraction, so no further architecture reconcile) |
+| **Implement unblocked** | **yes** for P0–P2 (all lanes). **no** only for D3-dependent work (T097–T098), which the bake-off unlocks |
