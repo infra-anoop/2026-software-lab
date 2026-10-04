@@ -202,7 +202,7 @@ As the governor, the factory tooling runs in a fresh repo of mine with only conf
 
 - **FR-006**: A work order MUST declare goal, intent ids, owned paths, checks, honored locks with fidelity, size estimate within the autonomy horizon (1 hour this sprint), and stop conditions. (I-G2, I-B5)
 - **FR-007**: Issuing a work order MUST be refused while it depends on an open governor-owned decision. (I-X3)
-- **FR-008**: Claiming MUST be refused beyond the concurrency cap of **3** active workers, and a PR without a valid claim MUST NOT merge. In-editor launches beyond the cap MUST be warned about. (Governor waive 2026-10-03 of the "spawn refused" letter; launch broker not built this version.) (I-X4)
+- **FR-008**: Claiming MUST be refused beyond the concurrency cap of **3** active workers, and a PR without a valid claim MUST NOT merge. In-editor launches beyond the cap are logged by an advisory hook (Hooks output channel; Cursor shows hook messages only on denial). (Governor waive 2026-10-03 of the "spawn refused" letter; launch broker not built this version.) (Governor 2026-10-04: log-only, no visible warning.) (I-X4)
 - **FR-009**: A worker MUST NOT be able to report done while its work order's checks fail. (I-G2)
 - **FR-010**: Escalations MUST be classed: governor-owned product/architecture ambiguity = real-time blocker; all else = conservative choice + deviation recorded in the handoff. (I-B1, I-B2)
 - **FR-011**: Acceptance MUST be decided from check results per intent plus a verdict from a reviewer of a different model family; worker self-reports MUST NOT count as evidence. (I-P3, I-G2)

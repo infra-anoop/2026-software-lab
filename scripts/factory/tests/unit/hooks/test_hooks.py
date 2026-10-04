@@ -11,9 +11,12 @@ runs in). Transcripts are JSONL lines `{"role", "message": {"content": [{"type":
 "text"}]}}`.
 
 - `shell-guard` denies with `permission: "deny"` and exit 2 (Cursor's block code).
-- `spawn-guard` is advisory (FR-008 waive): always `permission: "allow"`, warning in
-  `user_message`.
-- `owned-path-warn` (postToolUse, Write tools) warns in `additional_context`;
+- `spawn-guard` is advisory and log-only (FR-008; governor 2026-10-04, T-C2-1 option B):
+  always `permission: "allow"`; the advisory text goes in `user_message`, which Cursor
+  records in the Hooks output channel and does not show on allow. These tests pin the
+  JSON contract only, not visibility.
+- `owned-path-warn` (postToolUse, anchored `Write|Delete` matcher) warns in
+  `additional_context`;
   `decision-in-chat` (stop) warns in `followup_message`. Both exit 0.
 
 Hooks are offline: they read the working tree and last-fetched refs, never the network.
@@ -22,8 +25,8 @@ Amendment wo-20261004-factory-slice-c.amend-01 (A1): Cursor runs
 `factory-hook` console script (`factory.hooks.entry:main`) and falls back to
 `uv run --project scripts/factory factory hook <name>` only when the venv is missing.
 `factory hook <name>` stays the slow-path equivalent. Budget (contracts/hooks.md, letter):
-< 300 ms end to end, median of five runs of the exact command; warm in-process logic is
-held to a tighter deterministic budget.
+< 300 ms end to end, median of five runs of the exact command. In process, the fast
+path is checked for offline behavior and parity with the CLI, not for a tighter budget.
 """
 
 from __future__ import annotations
@@ -50,7 +53,6 @@ from tests.fixtures.repo_builder import REPO_ROOT, RepoBuilder, message, order, 
 
 DAY = "20261006"
 BUDGET_SECONDS = 0.3
-WARM_BUDGET_SECONDS = 0.15
 E2E_RUNS = 5
 WRAPPER = ".cursor/hooks/factory-hook.sh"
 HOOK_COMMAND = WRAPPER + " {name}"
@@ -328,6 +330,7 @@ REVIEW_PACKET = "notes/packets/2026-10-06-demo-test-review-t.md"
 
 
 def spawn(factory_cli: FactoryCli, repo: RepoBuilder, task: str) -> str:
+    """The advisory log text (empty when there is nothing to log); the spawn is allowed."""
     data = payload(
         "subagentStart",
         repo.path,
@@ -341,7 +344,9 @@ def spawn(factory_cli: FactoryCli, repo: RepoBuilder, task: str) -> str:
     )
     result, response = call_hook(factory_cli, repo.path, "spawn-guard", data)
     assert result.exit_code == exit_codes.OK, result
-    assert response.get("permission") == "allow", f"spawn-guard is advisory: {response}"
+    assert response.get("permission") == "allow", (
+        f"spawn-guard is log-only and always allows: {response}"
+    )
     return warning(response, "user_message")
 
 
@@ -359,29 +364,35 @@ def worker_task(order_id: str) -> str:
     return f"You are a worker. Read notes/packets/{order_id}.md and implement order {order_id}."
 
 
-def test_spawn_guard_quiet_for_claimed_order(repo: RepoBuilder, factory_cli: FactoryCli) -> None:
+def test_spawn_guard_allows_without_log_for_claimed_order(
+    repo: RepoBuilder, factory_cli: FactoryCli
+) -> None:
     issue(repo, oid("alpha"))
     assert spawn(factory_cli, repo, worker_task(oid("alpha"))) == ""
 
 
-def test_spawn_guard_warns_without_order_or_review_packet(
+def test_spawn_guard_allows_and_logs_without_order_or_review_packet(
     repo: RepoBuilder, factory_cli: FactoryCli
 ) -> None:
     assert spawn(factory_cli, repo, "Refactor the board renderer for me.").strip()
 
 
-def test_spawn_guard_warns_for_unclaimed_order(repo: RepoBuilder, factory_cli: FactoryCli) -> None:
+def test_spawn_guard_allows_and_logs_unclaimed_order(
+    repo: RepoBuilder, factory_cli: FactoryCli
+) -> None:
     issue(repo, oid("alpha"), claimed=False)
     assert oid("alpha") in spawn(factory_cli, repo, worker_task(oid("alpha")))
 
 
-def test_spawn_guard_warns_for_released_order(repo: RepoBuilder, factory_cli: FactoryCli) -> None:
+def test_spawn_guard_allows_and_logs_released_order(
+    repo: RepoBuilder, factory_cli: FactoryCli
+) -> None:
     issue(repo, oid("alpha"))
     release(repo, oid("alpha"))
     assert oid("alpha") in spawn(factory_cli, repo, worker_task(oid("alpha")))
 
 
-def test_spawn_guard_quiet_for_existing_review_packet(
+def test_spawn_guard_allows_without_log_for_existing_review_packet(
     repo: RepoBuilder, factory_cli: FactoryCli
 ) -> None:
     repo.write(REVIEW_PACKET, "# Review packet\n")
@@ -390,14 +401,14 @@ def test_spawn_guard_quiet_for_existing_review_packet(
     assert spawn(factory_cli, repo, task) == ""
 
 
-def test_spawn_guard_warns_for_missing_review_packet(
+def test_spawn_guard_allows_and_logs_missing_review_packet(
     repo: RepoBuilder, factory_cli: FactoryCli
 ) -> None:
     task = f"You are an independent reviewer. Read {REVIEW_PACKET} and write the verdict."
     assert spawn(factory_cli, repo, task).strip()
 
 
-def test_spawn_guard_warns_at_cap(repo: RepoBuilder, factory_cli: FactoryCli) -> None:
+def test_spawn_guard_allows_and_logs_at_cap(repo: RepoBuilder, factory_cli: FactoryCli) -> None:
     for name in ("alpha", "bravo", "charlie"):
         issue(repo, oid(name))
     text = spawn(factory_cli, repo, worker_task(oid("charlie")))
@@ -429,16 +440,24 @@ def test_spawn_guard_does_not_count_merged_orders(
 WORK = oid("calc")
 
 
+MUTATING_TOOLS = ["Write", "Delete"]
+
+
 def tool_payload(repo: RepoBuilder, tool_name: str, file_path: str) -> dict[str, Any]:
+    """postToolUse as the Cursor client sends it: `Write` {file_path, content} → success,
+    `Delete` {file_path} → deleted; other tools carry {file_path} only."""
     tool_input: dict[str, Any] = {"file_path": file_path}
+    output: dict[str, Any] = {"file_path": file_path, "success": True}
     if tool_name == "Write":
         tool_input["content"] = "X = 1\n"
+    if tool_name == "Delete":
+        output = {"file_path": file_path, "deleted": True}
     return payload(
         "postToolUse",
         repo.path,
         tool_name=tool_name,
         tool_input=tool_input,
-        tool_output=json.dumps({"file_path": file_path, "success": True}),
+        tool_output=json.dumps(output),
         tool_use_id="tool-1",
         cwd=str(repo.path),
         duration=12,
@@ -458,10 +477,13 @@ def on_work_branch(repo: RepoBuilder, owned_paths: list[str]) -> None:
     repo.checkout(f"wo/{WORK}")
 
 
-def test_owned_path_quiet_inside_owned_paths(repo: RepoBuilder, factory_cli: FactoryCli) -> None:
+@pytest.mark.parametrize("tool", MUTATING_TOOLS)
+def test_owned_path_quiet_inside_owned_paths(
+    repo: RepoBuilder, factory_cli: FactoryCli, tool: str
+) -> None:
     on_work_branch(repo, ["apps/demo/app/calc.py", "apps/demo/tests/**"])
-    assert edit(factory_cli, repo, "apps/demo/app/calc.py") == ""
-    assert edit(factory_cli, repo, "apps/demo/tests/unit/test_calc.py") == ""
+    assert edit(factory_cli, repo, "apps/demo/app/calc.py", tool=tool) == ""
+    assert edit(factory_cli, repo, "apps/demo/tests/unit/test_calc.py", tool=tool) == ""
 
 
 def test_owned_path_quiet_for_own_bus_dir(repo: RepoBuilder, factory_cli: FactoryCli) -> None:
@@ -469,9 +491,12 @@ def test_owned_path_quiet_for_own_bus_dir(repo: RepoBuilder, factory_cli: Factor
     assert edit(factory_cli, repo, f"bus/orders/{WORK}/handoff.yaml") == ""
 
 
-def test_owned_path_warns_outside_owned_paths(repo: RepoBuilder, factory_cli: FactoryCli) -> None:
+@pytest.mark.parametrize("tool", MUTATING_TOOLS)
+def test_owned_path_warns_outside_owned_paths(
+    repo: RepoBuilder, factory_cli: FactoryCli, tool: str
+) -> None:
     on_work_branch(repo, ["apps/demo/app/calc.py"])
-    text = edit(factory_cli, repo, "deploy/railway/demo.toml")
+    text = edit(factory_cli, repo, "deploy/railway/demo.toml", tool=tool)
     assert "deploy/railway/demo.toml" in text, text
     assert WORK in text, text
 
@@ -494,10 +519,13 @@ def test_owned_path_quiet_on_main(repo: RepoBuilder, factory_cli: FactoryCli) ->
     assert edit(factory_cli, repo, "deploy/railway/demo.toml") == ""
 
 
-def test_owned_path_quiet_for_reads(repo: RepoBuilder, factory_cli: FactoryCli) -> None:
+def test_owned_path_quiet_for_non_mutating_tools(
+    repo: RepoBuilder, factory_cli: FactoryCli
+) -> None:
     on_work_branch(repo, ["apps/demo/app/calc.py"])
     assert edit(factory_cli, repo, "deploy/railway/demo.toml", tool="Read") == ""
     assert edit(factory_cli, repo, "deploy/railway/demo.toml", tool="Write").strip()
+    assert edit(factory_cli, repo, "deploy/railway/demo.toml", tool="Delete").strip()
 
 
 # --- decision-in-chat ---------------------------------------------------------------------
@@ -582,7 +610,7 @@ def test_decision_in_chat_quiet_without_transcript(
     assert stop(factory_cli, repo, tmp_path / "missing.jsonl") == ""
 
 
-# --- fast path: offline, warm budget, parity with `factory hook` --------------------------
+# --- fast path: offline, parity with `factory hook` ---------------------------------------
 
 
 def hook_entry() -> Any:
@@ -663,7 +691,7 @@ def test_hook_entry_imports_neither_the_cli_nor_other_slices() -> None:
 
 
 @pytest.mark.parametrize("name", sorted(CONTRACT_HOOKS.values()))
-def test_hook_entry_is_offline_warm_fast_and_matches_the_cli(
+def test_hook_entry_is_offline_and_matches_the_cli(
     repo: RepoBuilder,
     factory_cli: FactoryCli,
     monkeypatch: pytest.MonkeyPatch,
@@ -675,13 +703,7 @@ def test_hook_entry_is_offline_warm_fast_and_matches_the_cli(
     data = prepared_hook_repo(repo, tmp_path)[name]
     repo.git("remote", "set-url", "origin", str(repo.root / "unreachable.git"))
     monkeypatch.chdir(tmp_path)
-    call_entry(monkeypatch, capsys, name, data)
-    started = time.perf_counter()
     code, response = call_entry(monkeypatch, capsys, name, data)
-    elapsed = time.perf_counter() - started
-    assert elapsed < WARM_BUDGET_SECONDS, (
-        f"{name} took {elapsed * 1000:.0f} ms warm (budget {WARM_BUDGET_SECONDS * 1000:.0f} ms)"
-    )
     cli_result, cli_response = call_hook(factory_cli, repo.path, name, data)
     assert (code, response) == (cli_result.exit_code, cli_response), (
         f"factory-hook {name} and `factory hook {name}` disagree"
@@ -796,12 +818,14 @@ def test_live_hooks_json_routes_factory_hooks_through_the_wrapper() -> None:
     assert live_entries("afterFileEdit", "owned-path-warn") == []
 
 
-def test_live_owned_path_warn_matches_write_tools_only() -> None:
+def test_live_owned_path_warn_matches_exactly_write_and_delete() -> None:
+    """Cursor tests the matcher as an unanchored JS regex, so it must anchor itself."""
     (entry,) = live_entries("postToolUse", "owned-path-warn")
     matcher = entry.get("matcher")
     assert matcher, f"owned-path-warn would run after every tool: {entry}"
-    assert re.search(matcher, "Write"), matcher
-    for tool in ("Read", "Shell", "Grep", "Task"):
+    for tool in MUTATING_TOOLS:
+        assert re.search(matcher, tool), (matcher, tool)
+    for tool in ("Read", "Shell", "Grep", "Task", "WriteShellStdin", "MCP:Write", "MCP:Delete"):
         assert not re.search(matcher, tool), (matcher, tool)
 
 

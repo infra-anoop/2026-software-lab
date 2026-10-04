@@ -694,10 +694,37 @@ def gates_job() -> dict[str, Any]:
     return job
 
 
+NEVER_SKIPPING_CONDITIONS = {"always()", "!cancelled()"}
+SKIPPING_CONDITIONS = [
+    "false",
+    "${{ false }}",
+    "github.event_name == 'push'",
+    "${{ github.event_name != 'pull_request' }}",
+    "failure()",
+    "always() && false",
+    "!cancelled() && github.actor == 'governor'",
+]
+
+
+def gate_condition_never_skips(condition: object) -> bool:
+    """No `if:` at all, or one that runs the step on every pull request (T-C2-4)."""
+    if condition is None:
+        return True
+    text = str(condition).strip()
+    match = re.fullmatch(r"\$\{\{(.*)\}\}", text, flags=re.S)
+    if match:
+        text = match.group(1).strip()
+    return text in NEVER_SKIPPING_CONDITIONS
+
+
 def test_workflow_gate_run_on_the_pr_is_not_allowed_to_fail() -> None:
     for run in GATE_NO_OPS:
         assert not runs_gate_with_own_status(run), f"oracle accepts a no-op: {run!r}"
     assert runs_gate_with_own_status(GATE_REAL)
+    for condition in SKIPPING_CONDITIONS:
+        assert not gate_condition_never_skips(condition), f"oracle accepts {condition!r}"
+    for condition in (None, "always()", "${{ always() }}", "${{ !cancelled() }}", "!cancelled()"):
+        assert gate_condition_never_skips(condition), f"oracle rejects {condition!r}"
     job = gates_job()
     assert "continue-on-error" not in job, job
     steps = job.get("steps", [])
@@ -707,7 +734,9 @@ def test_workflow_gate_run_on_the_pr_is_not_allowed_to_fail() -> None:
     assert runs_gate_with_own_status(step["run"]), (
         f"the gate step must be exactly `factory gate run --pr <event number>`: {step['run']!r}"
     )
-    assert "if" not in step, step
+    assert gate_condition_never_skips(step.get("if")), (
+        f"the gate step's `if:` can skip it on a pull request: {step.get('if')!r}"
+    )
     assert step.get("shell", "bash") == "bash", step
     for each in steps:
         assert "continue-on-error" not in each, each
