@@ -7,12 +7,12 @@ All entities are immutable YAML files under `bus/` (except config and registry),
 | Field | Type | Rule |
 |-------|------|------|
 | `schema_version` | int | `1` |
-| `kind` | enum | `order` \| `amendment` \| `handoff` \| `verdict` \| `decision_request` \| `decision_lock` \| `correction` \| `override` \| `run_record` |
+| `kind` | enum | `order` \| `amendment` \| `handoff` \| `verdict` \| `decision_request` \| `decision_lock` \| `correction` \| `override` \| `claim` \| `release` \| `run_complete` |
 | `id` | str | Unique; pattern per kind (below) |
 | `created` | datetime (UTC) | Set at write |
 | `actor` | enum | `governor` \| `orchestrator` \| `worker` \| `reviewer` |
 | `actor_model` | str? | Required for non-governor actors (e.g. `claude-opus-…`, `gpt-5.6-…`) |
-| `actor_verified` | bool | Derived by `identity` adapter; always `false` under D4-C for `governor` |
+| `actor_verified` | bool | Derived by `identity` adapter; `false` for `governor` until identity mode is `verified` (GitHub App live, D4-A) |
 | `refs` | list[str] | Ids or repo paths this message references |
 
 Forbidden keys in any message: `status`, `state`, `done`, `progress` (FR-003, I-M2).

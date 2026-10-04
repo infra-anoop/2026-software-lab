@@ -269,7 +269,7 @@ As the governor, the factory tooling runs in a fresh repo of mine with only conf
 - **Override** — a gate bypass with reason; links to gate and PR.
 - **Gate** — a registered check with id, fail mode, category, and intents served.
 - **Pattern** — an entry in the architecture pattern catalog (reviewer rubric).
-- **Run record** — per-work-order measurements feeding the scorecard.
+- **Run events** — append-only per-work-order measurements (claim, release, run-complete) feeding the scorecard.
 - **Post-mortem** — sprint-close artifact dispositioning corrections and reviewing overrides/reversals/rework.
 
 ## Success Criteria *(mandatory)*

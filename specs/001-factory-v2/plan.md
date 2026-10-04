@@ -6,6 +6,8 @@
 
 **Lab rule (constitution §E):** Plan = **Architecture** + **Phased delivery**. No tasks or implement until both are human-approved after P* triage.
 
+**Approval:** Architecture + Phased delivery approved by the governor 2026-10-03, after P* triage.
+
 ## Summary
 
 Replace sprint-01's prose process (mutable packets, free-text status, the human as router) with code: one `factory` Python package that (1) defines the bus as immutable, schema-validated message files in git; (2) derives every work item's state from git, PR, and check reality and renders one markdown board; (3) runs drift gates in CI as required checks, mirrored by Cursor hooks; (4) records overrides, corrections, and run measurements so the scorecard and the religion-mining loop compute themselves. Wave 1 ships the P1 gates under bootstrap verdicts; P2 (architecture lints, rubric, mining loop, constitution 2.0, mutation) completes during Wave 2.
@@ -25,7 +27,7 @@ Replace sprint-01's prose process (mutable packets, free-text status, the human 
   - `hooks` — Cursor hook entrypoints.
   - `github` — REST adapter, the only module that talks to GitHub (I-A4).
   - `config` — typed `factory.toml` loader (I-A3).
-- **Orchestration / jobs**: **P1 lock — linear derived state machine** `issued → claimed → in_review → accepted | rejected → merged`, with `released` and overlays `stale` and `blocked_on_governor`; no workflow engine (migrate trigger in `research.md`). **Issuance never touches `main`:** the order is the first commit of `wo/<order-id>`; claims are atomic fast-forward pushes; decisions, corrections, and post-mortems travel in separate *bus PRs* (full sequence in [`data-model.md`](./data-model.md) § Lifecycle). Agents run as Cursor background subagents or cloud agents; the authoritative admission point is `factory claim` (scope of spawn refusal per review P3, pending governor choice).
+- **Orchestration / jobs**: **P1 lock — linear derived state machine** `issued → claimed → in_review → accepted | rejected → merged`, with `released` and overlays `stale` and `blocked_on_governor`; no workflow engine (migrate trigger in `research.md`). **Issuance never touches `main`:** the order is the first commit of `wo/<order-id>`; claims are atomic fast-forward pushes; decisions, corrections, and post-mortems travel in separate *bus PRs* (full sequence in [`data-model.md`](./data-model.md) § Lifecycle). Agents run as Cursor background subagents or cloud agents; the authoritative admission point is `factory claim` plus the merge check (cap 3); the editor spawn hook only warns (review P3, governor lock).
 - **Data stores**: git only. `bus/` holds append-only YAML messages; `factory.toml` holds repo config; `scripts/factory/gates.yaml` is the gate registry; `scripts/factory/rubrics/patterns.yaml` is the pattern catalog (P2). No database.
 - **External systems**: GitHub (git remote, REST API, Actions, branch protection, CODEOWNERS), Cursor (hooks, subagents, cloud agents), Semgrep CE / import-linter / mutmut (OSS CLIs in CI), and Bugbot (non-authoritative reviewer).
 
@@ -38,7 +40,7 @@ Replace sprint-01's prose process (mutable packets, free-text status, the human 
 | `board` | Rendering sections: in flight, blocked, waiting on governor, overrides (counts per gate), ready queue | Data fetching (takes a lifecycle snapshot) |
 | `gates` | Registry (id, class `drift`/`governor-only`, category, intents, hook twin); running gates against a PR; resolving overrides | Policy content (rules live in each gate module + registry) |
 | `intent` | Presence and effective coverage over `specs/*/intent.yaml` + registry + catalogs | Writing intents |
-| `metrics` | Run records → scorecard (drift, first-pass, decision points, governor minutes, overrides, rework) | Judging quality |
+| `metrics` | Run events → scorecard (drift, first-pass, decision points, governor minutes, overrides, rework) | Judging quality |
 | `hooks` | Thin adapters from Cursor hook JSON to `gates` / `bus` calls; fast and offline | Any rule that has no CI twin |
 | `github` | REST calls (PRs, checks, branches, open-PR creation) with `GITHUB_TOKEN` | Business decisions |
 | CI workflow `factory-gates.yml` | Running every registered CI gate on `pull_request`; publishing the board summary | Deploys (unchanged pipelines) |
@@ -89,7 +91,7 @@ Until the App is live, the board marks governor-only actions **unverified**, and
 
 ### Major risks / non-goals for this architecture
 
-- **Single identity (D4)**: governor-only enforcement is weak until locked. Mitigation: unverified marking + audit.
+- **Single identity until the GitHub App is live (D4-A)**: governor-only actions are marked unverified until then. Mitigation: unverified marking + audit; App setup is a Wave 1 ops step.
 - **Decision requests asked in chat**: a question can still bypass the bus file. Mitigation: the `stop` hook warns when the session's last assistant turn asked the governor something and no new `bus/decisions/` request exists. Post-mortem routing count (SC-010).
 - **Self-reported metrics**: governor minutes and agent cost are self-reported in decision locks and handoffs. Flagged as estimates on the scorecard.
 - **Red-first false reds**: base collection errors from unrelated breakage. Mitigation: the gate distinguishes "new test fails as expected" from "base suite broken" and reports which; drift-class override available.
@@ -103,7 +105,7 @@ Until the App is live, the board marks governor-only actions **unverified**, and
 | **P0 — contracts glue** (orchestrator tiny glue, ≤ ½ day) | 1 | Freeze shared contracts so three workers can run in parallel | `bus` models, `config`, registry format, JSON Schema export, empty `factory-gates.yml`, seeded-violation fixture layout | `factory check schema` validates the sample messages; JSON Schemas generated; contract tests exist and are red for unimplemented commands |
 | **P1 — Wave 1 core** (3 parallel slices, disjoint paths) | 1 | Bus + board, drift gates, gate framework live as required checks | **Slice A** (`bus`, `lifecycle`, `board`, `metrics`, `github`, `identity`, `claim`): status, order issue, claim/release, PR open, run events, scorecard, GitHub App token minting + identity adapter (verified mode once the App exists). **Slice B** (`gates/drift/*`): red-first, test-seam, owned-paths, deferral-needs-OD, catalog-linkage, pr-links-order, intent presence, fidelity + lock tokens, decision-request-no-ids, order-blocked-on-open-OD. **Slice C** (`gates` core, `hooks`, workflow): registry + two classes + overrides + counts, hook-twin check, cap, verdict family + isolation, bus immutability | SC-013: within 5 working days of the first order, every P1 check is implemented and passing; SC-002 seeded-violation suite 100% blocked; SC-001 board agrees with reality on the spot-check fixture; SC-004 override accounting |
 | **P1b — bootstrap close** | 1→2 boundary | Prove the gates on the PRs that built them | `gates` retro runner | SC-012: every Wave 1 PR has a bootstrap verdict and retro results; each failure remediated or overridden before any Wave 2 order is issued |
-| **P2 — religion + learning** (during Wave 2, ≤ 3 workers shared with the SWV2 lanes) | 2 | Architecture religion, mining loop, rules-as-code, identity | Semgrep + import-linter pack; pattern rubric; corrections + repeat links + post-mortem gate; CODEOWNERS / identity adapter per D4; process-rule-cites-check; **constitution 2.0 as its own order + independent verdict**; lean always-applied rules; `subagentStart` + system-path hooks; mutation gate (SWV2 Models lane) | SC-005b ≥ 90% effective coverage; SC-006 rule citations 100%; SC-007 mining loop live; mutation gate at 70% on changed lines; all by sprint close |
+| **P2 — religion + learning** (during Wave 2, ≤ 3 workers shared with the SWV2 lanes) | 2 | Architecture religion, mining loop, rules-as-code, identity | Semgrep + import-linter pack; pattern rubric; corrections + repeat links + post-mortem gate; CODEOWNERS / identity adapter per D4; process-rule-cites-check; **constitution 2.0 as its own order + independent verdict**; lean always-applied rules; system-path hook (the advisory `subagentStart` spawn-guard moved to P1 slice C because FR-008's editor warning is P1); mutation gate (SWV2 Models lane) | SC-005b ≥ 90% effective coverage; SC-006 rule citations 100%; SC-007 mining loop live; mutation gate at 70% on changed lines; all by sprint close |
 | **P3 — portability** | sprint 03 (D1 waived) | Fixture-repo proof, live config drift, secret scan, one-service manifest | — | Out of this version |
 
 **MVP definition**: an orchestrator can issue an order, claim it (refused beyond 3 or on an open governor decision), have a worker open a PR from `wo/<id>`, and see it move through the board purely from git/PR/check reality. Every sprint-01 drift seed is blocked in CI, and every override is reasoned and counted. Nothing in the bus was hand-edited.
@@ -135,7 +137,7 @@ Until the App is live, the board marks governor-only actions **unverified**, and
 - [x] Phased delivery present with MVP and failable exit criteria
 - [x] `research.md` alternatives per major block include non-sibling SOTA/managed/OSS options (GitHub Projects, Beads, Linear, Temporal/Inngest, Copilot agent, Cursor SDK, CodeRabbit, Semgrep/ast-grep/CodeQL, TDD-Guard, Doorstop)
 - [x] Orchestrator P1 lock: linear derived state machine + named migrate trigger
-- [ ] Plan Architecture review (P*) triaged — pending spawn
+- [x] Plan Architecture review (P*) triaged — locks table below; governor approved 2026-10-03
 - [x] No tasks/implement started
 - [x] Secrets / registry / cattle: no new secret values; factory is not a registry app (no service); all config in git manifests
 - [x] Learning/stack prefs not smuggled as product gates
@@ -171,7 +173,7 @@ scripts/factory/
 .github/workflows/factory-gates.yml
 .cursor/hooks.json
 .pre-commit-config.yaml
-.github/CODEOWNERS                 # P2, per D4
+.github/CODEOWNERS                 # Wave 1 slice A, per D4-A
 ```
 
 **Structure Decision**: one uv project under `scripts/` because it is repo tooling, not app runtime (so not `modules/lab_shared`) and not a deployable (so not `apps/`). The package boundary is clean enough to extract into its own repo in sprint 03.

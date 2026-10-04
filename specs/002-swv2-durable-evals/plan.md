@@ -6,6 +6,8 @@
 
 **Lab rule (constitution §E):** Architecture + Phased delivery; human approval after P* triage before tasks.
 
+**Approval:** Architecture + Phased delivery approved by the governor 2026-10-03, after P* triage.
+
 ## Summary
 
 Make every piece of user work durable (Postgres + Storage in a dedicated Supabase project, versioned migrations proven on staging, resumable jobs via the LangGraph Postgres checkpointer, anonymous cookie ownership with 30-day visible retention). Make quality measurable: a Gemini program-officer judge plus a source-support checker in pydantic-evals, gated per PR against a nightly noise band, calibrated to the governor. Remove the test seam, so tests run the shipped graph with models substituted at the boundary. Models come from per-role config with a per-job cost meter, and the UI is built in the image.
@@ -136,7 +138,7 @@ Before every model call, `spend` **reserves** the worst-case cost: `price(model)
 - [x] Phased delivery with MVP and failable exits
 - [x] `research.md` non-sibling alternatives per block (LangGraph Platform, Temporal/Inngest/Hatchet, Procrastinate, Neon, Atlas, Alembic, Braintrust/LangSmith, promptfoo/Inspect, OpenRouter/LiteLLM, Supabase Anonymous Sign-ins, Vercel)
 - [x] Orchestrator P1 lock: named LangGraph nodes, unchanged + checkpointer
-- [ ] P* review triaged — pending spawn
+- [x] P* review triaged — locks table below; governor approved 2026-10-03
 - [x] No tasks or implementation started
 - [x] Secrets: names only; schema + Settings; CI-only keys declared
 - [x] Registry unchanged (same app id); staging footprint via ops packet (P0 `[HITL]`)

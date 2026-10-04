@@ -35,7 +35,7 @@ A gate that fails looks for `bus/orders/<order-id>/override-NN.yaml` with `gate:
 | existing: `validate-secrets-schema` | governor-only | secrets | I-O2, I-A3 | repo |
 | existing: `validate-deploy-env`, `uv-sync-locked` | drift | drift | I-O1, I-O3 | repo |
 
-**Deferral-words rule detail:** in `specs/**` and `notes/sprints/**`, the words *later, optional, deferred, TBD, future, stretch* need, on the same line or table row, one of: an Open Decision id that exists (`D\d+`), a pointer `→ <artifact>` to an existing file or phase (`→ plan`, `→ sprint 03` with a waived OD), or `[governor-judged]`. Spec-review tables ("Later → plan") satisfy it by pointer.
+**Deferral-words rule detail:** in `specs/**` and `notes/sprints/**`, the words *later, optional, deferred, TBD, future, stretch* need, on the same line or table row, one of: an Open Decision id that exists (`D\d+`), a pointer `→ <artifact>` to an existing file or phase (`→ plan`, `→ sprint 03` with a waived OD), or `[governor-judged]`. Spec-review tables ("Later → plan") satisfy it by pointer. Words inside backtick code spans (enum values, quoted rule text) are exempt.
 
 ## P2 registry (Wave 2, by sprint close)
 
