@@ -133,6 +133,7 @@ intents:
       - { kind: ci, ref: red-first-proof, status: planned }
       - { kind: ci, ref: mutation-changed-lines, status: planned }
       - { kind: ci, ref: catalog-test-linkage, status: planned }
+      - { kind: ci, ref: tests-reviewed-before-code, status: planned }
   - id: I-B8
     kind: rule
     statement: A PR touches only its work order's owned paths.
