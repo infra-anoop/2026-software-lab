@@ -1,0 +1,94 @@
+schema_version: 1
+kind: verdict
+id: wo-20261004-factory-slice-c.verdict-01
+created: 2026-10-04T18:00:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - notes/packets/2026-10-04-factory-v2-slice-c.md
+  - notes/packets/2026-10-04-factory-v2-slice-c.handoff.md
+  - specs/001-factory-v2/TEST_REVIEW_SLICE_C.md
+decision: reject
+findings:
+  - id: T-C1
+    severity: blocker
+    tag: process
+    text: >-
+      Workflow tests accept echo or other no-op run blocks containing the expected
+      command text, so authoritative gates and the board summary need not execute.
+  - id: T-C2
+    severity: blocker
+    tag: process
+    text: >-
+      Registry tests require a fail-open installed-registry fallback when the
+      canonical registry is absent from the PR head.
+  - id: T-C3
+    severity: blocker
+    tag: process
+    text: >-
+      Shell-guard tests omit common equivalent main-write forms such as git -C,
+      wrappers, destination refspecs, and deletion refspecs.
+  - id: T-C4
+    severity: debate
+    tag: process
+    text: >-
+      The 300 ms best-of-three end-to-end hook test measures shared-runner uv and
+      process startup; eight local samples were 360 to 436 ms before hook logic.
+  - id: T-C5
+    severity: debate
+    tag: process
+    text: >-
+      The all-gates test proves registry ids are reported but not that every
+      registered entrypoint actually ran.
+  - id: T-C6
+    severity: nit
+    tag: process
+    text: >-
+      Strength: all 188 new tests fail at assertion or callable seams, with no
+      collection errors, xfails, frozen-file edits, or Ruff findings.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: notes/packets/2026-10-04-factory-v2-slice-c.md
+    sha: 07d0c1254e7655f09dc388b424a8218dc62be5be
+  - path: notes/packets/2026-10-04-factory-v2-slice-c.handoff.md
+    sha: 07d0c1254e7655f09dc388b424a8218dc62be5be
+  - path: specs/001-factory-v2/spec.md
+    sha: 07d0c1254e7655f09dc388b424a8218dc62be5be
+  - path: specs/001-factory-v2/plan.md
+    sha: 07d0c1254e7655f09dc388b424a8218dc62be5be
+  - path: specs/001-factory-v2/data-model.md
+    sha: 07d0c1254e7655f09dc388b424a8218dc62be5be
+  - path: specs/001-factory-v2/acceptance.md
+    sha: 07d0c1254e7655f09dc388b424a8218dc62be5be
+  - path: specs/001-factory-v2/tasks.md
+    sha: 07d0c1254e7655f09dc388b424a8218dc62be5be
+  - path: specs/001-factory-v2/contracts/gates.md
+    sha: 07d0c1254e7655f09dc388b424a8218dc62be5be
+  - path: specs/001-factory-v2/contracts/hooks.md
+    sha: 07d0c1254e7655f09dc388b424a8218dc62be5be
+  - path: scripts/factory/tests/contract/test_gate_run.py
+    sha: 07d0c1254e7655f09dc388b424a8218dc62be5be
+  - path: scripts/factory/tests/unit/gates/test_registry_checks.py
+    sha: 07d0c1254e7655f09dc388b424a8218dc62be5be
+  - path: scripts/factory/tests/unit/gates/pr/test_bus_gates.py
+    sha: 07d0c1254e7655f09dc388b424a8218dc62be5be
+  - path: scripts/factory/tests/unit/gates/pr/test_concurrency_cap.py
+    sha: 07d0c1254e7655f09dc388b424a8218dc62be5be
+  - path: scripts/factory/tests/unit/gates/pr/test_order_gates.py
+    sha: 07d0c1254e7655f09dc388b424a8218dc62be5be
+  - path: scripts/factory/tests/unit/gates/pr/test_verdict_and_override.py
+    sha: 07d0c1254e7655f09dc388b424a8218dc62be5be
+  - path: scripts/factory/tests/unit/hooks/test_hooks.py
+    sha: 07d0c1254e7655f09dc388b424a8218dc62be5be
+bootstrap: true
+manual_equivalents:
+  - "red-first-proof: focused Slice C suite reproduced 188 failed and 0 passed; full suite reproduced 304 failed and 237 passed"
+  - "diff-within-owned-paths: changed paths are limited to packet/handoff, T050-T053 tests/helper, and Slice C task checkboxes"
+  - "test-seam-ban: no production source changed on the Slice C red-test branch"
+  - "bus.immutable and bus.no-handwritten-status: no bus artifact changed before this reviewer verdict"
+  - "decision-request-no-ids: no decision request was added; the review has no human product question"
+  - "catalog-test-linkage: Slice C catalog and contract coverage is mapped in TEST_REVIEW_SLICE_C.md"
+  - "uv-sync-locked: locked sync passed under nix"
+  - "factory bootstrap tests: expected red counts reproduced and Ruff passed"
