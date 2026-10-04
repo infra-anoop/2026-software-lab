@@ -3,13 +3,30 @@
 | Field | Value |
 |-------|-------|
 | Branch | `wo/wo-20261004-factory-slice-a` |
-| State | **red; T* requested (T033)** |
+| State | **red; T* round 1 applied; round-2 review requested (T033)** |
 | Author model | Claude family (worker). Bootstrap / T* verdict must come from a GPT-family reviewer (D3, FR-037) |
-| Head | `7dc2359` |
+| Head | see `git log` on this branch (tests `aa2bc5a`; triage + bus + this note after it) |
 | Base | `origin/main` @ `c2af7f2` (includes CP0 merge `8cd8cb7`) |
 | Frozen CP0 files | not edited |
 
 Pause here. The orchestrator spawns the T* reviewer on T017–T032 (`notes/packets/<date>-factory-v2-slice-a-test-review-t.md`) and resumes this worker for T021–T025 / T034–T038 after triage.
+
+## T* round 1 applied; round-2 review requested
+
+Round 1 (gpt-5.6-sol, openai) **rejected** at `40efa3b` (`specs/001-factory-v2/TEST_REVIEW_SLICE_A.md`, review commit `650bbf3`, merged here as `a59c8c5`). The orchestrator accepted T-A1…T-A9 with the reviewer's resolutions (agent-adjudicated; T-A4 is evidence for the locked D4-A, no new governor decision). Per-finding changes: § Triage (orchestrator, round 1) in that file. Bus: `bus/orders/wo-20261004-factory-slice-a/verdict-01.yaml` (the reject, transcribed by this worker on orchestrator instruction; content unchanged) and `amendment-01.yaml` (triage + owned paths for the review file and this order's bus dir, as P0 `amend-02/03`). Both pass `factory check schema` (bus-wide and `--path`).
+
+| Check | Result |
+|-------|--------|
+| Slice A 11 files | **65 failed, 0 passed** (was 50); every failure is a CLI exit-code assertion or `pytest.fail` for the missing module at the call site; 0 collection errors, 0 xfail |
+| Full `uv run pytest -q` | **181 failed, 237 passed** (the 237 are unchanged) |
+| CI selector `-m "not contract and not seed"` | 39 failed, 224 passed, 155 deselected |
+| `ruff check .` / `ruff format --check tests/contract tests/unit` | PASS |
+| Satisfiability check (throwaway, not committed) | minimal `app_token` (openssl-signed) and REST status stubs made the 5 JWT/status tests pass; a reversed signature and a no-op status writer each made them fail. Stubs deleted |
+| Frozen CP0 files | not edited. No dependency added |
+
+Signature changes the implementation must match (new modules, not frozen): `mint_installation_token(*, app_id, private_key, installation_id, api_url, now)` returns an object with `.token` and `.expires_at` (UTC), and refuses a token already expired at `now`; `compute_scorecard` adds `wave1_working_days` and `wave1_within_timebox`, and `wave1_exit` is the date of the last order's merge into `main` once every order is merged. Board placement, required-check set and working-day convention: see the Triage section.
+
+Stop again here: round-2 T* is spawned by the orchestrator. No implement (T034+) until it is triaged.
 
 ## Commits
 
@@ -85,6 +102,7 @@ Gates for handoff local refusal: a change outside owned paths must make `factory
 | non_blocking | Should unimplemented registered gates fail `factory handoff` (recommended, FR-009 fail-closed) or skip until slice B lands? |
 | non_blocking | CI job `factory-tests` uses `-m "not contract and not seed"`, so the 28 new unit tests will fail that job on this PR. Drop the selector at CP1 (P0 comment) or keep the PR red until implement? |
 | non_blocking | Scorecard `wave1_exit`: I treated "still rejected / unmerged" as not exited. Confirm before T035. |
+| non_blocking | T032/T-A4 implement needs RS256 signing. `factory` has no crypto dependency, and `scripts/factory/pyproject.toml` / `uv.lock` are not in this packet's owned paths. Either an amendment adds `cryptography` (or `pyjwt[crypto]`) via `uv add`, or the implementation signs with the `openssl` CLI (already required by the tests). Orchestrator to pick before T034+; I will not substitute silently. |
 
 No `blocker_governor` questions. No frozen-interface amendment requested.
 
