@@ -1,0 +1,55 @@
+[project]
+name = "factory"
+version = "0.1.0"
+description = "Factory v2: typed append-only bus, derived board, and intent-fidelity gates (repo tooling)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "pydantic>=2.11,<3",
+  "typer>=0.15,<1",
+  "httpx>=0.27,<1",
+  "pyyaml>=6,<7",
+]
+
+[project.scripts]
+factory = "factory.cli.app:main"
+
+[dependency-groups]
+dev = [
+  "pytest>=8",
+  "ruff>=0.8",
+]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/factory"]
+
+[tool.uv]
+managed = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "--import-mode=importlib --strict-markers"
+markers = [
+  "contract: CLI contract tests; red until the owning slice lands (CP1)",
+  "seed: SC-002 seeded-violation suite; red until slice B gates land (CP1)",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "ANN", "TID"]
+ignore = ["ANN401"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/factory/config/**" = ["TID251"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"os.getenv".msg = "Read environment only in factory.config (I-A3)."
+"os.environ".msg = "Read environment only in factory.config (I-A3)."
