@@ -69,7 +69,7 @@ Environment facts that constrain choices (verified 2026-10-03): the `gh` CLI is 
 
 ## Block: Secrets / identity (preview-gate equivalent)
 
-- **Decision:** No new vault secrets for P1. The CLI uses `GITHUB_TOKEN` from the environment (Codespace or Actions). **Governor identity is an open architecture decision (spec D4)** because, today, agents and the governor are indistinguishable to git and GitHub. Without a distinct identity, "only the governor may override" (FR-020) and "governor approval for rule changes" (FR-031) cannot be enforced, only recorded. Until D4 locks, governor-only actions are recorded with `actor: governor` and audited at post-mortem. The board labels them **unverified**.
+- **Decision:** **D4 locked (2026-10-03): option A.** Agents act as a GitHub App; the governor approves as themselves. App key names live in the secrets schema; tokens are 1-hour installation tokens. Before the App is live (Wave 1), the CLI uses `GITHUB_TOKEN` and governor-only actions are recorded with `actor: governor`, labelled **unverified** on the board, and audited at post-mortem.
 - **Rationale:** Honest about what is enforceable; does not invent an identity scheme without the governor.
 - **Options for D4** (concrete consequences in plan Architecture):
   - **A. Separate agent identity: a GitHub App** (managed, SOTA pattern for bots). Agents push and open PRs as the App; the governor's own account approves. CODEOWNERS plus required review then work, because the author is no longer the approver.
@@ -94,7 +94,7 @@ Environment facts that constrain choices (verified 2026-10-03): the `gh` CLI is 
 
 ### Red-first proof (FR-012)
 
-- **Decision:** A CI job. Collect test node ids on head; diff against base collection to get new and changed tests; check out base app code with head test files overlaid; run those tests, which must fail (collection or import errors count as red); then run them on head, which must pass. A PR with no new or changed tests passes this gate (other gates cover untested code). Implemented in `factory gate red-first`.
+- **Decision:** A CI job. Collect test node ids on head; diff against base collection to get new and changed tests; check out base app code with head test files overlaid; run those tests. Each must **fail with a real test failure** (assertion or raised exception inside the test body, per collected node id). A collection or import error counts as red **only** when the missing name is a module or symbol the PR itself adds; any other base error is reported as "base broken", not red (locked 2026-10-03, review P6). Then run them on head, where they must pass. A PR with no new or changed tests passes this gate (other gates cover untested code). Implemented in `factory gate red-first`.
 - **Alternatives considered:** **TDD-Guard** (OSS hook for Claude Code that blocks implementation edits without a failing test) as an in-session convenience. A Cursor `afterFileEdit` equivalent is not adopted this version (post-mortem candidate); CI stays authoritative. Commit-order heuristics (tests committed before code) are rejected as gameable.
 
 ### Mutation testing on changed lines (FR-019, P2 — Wave 2 Models lane)

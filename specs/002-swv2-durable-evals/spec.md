@@ -41,7 +41,7 @@ As the governor, every PR that touches Smart Writer V2 shows how draft quality m
 
 **Why this priority**: This is direction A ("measure first") and the factory's fitness function for this workload. (SW-N1, SW-Q1..Q8, SW-E1..E3)
 
-**Independent Test**: Run the eval set on an unchanged build repeatedly (noise band); submit a PR that degrades only one dimension — blocked; submit a PR that degrades source support — blocked; submit a no-op PR — not blocked; every PR shows per-dimension and support scores vs main.
+**Independent Test**: Run paired main-vs-main comparisons on an unchanged build repeatedly (noise band); submit a PR that degrades only one dimension — blocked; submit a PR that degrades source support — blocked; submit a no-op PR — not blocked; every PR shows per-dimension and support scores vs main.
 
 **Acceptance Scenarios**:
 
@@ -51,7 +51,7 @@ As the governor, every PR that touches Smart Writer V2 shows how draft quality m
 4. **Given** the judge, **When** compared with the governor's hand ratings of 10–15 drafts, **Then** it is within 1 point (5-point scale) of the governor on ≥ 80% of drafts for every dimension (**D1**) before the gate is allowed to block.
 5. **Given** the golden set, **When** reviewed by the governor, **Then** it contains realistic grant scenarios built from public funder RFPs plus at least one non-grant smoke scenario.
 6. **Given** the judge, **When** configured, **Then** it is from a different model family than the writer (Google Gemini — **D4**).
-7. **Given** the golden set, **When** split, **Then** a held-out slice exists that is never used for prompt, model, or judge selection; its scores are reported nightly and at post-mortem only.
+7. **Given** the golden set, **When** split, **Then** a sealed held-out slice exists that is never used for prompt, model, or judge selection; its drafts are generated and scored **only at the post-mortem** (no nightly or per-PR runs).
 8. **Given** a post-mortem, **When** held, **Then** the governor blind-reviews about 5 drafts (including held-out ones) and the agreement with judge scores is recorded.
 9. **Given** a draft's cited claims, **When** evaluated, **Then** each is checked for whether its source actually supports it, by a model of a different family than the writer; a support rate worse than main beyond noise blocks the PR regardless of quality scores; the governor spot-checks a sample of support judgments at post-mortem.
 
@@ -161,8 +161,8 @@ As the governor, the UI is built as part of producing the deployable image; buil
 - **FR-008**: A judge MUST score drafts on funder fit, persuasive narrative, evidence of impact, and organizational voice, reading as a busy program officer. (SW-Q1..Q5)
 - **FR-009**: The judge MUST be from a different model family than the writer — Google Gemini (**D4**); writer candidates therefore exclude Gemini. (SW-E3)
 - **FR-010**: Judge agreement with the governor's hand ratings MUST be measured as the share of calibration drafts where judge and governor are within 1 point on a 5-point scale, per dimension; the eval gate MUST NOT block until that share is ≥ 80% for every dimension (**D1**). (SW-Q7)
-- **FR-011**: Every PR touching the app MUST report per-dimension and source-support scores against main within ~$1–2 eval spend, on a per-PR subset covering every scenario category outside the held-out slice (selection/rotation defined in plan). A larger set, including the held-out slice, runs nightly; a nightly-only regression opens a board item per Edge Cases. (SW-N1, SW-E2)
-- **FR-012**: A PR MUST be blocked if any single dimension drops vs main by more than that dimension's noise band, measured from repeated runs of an unchanged build (repeat count and statistic defined in plan); gains in other dimensions MUST NOT offset. Overridable by the orchestrator with a reason. (SW-E1)
+- **FR-011**: Every PR touching the app MUST report per-dimension and source-support scores against main within ~$1–2 eval spend, on a per-PR subset covering every scenario category outside the held-out slice (selection/rotation defined in plan). The full tuning set runs nightly (never the held-out slice); a nightly-only regression opens a board item per Edge Cases. (SW-N1, SW-E2)
+- **FR-012**: Each PR eval MUST score main and the PR side by side on the same subset (paired). A PR MUST be blocked if any single dimension drops vs main by more than that dimension's noise band, calibrated from paired no-change comparisons (statistic defined in plan); gains in other dimensions MUST NOT offset. The gate MUST stay report-only until about 10 no-change comparisons show it rarely false-alarms (threshold in plan). Overridable by the orchestrator with a reason. (SW-E1)
 - **FR-013**: Grounding MUST remain a structural pipeline invariant checked through claim provenance on the real path — not a judge quality dimension. (SW-Q6)
 - **FR-013a**: Each cited claim in eval drafts MUST be checked for whether its source supports it, by a model of a different family than the writer. A support rate worse than main beyond noise MUST block the PR regardless of quality scores (orchestrator override with reason). The governor spot-checks a sample at each post-mortem. (SW-Q6, SW-E1)
 - **FR-013b**: At each post-mortem the governor MUST blind-review about 5 drafts (including held-out ones); agreement with judge scores is recorded. (SW-Q7)
@@ -214,7 +214,7 @@ As the governor, the UI is built as part of producing the deployable image; buil
 - **SC-010 Latency measured**: p95 time to complete draft on the golden set is reported against the 10-minute target (not gated).
 - **SC-011 Evidence-based models**: Every role's model has a bake-off record including the end-to-end bundle comparison; judge candidates ranked by calibration agreement; model changes trigger the full eval set.
 - **SC-012 Migration safety**: Migrations pass against a real database in CI and on staging before production.
-- **SC-013 Held-out honesty**: Zero bake-off, prompt, or judge-selection runs use held-out scenarios; held-out scores and a blinded governor review are recorded at sprint post-mortem.
+- **SC-013 Held-out honesty**: Held-out scenarios appear in zero runs before the post-mortem (per-PR, nightly, bake-off, prompt, judge selection); held-out scores and a blinded governor review are recorded at sprint post-mortem.
 - **SC-014 Retention disclosure**: 100% of conversations in the UI show a deletion date and the browser-only notice.
 
 ### Aspirational
@@ -245,7 +245,7 @@ US4 spend ceiling (FR-017) lands with the Models + tests lane.
 | **D2** | Best-value rule: cheapest within a small margin of best quality | Margin size | human | Before bake-off lock | **locked** (2026-10-03) — not distinguishable from the best beyond measured noise, on every dimension | content-only | letter |
 | **D3** | Hard outer limit $3 per draft; real ceiling from measurement | Real per-draft ceiling | human | After bake-off measurement, before production uses new models | open (by design — governor sets after measurement) | content-only | |
 | **D4** | Judge is a different model family from the writer; needs a second provider key in the vault | Which provider/family judges | human | Before Evals lane | **locked** (2026-10-03) — **Google Gemini** judges; writer candidates exclude Gemini | arch (vault secret, provider adapter) | letter |
-| **D5** | Migrations proven on staging before production (FR-006); SWV2 has no staging footprint today | Staging database form: schema inside the SWV2 project / separate Supabase project / Neon branch — consequences in plan "Staging database" | human | Before the staging footprint is created and before any production migration | open (raised by plan 2026-10-03) | **arch** (cost, ops steps, vendor letter) | letter |
+| **D5** | Migrations proven on staging before production (FR-006); SWV2 has no staging footprint today | Staging database form: schema inside the SWV2 project / separate Supabase project / Neon branch — consequences in plan "Staging database" | human | Before the staging footprint is created and before any production migration | **locked** (2026-10-03) — **staging schemas inside the SWV2 Supabase project** (app, checkpoints, queue), a separate database login per environment, separate upload bucket | **arch** (cost, ops steps, vendor letter) | letter |
 
 ## Review locks *(mandatory before Approved)*
 
@@ -262,6 +262,7 @@ Report: [`SPEC_REVIEW.md`](./SPEC_REVIEW.md) (F1–F9). Reviewer family: GPT.
 | **F7** | locked (agent) / Later → plan | Latency labelled measured-not-gated (US4, FR-018); plan defines canonical workload and sample |
 | **F8** | locked (agent) / Later → plan | Nightly-only regression opens an orchestrator-owned board item reported on later PRs (Edge Cases, FR-011); plan sets time bound |
 | **F9** | accepted | Strength: baseline preservation — keep references through plan and tasks |
+| **Plan review** | locked (governor 2026-10-03) | Sealed held-out (US2 #7, SC-013); paired PR comparison + report-only until no-change false-alarm check (FR-012); Postgres job queue; D5 staging schemas — see plan review locks |
 
 ## Assumptions
 

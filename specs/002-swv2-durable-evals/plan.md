@@ -21,16 +21,16 @@ Make every piece of user work durable (Postgres + Storage in a dedicated Supabas
   - `app/ownership.py` (cookie issue and verify).
   - `app/retention.py` (sweeper + `last_used_at` touch).
   - `app/models_config.py` (role → model id from Settings).
-  - `app/spend.py` (cost meter + ceiling).
-- **Orchestration / jobs**: **P1 lock: the same named LangGraph nodes** (`infer → materials → web → scored_loop → provenance`; `scored_revise`), compiled with `AsyncPostgresSaver`. `JobRunner` stays the executor. The durable `jobs` table is the record of truth, and a startup recovery pass resumes or fails jobs (research § Jobs).
-- **Data stores**: Supabase Postgres (app schema `public` per env, plus `langgraph` schema for checkpoints) and a private Storage bucket `uploads`.
+  - `app/spend.py` (pre-call reservation + reconciliation against the ceiling; see Spend below).
+- **Orchestration / jobs**: **P1 lock: the same named LangGraph nodes** (`infer → materials → web → scored_loop → provenance`; `scored_revise`), compiled with `AsyncPostgresSaver`. **Execution: Procrastinate** (Postgres-backed queue, in-process async worker in the FastAPI lifespan, same database). It provides atomic claims, heartbeats, stalled-job retry, and enqueue-once locks. The `jobs` table is the product-facing record; resumed attempts continue from the last checkpoint; publication is idempotent (data-model § Job execution). `lab_shared.jobs.JobRunner` is retired for SWV2 only (V1/RA keep it).
+- **Data stores**: Supabase Postgres with three schemas per environment (app, checkpoints, queue) under a per-environment database login, and a private Storage bucket per environment (data-model § Environments).
 - **External systems**: OpenAI (and any non-Gemini bake-off winners) at runtime; Gemini (judge, support checker) in eval CI only; Tavily (unchanged); Logfire (traces + eval results); Supabase; Railway.
 
 **Shared (`modules/lab_shared`, designed for reuse; each module declares consumers `[smart-writer-v2]` now, intended `[smart-writer, research-auditor]` later — I-A5):**
 - `lab_shared.db` — psycopg pool from typed settings, health check.
 - `lab_shared.checkpoint` — `AsyncPostgresSaver` setup and teardown.
 - `lab_shared.model_config` — price table + `CostMeter`.
-- `lab_shared.evals` — noise band, per-dimension gate decision, spend ledger.
+- `lab_shared.evals` — paired comparison, no-change noise band, per-dimension gate decision, report-only state, spend ledger.
 
 App-specific (schema, repositories, golden set, judge rubric) stays in the app.
 
@@ -55,17 +55,21 @@ App-specific (schema, repositories, golden set, judge rubric) stays in the app.
 - **Secret custody**: the service holds `SMART_WRITER_V2_DATABASE_URL`, `SMART_WRITER_V2_SUPABASE_URL`, `SMART_WRITER_V2_SUPABASE_SECRET_KEY`, and the provider keys. The browser holds only the opaque owner cookie (HttpOnly) and the preview secret (baseline). GitHub Actions holds `OPENAI_API_KEY`, `GEMINI_API_KEY`, and `SMART_WRITER_V2_STAGING_DATABASE_URL` (migration proof).
 - **Cattle manifests**: `deploy/railway/{production,staging}/smart-writer-v2.yml`, `deploy/secrets/schema.yaml`, `apps/smart-writer-v2/db/migrations/`, `flake.nix` (UI build), `.github/workflows/swv2-evals.yml`, and the migration job in the PR pipeline.
 
-### Staging database *(architecture decision — spec D5, `who: human`)*
+### Staging database *(spec D5 — **locked 2026-10-03: option A**, with per-env checkpoint and queue schemas and per-env logins per review P6)*
 
 The production SWV2 project uses one Supabase free-tier slot. Supabase allows two active free projects per organization, and V1 and Research Auditor already share one.
 
 | Option | What changes | Cost | Ops steps (governor) | Risk |
 |--------|--------------|------|----------------------|------|
-| **A. Staging schema inside the SWV2 project** (`staging` schema + `uploads-staging` bucket) — recommended | Migrations run against schema `staging` first, then `public`; the staging Railway service sets `search_path=staging` | Free | Create one SWV2 project; add the staging Railway service | A bad migration that touches shared objects (extensions, roles) could affect prod; mitigated because migrations are schema-qualified and CI lints for non-schema-qualified DDL |
+| **A. Staging schemas inside the SWV2 project** — **locked** | `swv2_staging{,_langgraph,_queue}` vs `swv2_prod{,_langgraph,_queue}`; one database login per env with grants only on its schemas; buckets `uploads-staging` / `uploads-prod`; migrations run on staging first | Free | Create one SWV2 project; add the staging Railway service | A bad migration that touches shared objects (extensions, roles) could affect prod; mitigated because migrations are schema-qualified and CI lints for non-schema-qualified DDL |
 | **B. Separate staging Supabase project** | Full isolation | Needs a Pro org (~$25/mo) unless a free slot is freed | Create two projects | None material |
 | **C. Neon branch for staging** (Postgres only; Storage stays Supabase) | Free instant branches per PR | Free tier | Neon account + key | Staging DB differs from the prod vendor (not A27 letter: needs a fidelity waive) |
 
-Until D5 locks, the CI migration proof runs against the ephemeral Postgres service already in `verify-source.yml`. Production migrations stay blocked: the gate is a governor-only "irreversible" category, so this has no silent substitute.
+CI proves migrations against the ephemeral Postgres service first, then against staging. A production migration runs only after the same migration succeeded on staging (a governor-only "irreversible" gate). An isolation test proves the staging login cannot read production schemas.
+
+### Spend ceiling *(review P5 — pre-call guarantee)*
+
+Before every model call, `spend` **reserves** the worst-case cost: `price(model).input × counted_input_tokens × 1.1` plus `price(model).output × max_output_tokens`. Here `max_output_tokens` is set per role in model settings and enforced by the provider, and tool and retry calls each reserve separately. The call is refused if `actual_so_far + reservation > ceiling`. After the call, actual usage replaces the reservation. An unknown model or missing price fails closed (job `failed`, `fail_reason = spend_unpriced`). Reservations persist on the `jobs` row, so resumed attempts keep the running total. This keeps the "never above $3" letter.
 
 ### Data & persistence
 
@@ -87,7 +91,7 @@ Until D5 locks, the CI migration proof runs against the ephemeral Postgres servi
 
 - **Judge/proxy validity**: mitigated by the held-out slice + blinded review (FR-007/013b); positioning note in spec.
 - **Checkpoint granularity**: `scored_loop` is one node (up to 8 inner turns), so an interrupted loop restarts that node. Acceptable for "last completed step"; splitting the loop into nodes is a post-mortem candidate.
-- **Eval cost creep**: ledger + app-tree hash skip; nightly ×3 is the largest spend (estimated in bake-off; D3 informs).
+- **Eval cost creep**: ledger + app-tree hash skip; paired runs double per-PR model calls, so the subset is sized to ≤ ~$1.50 per paired run.
 - **Cookie on Railway domain**: `Secure` + `SameSite=Lax` on the service domain; `localhost` dev uses non-Secure via Settings.
 - Non-goals: accounts, export, multi-replica, splitting `scored_loop`.
 
@@ -99,8 +103,8 @@ Until D5 locks, the CI migration proof runs against the ephemeral Postgres servi
 | **P1a — Models + tests** (first) | Models+tests | Truthful tests, config models, spend stop | Role factories, `models_config`, `spend`, seam removal, `Agent.override` fixtures, node coverage | SC-008 (zero seams, all nodes executed, baseline rows green); SC-009 (engineered overspend stops); no hardcoded model ids |
 | **P1b — Durability: storage** (parallel with P1a; disjoint paths) | Durability | Data survives and is isolated | dbmate migrations, repositories, Storage adapter, ownership cookie, retention + disclosure | SC-001, SC-002, SC-003, SC-012, SC-014 against a real Postgres in CI + staging |
 | **P1c — Ship** (parallel) | Ship | UI built in the image; latency measured | `flake.nix` buildNpmPackage; remove committed assets | FR-022 check (no built assets in git); image serves the UI in the offline boot smoke |
-| **P2a — Durability: jobs** (after P1a merges) | Durability | Jobs never silently lost | Checkpointer wiring, `jobs` table, startup recovery | SC-004 (kill mid-pipeline → resumed or failed with reason) |
-| **P2b — Evals** (after P1a merges) | Evals | Measured quality gate | Golden set `[HITL review]`, judge + support evaluators, calibration `[HITL]`, nightly ×3, per-PR gate + ledger | SC-005, SC-006, SC-007, SC-013; gate blocking only after D1 met |
+| **P2a — Durability: jobs** (after P1a merges) | Durability | Jobs never silently lost | Procrastinate worker, checkpointer wiring, `jobs` table, stalled-job retry, idempotent publication | SC-004 (kill mid-pipeline → resumed or failed with reason) |
+| **P2b — Evals** (after P1a merges) | Evals | Measured quality gate | Golden set `[HITL review]`, judge + support evaluators, calibration `[HITL]`, nightly paired no-change + tuning monitor, paired per-PR gate + ledger, sealed held-out runner | SC-005, SC-006, SC-007, SC-013; gate blocking only after D1 met |
 | **P3 — Bake-off** (Wave 3) | Evals | Evidence-chosen models | Bake-off runner, bundle comparison, judge-by-agreement ranking | SC-011; governor locks bake-off and D3 ceiling |
 
 **MVP definition**: after a redeploy, a browser's conversations, versions, and uploads are still there and nobody else's are visible; an interrupted job resumes or fails visibly; every app PR shows per-dimension and support scores vs main, and a seeded single-dimension regression is blocked once calibrated.
@@ -109,7 +113,7 @@ Until D5 locks, the CI migration proof runs against the ephemeral Postgres servi
 
 **Language/Version**: Python 3.12; TypeScript (Next.js static export) for UI
 
-**Primary Dependencies**: FastAPI, PydanticAI (`pydantic-ai-slim[openai,google]`), LangGraph 1.0 + `langgraph-checkpoint-postgres`, psycopg 3 (`psycopg[binary,pool]`), pydantic-evals, Logfire, httpx; dbmate (Nix)
+**Primary Dependencies**: FastAPI, PydanticAI (`pydantic-ai-slim[openai,google]`), LangGraph 1.0 + `langgraph-checkpoint-postgres`, Procrastinate, psycopg 3 (`psycopg[binary,pool]`), pydantic-evals, Logfire, httpx; dbmate (Nix)
 
 **Storage**: Supabase Postgres + Supabase Storage (A27)
 
@@ -128,7 +132,7 @@ Until D5 locks, the CI migration proof runs against the ephemeral Postgres servi
 ## Constitution Check
 
 - [x] Architecture complete (blocks, boundaries, data, contracts, UI)
-- [x] Topology & runtime custody locked (one service per env, same-origin, cookie, custody table); staging DB form raised as **D5**
+- [x] Topology & runtime custody locked (one service per env, same-origin, cookie, custody table); staging DB **D5 locked** (schemas per env)
 - [x] Phased delivery with MVP and failable exits
 - [x] `research.md` non-sibling alternatives per block (LangGraph Platform, Temporal/Inngest/Hatchet, Procrastinate, Neon, Atlas, Alembic, Braintrust/LangSmith, promptfoo/Inspect, OpenRouter/LiteLLM, Supabase Anonymous Sign-ins, Vercel)
 - [x] Orchestrator P1 lock: named LangGraph nodes, unchanged + checkpointer
@@ -137,7 +141,7 @@ Until D5 locks, the CI migration proof runs against the ephemeral Postgres servi
 - [x] Secrets: names only; schema + Settings; CI-only keys declared
 - [x] Registry unchanged (same app id); staging footprint via ops packet (P0 `[HITL]`)
 - [x] Locks to the letter: A27 (Supabase Storage, checkpointer), D5 baseline one-service, D4 Gemini
-- [ ] **D5** staging database: open, `who: human`; blocks the P0 staging footprint and production migrations only
+- [x] **D5** staging database locked (2026-10-03)
 
 ## Project Structure
 
@@ -159,6 +163,20 @@ deploy/railway/staging/smart-writer-v2.yml
 ```
 
 **Structure Decision**: the app owns product-specific schema, evals, and policies; `lab_shared` gets only the four engine pieces V1/RA will plausibly adopt (I-A5 declared consumers).
+
+## Plan review locks *(P\*, [`PLAN_REVIEW.md`](./PLAN_REVIEW.md))*
+
+| ID | Status | Lock |
+|----|--------|------|
+| **P1** | locked (agent — contract defect) | Sweep claims under a row lock, skips conversations with active jobs, touches reject deleting rows, Storage outbox (data-model § Sweep protocol) |
+| **P2** | locked (governor 2026-10-03) | Procrastinate queue; attempts, stalled retry, idempotent publication (data-model § Job execution) |
+| **P3** | locked (governor 2026-10-03) | Held-out sealed: generated and scored only at post-mortem (spec US2 #7, SC-013) |
+| **P4** | locked (governor 2026-10-03) | Paired main-vs-PR; band = p95 of ≥ 10 no-change pairs; report-only until ≤ 1 false alarm in last 10 (contracts/evals) |
+| **P5** | locked (agent — restores "never above $3" letter) | Pre-call reservation, provider token caps, fail closed on unknown price (§ Spend ceiling) |
+| **P6** | locked (governor 2026-10-03, D5) | Per-env app/checkpoint/queue schemas + per-env logins + isolation test |
+| **P7** | locked (agent) | Content-addressed source snapshots; checker gets captured source text; zero citations score 0 (contracts/evals) |
+| **P8** | locked (agent — spec F7/F8 delegated to plan) | Latency workload + nightly-regression owner and 2-working-day bound (contracts/evals § Nightly) |
+| **P9** | accepted | Strength — preserve |
 
 ## Complexity Tracking
 

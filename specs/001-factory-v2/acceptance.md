@@ -34,7 +34,7 @@ Extensible checks for [`spec.md`](./spec.md) Success Criteria. Grow from runs; d
 | handoff.reviewer_isolated | SC-003 | I-P3 | must | reviewer spawned | Inputs are git artifacts only; verdict records inputs; no conversation/narrative refs | hybrid | planned |
 | handoff.open_od_refused | SC-003 | I-X3 | must | order depends on open governor decision | Issuing refused | auto | planned |
 | handoff.done_requires_green | SC-003 | I-G2 | must | worker checks failing | Worker cannot report done | auto | planned |
-| handoff.concurrency_cap | SC-003 | I-X4 | must | 3 active workers | Spawn refused | auto | planned |
+| handoff.concurrency_cap | SC-003 | I-X4 | must | 3 active workers | 4th claim refused; PR without valid claim cannot merge; editor launch warned | auto | planned |
 | override.reason_required | SC-004 | I-M1 | must | override without reason | Rejected | auto | planned |
 | override.surfaced_counted | SC-004 | I-M1 | must | override with reason | Appears on board and per-gate count | auto | planned |
 | gate.fail_mode_category | SC-004 | I-P9 | must | gate registered | Class is `drift` or `governor-only`; governor-only only for spend/secrets/irreversible/governor decisions | auto | planned |
@@ -67,4 +67,5 @@ Extensible checks for [`spec.md`](./spec.md) Success Criteria. Grow from runs; d
 |------|--------|
 | 2026-10-03 | Bootstrap from spec SC-001..009 + US6 seeded fixtures |
 | 2026-10-03 | Review triage: `evidence` column + lifecycle (F10/R5); presence vs effective coverage (R2); reviewer isolation (F3); routing, capture budget (F4); constitution rows (R3); bootstrap (R4); declared-substitution seed (F5) |
+| 2026-10-03 | Plan review locks: claim-level cap (FR-008 waive), git leases, App identity, assertion red-first |
 | 2026-10-03 | Governor locks: two-class gates (F1/R1), cap 3 (F2), all seeds block (F5), Wave 1 exits on P1 (F6/R6), orchestrator-linked repeats (F7) |

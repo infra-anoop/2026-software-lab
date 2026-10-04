@@ -16,10 +16,13 @@ Delta catalog. Baseline rows in [`../smart-writer-v2/acceptance.md`](../smart-wr
 | eval.blocks_single_dimension | SC-006 | SW-E1 | must | seeded regression in one dimension beyond its noise, others improved | PR blocked | auto | planned |
 | eval.blocks_support_regression | SC-006 | SW-Q6, SW-E1 | must | seeded drop in source support beyond noise | PR blocked regardless of quality scores | auto | planned |
 | eval.no_false_positive | SC-006 | SW-E1 | must | no-op change | PR not blocked | auto | planned |
+| eval.paired | SC-006 | SW-E1 | must | PR eval run | Main and PR scored on the same subset in the same run | auto | planned |
+| eval.report_only_until_calibrated | SC-006 | SW-E1 | must | < 10 no-change comparisons, or > 1 false alarm among the last 10 | Gate reports, does not block | auto | planned |
+| eval.zero_citation | SC-006 | SW-Q6 | must | draft with no cited claims on a case with source materials | Support rate counts as 0 | auto | planned |
 | eval.calibrated | SC-007 | SW-Q7 | must | calibration ratings exist | Within 1 point on ≥ 80% of drafts, every dimension, before gate blocks | hybrid | planned |
 | eval.judge_family | SC-005 | SW-E3 | must | judge / support checker configured | Family ≠ writer family | auto | planned |
 | eval.golden_set_reviewed | SC-005 | SW-Q8 | must | golden set | Governor-reviewed; grant + ≥1 non-grant; held-out slice tagged | human | n/a |
-| eval.heldout_unused | SC-013 | SW-Q8 | must | bake-off, prompt, judge-selection runs | Zero held-out scenarios used | auto | planned |
+| eval.heldout_sealed | SC-013 | SW-Q8 | must | every eval run config before post-mortem (per-PR, nightly, bake-off, prompt, judge selection) | Zero held-out scenarios included | auto | planned |
 | eval.blinded_review | SC-013 | SW-Q7 | must | sprint post-mortem | Blinded review of ~5 drafts + support spot-check recorded | human | n/a |
 | tests.no_seams | SC-008 | SW-T1 | must | app code | No test-only branching | auto | planned |
 | tests.all_steps | SC-008 | SW-T2 | must | test suite | Every pipeline step executed | auto | planned |
@@ -37,4 +40,5 @@ Delta catalog. Baseline rows in [`../smart-writer-v2/acceptance.md`](../smart-wr
 | Date | Change |
 |------|--------|
 | 2026-10-03 | Bootstrap from spec SC-001..012 |
+| 2026-10-03 | Plan review: sealed held-out, paired comparison, report-only calibration, zero-citation rule |
 | 2026-10-03 | Review locks: evidence column; per-dimension blocking; support gate; held-out + blinded review; retention refresh/disclosure/cascade; judge-by-agreement; bundle check |

@@ -62,7 +62,13 @@ Today the governor and every agent act as one GitHub account. So "only the gover
 | **B. Governor signs decisions** | Governor-only messages carry an SSH signature; gates verify against `allowed_signers` in git | None new; the key stays on the governor's own device (passphrase or hardware) | Set up a signing key outside the Codespace; Codespaces commit auto-signing stays off | Free | Yes for overrides and decisions; rule-path approval still needs A or trust |
 | **C. Recorded only** | `actor: governor` field; board marks these actions **unverified**; post-mortem audits | None | None | Free | **No** (honor system) |
 
-Until D4 locks, P1 implements **C** behind an `identity` adapter so A or B slot in without touching gate code. FR-020/FR-031 are counted as **not yet enforced** in effective coverage (SC-005b). No silent substitution.
+**Locked 2026-10-03: option A, set up during Wave 1.** Mechanics:
+- The `identity` adapter starts in recorded-only mode. When the App is live, it switches to verified mode: a governor-only message counts only when the PR containing it has an approving review from the governor's account.
+- Agents' git pushes and REST calls use 1-hour installation tokens minted by `factory` from the App key: a repo-local credential helper for git, and the `github` adapter for REST.
+- Secret names `FACTORY_GITHUB_APP_ID` and `FACTORY_GITHUB_APP_PRIVATE_KEY` go in `deploy/secrets/schema.yaml` (Infisical, Codespace target).
+- Branch protection on `main`: required factory checks, plus code-owner review on rule paths (`.github/CODEOWNERS`).
+
+Until the App is live, the board marks governor-only actions **unverified**, and FR-020/FR-031 count as not yet enforced in effective coverage (SC-005b).
 
 ### Data & persistence
 
@@ -95,7 +101,7 @@ Until D4 locks, P1 implements **C** behind an `identity` adapter so A or B slot 
 | Phase | Wave | Goal | Architecture pieces touched | Exit criteria (failable) |
 |-------|------|------|-----------------------------|--------------------------|
 | **P0 — contracts glue** (orchestrator tiny glue, ≤ ½ day) | 1 | Freeze shared contracts so three workers can run in parallel | `bus` models, `config`, registry format, JSON Schema export, empty `factory-gates.yml`, seeded-violation fixture layout | `factory check schema` validates the sample messages; JSON Schemas generated; contract tests exist and are red for unimplemented commands |
-| **P1 — Wave 1 core** (3 parallel slices, disjoint paths) | 1 | Bus + board, drift gates, gate framework live as required checks | **Slice A** (`bus`, `lifecycle`, `board`, `metrics`, `github`, `claim`): status, claim, order new, PR open, run records, scorecard. **Slice B** (`gates/drift/*`): red-first, test-seam, owned-paths, deferral-needs-OD, catalog-linkage, pr-links-order, intent presence, fidelity + lock tokens, decision-request-no-ids, order-blocked-on-open-OD. **Slice C** (`gates` core, `hooks`, workflow): registry + two classes + overrides + counts, hook-twin check, cap, verdict family + isolation, bus immutability | SC-013: within 5 working days of the first order, every P1 check is implemented and passing; SC-002 seeded-violation suite 100% blocked; SC-001 board agrees with reality on the spot-check fixture; SC-004 override accounting |
+| **P1 — Wave 1 core** (3 parallel slices, disjoint paths) | 1 | Bus + board, drift gates, gate framework live as required checks | **Slice A** (`bus`, `lifecycle`, `board`, `metrics`, `github`, `identity`, `claim`): status, order issue, claim/release, PR open, run events, scorecard, GitHub App token minting + identity adapter (verified mode once the App exists). **Slice B** (`gates/drift/*`): red-first, test-seam, owned-paths, deferral-needs-OD, catalog-linkage, pr-links-order, intent presence, fidelity + lock tokens, decision-request-no-ids, order-blocked-on-open-OD. **Slice C** (`gates` core, `hooks`, workflow): registry + two classes + overrides + counts, hook-twin check, cap, verdict family + isolation, bus immutability | SC-013: within 5 working days of the first order, every P1 check is implemented and passing; SC-002 seeded-violation suite 100% blocked; SC-001 board agrees with reality on the spot-check fixture; SC-004 override accounting |
 | **P1b — bootstrap close** | 1→2 boundary | Prove the gates on the PRs that built them | `gates` retro runner | SC-012: every Wave 1 PR has a bootstrap verdict and retro results; each failure remediated or overridden before any Wave 2 order is issued |
 | **P2 — religion + learning** (during Wave 2, ≤ 3 workers shared with the SWV2 lanes) | 2 | Architecture religion, mining loop, rules-as-code, identity | Semgrep + import-linter pack; pattern rubric; corrections + repeat links + post-mortem gate; CODEOWNERS / identity adapter per D4; process-rule-cites-check; **constitution 2.0 as its own order + independent verdict**; lean always-applied rules; `subagentStart` + system-path hooks; mutation gate (SWV2 Models lane) | SC-005b ≥ 90% effective coverage; SC-006 rule citations 100%; SC-007 mining loop live; mutation gate at 70% on changed lines; all by sprint close |
 | **P3 — portability** | sprint 03 (D1 waived) | Fixture-repo proof, live config drift, secret scan, one-service manifest | — | Out of this version |
@@ -134,7 +140,7 @@ Until D4 locks, P1 implements **C** behind an `identity` adapter so A or B slot 
 - [x] Secrets / registry / cattle: no new secret values; factory is not a registry app (no service); all config in git manifests
 - [x] Learning/stack prefs not smuggled as product gates
 - [x] PLAN_AUTHORING_GATES rules 2–6 satisfied (rule 5 N/A with reason)
-- [ ] Open governor decision **D4** (identity) — needed before governor-only enforcement work in P2; does not block P0/P1 (adapter + recorded-only)
+- [x] Governor decision **D4** locked: GitHub App agent identity during Wave 1 (ops HITL in the sprint charter)
 
 ## Project Structure
 
@@ -176,10 +182,10 @@ scripts/factory/
 |----|--------|------|
 | **P1** | locked (agent — contract defect) | Run record replaced by append-only `claim` / `release` / `run-complete` events; aggregates derived on read |
 | **P2** | locked (agent — contract defect) | Issuance never touches `main`: order = first commit of `wo/<id>`; decisions/corrections/post-mortems via schema-gated bus PRs; FR-005 unchanged |
-| **P3** | await governor | Is the worker cap enforced at launch (needs a launch broker) or at claim + merge (advisory editor hook)? |
-| **P4** | await governor (recommendation in data-model) | Git stays the lease authority with release/stale/atomic-claim rules, vs a managed tracker owning leases |
-| **P5** | await governor (= spec D4) | Agent identity: when governor-only checks become enforcing |
-| **P6** | await governor | Red-first: require a real assertion failure, or accept import/collection errors |
+| **P3** | locked (governor 2026-10-03) | Cap bites at claim + merge (authoritative); editor hook advisory; spec FR-008 letter waived "spawn" → "claim" |
+| **P4** | locked (governor 2026-10-03) | Git stays the lease authority: branch per order, atomic claim push, release events, stale flagging (data-model § Lifecycle) |
+| **P5** | locked (governor 2026-10-03, spec D4) | GitHub App agent identity during Wave 1; unverified marking until live |
+| **P6** | locked (governor 2026-10-03) | Red-first needs a real test failure; import errors count only for names the PR itself adds (research § Red-first) |
 | **P7** | Later → tasks | Freeze executable interfaces + shared fixtures at P0; integration checkpoints; 3-day target vs 5-day max |
 | **P8** | accepted | Strength: alternatives coverage — preserve rows |
 

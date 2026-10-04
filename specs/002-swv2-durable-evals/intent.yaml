@@ -33,6 +33,11 @@ locks:
   - source support: non-compensable regression gate, different-family checker
   - held-out slice never used for selection; blinded governor review each post-mortem
   - retention use = open/view/edit/upload/generate or job completion; deletion date + browser-only notice shown; cascade delete
+  # Plan review 2026-10-03:
+  - held-out sealed until post-mortem
+  - paired main-vs-PR eval; report-only until <=1 false alarm in last 10 no-change pairs
+  - jobs on Procrastinate (Postgres queue) + LangGraph checkpointer
+  - staging = per-env schemas + logins inside the SWV2 Supabase project (D5)
 
 intents:
   # ── Quality: what "good" means (judge rubric) ────────────────────────────

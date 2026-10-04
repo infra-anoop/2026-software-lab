@@ -53,7 +53,7 @@ As the governor, I approve a work order, walk away for about an hour, and come b
 3. **Given** ambiguity touching a governor-owned product/architecture decision, **When** the worker meets it, **Then** it stops and the governor is notified in real time as a blocker.
 4. **Given** any other ambiguity, **When** the worker meets it, **Then** it takes the most conservative option and records a deviation in its handoff.
 5. **Given** a work order that depends on an open governor decision, **When** issuing is attempted, **Then** it is refused.
-6. **Given** more than the concurrency cap of workers already active, **When** another spawn is attempted, **Then** it is refused.
+6. **Given** the concurrency cap of workers already active, **When** another claim is attempted, **Then** it is refused; work without a claim cannot merge; an in-editor launch beyond the cap is warned about (governor waive 2026-10-03: "spawn refused" → "claim refused").
 7. **Given** a completed PR, **When** it is reviewed, **Then** the verdict records a reviewer model family different from the author's.
 8. **Given** a reviewer is spawned, **When** it starts, **Then** it receives only git artifacts (work order, diff, check results, intent ids) — never the author's conversation or narrative — and the verdict records the inputs it was given.
 
@@ -201,7 +201,7 @@ As the governor, the factory tooling runs in a fresh repo of mine with only conf
 
 - **FR-006**: A work order MUST declare goal, intent ids, owned paths, checks, honored locks with fidelity, size estimate within the autonomy horizon (1 hour this sprint), and stop conditions. (I-G2, I-B5)
 - **FR-007**: Issuing a work order MUST be refused while it depends on an open governor-owned decision. (I-X3)
-- **FR-008**: Spawning MUST be refused beyond the concurrency cap of **3** active workers. (I-X4)
+- **FR-008**: Claiming MUST be refused beyond the concurrency cap of **3** active workers, and a PR without a valid claim MUST NOT merge. In-editor launches beyond the cap MUST be warned about. (Governor waive 2026-10-03 of the "spawn refused" letter; launch broker not built this version.) (I-X4)
 - **FR-009**: A worker MUST NOT be able to report done while its work order's checks fail. (I-G2)
 - **FR-010**: Escalations MUST be classed: governor-owned product/architecture ambiguity = real-time blocker; all else = conservative choice + deviation recorded in the handoff. (I-B1, I-B2)
 - **FR-011**: Acceptance MUST be decided from check results per intent plus a verdict from a reviewer of a different model family; worker self-reports MUST NOT count as evidence. (I-P3, I-G2)
@@ -320,7 +320,7 @@ Existing checks reused as-is: validate-secrets-schema, validate-deploy-env, uv-s
 | **D2** | Changed-code mutation score is a gate (FR-019) | Threshold (share of mutants killed on changed lines) | human | Before the mutation gate blocks | **locked** (2026-10-03) — **70%** of mutants killed on changed lines; tune at post-mortem from override counts | content-only | letter |
 | **D3** | Reviewers come from a different model family than the author (FR-011) | Which family reviews by default | human | Before the first spawned review of this spec | **locked** (2026-10-03) — **GPT (OpenAI)** reviews by default; author family is Claude | content-only | letter |
 
-| **D4** | Governor-only gates (FR-020) and rule-change approval (FR-031) need the governor to be distinguishable from agents; today both act as one GitHub account | Mechanism: separate agent identity (GitHub App) / governor-signed decisions / recorded-only — consequences in plan Architecture "Governor identity" | human | Before P2 governor-only enforcement work (P0/P1 ship recorded-only behind an adapter) | open (raised by plan 2026-10-03) | **arch** (identity, secret custody, ops steps) | letter |
+| **D4** | Governor-only gates (FR-020) and rule-change approval (FR-031) need the governor to be distinguishable from agents; today both act as one GitHub account | Mechanism: separate agent identity (GitHub App) / governor-signed decisions / recorded-only — consequences in plan Architecture "Governor identity" | human | Before P2 governor-only enforcement work (P0/P1 ship recorded-only behind an adapter) | **locked** (2026-10-03) — **agents get their own GitHub App identity, set up during Wave 1**; governor-only actions show as unverified until the App is live | **arch** (identity, secret custody, ops steps) | letter |
 
 **Rules:** see constitution §G. Do not invent `content_open` while `open`.
 
