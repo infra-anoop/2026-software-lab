@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -15,7 +14,7 @@ def check_intent(
         bool, typer.Option("--coverage", help="Report effective coverage.")
     ] = False,
     json_out: JsonOpt = False,
-    repo: RepoOpt = Path("."),
+    repo: RepoOpt = None,
 ) -> None:
     """Every intent maps to at least one check (presence); optionally effective coverage."""
     not_implemented("check intent")

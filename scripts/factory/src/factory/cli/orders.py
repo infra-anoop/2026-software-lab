@@ -24,13 +24,13 @@ def order_new(
         typer.Option("--lock", help="Fidelity for a touched named lock: ID=letter|intent|waived."),
     ] = None,
     json_out: JsonOpt = False,
-    repo: RepoOpt = Path("."),
+    repo: RepoOpt = None,
 ) -> None:
     """Scaffold an order file from tasks locally and validate it."""
     not_implemented("order new")
 
 
-def order_issue(order_id: OrderIdArg, json_out: JsonOpt = False, repo: RepoOpt = Path(".")) -> None:
+def order_issue(order_id: OrderIdArg, json_out: JsonOpt = False, repo: RepoOpt = None) -> None:
     """Create wo/<order-id> from main with the order as its first commit; push."""
     not_implemented("order issue")
 
@@ -44,7 +44,7 @@ def claim(
         str, typer.Option("--worker-runtime", help="local_subagent | cloud_agent.")
     ] = "local_subagent",
     json_out: JsonOpt = False,
-    repo: RepoOpt = Path("."),
+    repo: RepoOpt = None,
 ) -> None:
     """Fast-forward push of the claim event to wo/<order-id>."""
     not_implemented("claim")
@@ -54,18 +54,18 @@ def release(
     order_id: OrderIdArg,
     reason: Annotated[str, typer.Option("--reason", help="abandoned | superseded | blocked.")],
     json_out: JsonOpt = False,
-    repo: RepoOpt = Path("."),
+    repo: RepoOpt = None,
 ) -> None:
     """Append a release event; frees capacity."""
     not_implemented("release")
 
 
-def handoff(order_id: OrderIdArg, json_out: JsonOpt = False, repo: RepoOpt = Path(".")) -> None:
+def handoff(order_id: OrderIdArg, json_out: JsonOpt = False, repo: RepoOpt = None) -> None:
     """Validate the handoff and run-complete event on the order branch."""
     not_implemented("handoff")
 
 
-def pr_open(order_id: OrderIdArg, json_out: JsonOpt = False, repo: RepoOpt = Path(".")) -> None:
+def pr_open(order_id: OrderIdArg, json_out: JsonOpt = False, repo: RepoOpt = None) -> None:
     """Open PR wo/<order-id> -> main; body links order and intents."""
     not_implemented("pr open")
 
@@ -74,7 +74,7 @@ def verdict(
     order_id: OrderIdArg,
     file: Annotated[Path, typer.Option("--file", help="Verdict YAML file.")],
     json_out: JsonOpt = False,
-    repo: RepoOpt = Path("."),
+    repo: RepoOpt = None,
 ) -> None:
     """Validate a verdict (family, isolation inputs) and commit it to the branch."""
     not_implemented("verdict")
@@ -83,7 +83,7 @@ def verdict(
 def bus_pr(
     message: Annotated[list[Path], typer.Option("--message", help="Message file (repeatable).")],
     json_out: JsonOpt = False,
-    repo: RepoOpt = Path("."),
+    repo: RepoOpt = None,
 ) -> None:
     """Open a bus PR for decision, correction, or post-mortem messages."""
     not_implemented("bus pr")

@@ -15,7 +15,7 @@ from factory.bus.schema import (
     write_schemas,
 )
 from factory.cli import exit_codes
-from factory.cli.common import JsonOpt, RepoOpt, emit, not_implemented
+from factory.cli.common import JsonOpt, RepoOpt, emit, not_implemented, resolve_repo
 from factory.config.settings import load_settings
 
 
@@ -28,20 +28,20 @@ def check_schema(
         bool, typer.Option("--write", help="Regenerate scripts/factory/schemas/ first.")
     ] = False,
     json_out: JsonOpt = False,
-    repo: RepoOpt = Path("."),
+    repo: RepoOpt = None,
 ) -> None:
     """Validate every bus file and fail when the generated JSON Schemas are stale."""
-    settings = load_settings(repo)
+    root = resolve_repo(repo)
+    settings = load_settings(root)
     written = [str(p) for p in write_schemas()] if write else []
     problems = stale_schemas(SCHEMA_DIR)
     if path:
         for directory in path:
-            target = directory if directory.is_absolute() else repo / directory
             problems += validate_message_dir(
-                target, autonomy_horizon_minutes=settings.autonomy_horizon_minutes
+                directory, autonomy_horizon_minutes=settings.autonomy_horizon_minutes
             )
     else:
-        problems += validate_bus(repo, settings)
+        problems += validate_bus(root, settings)
     text = "\n".join([*(f"wrote {p}" for p in written), *problems]) or "schema ok"
     emit(
         {"ok": not problems, "problems": problems, "written": written}, as_json=json_out, text=text
@@ -50,12 +50,12 @@ def check_schema(
         raise typer.Exit(exit_codes.GATE_FAILURE)
 
 
-def check_hooks(json_out: JsonOpt = False, repo: RepoOpt = Path(".")) -> None:
+def check_hooks(json_out: JsonOpt = False, repo: RepoOpt = None) -> None:
     """Every hook in .cursor/hooks.json has a CI twin in the registry."""
     not_implemented("check hooks")
 
 
-def check_registry(json_out: JsonOpt = False, repo: RepoOpt = Path(".")) -> None:
+def check_registry(json_out: JsonOpt = False, repo: RepoOpt = None) -> None:
     """gates.yaml is valid (class/category rule, importable entrypoints)."""
     not_implemented("check registry")
 
@@ -64,7 +64,7 @@ def check_immutability(
     base: Annotated[str, typer.Option("--base", help="Base ref.")] = "origin/main",
     head: Annotated[str, typer.Option("--head", help="Head ref.")] = "HEAD",
     json_out: JsonOpt = False,
-    repo: RepoOpt = Path("."),
+    repo: RepoOpt = None,
 ) -> None:
     """No existing bus file is modified or deleted between base and head."""
     not_implemented("check immutability")

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -18,7 +17,7 @@ def correction_new(
         str | None, typer.Option("--links-to", help="Pattern or correction id it repeats.")
     ] = None,
     json_out: JsonOpt = False,
-    repo: RepoOpt = Path("."),
+    repo: RepoOpt = None,
 ) -> None:
     """Record a governor correction; a repeat link emits a rule/check proposal order."""
     not_implemented("correction new")
@@ -27,7 +26,7 @@ def correction_new(
 def sprint_close(
     sprint: Annotated[str, typer.Option("--sprint", help="Sprint id.")],
     json_out: JsonOpt = False,
-    repo: RepoOpt = Path("."),
+    repo: RepoOpt = None,
 ) -> None:
     """Refuse unless the post-mortem exists and dispositions every correction."""
     not_implemented("sprint close")

@@ -80,6 +80,23 @@ class EnvSettings(BaseModel):
     app_private_key: SecretStr | None = None
 
 
+def find_repo_root(start: Path) -> Path:
+    """Nearest directory from `start` up to its git root that holds `factory.toml`.
+
+    The walk never leaves the git checkout, so a `factory.toml` above the git root is
+    ignored. Raises `ConfigError` when none is found.
+    """
+    here = start.resolve()
+    for directory in (here, *here.parents):
+        if (directory / CONFIG_FILENAME).is_file():
+            return directory
+        if (directory / ".git").exists():
+            raise ConfigError(
+                f"{CONFIG_FILENAME}: not found from {here} up to git root {directory}"
+            )
+    raise ConfigError(f"{CONFIG_FILENAME}: not found from {here} (not inside a git checkout)")
+
+
 def load_settings(repo: Path) -> Settings:
     """Load `<repo>/factory.toml`; raise `ConfigError` when missing or invalid."""
     path = Path(repo) / CONFIG_FILENAME

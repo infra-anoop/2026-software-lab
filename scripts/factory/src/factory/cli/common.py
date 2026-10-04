@@ -17,15 +17,26 @@ import typer
 
 from factory.api import GitHubPort, IdentityPort
 from factory.cli import exit_codes
-from factory.config.settings import ConfigError, EnvSettings, Settings
+from factory.config.settings import ConfigError, EnvSettings, Settings, find_repo_root
 
 JsonOpt = Annotated[bool, typer.Option("--json", help="Machine-readable JSON output.")]
 RepoOpt = Annotated[
-    Path, typer.Option("--repo", help="Repository root.", file_okay=False, dir_okay=True)
+    Path | None,
+    typer.Option(
+        "--repo",
+        help="Repository root (default: nearest factory.toml from the CWD up to the git root).",
+        file_okay=False,
+        dir_okay=True,
+    ),
 ]
 
 GITHUB_ADAPTER = "factory.github.rest:build_github"
 IDENTITY_ADAPTER = "factory.identity.adapter:build_identity"
+
+
+def resolve_repo(repo: Path | None) -> Path:
+    """`--repo` when given, else the discovered repo root; every command calls this first."""
+    return repo if repo is not None else find_repo_root(Path.cwd())
 
 
 def not_implemented(command: str) -> NoReturn:

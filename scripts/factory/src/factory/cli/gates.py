@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -22,7 +21,7 @@ def override(
     ] = None,
     pr: Annotated[int | None, typer.Option("--pr", help="PR number.")] = None,
     json_out: JsonOpt = False,
-    repo: RepoOpt = Path("."),
+    repo: RepoOpt = None,
 ) -> None:
     """Write an override message for a failing gate."""
     not_implemented("override")
@@ -34,7 +33,7 @@ def gate_run(
     base: Annotated[str | None, typer.Option("--base", help="Base ref.")] = None,
     head: Annotated[str | None, typer.Option("--head", help="Head ref.")] = None,
     json_out: JsonOpt = False,
-    repo: RepoOpt = Path("."),
+    repo: RepoOpt = None,
 ) -> None:
     """Run registered gates; print per-intent results."""
     not_implemented("gate run")
@@ -43,7 +42,7 @@ def gate_run(
 def hook(
     name: Annotated[str, typer.Argument(help="Hook name (contracts/hooks.md).")],
     json_out: JsonOpt = False,
-    repo: RepoOpt = Path("."),
+    repo: RepoOpt = None,
 ) -> None:
     """Cursor hook entrypoint: stdin JSON -> stdout JSON."""
     not_implemented("hook")
@@ -52,7 +51,7 @@ def hook(
 def retro(
     since: Annotated[str, typer.Option("--since", help="Git ref where Wave 1 started.")],
     json_out: JsonOpt = False,
-    repo: RepoOpt = Path("."),
+    repo: RepoOpt = None,
 ) -> None:
     """Run P1 gates retroactively on merged Wave 1 PRs; write a report."""
     not_implemented("retro")
