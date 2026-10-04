@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | Branch | `wo/wo-20261004-factory-slice-a` |
-| State | **red; T* round 2 applied; round-3 confirmation requested (T033)** |
+| State | **red; T* round 3 applied; round-4 confirmation requested (T033)** |
 | Author model | Claude family (worker). Bootstrap / T* verdict must come from a GPT-family reviewer (D3, FR-037) |
 | Head | see `git log` on this branch (tests `aa2bc5a`; triage + bus + this note after it) |
 | Base | `origin/main` @ `c2af7f2` (includes CP0 merge `8cd8cb7`) |
@@ -44,6 +44,25 @@ Round 2 (gpt-5.6-sol, openai) narrowly **rejected** at `7a320aa` (review `b26e09
 | `ruff check .` / `ruff format --check tests/contract tests/unit` | PASS |
 
 Stop: round-3 confirmation is spawned by the orchestrator. No implement (T034+) until it is recorded.
+
+## T* round 3 applied; round-4 confirmation requested
+
+Round 3 (gpt-5.6-sol, openai) **rejected** at `d79fbb6` (which includes the orchestrator's change requiring other gates' override counts to be `0`). Review `f21b742` was merged as `bc205c8`, and `verdict-03.yaml` is the reviewer's own. Orchestrator triage: § Triage (orchestrator, round 3) and `amendment-03.yaml` (passes `factory check schema`).
+
+- T-A3-1 (lifecycle): `test_empty_checks_never_accepted`. An order with `checks: []` plus an accept verdict and everything green stays `in_review`.
+- T-A3-1 (issuance): `test_order_issue_refuses_empty_checks`. `order issue` exits 2, the error names `checks`, nothing is pushed, and `main` does not move. **Issuance refusal went in**, at `order issue` only (`order new` has no checks input, and P0's `test_order_new_exit_0` must stay valid).
+- T-A3-1 (helpers): the Slice A helpers in `test_handoff.py` and `test_pr_and_verdict.py` now name `diff-within-owned-paths`. The three P0 `test_cli_contract.py` uses of `checks=[]` issue through git rather than the CLI, so they are unaffected and were not edited.
+- T-A3-2: the triage heading is now `### After T066`, and `tasks.md` gains the single line `T066a` right after T066.
+
+| Check | Result |
+|-------|--------|
+| Slice A 11 files | **66 failed, 0 passed**; 0 collection errors, 0 xfail |
+| Full `uv run pytest -q` | **182 failed, 237 passed** (the 237 are unchanged) |
+| `ruff check .` / `ruff format --check tests/contract tests/unit` | PASS |
+
+Implementation must match: lifecycle never derives `accepted` for an order with empty `checks`; `order issue` refuses an empty `checks` list with a plain message naming the field.
+
+Stop: round-4 confirmation is spawned by the orchestrator. No implement (T034+) until it is recorded.
 
 ## Commits
 
