@@ -79,7 +79,7 @@ Code facts (2026-10-03): `app/store.py` `InMemoryStore` + `UploadStore` (dicts);
   - Runtimes per environment: one Railway service `smart-writer-v2` (FastAPI + static UI) plus one Supabase project (Postgres + Storage).
   - **Environments**: production (exists) and staging (**new footprint**; D5 locked: per-env schemas in the SWV2 project).
   - UI → API: same-origin fetch; the cookie is sent automatically; the preview secret stays as in baseline.
-  - Custody: database URL, Storage key, and provider keys (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) are held by the service only (never in the browser); eval runs hold both provider keys as GitHub Actions secrets (the judge's OpenAI use is eval-only).
+  - Custody: database URL, Storage key, and provider keys (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) are held by the service only (never in the browser); eval runs read both provider keys from Infisical at job time via GitHub OIDC (`vars.INFISICAL_MACHINE_IDENTITY_ID`, `scripts/infisical_oidc_login.py`), the lab's existing CI path (backlog A20/A21) — no GitHub repository secrets (the judge's OpenAI use is eval-only).
   - Cattle: `deploy/railway/staging/smart-writer-v2.yml`, `deploy/secrets/schema.yaml`, migrations in git, and the CI migration job.
 - **Rationale:** Smallest change that meets FR-006 (staging before production).
 - **Alternatives considered:** separate staging Supabase project; Neon branch (both in plan § Staging database).
