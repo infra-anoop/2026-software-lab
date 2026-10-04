@@ -1,0 +1,125 @@
+# T* round 1 verdict on the Slice A red tests (T033).
+# Transcribed verbatim by the Slice A worker, on the orchestrator's instruction, from the
+# reviewer's committed review (specs/001-factory-v2/TEST_REVIEW_SLICE_A.md @ 650bbf3).
+# The decision and findings are the reviewer's; the worker changed no content.
+schema_version: 1
+kind: verdict
+id: wo-20261004-factory-slice-a.verdict-01
+created: 2026-10-04T16:03:02Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - notes/packets/2026-10-04-factory-v2-slice-a.md
+  - specs/001-factory-v2/TEST_REVIEW_SLICE_A.md
+decision: reject
+findings:
+  - id: T-A1
+    severity: blocker
+    tag: process
+    text: >-
+      The board contract test does not pin every fixture order to its section and
+      rendered state, so a renderer that misplaces merged, released, accepted, or
+      rejected orders can pass while SC-001 fails.
+  - id: T-A2
+    severity: blocker
+    tag: process
+    text: >-
+      The order-issue test selects the repository root commit, which contradicts
+      creating wo/<id> from main; select the first branch-only commit and assert its
+      parent is origin/main.
+  - id: T-A3
+    severity: blocker
+    tag: process
+    text: >-
+      The REST status round trip reads a static recording, so a no-op status writer
+      passes; capture the POST and assert method, path, auth, and payload.
+  - id: T-A4
+    severity: blocker
+    tag: product
+    text: >-
+      The App JWT is accepted as any three dot-separated strings; verify the RS256
+      signature, issuer, iat/exp bounds, the installation id in the exchange path, and
+      the recorded installation-token expiry (D4-A letter fidelity).
+  - id: T-A5
+    severity: blocker
+    tag: process
+    text: >-
+      Only the positive accept-plus-one-green-check case exists; failed, pending,
+      missing, and mixed required checks must keep the order non-accepted.
+  - id: T-A6
+    severity: blocker
+    tag: process
+    text: >-
+      wave1_exit is only asserted as None; add an all-merged fixture with a
+      deterministic exit date and a five-working-day boundary case.
+  - id: T-A7
+    severity: debate
+    tag: process
+    text: >-
+      No claim contract case proves a stale claim still consumes one of the three
+      slots; two fresh plus one stale claim must refuse a fourth.
+  - id: T-A8
+    severity: debate
+    tag: process
+    text: >-
+      Verdict tests are refusal-only; add a valid verdict commit path and separate
+      nonexistent-path and nonexistent-sha negatives.
+  - id: T-A9
+    severity: nit
+    tag: process
+    text: >-
+      Strength: tests collect and fail at call-site seams with no collection errors or
+      xfails; preserve this red-first shape.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: notes/packets/2026-10-04-factory-v2-slice-a.md
+    sha: 40efa3b44b9184817103841825c15dbce705f988
+  - path: notes/packets/2026-10-04-factory-v2-slice-a.handoff.md
+    sha: 40efa3b44b9184817103841825c15dbce705f988
+  - path: specs/001-factory-v2/spec.md
+    sha: 40efa3b44b9184817103841825c15dbce705f988
+  - path: specs/001-factory-v2/plan.md
+    sha: 40efa3b44b9184817103841825c15dbce705f988
+  - path: specs/001-factory-v2/data-model.md
+    sha: 40efa3b44b9184817103841825c15dbce705f988
+  - path: specs/001-factory-v2/acceptance.md
+    sha: 40efa3b44b9184817103841825c15dbce705f988
+  - path: specs/001-factory-v2/tasks.md
+    sha: 40efa3b44b9184817103841825c15dbce705f988
+  - path: specs/001-factory-v2/contracts/cli.md
+    sha: 40efa3b44b9184817103841825c15dbce705f988
+  - path: scripts/factory/src/factory/api.py
+    sha: 40efa3b44b9184817103841825c15dbce705f988
+  - path: scripts/factory/tests/contract/test_status.py
+    sha: 40efa3b44b9184817103841825c15dbce705f988
+  - path: scripts/factory/tests/contract/test_orders.py
+    sha: 40efa3b44b9184817103841825c15dbce705f988
+  - path: scripts/factory/tests/contract/test_claim.py
+    sha: 40efa3b44b9184817103841825c15dbce705f988
+  - path: scripts/factory/tests/contract/test_handoff.py
+    sha: 40efa3b44b9184817103841825c15dbce705f988
+  - path: scripts/factory/tests/contract/test_pr_and_verdict.py
+    sha: 40efa3b44b9184817103841825c15dbce705f988
+  - path: scripts/factory/tests/contract/test_bus_pr.py
+    sha: 40efa3b44b9184817103841825c15dbce705f988
+  - path: scripts/factory/tests/unit/test_lifecycle.py
+    sha: 40efa3b44b9184817103841825c15dbce705f988
+  - path: scripts/factory/tests/unit/test_github_adapter.py
+    sha: 40efa3b44b9184817103841825c15dbce705f988
+  - path: scripts/factory/tests/unit/test_no_bookkeeping.py
+    sha: 40efa3b44b9184817103841825c15dbce705f988
+  - path: scripts/factory/tests/unit/test_scorecard.py
+    sha: 40efa3b44b9184817103841825c15dbce705f988
+  - path: scripts/factory/tests/unit/test_identity.py
+    sha: 40efa3b44b9184817103841825c15dbce705f988
+bootstrap: true
+manual_equivalents:
+  - "worktree setup discovery: no .cursor/worktrees.json in repository root or worktree; setup skipped"
+  - "uv-sync-locked: locked sync passed under nix develop"
+  - "full suite expected red: 166 failed, 237 passed, no collection errors"
+  - "red-first-proof: Slice A 11-file run 50 failed, 0 passed; assertions or explicit pytest.fail at call sites"
+  - "ruff check: all checks passed"
+  - "frozen CP0 diff: no changes to api.py, bus/, config/, cli/app.py, cli/exit_codes.py, gates/registry.py"
+  - "diff hygiene: git diff --check origin/main...HEAD passed"
