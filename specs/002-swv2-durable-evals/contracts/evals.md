@@ -38,12 +38,13 @@ Draft support rate = supported / cited claims. **A draft with zero cited claims 
 
 - One paired no-change comparison on the subset (feeds the band).
 - Full **tuning** set ×1 for monitoring and latency (never held-out).
+- **Nightly cap (D7):** $5 per night. When the dry-run estimate exceeds it, the run is skipped, the job summary says so, and artifact `swv2-nightly-over-budget` makes the orchestrator flag it on the factory board.
 - **Latency workload:** every tuning case at its own `web_research` setting, with real providers, on a GitHub-hosted runner. p95 over that night's case runs plus a rolling 7-day p95. The first case per run is reported separately as a cold start. Reported against the 10-minute target, not gated.
 - **Nightly-only regression** (a dimension or support below the previous 7-night median by more than its band): the orchestrator opens a regression order on the factory board within the same working day; it must be fixed or overridden with a reason within **2 working days**. Every app PR's eval summary shows the open regression; it does not block merges.
 
 ## Spend ledger
 
-Per-PR cumulative eval cost from prior `swv2-evals` check runs on the PR. A new run is refused when `ledger + estimate > $2` (governor-only "spend" gate). Skipped when the `apps/smart-writer-v2` + `modules/lab_shared` tree hash equals the last evaluated hash.
+Per-PR cumulative eval cost from prior `swv2-evals` check runs on the PR. A new run is refused when `ledger + estimate > $2` (governor-only "spend" gate). A **model-change PR** (full tuning set, see scope detection) has its own budget of **$10** (D6) instead of $2; beyond it the run waits for governor approval through the same spend gate. Skipped when the `apps/smart-writer-v2` + `modules/lab_shared` tree hash equals the last evaluated hash.
 
 ## Calibration and blinded review (`evals/calibrate.py`)
 
