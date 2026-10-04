@@ -30,8 +30,11 @@ Create the `factory` uv project and freeze every cross-slice contract (message m
 - `bus/**/.gitkeep` (new)
 - `.github/workflows/factory-gates.yml` (new)
 - `.github/workflows/verify-source.yml` — only the `pytest scripts/` line (add `--ignore=scripts/factory`)
-- `specs/001-factory-v2/data-model.md` — only the Gate line (add `entrypoint`), per T009
+- `specs/001-factory-v2/data-model.md` — only the Gate line (add `entrypoint`), per T009; and the Lock line (via amend-01)
 - `specs/001-factory-v2/tasks.md` — checkboxes for T001–T015 only
+- `specs/001-factory-v2/contracts/cli.md` — only the JSON envelope section (via amend-01)
+
+Amendment `wo-20261003-factory-p0.amend-01` (`bus/orders/wo-20261003-factory-p0/amendment-01.yaml`, orchestrator-authorized 2026-10-04) supersedes the order's `owned_paths` with the list above.
 
 ## Forbidden paths (do not edit)
 
