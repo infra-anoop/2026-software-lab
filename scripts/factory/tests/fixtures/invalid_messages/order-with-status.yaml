@@ -1,0 +1,17 @@
+schema_version: 1
+kind: order
+id: wo-20261005-has-status
+created: 2026-10-05T14:00:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+feature: 001-factory-v2
+goal: Show that a hand-written status is rejected.
+intents: [I-M2]
+owned_paths: ["scripts/factory/README.md"]
+checks: [bus.no-handwritten-status]
+locks: []
+size_minutes: 30
+stop_conditions: ["needs a governor decision"]
+depends_on_decisions: []
+worker_runtime: local_subagent
+status: claimed
