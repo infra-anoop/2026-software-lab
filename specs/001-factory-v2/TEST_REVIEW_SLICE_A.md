@@ -172,3 +172,38 @@ Agent-adjudicated (2026-10-04); every round-2 finding is process-tagged. Bus: `w
 ### Later
 
 - After T066 (branch protection, CP2), the factory can read branch-protection required checks. Non-factory required check runs join the required set then, with lifecycle cases for a failed and a pending required run.
+
+## Round 3 review
+
+### Verdict
+
+**Verdict: reject — the narrowed required-check rule still permits evidence-free acceptance.**
+
+The `unrelated-run-pending` case correctly removes the round-2 over-constraint, and the dense override map now preserves exact fixture counts. But `WorkOrder.checks` is allowed to be empty, several existing fixtures deliberately use `checks=[]`, and lifecycle has no case preventing such an order from becoming accepted on a verdict alone. That violates FR-011's check-results-plus-independent-verdict lock.
+
+### Findings
+
+| ID | Severity | Tag | Locus | Finding | Suggested resolution |
+|----|----------|-----|-------|---------|----------------------|
+| T-A3-1 | Blocker | process | `tests/unit/test_lifecycle.py::test_accepted_needs_verdict_and_full_required_check_set`; `WorkOrder.checks`; FR-006/FR-011 | Option 2 is correct for unrelated check runs, but is too loose when `order.checks == []`: the required factory-status loop is vacuous, so an accept verdict can produce `accepted` with no machine-check evidence. The frozen model and generated schema permit an empty list, and existing contract fixtures use it. | Add an executable case proving empty `checks` cannot become accepted. Resolve without changing frozen CP0 models: either `order issue` refuses an empty check set, or lifecycle keeps the order non-accepted. Update empty-check helper fixtures to name a real gate. |
+| T-A3-2 | Debate | process | Round-2 triage `### Later`; T066 in `tasks.md`; `deferral-words-need-od` | The intended CP2 follow-up is sensible, but T066 currently covers branch-protection settings/snapshot and does not explicitly task lifecycle ingestion or the promised failed/pending required-run cases. Also, a standalone `### Later` heading does not put the T066 pointer on the same line as the deferral word under the feature's own deferral rule. | Rename the heading to `### After T066` and amend T066 (or add a dependent task) to name lifecycle required-check ingestion and its two tests. |
+| T-A3-3 | Nit | process | `test_status.py`; `amendment-02.yaml`; round-2 triage | Strength: dense override maps pass while every non-target count must correctly remain zero for this fixture. Amendment 02 faithfully records all round-2 dispositions, authorizes only the dependency/lock/research/plan paths needed for `pyjwt[crypto]`, and records the rejected OpenSSL-CLI and `githubkit` alternatives. | Preserve this shape. Add PyJWT, its lockfile update, one research decision row, and only the plan Primary Dependencies change during implementation as authorized. |
+
+### Confirmation judgments
+
+- **T-A2-1 option 2:** accepted for non-required/advisory runs, but rejected as complete because empty `checks` remains evidence-free (T-A3-1).
+- **T-A2-2:** resolved. `red-first-proof == 1` plus all other listed counts exactly zero is faithful to the fixture and allows sparse or dense output.
+- **Amendment 02 / dependency decision:** faithful. The selected `pyjwt[crypto] >=2.9,<3` and rejected OpenSSL CLI / `githubkit` alternatives are explicit. The widened paths are narrow and sufficient; no dependency or design file was changed prematurely.
+- **Round-2 triage:** faithful except that its CP2 follow-up needs an explicit task and deferral-safe wording (T-A3-2).
+
+### Verification record
+
+| Check | Result |
+|-------|--------|
+| Reviewed head | `d79fbb67f7880cda59d919aefb9a65ced2011495` |
+| Slice A 11-file run | Expected RED: **64 failed, 0 passed**; no collection errors or xfails. |
+| Full suite | Expected RED: **180 failed, 237 passed**; no collection errors or xfails. |
+| `uv run ruff check .` | PASS. |
+| `uv run ruff format --check tests/contract tests/unit` | PASS — 19 files already formatted. |
+| `factory check schema` | PASS — `schema ok`. |
+| Frozen CP0 files | PASS — no frozen interface edits. |
