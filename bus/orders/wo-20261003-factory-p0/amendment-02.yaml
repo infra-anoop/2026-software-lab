@@ -1,0 +1,35 @@
+# Orchestrator amendment: the work branch carries the review history.
+# Recorded by the orchestrator (2026-10-04).
+# owned_paths are globs, so line scope is stated here and in the packet:
+#   .github/workflows/verify-source.yml   -> only the `pytest scripts/` line
+#   specs/001-factory-v2/data-model.md    -> only the Lock and Gate lines
+#   specs/001-factory-v2/tasks.md         -> only the T001-T015 checkboxes
+#   specs/001-factory-v2/contracts/cli.md -> only the JSON envelope section
+#   specs/001-factory-v2/TEST_REVIEW.md   -> worker: only the Triage table Resolution column;
+#                                            reviewer round sections arrive via review-branch merges
+#   bus/orders/wo-20261003-factory-p0/**  -> verdicts (reviewer) and amendments (orchestrator)
+schema_version: 1
+kind: amendment
+id: wo-20261003-factory-p0.amend-02
+created: 2026-10-04T06:00:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/packets/2026-10-03-factory-v2-p0-contracts.md
+  - specs/001-factory-v2/TEST_REVIEW.md
+  - wo-20261003-factory-p0.verdict-02
+  - wo-20261003-factory-p0.amend-01
+supersedes: [owned_paths]
+values:
+  owned_paths:
+    - "scripts/factory/**"
+    - "factory.toml"
+    - "bus/**/.gitkeep"
+    - ".github/workflows/factory-gates.yml"
+    - ".github/workflows/verify-source.yml"
+    - "specs/001-factory-v2/data-model.md"
+    - "specs/001-factory-v2/tasks.md"
+    - "specs/001-factory-v2/contracts/cli.md"
+    - "specs/001-factory-v2/TEST_REVIEW.md"
+    - "bus/orders/wo-20261003-factory-p0/**"

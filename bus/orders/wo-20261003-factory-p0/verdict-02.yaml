@@ -1,0 +1,72 @@
+schema_version: 1
+kind: verdict
+id: wo-20261003-factory-p0.verdict-02
+created: 2026-10-04T05:05:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - notes/packets/2026-10-03-factory-v2-p0-test-review-t.md
+  - specs/001-factory-v2/TEST_REVIEW.md
+decision: reject
+findings:
+  - id: T2
+    severity: debate
+    tag: product
+    text: >-
+      Strict semantic letter fidelity is only partly encoded: different-host and
+      registered-substitute seeds were added, but the automatic catalog promise
+      also requires thinner behavior to be blocked and the seed explicitly
+      delegates that case to reviewer judgment.
+  - id: T7
+    severity: blocker
+    tag: process
+    text: >-
+      The fixes changed the frozen Lock contract in data-model.md and the CLI
+      contract outside the P0 order's recorded owned paths, with no bus amendment
+      authorizing those paths.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: notes/packets/2026-10-03-factory-v2-p0-test-review-t.md
+    sha: b878606d1dbff6bc847f7fa8188dade377f56b47
+  - path: notes/packets/2026-10-03-factory-v2-p0-contracts.handoff.md
+    sha: b878606d1dbff6bc847f7fa8188dade377f56b47
+  - path: specs/001-factory-v2/spec.md
+    sha: b878606d1dbff6bc847f7fa8188dade377f56b47
+  - path: specs/001-factory-v2/plan.md
+    sha: b878606d1dbff6bc847f7fa8188dade377f56b47
+  - path: specs/001-factory-v2/data-model.md
+    sha: b878606d1dbff6bc847f7fa8188dade377f56b47
+  - path: specs/001-factory-v2/acceptance.md
+    sha: b878606d1dbff6bc847f7fa8188dade377f56b47
+  - path: specs/001-factory-v2/tasks.md
+    sha: b878606d1dbff6bc847f7fa8188dade377f56b47
+  - path: specs/001-factory-v2/contracts/cli.md
+    sha: b878606d1dbff6bc847f7fa8188dade377f56b47
+  - path: scripts/factory/src/factory/api.py
+    sha: b878606d1dbff6bc847f7fa8188dade377f56b47
+  - path: scripts/factory/src/factory/bus/models.py
+    sha: b878606d1dbff6bc847f7fa8188dade377f56b47
+  - path: scripts/factory/src/factory/cli/common.py
+    sha: b878606d1dbff6bc847f7fa8188dade377f56b47
+  - path: scripts/factory/src/factory/config/settings.py
+    sha: b878606d1dbff6bc847f7fa8188dade377f56b47
+  - path: scripts/factory/tests/contract/test_cli_contract.py
+    sha: b878606d1dbff6bc847f7fa8188dade377f56b47
+  - path: scripts/factory/tests/seeds/test_seeds.py
+    sha: b878606d1dbff6bc847f7fa8188dade377f56b47
+  - path: scripts/factory/tests/unit/test_api.py
+    sha: b878606d1dbff6bc847f7fa8188dade377f56b47
+bootstrap: true
+manual_equivalents:
+  - "T1: commit-status read-after-write conformance is behavioral and passes against FakeGitHub"
+  - "T2: non-empty tokens and substitute/false-positive seeds exist; thinner-behavior auto coverage remains missing"
+  - "T3: 26 JSON scenarios cover every non-hook command group and exact envelope shape"
+  - "T4: Gate scope pr is now consistent between data model and registry"
+  - "T5: all approved jargon terms, id forms, offender naming, case, and near-misses are isolated"
+  - "T6: packet-exact schema command passes and discovery confinement tests pass"
+  - "uv-sync-locked: pass"
+  - "factory tests: 225 passed and 100 expected assertion failures; no collection/import failures"
+  - "ruff: pass"
+  - "diff-within-owned-paths: fail; frozen spec contract edits lack a recorded order amendment"

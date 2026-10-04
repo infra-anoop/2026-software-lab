@@ -1,0 +1,25 @@
+schema_version: 1
+kind: verdict
+id: wo-20261005-red-first-gate.verdict-01
+created: 2026-10-05T17:00:00Z
+actor: reviewer
+actor_model: gpt-5.6-codex
+decision: accept
+findings:
+  - id: V1
+    severity: nit
+    tag: arch
+    pattern_id: PAT-003
+    text: Collection helper could live next to the runner.
+reviewer_model: gpt-5.6-codex
+reviewer_family: openai
+inputs:
+  - path: bus/orders/wo-20261005-red-first-gate/order.yaml
+    sha: 0123456789abcdef0123456789abcdef01234567
+  - path: scripts/factory/src/factory/gates/drift/red_first.py
+    sha: 0123456789abcdef0123456789abcdef01234567
+bootstrap: true
+manual_equivalents:
+  - red-first shown by hand on base
+  - changed paths checked against owned paths by hand
+refs: [wo-20261005-red-first-gate]

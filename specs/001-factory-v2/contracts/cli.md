@@ -2,6 +2,8 @@
 
 Invocation: `uv run --project scripts/factory factory <command>`. All commands accept `--json` (machine output) and `--repo PATH`. Exit codes: `0` ok, `1` gate/validation failure, `2` refused by policy (cap, open decision, path overlap), `3` usage/config error, `4` external failure (git/GitHub unreachable).
 
+**JSON envelope.** With `--json`, stdout is exactly one JSON object: `{"ok": true, "command": "<path>", "data": …}` on exit 0, or `{"ok": false, "command": "<path>", "error": {"code": <exit code 1–4>, "message": "<plain text>", "details": …}}` on any other exit, including refusals, usage errors, and config errors. `command` is the space-separated command path (`check schema`, `order new`, `claim`); `data` and `details` are command-specific. Diagnostics may also go to stderr. Model: `factory.cli.common.JsonEnvelope`. `factory hook` is the one exception: its stdout is always the Cursor hook response (`contracts/hooks.md`). When `--repo` is omitted, the repo root is the nearest directory holding `factory.toml`, searched from the working directory up to the git root.
+
 | Command | Effect | Refusals (exit 2) | Spec |
 |---------|--------|-------------------|------|
 | `factory status` | Print board: in flight, blocked on governor (plain-language prompts), ready queue, overrides per gate, unverified governor actions | — | FR-003/004, SC-001 |

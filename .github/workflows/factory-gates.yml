@@ -1,0 +1,65 @@
+# ------------------------------------------------------------------------------
+# Factory gates (specs/001-factory-v2)
+# ------------------------------------------------------------------------------
+# factory-tests: the factory's own test suite (own uv project at scripts/factory).
+# factory-gates: runs every registered gate on the PR. Placeholder until CP2, when
+#   it becomes authoritative and posts one `factory/<gate-id>` status per gate.
+# ------------------------------------------------------------------------------
+
+name: "Factory gates"
+
+on:
+  pull_request:
+
+concurrency:
+  group: factory-gates-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  factory-tests:
+    name: Factory tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: scripts/factory
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: uv sync --locked
+        run: uv sync --locked
+
+      - name: pytest
+        # Until CP1 the CLI contract tests and the SC-002 seeds suite are red by design
+        # (slices A/B/C turn them green). Drop this marker selector at CP1.
+        run: uv run pytest -m "not contract and not seed"
+
+  factory-gates:
+    name: Factory gates
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: uv sync --locked
+        run: uv sync --locked --project scripts/factory
+
+      - name: factory gate run
+        # Placeholder until CP2 (slice C, T059): step-level so the check stays green while `gate run` exits 3.
+        continue-on-error: true
+        run: uv run --project scripts/factory factory gate run --pr ${{ github.event.number }}

@@ -1,0 +1,11 @@
+schema_version: 1
+kind: override
+id: wo-20261005-red-first-gate.override-01
+created: 2026-10-05T17:30:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+gate: red-first-proof
+pr: 42
+reason: Base suite broken by an unrelated module; new tests verified red by hand.
+gate_class: drift
+refs: [wo-20261005-red-first-gate]

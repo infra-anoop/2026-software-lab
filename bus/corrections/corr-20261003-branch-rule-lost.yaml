@@ -1,0 +1,15 @@
+schema_version: 1
+kind: correction
+id: corr-20261003-branch-rule-lost
+created: 2026-10-03T20:30:00Z
+actor: governor
+actor_model: null
+actor_verified: false
+target: d455f5e
+what_was_wrong: >-
+  The rule that every change goes through a feature branch and PR was dropped in
+  commit d455f5e (2026-09-12) and nobody noticed; the main session was committing
+  directly on main. Restored as AGENTS.md rule 11 (PR #7), enforced by shell-guard
+  and branch-protection-require-pr.
+tag: drift
+refs: [d455f5e, "https://github.com/infra-anoop/2026-software-lab/pull/7", I-P10, FR-005a]

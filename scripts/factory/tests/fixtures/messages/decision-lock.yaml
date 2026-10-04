@@ -1,0 +1,9 @@
+schema_version: 1
+kind: decision_lock
+id: board-web-view.lock
+created: 2026-10-05T13:00:00Z
+actor: governor
+chosen: Terminal view only
+governor_minutes: 2
+notes: Revisit next sprint.
+refs: [board-web-view]

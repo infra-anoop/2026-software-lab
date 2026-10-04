@@ -1,0 +1,92 @@
+{
+  "additionalProperties": false,
+  "description": "`kind: decision_lock` at `bus/decisions/<decision-id>/lock.yaml`; closes the request.",
+  "properties": {
+    "actor": {
+      "enum": [
+        "governor",
+        "orchestrator",
+        "worker",
+        "reviewer"
+      ],
+      "title": "Actor",
+      "type": "string"
+    },
+    "actor_model": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Actor Model"
+    },
+    "actor_verified": {
+      "default": false,
+      "title": "Actor Verified",
+      "type": "boolean"
+    },
+    "chosen": {
+      "minLength": 1,
+      "title": "Chosen",
+      "type": "string"
+    },
+    "created": {
+      "format": "date-time",
+      "title": "Created",
+      "type": "string"
+    },
+    "governor_minutes": {
+      "minimum": 0,
+      "title": "Governor Minutes",
+      "type": "number"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "kind": {
+      "const": "decision_lock",
+      "title": "Kind",
+      "type": "string"
+    },
+    "notes": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Notes"
+    },
+    "refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Refs",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "kind",
+    "id",
+    "created",
+    "actor",
+    "chosen",
+    "governor_minutes"
+  ],
+  "title": "DecisionLock",
+  "type": "object"
+}

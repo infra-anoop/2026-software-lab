@@ -1,0 +1,222 @@
+{
+  "$defs": {
+    "Lock": {
+      "additionalProperties": false,
+      "properties": {
+        "direction": {
+          "anyOf": [
+            {
+              "enum": [
+                "min",
+                "max"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Direction"
+        },
+        "fidelity": {
+          "enum": [
+            "letter",
+            "intent",
+            "waived"
+          ],
+          "title": "Fidelity",
+          "type": "string"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "letter_tokens": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Letter Tokens",
+          "type": "array"
+        },
+        "substitutes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Substitutes",
+          "type": "array"
+        },
+        "waiver_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Waiver Ref"
+        }
+      },
+      "required": [
+        "id",
+        "letter_tokens",
+        "fidelity"
+      ],
+      "title": "Lock",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "`kind: order`, id `wo-YYYYMMDD-<slug>`.",
+  "properties": {
+    "actor": {
+      "enum": [
+        "governor",
+        "orchestrator",
+        "worker",
+        "reviewer"
+      ],
+      "title": "Actor",
+      "type": "string"
+    },
+    "actor_model": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Actor Model"
+    },
+    "actor_verified": {
+      "default": false,
+      "title": "Actor Verified",
+      "type": "boolean"
+    },
+    "checks": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Checks",
+      "type": "array"
+    },
+    "created": {
+      "format": "date-time",
+      "title": "Created",
+      "type": "string"
+    },
+    "depends_on_decisions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Depends On Decisions",
+      "type": "array"
+    },
+    "feature": {
+      "minLength": 1,
+      "title": "Feature",
+      "type": "string"
+    },
+    "goal": {
+      "minLength": 1,
+      "title": "Goal",
+      "type": "string"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "intents": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Intents",
+      "type": "array"
+    },
+    "kind": {
+      "const": "order",
+      "title": "Kind",
+      "type": "string"
+    },
+    "locks": {
+      "items": {
+        "$ref": "#/$defs/Lock"
+      },
+      "title": "Locks",
+      "type": "array"
+    },
+    "owned_paths": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Owned Paths",
+      "type": "array"
+    },
+    "refs": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Refs",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "size_minutes": {
+      "minimum": 1,
+      "title": "Size Minutes",
+      "type": "integer"
+    },
+    "stop_conditions": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Stop Conditions",
+      "type": "array"
+    },
+    "tasks": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Tasks",
+      "type": "array"
+    },
+    "worker_runtime": {
+      "enum": [
+        "local_subagent",
+        "cloud_agent"
+      ],
+      "title": "Worker Runtime",
+      "type": "string"
+    }
+  },
+  "required": [
+    "feature",
+    "goal",
+    "intents",
+    "owned_paths",
+    "checks",
+    "locks",
+    "size_minutes",
+    "stop_conditions",
+    "depends_on_decisions",
+    "worker_runtime",
+    "schema_version",
+    "kind",
+    "id",
+    "created",
+    "actor"
+  ],
+  "title": "WorkOrder",
+  "type": "object"
+}

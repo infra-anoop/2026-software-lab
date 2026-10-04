@@ -1,0 +1,88 @@
+schema_version: 1
+kind: verdict
+id: wo-20261003-factory-p0.verdict-01
+created: 2026-10-04T02:20:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - notes/packets/2026-10-03-factory-v2-p0-test-review-t.md
+  - specs/001-factory-v2/TEST_REVIEW.md
+decision: reject
+findings:
+  - id: T1
+    severity: blocker
+    tag: arch
+    text: >-
+      Frozen GitHubPort writes commit statuses but cannot read them, so lifecycle
+      cannot derive accepted from the required factory status contexts.
+  - id: T2
+    severity: debate
+    tag: product
+    text: >-
+      The declared-lock seed permits lexical token checks and empty letter-token
+      lists, weaker than the locked different-tool, different-host, and thinner-behavior promise.
+  - id: T3
+    severity: debate
+    tag: process
+    text: >-
+      The common --json CLI contract is tested only for status and schema, allowing
+      most command groups to omit machine-readable output.
+  - id: T4
+    severity: later
+    tag: arch
+    text: >-
+      Gate scope pr is required and implemented but remains absent from the
+      data-model contract.
+  - id: T5
+    severity: debate
+    tag: product
+    text: >-
+      The worker invented the governor-facing jargon rejection vocabulary, and the
+      mixed seed does not prove that any configured jargon term is detected.
+  - id: T6
+    severity: nit
+    tag: process
+    text: >-
+      The packet-exact schema command fails from scripts/factory because repository
+      config is not discovered; the explicit --repo equivalent passes.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: notes/packets/2026-10-03-factory-v2-p0-test-review-t.md
+    sha: 3067c42dfea4a0f19f57d7496711cf5d00cad99a
+  - path: notes/packets/2026-10-03-factory-v2-p0-contracts.md
+    sha: 926397b8aa6c447a2142864e1494ee01ac37fd94
+  - path: notes/packets/2026-10-03-factory-v2-p0-contracts.handoff.md
+    sha: 926397b8aa6c447a2142864e1494ee01ac37fd94
+  - path: specs/001-factory-v2/spec.md
+    sha: 926397b8aa6c447a2142864e1494ee01ac37fd94
+  - path: specs/001-factory-v2/plan.md
+    sha: 926397b8aa6c447a2142864e1494ee01ac37fd94
+  - path: specs/001-factory-v2/data-model.md
+    sha: 926397b8aa6c447a2142864e1494ee01ac37fd94
+  - path: specs/001-factory-v2/acceptance.md
+    sha: 926397b8aa6c447a2142864e1494ee01ac37fd94
+  - path: specs/001-factory-v2/tasks.md
+    sha: 926397b8aa6c447a2142864e1494ee01ac37fd94
+  - path: scripts/factory/src/factory/api.py
+    sha: 926397b8aa6c447a2142864e1494ee01ac37fd94
+  - path: scripts/factory/src/factory/bus/models.py
+    sha: 926397b8aa6c447a2142864e1494ee01ac37fd94
+  - path: scripts/factory/tests/contract/test_cli_contract.py
+    sha: 926397b8aa6c447a2142864e1494ee01ac37fd94
+  - path: scripts/factory/tests/seeds/test_seeds.py
+    sha: 926397b8aa6c447a2142864e1494ee01ac37fd94
+  - path: scripts/factory/tests/unit/test_bus_models.py
+    sha: 926397b8aa6c447a2142864e1494ee01ac37fd94
+bootstrap: true
+manual_equivalents:
+  - "red-first-proof: reproduced 124 failed and 20 passed at test-only commit 851cd11; current model tests pass"
+  - "diff-within-owned-paths: no changed path fell outside the P0 packet ownership plus its required handoff"
+  - "test-seam-ban: production-source scan found no pytest/test-mode branch"
+  - "bus.no-handwritten-status: nested forbidden-key model matrix and invalid fixture pass"
+  - "order-fidelity-declared and lock.letter-tokens: dependencies and cap/horizon locks are present, with fidelity weakness recorded as T2"
+  - "decision-request-no-ids: no decision request was added; worker-selected jargon policy recorded as T5"
+  - "catalog-test-linkage: all eight SC-002 seed tests exist and are intentionally red"
+  - "uv-sync-locked: locked sync passed with the committed uv.lock"
+  - "factory test bootstrap: 197 implemented tests pass; 50 contract/seed assertions remain intentionally red"
