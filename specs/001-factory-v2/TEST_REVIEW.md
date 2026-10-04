@@ -118,9 +118,9 @@ What would have to be true for the suite to be right anyway: T013 is treated str
 
 | ID | Disposition | Decided by | Resolution |
 |----|-------------|------------|------------|
-| T1 | accept — amend CP0 | orchestrator (arch) | |
-| T2 | accept — strict (semantic) letter fidelity, as spec US3 #8 / SC-002 already say | governor 2026-10-03 | |
-| T3 | accept | orchestrator (process) | |
-| T4 | accept | orchestrator (arch) | |
-| T5 | accept the eight-term jargon list as is; future misses are added as governor corrections | governor 2026-10-03 | |
-| T6 | accept — discover repo root | orchestrator (process) | |
+| T1 | accept — amend CP0 | orchestrator (arch) | `api.py`: `CommitStatus` + `GitHubPort.list_commit_statuses(sha)` (latest per context), frozen-at-CP0 docstrings kept; `FakeGitHub` implements it; `test_api.py::test_fake_github_commit_status_read_after_write` via reusable `assert_commit_status_read_after_write(port)` (red `de60b63` → green `a29b31b`) |
+| T2 | accept — strict (semantic) letter fidelity, as spec US3 #8 / SC-002 already say | governor 2026-10-03 | `Lock`: `fidelity: letter` requires non-empty, non-blank `letter_tokens`; optional `substitutes` (non-blank, none repeats a token); data-model Lock line documents it; model tests red `670a6d5` → green `8e2f3b7`. Seeds: kept `test_seed_declared_lock_violated`; added `test_seed_lock_token_only_outside_code[comment|deleted_line|order_file|docs]`, `test_seed_lock_registered_substitute_in_added_code`, and false-positive guard `test_seed_lock_honored_passes`; docstring notes thinner behavior stays with the reviewer's fidelity rubric (reject blocks merge) |
+| T3 | accept | orchestrator (process) | `cli/common.py`: `JsonEnvelope` / `CliError` / `CommandError`; `run()` prints the error envelope for refusals, usage, and config errors; `contracts/cli.md` § JSON envelope (hook exempt). `test_cli_contract.py::test_json_envelope` over 26 scenarios covering every command group (red `ff1695c` → `check schema` cases green `c8fd90a`; 22 slice-owned cases red by exit-code assertion) |
+| T4 | accept | orchestrator (arch) | data-model Gate `scope: changed_lines\|repo\|pr` (`332381d`) |
+| T5 | accept the eight-term jargon list as is; future misses are added as governor corrections | governor 2026-10-03 | Seed split (`1619456`): `test_seed_decision_request_quotes_an_id[T\|F\|R\|P\|D\|FR\|SC\|US\|section-sign]`, `…_id_in_option_label`, `…_uses_configured_jargon[<each of the 8 terms>]` (parameterized from `factory.toml`; fixture config now derives its list from it), `…_jargon_is_case_insensitive`, near-miss passes `…_near_miss_allowed[packaging\|sliced-bread\|t-shirt-python-3.12\|p2p-us-budget]`; blocking cases also require the gate message to name the offender |
+| T6 | accept — discover repo root | orchestrator (process) | `config.settings.find_repo_root` walks from the CWD up to the git root; `cli.common.resolve_repo` used when `--repo` is omitted; relative `--path` resolves against the CWD. Tests in `test_settings.py` (red `50315d5` → green `f51929c`); packet-exact command from `scripts/factory` now exits 0 |

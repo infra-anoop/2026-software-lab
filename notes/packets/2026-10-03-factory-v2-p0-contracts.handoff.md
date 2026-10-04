@@ -98,3 +98,100 @@ Toolchain: `. /tmp/factory-env.sh` puts the Nix-store `uv 0.4.30` and `python3 3
 | non_blocking | Adapter factory paths `factory.github.rest:build_github(settings, env)` and `factory.identity.adapter:build_identity(settings, github)` are frozen for slice A by `cli/common.py`. |
 
 No `blocker_governor` questions.
+
+## Amendment 1 — T* review (verdict-01: reject) fixes
+
+Merged `origin/review/wo-20261003-factory-p0` (`TEST_REVIEW.md`, `bus/orders/wo-20261003-factory-p0/verdict-01.yaml`); appended the orchestrator triage verbatim; Resolution column filled per finding.
+
+### What changed
+
+- **T1 (blocker):**
+  - `api.py` adds `CommitStatus{context, state, description, target_url}` and `GitHubPort.list_commit_statuses(sha)`, which returns the latest status per context and `[]` when there are none. The "Frozen at CP0" docstrings are kept.
+  - `FakeGitHub` implements it.
+  - Conformance helper `assert_commit_status_read_after_write(port)` in `tests/unit/test_api.py`, which slice A can reuse against the real adapter.
+- **T2 (governor: strict):**
+  - `Lock` with `fidelity: letter` requires non-empty, non-blank `letter_tokens`.
+  - New optional `substitutes: list[str]`: values must be non-blank, and none may repeat a letter token.
+  - Documented on the data-model Lock line. `order.schema.json` regenerated.
+  - Seeds added:
+    - token appears only outside code, one case each for a comment, a deleted line, the order file, and docs, while the code uses Fly
+    - a registered substitute in added code next to the honored token
+    - a false-positive guard where the honored lock passes
+  - The seed docstring notes that "thinner behavior" stays with the reviewer's fidelity rubric.
+- **T3:**
+  - `cli/common.py` adds `JsonEnvelope`, `CliError`, and `CommandError`. `emit(command, …, data=…)` reports success. `not_implemented` now raises `CommandError(3)`.
+  - `run()` turns `CommandError`, usage, config, and bus/registry errors into an error envelope under `--json`.
+  - `contracts/cli.md` gains a § JSON envelope paragraph. `factory hook` is exempt.
+  - `test_json_envelope` covers 26 scenarios across every command group, including refusal, usage, and config error paths.
+- **T4:** data-model Gate `scope` lists `pr`.
+- **T5:**
+  - The jargon seed is split into the cases below. Each blocking case also requires the gate message to name the offending id or term.
+    - 9 id-regex cases: one per letter of `\b[TFRPD]\d+\b`, plus `FR-\d+`, `SC-\d+`, `US\d+`, and `§`
+    - an id in an option label
+    - 8 per-term cases parameterized from `factory.toml`
+    - a case-insensitive case
+    - 4 near-miss cases that must pass
+  - The fixture `factory.toml` now takes its jargon list from the repo's `factory.toml` instead of a 6-term copy.
+- **T6:**
+  - `config.settings.find_repo_root(start)` searches from the CWD up to the git root and never above it.
+  - `cli.common.resolve_repo(repo)`: every command's `--repo` now defaults to `None` and is resolved this way.
+  - A relative `check schema --path` now resolves against the CWD.
+
+### Red-first pairs (amendment)
+
+| Finding | Red commit (assertion) | Green commit |
+|---------|------------------------|--------------|
+| T1 | `de60b63`: 2 failed (`GitHubPort … has no operation to read them back`, `no commit-status read on the port`) | `a29b31b` |
+| T6 | `50315d5`: 2 failed (`assert 3 == 0`, `assert 3 == 1`, "factory.toml: not found"); the git-root and explicit-`--repo` guards passed already | `f51929c` |
+| T2 models | `670a6d5`: 8 failed (`DID NOT RAISE` ×4, `Lock has no substitutes field` ×4) | `8e2f3b7` |
+| T3 | `ff1695c`: 26 failed (22 `expected exit N, got 3`; 4 envelope-shape assertions on `check schema`) | `c8fd90a` turns the 4 `check schema` cases green; the 22 slice-owned cases stay red |
+
+The T2 lock seeds were committed together with the model change. Before it, two of them failed while building the fixture (`substitutes` was an unknown key) rather than by assertion, so I kept them out of the red commit. After `8e2f3b7`, all seeds fail by assertion.
+
+### Commands and results (amendment)
+
+| DoD | Command | Result |
+|-----|---------|--------|
+| 1 | `cd scripts/factory && uv sync --locked` | PASS |
+| 2a | `uv run --project scripts/factory factory check schema --path scripts/factory/tests/fixtures/messages/` | PASS, exit 0 |
+| 2a (T6) | `cd scripts/factory && uv run factory check schema --path tests/fixtures/messages/` (packet-exact) | PASS, exit 0 (was exit 3) |
+| bus | `uv run --project scripts/factory factory check schema` (includes the merged `verdict-01.yaml`) | PASS, exit 0 |
+| 2b | `… factory check schema --write` | 11 files, no diff after the T2 regeneration |
+| 2c | `factory check schema` after the T2 `Lock` change, before regenerating | `order.schema.json: stale`, exit 1; exit 0 after `--write` |
+| 3 | `… pytest scripts/factory/tests/unit/test_bus_models.py` | 153 passed |
+| 4 | `… pytest scripts/factory/tests/contract scripts/factory/tests/seeds` | 100 failed, 13 passed. 0 collection errors, 100 `AssertionError`s, 0 `xfail` |
+| 4 | `cd scripts/factory && uv run pytest -m "not contract and not seed"` | 212 passed, 113 deselected |
+| — | full `… pytest scripts/factory/tests` | 225 passed, 100 failed (the intentional red set) |
+| 5 | `… ruff check scripts/factory` and `ruff format --check` | clean |
+| 6 | `os.getenv` / `os.environ` outside `config/`; test-seam scan of `src/` | none / none |
+
+### Intentionally red now (100, all by assertion)
+
+- **Contract (64):** the 42 original exit-code cases plus 22 slice-owned `test_json_envelope` cases. Every one is `expected exit N, got 3`: 40 expect 0, 23 expect 2, and 1 expects 4.
+- **Seeds (36):**
+  - `undeclared_substitution`, `hidden_deferral`, `not_red_first`, `test_seam`, `outside_owned_paths`, and `catalog_unlinked`
+  - 7 lock-fidelity seeds
+  - 23 decision-request seeds
+  - Each fails `gate <id> is not implemented`. The near-miss and honored-lock guards also go through `run_seed`, so they stay red until the gate exists.
+
+### Deviations (amendment)
+
+1. **Extra paths, both named by the amendment:** `specs/001-factory-v2/contracts/cli.md` (one paragraph, as T3 instructs) and the data-model Lock line (as T2 instructs). Both sit outside the original owned paths.
+2. **Every command now defaults `--repo` to `None`** and resolves it with `resolve_repo`, including the slice-owned stub modules (`cli/{board,orders,gates,intent,mining}.py`). Only the option default changed; the stubs still raise not-implemented.
+3. **Relative `check schema --path` now resolves against the CWD**, not the repo root. This is the usual CLI behavior and what makes the packet-exact command work. All absolute-path callers are unchanged.
+4. **New frozen helpers in `cli/common.py`:** `CommandError`, `CliError`, `JsonEnvelope`, and `emit(command, …)`, which replaces the old `emit(payload, …)`. Slice commands must report through `emit` and `CommandError`, or the envelope tests stay red.
+5. **Seed choices beyond the brief:**
+   - false-positive guards (`test_seed_lock_honored_passes` and the near-miss cases)
+   - the requirement that blocked decision requests name the offender
+   - a case-insensitive jargon case
+   - an id in an option label
+   These tighten the gates and don't change policy. Slice B may push back through the orchestrator.
+
+### Open questions (amendment)
+
+| Class | Question |
+|-------|----------|
+| non_blocking | **Lock substitutes:** what counts as "added code" for `lock.letter-tokens`? The seeds treat comments, deleted lines, the order file, and docs (`docs/**`, `*.md`) as not code, and shell scripts and config files as code. Slice B should confirm the exact rule. |
+| non_blocking | **Plural jargon:** should plural forms (`slices`, `packets`) block? The seeds don't decide this; the near-miss cases only fix that `sliced` and `packaging` pass. |
+
+These earlier open questions are now resolved: commit-status read (T1), Gate `scope: pr` (T4), and the jargon list (T5, governor accepted it).
