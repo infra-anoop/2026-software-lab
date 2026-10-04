@@ -1,0 +1,88 @@
+# Orchestrator triage of T* round 1 (wo-20261004-factory-slice-c.verdict-01, reject).
+# Recorded by the Slice C worker on the orchestrator's instruction (2026-10-04).
+# Agent-adjudicated: every finding is process-tagged. T-C4 keeps the letter of the
+# "offline in < 300 ms" hook lock (contracts/hooks.md, plan Performance Goals): no startup
+# allowance, no governor waive requested.
+# Dispositions:
+#   T-C1 accept: workflow run blocks are tokenized into shell commands (comments, quoting,
+#        operators); echo/comment/string/`|| true`/pipe/`set +e` no-op controls must fail;
+#        the gate step is exactly `factory gate run --pr <event number>` (its exit status is
+#        the step's); `factory status` stdout is redirected or `tee -a`'d to $GITHUB_STEP_SUMMARY
+#   T-C2 accept: a missing, deleted or unreadable head scripts/factory/gates.yaml blocks and
+#        names the path; every positive fixture carries a head registry; no production fallback
+#        to the installed registry
+#   T-C3 accept: shell-guard matrix asserts destination ref `main` across git -C / -c / --no-pager,
+#        /usr/bin/git, command/env wrappers, env assignments, main:main, +HEAD:main, :main,
+#        --delete/-d, quoted, chained, subshell and sh -c forms; nearby allowed controls
+#        (wo/* with -C, feature:feature, main:wo/*, --delete wo/*, echo/comment/grep text)
+#   T-C4 accept, letter kept; A1 APPROVED in this form:
+#        - console script `factory-hook = "factory.hooks.entry:main"` in scripts/factory/pyproject.toml
+#          (lazy minimal imports: no Typer app, no other slices' modules); cli/app.py stays frozen;
+#          `factory hook <name>` stays the slow-path equivalent
+#        - .cursor/hooks.json calls `.cursor/hooks/factory-hook.sh <name>`, which execs the venv's
+#          `factory-hook`; only when the venv is missing it falls back to
+#          `uv run --project scripts/factory factory hook <name>` (fallback not timed)
+#        - tests: deterministic warm in-process budget per hook (150 ms) with CLI parity; end-to-end
+#          median of 5 runs of the exact hooks.json command < 300 ms; best-of-three dropped
+#        - measured in this Codespace (median of 7): minimal entry (json + yaml + 3 git calls)
+#          67 ms through the sh wrapper; full CLI 377 ms; uv run 371 ms
+#   T-C5 accept: full-run fixtures stub every registered CI gate's entrypoint (recording calls);
+#        two gates with differing outcomes incl. a sentinel failure; report and exit reflect
+#        each real call; an all-pass stub run exits 0
+#   T-C6 noted: strength, no action
+#   A2 (GitHubPort.get_pr) declined for Slice C: `gate run --pr N` resolves the PR with the
+#        frozen list_prs_by_head over wo/* and bus/* heads and matches the number. Later: get_pr
+#   Cursor visibility accept: afterFileEdit has no agent-visible output, so owned-path-warn moves
+#        to postToolUse (matcher on Write) returning additional_context; stop supports
+#        followup_message (Cursor hooks docs: auto-submitted as the next user message)
+# owned_paths are globs, so line scope is stated here and in the packet:
+#   scripts/factory/pyproject.toml                -> only the `factory-hook` console-script line
+#                                                    (Slice A adds pyjwt in the same file)
+#   scripts/factory/uv.lock                       -> only the regeneration that line causes
+#   scripts/factory/gates.yaml                    -> only this slice's rows
+#   .cursor/hooks/factory-hook.sh                 -> the A1 wrapper (single file)
+#   specs/001-factory-v2/contracts/hooks.md       -> invocation, outputs, events (A1 + visibility)
+#   specs/001-factory-v2/tasks.md                 -> this slice's checkboxes and the T057 wording
+#   specs/001-factory-v2/acceptance.md            -> only this slice's evidence cells
+#   specs/001-factory-v2/TEST_REVIEW_SLICE_C.md   -> worker: only the Triage sections;
+#                                                    reviewer round sections arrive via review-branch merges
+#   bus/orders/wo-20261004-factory-slice-c/**     -> verdicts (reviewer) and amendments (orchestrator)
+schema_version: 1
+kind: amendment
+id: wo-20261004-factory-slice-c.amend-01
+created: 2026-10-04T18:40:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/packets/2026-10-04-factory-v2-slice-c.md
+  - specs/001-factory-v2/TEST_REVIEW_SLICE_C.md
+  - specs/001-factory-v2/contracts/hooks.md
+  - wo-20261004-factory-slice-c.verdict-01
+supersedes: [owned_paths]
+values:
+  owned_paths:
+    - "scripts/factory/src/factory/gates/runner.py"
+    - "scripts/factory/src/factory/gates/overrides.py"
+    - "scripts/factory/src/factory/gates/retro.py"
+    - "scripts/factory/src/factory/gates/pr/**"
+    - "scripts/factory/src/factory/gates/repo/**"
+    - "scripts/factory/src/factory/hooks/**"
+    - "scripts/factory/src/factory/cli/gates.py"
+    - "scripts/factory/src/factory/cli/checks.py"
+    - "scripts/factory/tests/contract/test_gate_run.py"
+    - "scripts/factory/tests/unit/gates/test_registry_checks.py"
+    - "scripts/factory/tests/unit/gates/pr/**"
+    - "scripts/factory/tests/unit/hooks/**"
+    - "scripts/factory/gates.yaml"
+    - "scripts/factory/pyproject.toml"
+    - "scripts/factory/uv.lock"
+    - ".cursor/hooks.json"
+    - ".cursor/hooks/factory-hook.sh"
+    - ".github/workflows/factory-gates.yml"
+    - "specs/001-factory-v2/contracts/hooks.md"
+    - "specs/001-factory-v2/acceptance.md"
+    - "specs/001-factory-v2/tasks.md"
+    - "specs/001-factory-v2/TEST_REVIEW_SLICE_C.md"
+    - "bus/orders/wo-20261004-factory-slice-c/**"
+    - "notes/packets/2026-10-04-factory-v2-slice-c.handoff.md"

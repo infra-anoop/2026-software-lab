@@ -3,13 +3,13 @@
 | Field | Value |
 |-------|-------|
 | Branch | `wo/wo-20261004-factory-slice-c` |
-| State | **red; T* requested (T054)** |
+| State | **T* round 1 applied; round-2 review requested (T054)** |
 | Author model | Claude family (worker). Bootstrap / T* verdict must come from a GPT-family reviewer (D3, FR-037) |
-| Head (tests) | `c5d1730` |
+| Head (tests) | `2997116` |
 | Base | `origin/main` @ `c2af7f2` (includes CP0 merge `8cd8cb7`) |
 | Frozen CP0 files | not edited |
 
-Pause here. The orchestrator spawns the T* reviewer on T050–T053 (`notes/packets/<date>-factory-v2-slice-c-test-review-t.md`) and resumes this worker for T055–T060 after triage. T064 waits for slice B's `intent.coverage.group_by_intent()` on `main`.
+Pause here. The round-1 verdict (`verdict-01`, reject) was merged from `origin/review/wo-20261004-factory-slice-c` (`f83bb92`). The orchestrator's triage is recorded in `specs/001-factory-v2/TEST_REVIEW_SLICE_C.md` § Triage (orchestrator, round 1) and `bus/orders/wo-20261004-factory-slice-c/amendment-01.yaml`. The orchestrator spawns the round-2 T* reviewer, then resumes this worker for T055–T060 after triage. T064 waits for slice B's `intent.coverage.group_by_intent()` on `main`.
 
 ## Commits
 
@@ -17,25 +17,36 @@ Pause here. The orchestrator spawns the T* reviewer on T050–T053 (`notes/packe
 |-----|------|
 | `399dfd9` | packet Status → `in_progress` (CP0 merged 8cd8cb7) |
 | `c5d1730` | **red** tests T050–T053 + this slice's `tasks.md` checkboxes |
+| `07d0c12` | interim handoff (red; T* requested) |
+| `047d096` | merge of the round-1 review (`f83bb92`: `TEST_REVIEW_SLICE_C.md`, `verdict-01.yaml`) |
+| `2997116` | **red** round-1 test changes (T-C1..T-C5), `contracts/hooks.md` A1 amendment, T057 wording |
+| (this commit) | triage section, `amendment-01.yaml`, this handoff |
 
 No green implement commit yet. Red/green pairs will be listed after T*.
 
-## What landed (tests only)
+## What changed in round 1
 
-| Task | File | Tests | Covers |
-|------|------|------:|--------|
-| T050 | `tests/contract/test_gate_run.py` (`contract` marker) | 25 | `gate run --base/--head/--pr/--gate`, per-intent report, override resolution, `factory override`, workflow shape |
-| T051 | `tests/unit/gates/test_registry_checks.py` | 34 | `gate.fail-mode-category`, `hook-has-ci-twin`, `check registry` / `check hooks`, `branch-protection-require-pr`, wrapped `validate-secrets-schema` / `validate-deploy-env` / `uv-sync-locked` |
-| T052 | `tests/unit/gates/pr/test_bus_gates.py` | 18 | `bus.schema`, `bus.immutable` (+ `check immutability`), `bus.no-handwritten-status` |
-| T052 | `tests/unit/gates/pr/test_order_gates.py` | 12 | `pr-links-order`, `order-blocked-on-open-human-od` (incl. effective order via amendment) |
-| T052 | `tests/unit/gates/pr/test_concurrency_cap.py` | 8 | `spawn-concurrency-cap` CI twin (claim replay across `wo/*`, release/merge before vs after, racing claims) |
-| T052 | `tests/unit/gates/pr/test_verdict_and_override.py` | 18 | `verdict.reviewer-family-differs`, `verdict.inputs-isolated`, `message.override` |
-| T053 | `tests/unit/hooks/test_hooks.py` | 73 | `shell-guard`, `spawn-guard`, `owned-path-warn`, `decision-in-chat`; offline + < 300 ms; live `.cursor/hooks.json` registration (read only) |
-| | shared helper `tests/unit/gates/pr/helpers.py` | | `assert_passes` / `assert_blocks` turn `GateEntrypointError` into an assertion failure |
+| Finding | Change |
+|---------|--------|
+| T-C1 | Workflow tests tokenize each `run` block (`shlex`; comments, quoting, operators). The gate step must be exactly `factory gate run --pr <event number>`, so its exit status is the step's. `factory status` must redirect or `tee -a` to `$GITHUB_STEP_SUMMARY`, and run before the gate step or under `always()`. Each test first proves that its oracle rejects echo, comment, string, `\|\| true`, pipe and `set +e` no-ops |
+| T-C2 | Missing, deleted or unreadable head `scripts/factory/gates.yaml` blocks and names the path (`fail-mode`, `hook-twin`, `branch-protection`, `check registry`). No fallback |
+| T-C3 | 30 push-to-main spellings plus main-only `-C`/`-c`/wrapper commit forms, with nearby allowed controls. `-C`/`cd` branch semantics are tested |
+| T-C4 | A1 as approved: `factory-hook` console script, `.cursor/hooks/factory-hook.sh` wrapper, slow-path fallback. Tests: import ban, warm 150 ms budget with CLI parity, wrapper behavior with fake executables, `pyproject` script, and end-to-end median of 5 < 300 ms on realistic payloads |
+| T-C5 | Recording stubs for every registered CI gate. Differing outcomes (two failures) → exit 1 with each stub's message; all pass → exit 0 |
+| Visibility | `owned-path-warn` → `postToolUse` (`Write` matcher, `additional_context`); `decision-in-chat` keeps `stop` → `followup_message` |
 
-**188 tests total.** T050–T053 are ticked in `tasks.md` (tests written, red). T054 onward stay open.
+| File | Tests (round 0 → round 1) |
+|------|------:|
+| `tests/unit/hooks/test_hooks.py` | 73 → 130 |
+| `tests/unit/gates/test_registry_checks.py` | 34 → 39 |
+| `tests/contract/test_gate_run.py` (`contract` marker) | 25 → 27 |
+| `tests/unit/gates/pr/test_bus_gates.py` | 18 |
+| `tests/unit/gates/pr/test_verdict_and_override.py` | 18 |
+| `tests/unit/gates/pr/test_order_gates.py` | 12 |
+| `tests/unit/gates/pr/test_concurrency_cap.py` | 8 |
+| **Total** | **188 → 252** |
 
-All tests drive frozen surfaces only: `api.run_gate(gate_id, GateContext)` and the CLI via `tests/fixtures/cli_runner`. They build temp repos with `RepoBuilder`. Nothing writes the live repo's `.cursor/hooks.json`; two tests read it.
+All tests drive frozen surfaces only: `api.run_gate`, the CLI via `tests/fixtures/cli_runner`, and, new in this round, `factory.hooks.entry.main` imported inside the test. They build temp repos with `RepoBuilder`. Nothing writes the live repo's `.cursor/hooks.json`, `.cursor/hooks/` or `pyproject.toml`; the registration tests only read them.
 
 ## Commands and results
 
@@ -43,64 +54,68 @@ Toolchain: `. /tmp/factory-env.sh` (Nix-store `uv` + Python 3.12). `uv sync --lo
 
 | DoD | Command (in `scripts/factory`) | Result |
 |-----|---------|--------|
-| new tests | `uv run pytest tests/unit/gates tests/unit/hooks tests/contract/test_gate_run.py --junitxml=…` | **188 failed, 0 passed, 0 errors.** JUnit: all 188 `AssertionError` (unregistered/unimplemented gate → `AssertionError: gate X is not implemented`; CLI stubs → exit-code assertions). 0 collection errors, 0 xfail |
-| full | `uv run pytest -q` | **304 failed, 237 passed** (main at `c2af7f2`: 116 failed / 237 passed; +188 new red) |
-| CI selector | `uv run pytest -q -m "not contract and not seed"` | **163 failed, 224 passed, 154 deselected.** The 163 new unit tests are unmarked (same choice as slice A), so `factory-tests` is red on this branch until implement |
+| Slice C tests | `uv run pytest tests/unit/gates tests/unit/hooks tests/contract/test_gate_run.py --junitxml=…` | **252 failed, 0 passed, 0 errors**; JUnit: all 252 `AssertionError`; 0 collection errors, 0 xfail; no module-level import of a missing module |
+| oracle controls | failure messages of the workflow tests | each fails on the live workflow (`continue-on-error`, missing `statuses: write`, no summary step), after its no-op controls passed |
+| full | `uv run pytest -q` | **368 failed, 237 passed** (main: 116 / 237; +252 Slice C red; the 237 unchanged) |
+| CI selector | `uv run pytest -q -m "not contract and not seed"` | **225 failed, 224 passed, 156 deselected** (225 unmarked Slice C unit tests) |
 | lint | `uv run ruff check .` / `uv run ruff format --check .` | PASS |
-| fixture sanity | throwaway test (not committed): build the contract fixtures and `load_all` the bus at head | PASS (overrides and orders validate against `bus/models.py`) |
+| bus | `uv run factory check schema --repo ../..` | `schema ok` (a copy of amendment-01 with a bad `supersedes` field is rejected, so the check really reads it) |
 
-## Behavior the tests lock in (implementer reference)
+## Hook latency (this Codespace, median of 7 runs)
 
-- **Gate messages** name the gate id and the offending path / order / decision / gate.
-- **Report** (`gate run --json`, envelope `data` on exit 0, `error.details` on exit 1): `gates[{id, class, intents, outcome: pass|fail|overridden, messages, override?{id, actor, reason, verified}}]`, `intents{intent_id: [{gate, outcome}]}`, `override_counts{gate_id: n}`. `--head wo/<id>` sets the order id. It runs every non-hook registry gate.
-- **Overrides** (contracts/gates.md § Override resolution): drift → orchestrator or governor, same gate, same order dir, `pr` matches; governor-only → `actor: governor`, plus `IdentityPort.is_governor_verified` in `verified` mode (called once). Overrides already on the base do not count. `factory override` writes `override-NN.yaml` with `gate_class` from the registry and rejects unregistered gates by name.
-- **`--pr N`** posts one `factory/<gate-id>` commit status per gate via `DEPS.github.set_commit_status`. Overridden = `success` with description `overridden: …`.
-- **Workflow**: exactly one `factory gate run … --pr` step, no `continue-on-error`, `permissions.statuses: write`, and a `factory status` step that writes to `$GITHUB_STEP_SUMMARY`.
-- **Hooks**: `factory hook <name>` reads the Cursor JSON on stdin and prints one JSON object. `shell-guard` denies with `permission: "deny"` + exit 2. `spawn-guard` always allows and warns in `user_message`. `owned-path-warn` warns in `agent_message`. `decision-in-chat` warns in `followup_message`. Hooks are offline and answer in < 300 ms. The live `.cursor/hooks.json` is `version: 1` and uses the command `uv run --project scripts/factory factory hook <name>`.
-- **Hook twins**: every hook gets a `gates.yaml` row `id: <hook-name>`, plus `hook_twin_of: <non-hook CI gate>`. The tests use spawn-guard → spawn-concurrency-cap and shell-guard → branch-protection-require-pr (a governor-only, irreversible row). Proposed but not fixed by tests: owned-path-warn → diff-within-owned-paths, decision-in-chat → decision-request-no-ids. These four hook rows and `branch-protection-require-pr` get added to `gates.yaml` in T057/T059.
-- **Branch protection snapshot** `deploy/github/branch-protection.json` uses the classic REST `GET /branches/main/protection` shape. Required contexts must include `factory/<id>` for every P1 non-hook gate. Also required: `enforce_admins.enabled`, code-owner reviews, and empty bypass allowances.
+| Path | Median | Range |
+|------|------:|------|
+| `.venv/bin/python -c pass` | 28 ms | 19–30 |
+| `import yaml` | 80 ms | 52–98 |
+| `import pydantic` | 84 ms | 77–90 |
+| `import factory.bus.models` | 257 ms | 241–329 |
+| `import factory.api` | 294 ms | 277–344 |
+| minimal entry (json + yaml + 3 `git` calls), direct | 67 ms | 61–85 |
+| same, through a `sh` wrapper | 67 ms | 61–76 |
+| `.venv/bin/factory hook` (full CLI, today's stub) | 377 ms | 337–451 |
+| `uv run --project scripts/factory factory hook` | 371 ms | 338–533 |
+
+A minimal entrypoint meets the 300 ms letter with wide margin, so no stop was needed. Implementation constraint: the hook entry must not import `factory.api` or `factory.bus.models` (pydantic models alone cost about 250 ms). Bus YAML gets read with `yaml` plus plain dict checks on the fast path.
+
+## Cursor hook outputs (docs checked 2026-10-04)
+
+Source: `https://cursor.com/docs/agent/hooks` (fetched with `curl`; WebFetch is unavailable to subagents). The installed client (`cursor-agent-exec`) confirms the `postToolUse` payload: file writes and edits report `tool_name: "Write"` and `tool_input {file_path, content}`.
+
+- **`stop` supports `followup_message`.** The docs say: "When provided and non-empty, Cursor will automatically submit it as the next user message." It is capped by `loop_limit` (default 5). So `decision-in-chat`'s warning is visible, and it re-prompts the agent. Its JSON contract test is kept.
+- `postToolUse` → `additional_context` ("Extra context injected into the conversation after the tool result"). `owned-path-warn` uses it.
+- **Governor-visible limitation:** `subagentStart` output is `permission` and `user_message`, and the docs describe `user_message` as "Message shown to the user when the subagent is denied". `spawn-guard` always allows (FR-008 waive), so its warning likely reaches only the Hooks output channel. Making it visible would mean denying spawns, which changes product behavior and needs a governor decision. Not changed; recorded in `contracts/hooks.md`.
 
 ## Manual equivalents of P1 gates (bootstrap, FR-037)
 
 | Gate | Manual check | Result |
 |------|--------------|--------|
-| `red-first-proof` | Tests committed failing (188 `AssertionError`); no matching impl in `c5d1730` | pass (shown by hand) |
-| `diff-within-owned-paths` | `git diff --no-renames --name-only origin/main...HEAD` | packet, this handoff, `tasks.md` (T050–T053 boxes), `tests/contract/test_gate_run.py`, `tests/unit/gates/**`, `tests/unit/hooks/**`. Nothing in frozen CP0 paths or other slices |
+| `red-first-proof` | Round-1 tests committed failing (252 `AssertionError`); no matching impl in `2997116` | pass (shown by hand) |
+| `diff-within-owned-paths` | `git diff --no-renames --name-only origin/main...HEAD` | packet, handoff, `tasks.md` (T050–T053 boxes + T057 wording), `contracts/hooks.md`, `TEST_REVIEW_SLICE_C.md` (reviewer sections via merge; Triage by worker), `bus/orders/wo-20261004-factory-slice-c/{verdict-01 (reviewer), amendment-01}.yaml`, Slice C test files. All within amend-01 owned paths |
 | `test-seam-ban` | no new src | n/a |
-| `bus.immutable` / `bus.no-handwritten-status` | no `bus/` changes on this branch | pass |
+| `bus.immutable` | only additions under `bus/orders/wo-20261004-factory-slice-c/` | pass |
+| `bus.no-handwritten-status` | amendment-01 carries no status/state/progress keys | pass |
 | `decision-request-no-ids` | none raised | n/a |
 
 `git diff --no-renames` (Amendment 3): no renames in this slice.
 
 ## Deviations
 
-1. The worktree is `/tmp/cursor-worktrees/factory-slice-c/repo` because the sandbox blocks `~/.cursor/worktrees`. Leftover local branch reset from `origin/main`. The two unpushed commits were rebased onto `c2af7f2`, which only adds a `bus/corrections/` file. No force-push.
-2. I used `/tmp/factory-env.sh` (Nix-store `uv` + Python) instead of an interactive `nix develop`. Same as slice A.
-3. `branch-protection-require-pr` tests are in `test_registry_checks.py`. The gate belongs to slice C per the packet Fidelity table (T066 is the governor's HITL settings step plus the snapshot).
-4. The report keys, hook output keys and hook-twin row shape are fixed by the tests, because the contracts describe them in prose rather than a schema. If T* wants different names, that means editing the tests, not amending a frozen interface.
-
-## Amendment requests (frozen CP0 files)
-
-| Class | Request |
-|-------|---------|
-| non_blocking | **Hook latency vs `cli/app.py`.** `factory hook` through the full Typer app takes about 350–400 ms in the venv, because `cli/app.py` imports every slice's command module. Bare `python -c` takes about 40 ms. The < 300 ms budget (contracts/hooks.md) cannot be met by slice C alone. Ask: either a fast path in `cli/app.py` `main()` that dispatches `argv[1] == "hook"` straight to `factory.cli.gates` (or `factory.hooks`) before building the app, or a separate console script in `pyproject.toml` (e.g. `factory-hook = "factory.hooks.main:main"`), with `.cursor/hooks.json` pointing at that. Both files are orchestrator-owned. The end-to-end test (`test_live_hook_command_answers_within_budget`) also counts `uv run --project` startup, so the second option might also need `--no-sync` or a direct venv path in `hooks.json`. If so, the test command string changes too |
-| non_blocking | **`GitHubPort.get_pr(number)`.** `gate run --pr N` needs the PR's head/base sha and head ref, but the port only has `list_prs_by_head`. Ask: add `get_pr(number) -> PullRequest` to `api.GitHubPort`, the REST adapter (slice A) and `FakeGitHub`. Fallback without the amendment: enumerate `wo/*` and `bus/*` heads and call `list_prs_by_head` until the number matches. The tests seed `FakeGitHub` through `create_pr`, so both approaches pass them |
+1. Worktree is `/tmp/cursor-worktrees/factory-slice-c/repo` (the sandbox blocks `~/.cursor/worktrees`); reused from round 0 rather than created again with the `/worktree` script. No `.cursor/worktrees.json` exists, so there is no setup to run. Toolchain is `/tmp/factory-env.sh` rather than an interactive `nix develop`.
+2. **One owned path beyond the orchestrator's widening list:** `.cursor/hooks/factory-hook.sh`, the A1 wrapper ("a tiny wrapper falls back"), because it needs a file. Conservative alternative if vetoed: an inline `sh` expression in each `hooks.json` command; only `WRAPPER`/`HOOK_COMMAND` in `test_hooks.py` and `factory_hook()` in `test_registry_checks.py` would change.
+3. The T-C1 oracle adds two rules beyond the reviewer's letter. The gate step has no `if:`. The board step runs before the gate step or under `always()`/`!cancelled()`, so the board is published when gates fail. Both are needed for the step to be authoritative and for the board to appear on red PRs.
+4. The warm in-process budget is 150 ms ("well under 300"); the measured logic cost of the prototype is about 40 ms.
+5. `research.md` still says `.cursor/hooks.json` calls `factory hook <name>` and lists `afterFileEdit`. That file is outside Slice C's owned paths, so it is left for the orchestrator; `contracts/hooks.md` is the amended contract.
 
 ## Open questions
 
 | Class | Question |
 |-------|----------|
-| non_blocking | Cursor appears to ignore `afterFileEdit` output (the client does not read a response for that event). In practice `owned-path-warn` may only be visible in the hook log. Should it also be registered on `postToolUse` with `additional_context`? Tests assert the `agent_message` key only |
-| non_blocking | `subagentStart` `user_message` on `allow`: the client may only show it on deny/ask. The spawn warning is advisory by the FR-008 waive. Is a warning that might be invisible acceptable, or should `spawn-guard` also add `additional_context`? |
-| non_blocking | `spawn-guard` at cap: tests warn when the active count is ≥ 3 even if the prompt names an already-claimed order (letter of T053). Confirm or exempt already-active orders |
-| non_blocking | `spawn-concurrency-cap`: a claim that exceeded the cap stays blocked even after an earlier order merges later (replay is at claim time). Confirm this is intended vs re-evaluating at PR time |
-| non_blocking | `verdict.reviewer-family-differs` uses the **latest** verdict on the order. An earlier same-family verdict followed by a cross-family one passes. Confirm |
-| non_blocking | Repo-scope gates read `scripts/factory/gates.yaml` at head and fall back to the installed registry when it is missing at head. Confirm the fallback (vs fail-closed) |
-| non_blocking | Review-packet recognition in `spawn-guard`: tests only fix that a prompt naming an existing `notes/packets/…-test-review-t.md` is quiet and a missing one warns. The `notes/packets/` location is specific to this repo, so it should move to `factory.toml` if other repos adopt the factory |
-| non_blocking | Whether to run `contract` tests in CI (marker selector in `factory-gates.yml`) is left to CP1, as the P0 comment says. T059 removes only the `continue-on-error` on `factory gate run` |
+| non_blocking | `spawn-guard` warning visibility (see above). Accept the advisory warning landing only in the Hooks output channel, or should the governor revisit the FR-008 waive? |
+| non_blocking | `.cursor/hooks/factory-hook.sh` as an owned path (deviation 2) |
+| non_blocking | Running `contract` tests in CI stays deferred to CP1/CP2 per the reviewer; T059 removes only the step-level `continue-on-error` and makes the gate step authoritative |
 
-No `blocker_governor` questions.
+No `blocker_governor` questions. No frozen-interface amendment requested beyond A1 (approved), and A2 is declined (see Later in the triage).
 
 ## Stop
 
-**red; T* requested (T054).** Do not implement until the orchestrator records T* triage.
+**T* round 1 applied; round-2 review requested (T054).** Do not implement until the orchestrator records round-2 triage.
