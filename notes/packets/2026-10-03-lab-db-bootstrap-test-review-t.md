@@ -5,12 +5,21 @@
 | Field | Value |
 |-------|-------|
 | Packet id | `2026-10-03-lab-db-bootstrap-test-review-t` |
-| Status | ready — **round 2 (re-review after triage)** |
+| Status | ready — **round 3 (confirmation after round-2 triage)** |
 | Gate | T* (spec 002 T110, on the T109 red tests) |
 | Brief | `docs/agent-os/TEST_REVIEW_PROMPT.md` |
 | Feature dir | `specs/002-swv2-durable-evals/` |
 | Commit | `packet/2026-10-03-lab-db-bootstrap` @ `63a600c` (red tests + interface stubs) |
 | Agent mode | spawned-reviewer, family ≠ author (author: Claude) |
+
+## Round 3 (2026-10-04) — confirmation
+
+Round 2 (`2328d53`) rejected narrowly on R2-1 (no `CREATE`-on-`public` negative) and R2-2 (chain check rejected `raise … from None`). Both accepted; see `TEST_REVIEW_DB_BOOTSTRAP.md` § Triage (orchestrator, round 2). Confirm on the tip of `origin/packet/2026-10-03-lab-db-bootstrap`:
+
+- R2-1: `test_probe_and_ensure_reject_create_on_public` fails a probe that ignores `CREATE` on `public`, and `ensure` cannot return `noop` there. Judge the fixture change it needed: the admin now holds `CREATE ON SCHEMA public WITH GRANT OPTION` (a non-owner cannot pass the grant on otherwise; Supabase's `postgres` owns its database).
+- R2-2: `_assert_error_chain_scrubbed` accepts `from None` and still rejects visible chains (pinned by `test_error_chain_check_allows_from_none_and_rejects_visible_chains`).
+- Expected runs: unit **90 failed / 29 passed**; real Postgres **15 failed / 1 passed**; **16 skipped** without `LAB_TEST_PG_ADMIN_URL`; `pytest scripts/ --ignore=scripts/factory` **90 / 119 / 18**. Local setup: grant `CREATE ON SCHEMA public TO lab_admin WITH GRANT OPTION` (not the plain grant listed under Commands below).
+- Add a short `## Round 3 confirmation` section to `TEST_REVIEW_DB_BOOTSTRAP.md` on a new branch from the packet tip (e.g. `review/lab-db-bootstrap-t-r3`); approve, or list only what still blocks.
 
 ## Round 2 (2026-10-04)
 

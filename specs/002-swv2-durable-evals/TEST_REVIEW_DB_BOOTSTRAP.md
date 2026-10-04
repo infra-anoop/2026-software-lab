@@ -123,3 +123,23 @@ The round-1 blockers and accepted process findings are genuinely resolved in the
 - `nix develop -c env -u LAB_TEST_PG_ADMIN_URL uv run --with pytest --with 'psycopg[binary]>=3.2' --with 'pyyaml>=6' --with 'httpx>=0.27' pytest -q scripts/ --ignore=scripts/factory` — **90 failed, 118 passed, 17 skipped**; every failure is in `test_db_bootstrap.py` or the new `db` cases in `test_ops_runtime_tag.py`.
 - `rg 'xfail|pytest\.mark\.xfail'` over the three packet test files — **0 matches**.
 - Python exception-semantics check — `raise ... from None` left the original exception in suppressed `__context__`, while `traceback.format_exception` contained no sentinel secret.
+
+### Triage (orchestrator, round 2)
+
+**Decided by:** orchestrator, 2026-10-04. R2-1 is tagged product but enforces the existing A31 lock (app logins never write to `public`), so no new governor decision is needed. R2-2 is a process Debate, agent-adjudicated.
+
+| ID | Disposition | Resolution (where in the tests) |
+|----|-------------|---------------------------------|
+| R2-1 | accept | `test_db_bootstrap_pg.py::test_probe_and_ensure_reject_create_on_public`: the admin grants `CREATE ON SCHEMA public` directly to `swv2_prod` (the test first asserts the grant took effect), then `probe_login` must raise `ProbeError` and `ensure` must raise `DbBootstrapError` rather than return `noop`. Capability-based; no SQL spelling or failing step is pinned (today the committed SQL's own public-write guard is what makes the re-apply fail). **Fixture consequence:** a non-owner admin can only pass that grant on with grant option, so the admin now holds `CREATE ON SCHEMA public WITH GRANT OPTION` (CI setup in `db-bootstrap-tests.yml`, pg-test docstring, and `test_admin_is_non_superuser_createrole_like_supabase` asserts it). This matches Supabase, where `postgres` owns its database and therefore `public`. `_reset` revokes any `public` privileges before dropping the roles. |
+| R2-2 | accept | `_assert_error_chain_scrubbed` now checks `traceback.format_exception(exc)` and walks `__cause__` plus `__context__` only when it is not suppressed, so `raise … from None` passes. Error text, captured output, logs and rendered tracebacks stay checked. New `test_error_chain_check_allows_from_none_and_rejects_visible_chains` pins the helper: `from None` passes; `from inner` and an implicit context both fail. |
+| R2-3, R2-4 | no action | Strengths; retained. |
+| Choices (a), (c) | keep | Accepted by the reviewer. |
+| Choice (b) | superseded | Replaced by R2-2. |
+
+### Post-triage runs (worker, round 2)
+
+- Unit: **90 failed, 29 passed** (+1 pass: the helper self-test). Kinds: `NotImplementedError` 72, assertions 13, `OpsTagError` 3, argparse `SystemExit` 2. No collection errors, no `xfail`.
+- Real Postgres 17.11 (admin with `public` grant option): **15 failed, 1 passed**; every failure is `NotImplementedError`. Without `LAB_TEST_PG_ADMIN_URL`: **16 skipped**.
+- `pytest scripts/ --ignore=scripts/factory`: **90 failed, 119 passed, 18 skipped**; every failure is in this packet's tests.
+- `uvx ruff check` on the three packet files: clean.
+- By hand with psql as `lab_admin`: after the grant, `swv2_prod` can create and drop `public.sneaky`; re-running `env_roles.sql` for prod raises "swv2_prod can create objects in public"; the revoke-then-drop reset works.

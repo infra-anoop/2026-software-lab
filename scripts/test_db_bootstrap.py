@@ -11,6 +11,7 @@ import json
 import logging
 import re
 import sys
+import traceback
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -172,7 +173,11 @@ def _raising_deps() -> db.EnsureDeps:
 
 
 def _assert_error_chain_scrubbed(exc: BaseException) -> None:
-    """The error and everything chained to it (what a traceback would print) hold no value."""
+    """No value in the error, in the rendered traceback, or in any exception the traceback
+    would show (``__cause__``, or ``__context__`` unless ``raise ... from None`` hid it)."""
+    rendered = "".join(traceback.format_exception(exc))
+    for secret in ALL_SECRETS:
+        assert secret not in rendered, "secret value in the rendered traceback"
     seen: set[int] = set()
     cur: BaseException | None = exc
     while cur is not None and id(cur) not in seen:
@@ -180,7 +185,33 @@ def _assert_error_chain_scrubbed(exc: BaseException) -> None:
         text = f"{cur!s} {cur!r} {cur.args!r}"
         for secret in ALL_SECRETS:
             assert secret not in text, f"secret value in {type(cur).__name__} of the error chain"
-        cur = cur.__cause__ or cur.__context__
+        if cur.__cause__ is not None:
+            cur = cur.__cause__
+        elif not cur.__suppress_context__:
+            cur = cur.__context__
+        else:
+            cur = None
+
+
+def test_error_chain_check_allows_from_none_and_rejects_visible_chains() -> None:
+    def wrapped(how: str) -> db.DbBootstrapError:
+        try:
+            try:
+                raise RuntimeError(f"HTTP 401 token={TOKEN}")
+            except RuntimeError as inner:
+                if how == "from-none":
+                    raise db.DbBootstrapError("pooler host") from None
+                if how == "from-inner":
+                    raise db.DbBootstrapError("pooler host") from inner
+                raise db.DbBootstrapError("pooler host")
+        except db.DbBootstrapError as err:
+            return err
+        raise AssertionError("unreachable")
+
+    _assert_error_chain_scrubbed(wrapped("from-none"))
+    for how in ("from-inner", "implicit-context"):
+        with pytest.raises(AssertionError, match="secret value"):
+            _assert_error_chain_scrubbed(wrapped(how))
 
 
 def _assert_no_secrets(text: str, *, allow_mask_lines: bool = False) -> None:

@@ -2,7 +2,9 @@
 
 Skipped unless ``LAB_TEST_PG_ADMIN_URL`` is set. That login must look like
 Supabase's ``postgres``: ``NOSUPERUSER CREATEROLE``, ``CREATE`` on its database,
-and ``CREATE`` on schema ``public`` (to create the stand-in ``public.runs``).
+and ``CREATE`` on schema ``public`` with grant option (to create the stand-in
+``public.runs`` and to over-grant ``public`` to a login, as Supabase's ``postgres``,
+owner of its database, can).
 Host auth must check passwords (scram) so a rotated password is really rejected.
 CI setup: ``.github/workflows/db-bootstrap-tests.yml``.
 
@@ -137,6 +139,8 @@ def _reset() -> None:
         for s in SWV2_SCHEMAS:
             conn.execute(f'DROP SCHEMA IF EXISTS "{s}" CASCADE')
         for role in ("swv2_prod", "swv2_staging", DECOY):
+            if conn.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (role,)).fetchone():
+                conn.execute(f'REVOKE ALL ON SCHEMA public FROM "{role}"')
             conn.execute(f'DROP ROLE IF EXISTS "{role}"')
         conn.execute("CREATE TABLE public.runs (id int)")
 
@@ -164,7 +168,11 @@ def test_admin_is_non_superuser_createrole_like_supabase() -> None:
         row = conn.execute(
             "SELECT rolsuper, rolcreaterole FROM pg_roles WHERE rolname = current_user"
         ).fetchone()
+        can_grant_public = conn.execute(
+            "SELECT has_schema_privilege(current_user, 'public', 'CREATE WITH GRANT OPTION')"
+        ).fetchone()
     assert row == (False, True)
+    assert can_grant_public == (True,), "admin needs CREATE ON SCHEMA public WITH GRANT OPTION"
 
 
 # ── ensure: prod, then staging, then no-op ────────────────────────────────────
@@ -339,6 +347,23 @@ def test_probe_catches_read_access_to_public_runs() -> None:
         conn.execute("GRANT SELECT ON public.runs TO swv2_prod")
     with pytest.raises(db.ProbeError):
         db.probe_login(_parts(vault, "production"), _plan("production"))
+
+
+def test_probe_and_ensure_reject_create_on_public() -> None:
+    """A31: an app login never writes to public. Capability-based: a login that can create
+    objects in public fails the probe, and ensure fails closed instead of a no-op."""
+    vault = _both()
+    with _admin() as conn:
+        conn.execute("GRANT CREATE ON SCHEMA public TO swv2_prod")
+        granted = conn.execute(
+            "SELECT has_schema_privilege('swv2_prod', 'public', 'CREATE')"
+        ).fetchone()
+    assert granted == (True,), "fixture: admin could not grant CREATE on public"
+    with pytest.raises(db.ProbeError) as ei:
+        db.probe_login(_parts(vault, "production"), _plan("production"))
+    assert vault.password("production") not in str(ei.value)
+    with pytest.raises(db.DbBootstrapError):
+        db.ensure(APP, "production", _deps(vault), repo_root=REPO)
 
 
 def test_probe_catches_wrong_search_path() -> None:

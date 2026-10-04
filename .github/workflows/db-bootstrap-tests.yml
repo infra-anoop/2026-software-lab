@@ -2,7 +2,8 @@
 #
 # Unit tests (no network) + real-Postgres tests against an ephemeral postgres:17
 # whose admin login mirrors Supabase's `postgres`: NOSUPERUSER CREATEROLE, CREATE on
-# the database and on schema public. No Supabase or Infisical account is used.
+# the database, and CREATE on schema public with grant option (Supabase's `postgres`
+# owns its database and so can grant on public). No Supabase or Infisical account is used.
 
 name: DB bootstrap tests
 
@@ -62,7 +63,7 @@ jobs:
           psql -h localhost -U postgres -d labdb -v ON_ERROR_STOP=1 <<'SQL'
           CREATE ROLE lab_admin LOGIN NOSUPERUSER CREATEROLE NOCREATEDB PASSWORD 'lab_admin_pw';
           GRANT CREATE ON DATABASE labdb TO lab_admin;
-          GRANT CREATE ON SCHEMA public TO lab_admin;
+          GRANT CREATE ON SCHEMA public TO lab_admin WITH GRANT OPTION;
           SQL
 
       - name: Unit + real-Postgres tests

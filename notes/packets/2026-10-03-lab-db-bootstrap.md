@@ -134,6 +134,14 @@ After the red tests are committed, write `notes/packets/2026-10-03-lab-db-bootst
 
 ## Handoff notes (agent fills at end)
 
+**Status: round 2 triaged; red; T* round-3 confirmation requested** (2026-10-04). Merged `origin/review/lab-db-bootstrap-t-r2` (`--no-ff`); triage recorded in `TEST_REVIEW_DB_BOOTSTRAP.md` § Triage (orchestrator, round 2); review packet has a Round 3 section. Still no implementation logic; no tag pushed; no PR.
+
+- R2-1 (A31): new real-Postgres negative, a login granted `CREATE` on `public` fails `probe_login` and `ensure` fails closed. The pg admin now needs `CREATE ON SCHEMA public WITH GRANT OPTION` (CI workflow and fidelity test updated).
+- R2-2: chain-scrub helper checks the rendered traceback and only unsuppressed context, so `raise … from None` is accepted; helper pinned by a self-test.
+- Runs: unit 90 failed / 29 passed; Postgres 15 failed / 1 passed (16 skipped without the URL); scripts-wide 90 / 119 / 18 with all failures in this packet's tests; ruff clean.
+
+### Round 1 triage
+
 **Status: round 1 triaged; red; T* re-review requested** (2026-10-04). Merged `origin/main` and `origin/review/lab-db-bootstrap-t`; triage recorded in `specs/002-swv2-durable-evals/TEST_REVIEW_DB_BOOTSTRAP.md` § Triage (decided by: orchestrator 2026-10-04; B1–B4 and B6 accepted, B5 kept). Review packet updated with a Round 2 section. Still no implementation logic in `scripts/db_bootstrap.py`; no tag pushed; no PR.
 
 - Test changes: Railway-token skip for `db` tags (B1); probe negatives for the other environment's login, a lookalike decoy identity, and `REVOKE CREATE` / `REVOKE USAGE` on the app schema (B2); secret-bearing resolve/pooler/probe failures with whole-error-chain scrubbing and a 9th CLI leakage scenario (B3); AST writer-API check plus live-wiring test with a read-only `InfisicalCloudBackend` spy (B4); helper-name tests replaced by `parse` / `--dry-run` behavior (B6).
