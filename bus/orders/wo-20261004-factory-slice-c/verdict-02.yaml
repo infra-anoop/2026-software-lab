@@ -1,0 +1,76 @@
+schema_version: 1
+kind: verdict
+id: wo-20261004-factory-slice-c.verdict-02
+created: 2026-10-04T21:01:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - bus/orders/wo-20261004-factory-slice-c/verdict-01.yaml
+  - bus/orders/wo-20261004-factory-slice-c/amendment-01.yaml
+  - specs/001-factory-v2/TEST_REVIEW_SLICE_C.md
+decision: reject
+findings:
+  - id: T-C2-1
+    severity: blocker
+    tag: product
+    text: >-
+      Cursor documents both subagentStart and preToolUse warning messages as
+      delivered only on denial, so an always-allow spawn guard cannot provide
+      FR-008's visible in-editor warning.
+  - id: T-C2-2
+    severity: debate
+    tag: process
+    text: >-
+      The 150 ms warm hook assertion is stricter than the approved 300 ms
+      end-to-end contract and can reject a conforming implementation.
+  - id: T-C2-3
+    severity: debate
+    tag: process
+    text: >-
+      The owned-path warning matches Write but not the official Delete tool,
+      allowing agent deletions outside owned paths to bypass the advisory hook.
+  - id: T-C2-4
+    severity: nit
+    tag: process
+    text: >-
+      Rejecting every workflow if condition is broader than necessary because
+      an always condition does not weaken gate execution.
+  - id: T-C2-5
+    severity: nit
+    tag: process
+    text: >-
+      Strength: the first-round workflow, registry, shell-guard, and all-gates
+      invocation gaps are now covered by executable adversarial assertions.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: bus/orders/wo-20261004-factory-slice-c/verdict-01.yaml
+    sha: e7e57b8f6abcb2e5eccec67e3a70997bcafc609e
+  - path: bus/orders/wo-20261004-factory-slice-c/amendment-01.yaml
+    sha: e7e57b8f6abcb2e5eccec67e3a70997bcafc609e
+  - path: notes/packets/2026-10-04-factory-v2-slice-c.handoff.md
+    sha: e7e57b8f6abcb2e5eccec67e3a70997bcafc609e
+  - path: specs/001-factory-v2/TEST_REVIEW_SLICE_C.md
+    sha: e7e57b8f6abcb2e5eccec67e3a70997bcafc609e
+  - path: specs/001-factory-v2/contracts/hooks.md
+    sha: e7e57b8f6abcb2e5eccec67e3a70997bcafc609e
+  - path: specs/001-factory-v2/tasks.md
+    sha: e7e57b8f6abcb2e5eccec67e3a70997bcafc609e
+  - path: scripts/factory/tests/contract/test_gate_run.py
+    sha: e7e57b8f6abcb2e5eccec67e3a70997bcafc609e
+  - path: scripts/factory/tests/unit/gates/test_registry_checks.py
+    sha: e7e57b8f6abcb2e5eccec67e3a70997bcafc609e
+  - path: scripts/factory/tests/unit/hooks/test_hooks.py
+    sha: e7e57b8f6abcb2e5eccec67e3a70997bcafc609e
+bootstrap: true
+manual_equivalents:
+  - "red-first-proof: focused Slice C suite reproduced 252 failed and 0 passed; full suite reproduced 368 failed and 237 passed"
+  - "diff-within-owned-paths: round-1 remediation paths are authorized by amendment-01; reviewer adds only this verdict and the round-2 review section"
+  - "test-seam-ban: no production source changed on the red-test branch"
+  - "bus.immutable: verdict-01 and amendment-01 are unchanged; verdict-02 is append-only"
+  - "bus.no-handwritten-status: reviewer artifacts carry no status, state, done, or progress fields"
+  - "decision-request-no-ids: one product decision is translated into a plain denial-versus-log choice in the review"
+  - "catalog-test-linkage: remaining spawn visibility gap is recorded as T-C2-1"
+  - "uv-sync-locked: locked sync passed under nix"
+  - "factory bootstrap tests: expected red counts reproduced; Ruff and format checks passed"

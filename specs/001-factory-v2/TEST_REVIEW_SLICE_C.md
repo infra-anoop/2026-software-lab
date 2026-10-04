@@ -116,3 +116,83 @@ Test-shape choices a round-2 reviewer may debate (none changes a frozen CP0 inte
 ### Later
 
 - `GitHubPort.get_pr(number)`: add only if enumerating `wo/*` and `bus/*` heads becomes material (profiling or portability).
+
+## Round 2 review
+
+Reviewed `wo/wo-20261004-factory-slice-c` at `e7e57b8f6abcb2e5eccec67e3a70997bcafc609e`.
+
+### Verdict
+
+**Verdict: reject — one product Blocker and two process Debates remain.**
+
+T-C1, T-C2, T-C3, and T-C5 are resolved by executable assertions. T-C4's end-to-end oracle is now materially better and has enough measured headroom, but the extra 150 ms warm assertion is an unapproved stricter budget. More importantly, the current Cursor documentation confirms that neither `subagentStart` nor `preToolUse` delivers its warning fields when permission is `allow`; therefore the always-allow spawn guard cannot satisfy FR-008's visible in-editor warning. The expected red counts, lint, formatting, schema, and frozen-file checks reproduce.
+
+### Round-one resolution check
+
+| Round-one finding | Round-2 judgment |
+|-------------------|------------------|
+| T-C1 workflow no-op oracle | **Resolved.** The parser substitutes the PR expression, tokenizes shell commands/operators, rejects the supplied echo/comment/string/error-swallowing controls, requires one executable gate command, and separately proves a real summary redirect/append. The board-before-gate or `always()` rule correctly keeps the summary available on red PRs. |
+| T-C2 registry fallback | **Resolved.** Missing, deleted, malformed, and CLI-missing registries block and name the canonical path; positive fixtures carry a head registry. |
+| T-C3 shell bypasses | **Resolved.** Thirty destination-main forms, wrappers, option prefixes, nested shells, branch-sensitive `-C`/`cd`, and nearby allowed controls make a spelling-list implementation materially harder. |
+| T-C4 hook latency | **Partly resolved.** The lightweight script, wrapper behavior, import ban, CLI parity, and exact-command median-of-five test are sound. The measured 67 ms median gives the 300 ms end-to-end check useful margin. The independent 150 ms warm limit is stricter than the approved contract (T-C2-2). |
+| T-C5 synthesized all-gates report | **Resolved.** Recording stubs prove every non-hook registry entrypoint is called exactly once with the expected head/order, two distinct failures and messages reach the report, any failure yields exit 1, and all-pass yields exit 0. |
+
+### Findings
+
+| ID | Severity | Tag | Lens | Locus | Finding | Suggested resolution |
+|----|----------|-----|------|-------|---------|----------------------|
+| T-C2-1 | Blocker | product | Lock fidelity / hook visibility | `contracts/hooks.md` spawn-guard row and Visibility; `test_hooks.py` spawn tests; FR-008 | Official Cursor docs say `subagentStart.user_message` is shown only when denied. `preToolUse` does match `Task`, but its `user_message` and `agent_message` are likewise delivered only when denied; `ask` is accepted by schema but not enforced. Therefore the candidate `preToolUse` hook returning `permission: allow` plus `agent_message` remains invisible and cannot satisfy “in-editor launches beyond the cap MUST be warned about.” The current tests prove only that our JSON contains a string. | **product:** Governor chooses: (A) restore denial/confirmation for unclaimed or over-cap Task launches, making the documented denial message visible; or (B) amend FR-008/catalog/contract to say advisory events are logged in the Hooks channel rather than visibly warned. No documented pre-spawn event provides a visible non-denying warning. |
+| T-C2-2 | Debate | process | Over-constraint / performance | `test_hook_entry_is_offline_warm_fast_and_matches_the_cli`; `WARM_BUDGET_SECONDS = 0.15` | The approved letter is <300 ms end to end. A conforming implementation taking 170 ms warm and 230 ms end to end fails this extra 150 ms assertion despite meeting the contract. The exact-command median-of-five test already guards the real product budget, while the import ban and CLI parity guard architecture and behavior. | **process:** Remove the 150 ms hard assertion or make it diagnostic. If headroom is desired as policy, record it as an explicit contract amendment rather than a hidden tighter gate. Keep the 300 ms median-of-five test. |
+| T-C2-3 | Debate | process | Missing mutation path / matcher fidelity | `test_live_owned_path_warn_matches_write_tools_only`; amended hooks contract | The official generic matcher vocabulary includes both `Write` and `Delete`; there is no documented `StrReplace` tool name. Matching only `Write` leaves agent file deletions outside owned paths unwarned. Shell edits remain outside this advisory hook's reliable path extraction and are appropriately left to the authoritative CI twin. | **process:** Register and test an anchored `Write|Delete` matcher, with payload/path handling for both official tool types. Do not invent undocumented `StrReplace` names; add new names only when Cursor documents or emits them. |
+| T-C2-4 | Nit | process | Over-constraint | `test_workflow_gate_run_on_the_pr_is_not_allowed_to_fail` | Rejecting every `if:` is stricter than necessary: `if: always()` still executes the exact authoritative command. This is low impact because the intended workflow needs no condition, but it is representation coupling rather than command semantics. | Accept for this bootstrap workflow, or narrow the assertion to reject conditions that can skip a pull-request gate. The board execution rule should remain. |
+| T-C2-5 | Nit | process | Strength | Round-1 remediation set and red-first record | Strength: the workflow controls are adversarial, registry tests fail closed, shell tests distinguish destination refs from harmless text, and gate stubs prove invocation rather than report synthesis. All 252 Slice C tests remain intentionally red without collection errors or xfails, and frozen CP0 files remain unchanged. | Preserve these assertions while resolving T-C2-1 through T-C2-3. |
+
+### Worker deviations
+
+- **(a) `.cursor/hooks/factory-hook.sh` — accept.** Amendment 01 expressly owns the file. A tiny executable wrapper is clearer and more testable than four duplicated inline shell expressions. The venv-first path preserves the 300 ms target; the `uv run` fallback is a sensible degraded path when setup is absent and its exemption is explicit in the amended contract.
+- **(b) workflow rules — mostly accept.** Publishing the board before a potentially failing gate, or under `always()`/`!cancelled()`, is necessary for “same board in the job summary on every PR.” Requiring the gate command's status to remain the step status is also correct. The blanket no-`if:` rule is unnecessarily broad (T-C2-4), but not a blocker.
+- **(c) `postToolUse` owned-path warning — accept the event/output, widen the matcher.** `additional_context` is the documented visible post-success channel. Cursor documents `Write` and `Delete`, not `StrReplace`; test both official mutation tools. This remains advisory—repository-side `diff-within-owned-paths` is authoritative.
+
+### Spawn-guard documentation answer and recommended test
+
+The official page `https://cursor.com/docs/agent/hooks` currently states:
+
+- `preToolUse` fires for all tools, including `Task`, and a matcher may select `Task`.
+- `preToolUse.user_message` is “shown to the user when the action is denied.”
+- `preToolUse.agent_message` is “fed back to the agent when the action is denied.”
+- `permission: ask` is accepted by schema but “not enforced for preToolUse today.”
+- `subagentStart.user_message` is shown when the subagent is denied; `ask` is unsupported and treated as deny.
+
+So the orchestrator's candidate `preToolUse` allow-plus-`agent_message` fix is not supported by the documented delivery semantics. `postToolUse` can inject `additional_context` for `Task`, but it runs after the tool result—after the subagent finishes—not as a launch warning.
+
+After the governor chooses T-C2-1:
+
+1. **If denial is restored:** add a `preToolUse` or `subagentStart` test with an over-cap/unclaimed Task payload; require `permission: deny`, exit 2, and a nonempty documented denial message. Keep positive claimed/under-cap cases `allow`. The live registration test must prove the exact `Task` matcher.
+2. **If log-only advisory is accepted:** keep the current allow response test, rename it so it does not claim visibility, and amend FR-008 plus the catalog evidence to “logged in Hooks output.” Do not add a preToolUse `agent_message` assertion.
+
+There is no documented event that delivers a visible warning before spawn while still allowing that spawn.
+
+### Fresh adversarial pass
+
+The strongest still-green wrong behavior is an always-allow spawn hook that emits an ignored `user_message`; every current hook unit test passes while the mandated warning is invisible. Separately, a Write-only matcher permits an agent Delete operation outside owned paths without advisory context. On the over-constraint side, a 170 ms warm hook with a 230 ms end-to-end command is contract-conforming but fails the private 150 ms threshold.
+
+No new gap was found in gate invocation, override semantics, concurrency replay, verdict isolation, immutable bus behavior, or workflow no-op detection.
+
+### Questions for the human
+
+1. Cursor provides no documented visible, non-denying pre-spawn warning. Should over-cap/unclaimed Task launches be denied with a visible message, or should FR-008 be amended to require only a Hooks-channel audit log? Recommend denial: it restores the original safety outcome and makes the hook behavior testable.
+
+### Verification record
+
+| Check | Result |
+|-------|--------|
+| Reviewed head | `e7e57b8f6abcb2e5eccec67e3a70997bcafc609e` |
+| Official Cursor docs | Fetched `https://cursor.com/docs/agent/hooks`; `Task` matcher confirmed; allow-plus-message visibility not supported |
+| Locked sync | PASS — 25 locked packages audited under Nix |
+| Slice C focused suite | Expected RED — **252 failed, 0 passed** in 67.36 s; no collection errors or xfails |
+| Full suite | Expected RED — **368 failed, 237 passed** in 94.22 s; no collection errors or xfails |
+| `nix develop ../.. -c uv run ruff check .` | PASS |
+| `nix develop ../.. -c uv run ruff format --check .` | PASS — 43 files formatted |
+| `factory check schema` before reviewer verdict | PASS on the worker head per handoff; rerun with verdict-02 below |
+| Frozen CP0 files | PASS — no changes to `api.py`, `bus/` package, `config/`, `cli/app.py`, `cli/exit_codes.py`, `gates/registry.py`, or existing `tests/fixtures/` |
+| Changed paths | PASS under packet + amendment-01 ownership |
