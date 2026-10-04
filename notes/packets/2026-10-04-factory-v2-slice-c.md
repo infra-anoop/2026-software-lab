@@ -72,6 +72,7 @@ Implement gate framework, PR gates, hooks, CI workflow against the frozen P0 con
 | Lock | fidelity | How this packet honors it |
 |------|----------|---------------------------|
 | Two gate classes (F1/R1) | letter | `drift` = orchestrator override with reason; `governor-only` = governor only, verified via `IdentityPort` when mode is `verified` |
+| No direct commits/pushes to `main` (I-P10, governor 2026-10-03) | letter | `shell-guard` denies them for every actor; `branch-protection-require-pr` checks the snapshot |
 | Hooks advisory, CI authoritative (review P3) | letter | every hook has a registry `hook_twin_of`; hooks offline < 300 ms |
 | Cursor hooks format | letter | per `/home/vscode/.cursor/skills-cursor/create-hook/SKILL.md` |
 
