@@ -7,6 +7,8 @@ from pathlib import Path
 import pytest
 
 from factory.config.settings import ConfigError, load_env, load_settings
+from tests.fixtures.cli_runner import FactoryCli
+from tests.fixtures.repo_builder import RepoBuilder, order
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 
@@ -45,6 +47,48 @@ def test_unknown_key_is_a_config_error(tmp_path: Path) -> None:
     (tmp_path / "factory.toml").write_text(text + '\nstatus = "green"\n', encoding="utf-8")
     with pytest.raises(ConfigError):
         load_settings(tmp_path)
+
+
+def test_packet_command_from_the_uv_project_dir_discovers_the_repo(
+    factory_cli: FactoryCli, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(REPO_ROOT / "scripts/factory")
+    result = factory_cli("check", "schema", "--path", "tests/fixtures/messages/")
+    assert result.exit_code == 0, result.stderr
+
+
+def test_discovery_walks_up_to_the_nearest_factory_toml(
+    repo: RepoBuilder, factory_cli: FactoryCli, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo.write_message(order("wo-20261006-discover", progress="50%"), validate=False)
+    nested = repo.path / "apps/demo/app"
+    nested.mkdir(parents=True)
+    monkeypatch.chdir(nested)
+    result = factory_cli("check", "schema")
+    assert result.exit_code == 1, result.stderr
+    assert "wo-20261006-discover" in result.stdout
+
+
+def test_discovery_stops_at_the_git_root(
+    tmp_path: Path, factory_cli: FactoryCli, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "factory.toml").write_text(
+        (REPO_ROOT / "factory.toml").read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    inner = tmp_path / "checkout"
+    (inner / ".git").mkdir(parents=True)
+    (inner / "sub").mkdir()
+    monkeypatch.chdir(inner / "sub")
+    result = factory_cli("check", "schema")
+    assert result.exit_code == 3
+    assert "factory.toml" in result.stderr
+
+
+def test_explicit_repo_wins_over_discovery(
+    tmp_path: Path, factory_cli: FactoryCli, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(REPO_ROOT / "scripts/factory")
+    assert factory_cli("check", "schema", repo=tmp_path).exit_code == 3
 
 
 def test_load_env_reads_only_named_variables() -> None:
