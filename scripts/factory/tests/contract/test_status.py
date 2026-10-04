@@ -267,7 +267,8 @@ def test_status_json_sections_match_each_lifecycle_state(
     assert isinstance(overrides, dict), overrides
     assert overrides.get("red-first-proof") == 1, overrides
     others = {gate: n for gate, n in overrides.items() if gate != "red-first-proof"}
-    assert all(type(n) is int and n >= 0 for n in others.values()), overrides
+    # Dense maps are allowed (T-A2-2), but the fixture has exactly one override, so others are 0.
+    assert all(type(n) is int and n == 0 for n in others.values()), overrides
 
     unverified = board["unverified_governor_actions"]
     assert isinstance(unverified, list) and len(unverified) == 1, unverified
