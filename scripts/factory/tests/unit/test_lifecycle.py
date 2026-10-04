@@ -168,6 +168,29 @@ def test_accepted_needs_verdict_and_full_required_check_set(
     assert item.state == expected
 
 
+def test_empty_checks_never_accepted(repo: RepoBuilder) -> None:
+    """FR-011: acceptance needs check evidence plus a verdict; an empty set is no evidence."""
+    order_id = oid("no-checks")
+    repo.issue_order(order(order_id, owned_paths=[f"apps/demo/{order_id}/**"], checks=[]))
+    repo.add_event(order_id, message("claim", order_id=order_id))
+    repo.add_event(order_id, message("handoff", order_id=order_id))
+    pr = repo.make_pr(f"wo/{order_id}")
+    for gate in REQUIRED_CHECKS:
+        repo.github.set_commit_status(pr.head_sha, f"factory/{gate}", "success", "green")
+    repo.github.add_check_run(pr.head_sha, "factory-tests", conclusion="success")
+    repo.add_event(
+        order_id,
+        message(
+            "verdict",
+            order_id=order_id,
+            decision="accept",
+            inputs=[{"path": f"bus/orders/{order_id}/order.yaml", "sha": pr.head_sha}],
+        ),
+    )
+    item = by_id(snapshot(repo), order_id)
+    assert item.state == OrderState.IN_REVIEW
+
+
 def test_rejected_latest_verdict(repo: RepoBuilder) -> None:
     order_id = oid("rejected")
     repo.issue_order(order(order_id, owned_paths=[f"apps/demo/{order_id}/**"]))

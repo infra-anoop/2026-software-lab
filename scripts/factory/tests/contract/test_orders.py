@@ -89,6 +89,25 @@ def test_order_issue_first_commit_is_only_the_order_file(
     assert yaml.safe_load(repo.git("show", f"{first}:{order_path}")) == payload
 
 
+def test_order_issue_refuses_empty_checks(repo: RepoBuilder, factory_cli: FactoryCli) -> None:
+    """FR-011: an order with no checks could never earn acceptance, so it is not issued."""
+    order_id = oid("no-checks")
+    repo.write_message(order(order_id, owned_paths=[f"apps/demo/{order_id}/**"], checks=[]))
+    main_before = repo.head_sha("origin/main")
+    result = factory_cli("order", "issue", order_id, "--json", repo=repo.path)
+    assert result.exit_code == exit_codes.REFUSED, (
+        f"expected exit 2, got {result.exit_code}\n{result.stdout}\n{result.stderr}"
+    )
+    envelope = json.loads(result.stdout)
+    assert envelope["ok"] is False
+    assert envelope["error"]["code"] == exit_codes.REFUSED
+    assert "checks" in envelope["error"]["message"], envelope["error"]
+    assert "T026" not in result.stdout and "FR-011" not in result.stdout
+    branches = repo.git("ls-remote", "--heads", "origin", f"wo/{order_id}")
+    assert branches == "", "a refused order must not be issued"
+    assert repo.head_sha("origin/main") == main_before
+
+
 def test_order_issue_refuses_open_human_decision_in_plain_language(
     repo: RepoBuilder, factory_cli: FactoryCli
 ) -> None:

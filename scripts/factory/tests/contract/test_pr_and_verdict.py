@@ -26,7 +26,9 @@ def oid(slug: str) -> str:
 def claimed_with_handoff(repo: RepoBuilder, slug: str, *, valid: bool = True) -> str:
     order_id = oid(slug)
     repo.add_demo_feature()
-    repo.issue_order(order(order_id, owned_paths=["apps/demo/app/calc.py"], checks=[]))
+    repo.issue_order(
+        order(order_id, owned_paths=["apps/demo/app/calc.py"], checks=["diff-within-owned-paths"])
+    )
     repo.add_event(order_id, message("claim", order_id=order_id))
     extra = {"apps/demo/app/calc.py": "def add(a, b):\n    return a + b\n"}
     handoff = message("handoff", order_id=order_id)
