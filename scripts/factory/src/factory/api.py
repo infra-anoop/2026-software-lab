@@ -173,6 +173,21 @@ class CheckRun(BaseModel):
 CommitStatusValue = Literal["success", "failure", "error", "pending"]
 
 
+class CommitStatus(BaseModel):
+    """Frozen at CP0. One commit-status context on a sha (GitHub REST subset).
+
+    Commit statuses (`factory/<gate-id>` contexts) and check runs are separate GitHub
+    APIs; lifecycle needs both to decide "required checks green".
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    context: str
+    state: CommitStatusValue
+    description: str = ""
+    target_url: str | None = None
+
+
 @runtime_checkable
 class GitHubPort(Protocol):
     """Frozen at CP0. Everything the factory asks of GitHub (adapter: `factory.github.rest`)."""
@@ -197,6 +212,10 @@ class GitHubPort(Protocol):
         description: str,
         target_url: str | None = None,
     ) -> None: ...
+
+    def list_commit_statuses(self, sha: str) -> list[CommitStatus]:
+        """The latest status per context on `sha` (GitHub's combined status); `[]` if none."""
+        ...
 
 
 @runtime_checkable

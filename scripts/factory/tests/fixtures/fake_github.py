@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from factory.api import CheckRun, CommitStatusValue, PullRequest, PullRequestReview
+from factory.api import (
+    CheckRun,
+    CommitStatus,
+    CommitStatusValue,
+    PullRequest,
+    PullRequestReview,
+)
 
 
 class RecordedStatus:
@@ -52,6 +58,20 @@ class FakeGitHub:
         target_url: str | None = None,
     ) -> None:
         self.statuses.append(RecordedStatus(sha, context, value, description, target_url))
+
+    def list_commit_statuses(self, sha: str) -> list[CommitStatus]:
+        latest: dict[str, CommitStatus] = {}
+        for status in self.statuses:
+            if status.sha == sha:
+                latest[status.context] = CommitStatus.model_validate(
+                    {
+                        "context": status.context,
+                        "state": status.value,
+                        "description": status.description,
+                        "target_url": status.target_url,
+                    }
+                )
+        return list(latest.values())
 
     # --- test helpers ---------------------------------------------------------------
 
