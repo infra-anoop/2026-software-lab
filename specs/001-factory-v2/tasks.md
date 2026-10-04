@@ -129,8 +129,8 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 
 ### Tests (write first, must fail)
 
-- [ ] T039 [P] [US3] Unit tests per gate in `scripts/factory/tests/unit/gates/drift/` (one file per gate below), each with a passing and a violating `base_head_pair` fixture; seeds in T014 are the SC-002 subset
-- [ ] T040 [P] [US3] Red-first edge cases `scripts/factory/tests/unit/gates/drift/test_red_first.py` (rule verbatim from `research.md` § Red-first): new test passing on base → fail; assertion failure on base → pass; import error for a symbol the PR adds → counts as red; import error for an unrelated broken module → reported "base broken", not red; PR with no new/changed tests → pass
+- [x] T039 [P] [US3] Unit tests per gate in `scripts/factory/tests/unit/gates/drift/` (one file per gate below), each with a passing and a violating `base_head_pair` fixture; seeds in T014 are the SC-002 subset
+- [x] T040 [P] [US3] Red-first edge cases `scripts/factory/tests/unit/gates/drift/test_red_first.py` (rule verbatim from `research.md` § Red-first): new test passing on base → fail; assertion failure on base → pass; import error for a symbol the PR adds → counts as red; import error for an unrelated broken module → reported "base broken", not red; PR with no new/changed tests → pass
 - [ ] T041 [US3] Spawn T* review for T039–T040 (packet `notes/packets/<date>-factory-v2-slice-b-test-review-t.md`); triage before T042
 
 ### Implementation (one module each under `scripts/factory/src/factory/gates/drift/`; each registered in `scripts/factory/gates.yaml`)
@@ -181,7 +181,7 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 
 **Independent test**: drop all mappings from one intent in a fixture → `factory check intent` exits 1; mark a mapped check planned-only → coverage drops.
 
-- [ ] T061 [P] [US5] Contract test `scripts/factory/tests/contract/test_intent.py` — presence over `specs/*/intent.yaml` + `scripts/factory/gates.yaml` + every `acceptance.md`; `--coverage` = share of intents backed by an implemented (registered, entrypoint importable), passing, non-human check or an explicit governor-judged mapping — catalogs `trace.presence`, `trace.effective_coverage`
+- [x] T061 [P] [US5] Contract test `scripts/factory/tests/contract/test_intent.py` — presence over `specs/*/intent.yaml` + `scripts/factory/gates.yaml` + every `acceptance.md`; `--coverage` = share of intents backed by an implemented (registered, entrypoint importable), passing, non-human check or an explicit governor-judged mapping — catalogs `trace.presence`, `trace.effective_coverage`
 - [ ] T062 [US5] Spawn T* review for T061 (may share the slice-B packet from T041 if written together)
 - [ ] T063 [US5] `scripts/factory/src/factory/intent/coverage.py` + `factory check intent [--coverage]` in `scripts/factory/src/factory/cli/intent.py`; register `factory-check-intent`
 - [ ] T064 [US5] Per-intent PR results: runner groups `GateResult` by intent ids in the job summary (`scripts/factory/src/factory/gates/runner.py` report section — coordinate: slice C owns the file; slice B supplies `intent.coverage.group_by_intent()`) — catalog `handoff.per_intent_results`
