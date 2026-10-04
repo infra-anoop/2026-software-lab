@@ -2,12 +2,14 @@
 `branch-protection-require-pr`, and the wrapped existing lab checks (T059).
 
 Repo gates read their inputs from the head commit: the registry at
-`scripts/factory/gates.yaml` and the hooks at `.cursor/hooks.json`. When the head has
-no registry file, the installed registry applies.
+`scripts/factory/gates.yaml` and the hooks at `.cursor/hooks.json`. The head registry is
+the source of truth: when it is missing or unreadable the gate blocks and names the path
+(no fallback to the installed registry — T* round 1, T-C2).
 
-Hook twins (contracts/hooks.md): each hook in `.cursor/hooks.json` is a
-`factory hook <name>` command, and the registry has a row `id: <name>` whose
-`hook_twin_of` names an existing CI gate (a row that is not itself a hook row).
+Hook twins (contracts/hooks.md): each hook in `.cursor/hooks.json` is a factory hook
+command (`.cursor/hooks/factory-hook.sh <name>`, amendment A1), and the registry has a
+row `id: <name>` whose `hook_twin_of` names an existing CI gate (a row that is not itself
+a hook row).
 
 Branch protection (I-P10, T066): `deploy/github/branch-protection.json` is the GitHub
 REST "get branch protection" body for `main`. It must require a PR, enforce it for
@@ -25,7 +27,7 @@ import yaml
 
 from factory.api import GateContext
 from factory.cli import exit_codes
-from factory.gates.registry import load_registry
+from factory.gates.registry import REGISTRY_PATH, load_registry
 from tests.fixtures.cli_runner import FactoryCli
 from tests.fixtures.repo_builder import RepoBuilder
 from tests.unit.gates.pr.helpers import assert_blocks, assert_passes, raw_context
@@ -63,7 +65,7 @@ def hooks_text(**events: list[str]) -> str:
 
 
 def factory_hook(name: str) -> str:
-    return f"uv run --project scripts/factory factory hook {name}"
+    return f".cursor/hooks/factory-hook.sh {name}"
 
 
 CI_GATE = row(
@@ -97,8 +99,27 @@ def test_fail_mode_blocks_class_category_mismatch(
     assert_blocks("gate.fail-mode-category", ctx, "bad-gate")
 
 
-def test_fail_mode_passes_on_installed_registry(repo: RepoBuilder) -> None:
-    assert_passes("gate.fail-mode-category", head_with(repo, {"README.md": "# edited\n"}))
+def test_fail_mode_blocks_missing_head_registry(repo: RepoBuilder) -> None:
+    ctx = head_with(repo, {"README.md": "# edited\n"})
+    assert_blocks("gate.fail-mode-category", ctx, REGISTRY)
+
+
+def test_fail_mode_blocks_registry_deleted_at_head(repo: RepoBuilder) -> None:
+    pair = repo.base_head_pair({REGISTRY: registry_text(CI_GATE)}, {REGISTRY: None})
+    assert_blocks("gate.fail-mode-category", raw_context(repo, pair), REGISTRY)
+
+
+def test_fail_mode_blocks_unreadable_head_registry(repo: RepoBuilder) -> None:
+    ctx = head_with(repo, {REGISTRY: "schema_version: 1\ngates: [unclosed\n"})
+    assert_blocks("gate.fail-mode-category", ctx, REGISTRY)
+
+
+def test_check_registry_cli_fails_without_registry(
+    repo: RepoBuilder, factory_cli: FactoryCli
+) -> None:
+    result = factory_cli("check", "registry", repo=repo.path)
+    assert result.exit_code == exit_codes.GATE_FAILURE, result
+    assert REGISTRY in result.stdout + result.stderr
 
 
 def test_check_registry_cli_fails_on_disallowed_category(
@@ -153,7 +174,7 @@ def test_hook_twin_blocks_hook_without_registry_row(repo: RepoBuilder) -> None:
         REGISTRY: registry_text(CI_GATE, SHELL_GUARD),
         HOOKS: hooks_text(
             beforeShellExecution=[factory_hook("shell-guard")],
-            afterFileEdit=[factory_hook("owned-path-warn")],
+            postToolUse=[factory_hook("owned-path-warn")],
         ),
     }
     assert_blocks("hook-has-ci-twin", head_with(repo, files), "owned-path-warn")
@@ -181,7 +202,7 @@ def test_hook_twin_blocks_twin_that_is_another_hook(repo: RepoBuilder) -> None:
         REGISTRY: registry_text(CI_GATE, SHELL_GUARD, owned),
         HOOKS: hooks_text(
             beforeShellExecution=[factory_hook("shell-guard")],
-            afterFileEdit=[factory_hook("owned-path-warn")],
+            postToolUse=[factory_hook("owned-path-warn")],
         ),
     }
     assert_blocks("hook-has-ci-twin", head_with(repo, files), "owned-path-warn")
@@ -193,6 +214,13 @@ def test_hook_twin_blocks_hook_that_is_not_a_factory_hook(repo: RepoBuilder) -> 
         HOOKS: hooks_text(afterFileEdit=[".cursor/hooks/format.sh"]),
     }
     assert_blocks("hook-has-ci-twin", head_with(repo, files), ".cursor/hooks/format.sh")
+
+
+def test_hook_twin_blocks_hooks_without_head_registry(repo: RepoBuilder) -> None:
+    files: dict[str, str | None] = {
+        HOOKS: hooks_text(beforeShellExecution=[factory_hook("shell-guard")]),
+    }
+    assert_blocks("hook-has-ci-twin", head_with(repo, files), REGISTRY)
 
 
 def test_hook_twin_blocks_unreadable_hooks_file(repo: RepoBuilder) -> None:
@@ -243,8 +271,13 @@ def snapshot(**changes: Any) -> dict[str, Any]:
     return body
 
 
-def protection_ctx(repo: RepoBuilder, body: dict[str, Any] | None) -> GateContext:
+def protection_ctx(
+    repo: RepoBuilder, body: dict[str, Any] | None, *, with_registry: bool = True
+) -> GateContext:
+    """Head carries the real registry, so the required P1 set is read from the head."""
     files: dict[str, str | None] = {"README.md": "# edited\n"}
+    if with_registry:
+        files[REGISTRY] = REGISTRY_PATH.read_text(encoding="utf-8")
     if body is not None:
         files[SNAPSHOT] = json.dumps(body, indent=2)
     return head_with(repo, files)
@@ -252,6 +285,11 @@ def protection_ctx(repo: RepoBuilder, body: dict[str, Any] | None) -> GateContex
 
 def test_branch_protection_passes_on_expected_snapshot(repo: RepoBuilder) -> None:
     assert_passes("branch-protection-require-pr", protection_ctx(repo, snapshot()))
+
+
+def test_branch_protection_blocks_without_head_registry(repo: RepoBuilder) -> None:
+    ctx = protection_ctx(repo, snapshot(), with_registry=False)
+    assert_blocks("branch-protection-require-pr", ctx, REGISTRY)
 
 
 def test_branch_protection_blocks_missing_snapshot(repo: RepoBuilder) -> None:

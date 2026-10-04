@@ -20,14 +20,19 @@ Under `--pr N`, one commit status `factory/<gate-id>` per gate is posted on the 
 
 from __future__ import annotations
 
+import importlib
 import json
+import re
+import shlex
+import sys
+import types
 from pathlib import Path
 from typing import Any
 
 import pytest
 import yaml
 
-from factory.api import PullRequest
+from factory.api import GateContext, GateResult, PullRequest
 from factory.bus.models import Message
 from factory.cli import exit_codes
 from factory.cli.common import DEPS
@@ -184,6 +189,103 @@ def test_gate_run_runs_every_registered_ci_gate(
             assert reported.get("intents") == gate.intents, reported
             assert reported.get("class") == gate.gate_class, reported
             assert reported.get("outcome") in {"pass", "fail", "overridden"}, reported
+
+
+class RecordedGates:
+    """Stub entrypoint modules for every registered CI gate; records each real call.
+
+    `api.run_gate` imports `gate.module` and reads `gate.function` at call time. The stub
+    function replaces the real one on its module (other names in that module stay), or,
+    while the module does not exist yet, sits in a stub module in `sys.modules`. Each stub
+    returns the outcome set in `failing` plus a message only a real call can produce.
+    """
+
+    def __init__(self, monkeypatch: pytest.MonkeyPatch, failing: set[str]) -> None:
+        self.calls: list[tuple[str, str, str | None]] = []
+        self.failing = failing
+        self.gates = [g for g in load_registry().gates if g.hook_twin_of is None]
+        stubs: dict[str, types.ModuleType] = {}
+        for gate in self.gates:
+            function = self._entrypoint(gate.id, list(gate.intents))
+            try:
+                module = importlib.import_module(gate.module)
+            except ImportError:
+                module = stubs.setdefault(gate.module, types.ModuleType(gate.module))
+                setattr(module, gate.function, function)
+            else:
+                monkeypatch.setattr(module, gate.function, function, raising=False)
+        for name, module in stubs.items():
+            monkeypatch.setitem(sys.modules, name, module)
+
+    def _entrypoint(self, gate_id: str, intents: list[str]) -> Any:
+        def run(ctx: GateContext) -> GateResult:
+            self.calls.append((gate_id, ctx.head_sha, ctx.order_id))
+            passed = gate_id not in self.failing
+            word = "pass" if passed else "FAIL"
+            return GateResult(
+                gate_id=gate_id,
+                passed=passed,
+                messages=[f"sentinel {word} {gate_id}"],
+                intent_ids=intents,
+            )
+
+        return run
+
+    @property
+    def ids(self) -> set[str]:
+        return {g.id for g in self.gates}
+
+
+def clean_pair(repo: RepoBuilder) -> BaseHeadPair:
+    return repo.base_head_pair(
+        {}, {f"{ORDER_DIR}/order.yaml": yaml_text(order(ORDER_ID))}, head_branch=f"wo/{ORDER_ID}"
+    )
+
+
+def second_failing_gate() -> str:
+    others = sorted(
+        g.id for g in load_registry().gates if g.hook_twin_of is None and g.id != IMMUTABLE
+    )
+    assert others, "the registry needs a second CI gate"
+    return others[0]
+
+
+def test_gate_run_calls_every_entrypoint_and_reports_what_each_returned(
+    repo: RepoBuilder,
+    factory_cli: FactoryCli,
+    identity: FakeIdentity,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    failing = {IMMUTABLE, second_failing_gate()}
+    gates = RecordedGates(monkeypatch, failing)
+    pair = clean_pair(repo)
+    result = gate_run(factory_cli, repo, pair)
+    assert_exit(result, exit_codes.GATE_FAILURE)
+    assert sorted(call[0] for call in gates.calls) == sorted(gates.ids), gates.calls
+    assert {(head, oid) for _, head, oid in gates.calls} == {(pair.head_sha, ORDER_ID)}
+    body = report(result)
+    for gate_id in gates.ids:
+        reported = entry(body, gate_id)
+        expected = "fail" if gate_id in failing else "pass"
+        assert reported.get("outcome") == expected, reported
+        word = "FAIL" if gate_id in failing else "pass"
+        assert f"sentinel {word} {gate_id}" in reported.get("messages", []), reported
+
+
+def test_gate_run_exit_0_only_when_every_entrypoint_passed(
+    repo: RepoBuilder,
+    factory_cli: FactoryCli,
+    identity: FakeIdentity,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    gates = RecordedGates(monkeypatch, failing=set())
+    result = gate_run(factory_cli, repo, clean_pair(repo))
+    assert_exit(result, exit_codes.OK)
+    assert sorted(call[0] for call in gates.calls) == sorted(gates.ids), gates.calls
+    body = report(result)
+    assert {g.get("id"): g.get("outcome") for g in body.get("gates", [])} == dict.fromkeys(
+        gates.ids, "pass"
+    )
 
 
 def test_gate_run_exit_1_on_unoverridden_failure(
@@ -461,6 +563,130 @@ def test_override_cli_rejects_unregistered_gate(
 # --- T059: the workflow is authoritative ------------------------------------------------------
 
 
+# Steps are judged by what the shell would execute, not by text: each `run` block is
+# tokenized (comments, quoting and operators honored) into simple commands. GitHub
+# expressions are substituted first, as the runner does.
+
+PR_NUMBER = "42"
+EXPRESSIONS = {"github.event.number": PR_NUMBER, "github.event.pull_request.number": PR_NUMBER}
+GATE_ARGV = ["factory", "gate", "run", "--pr", PR_NUMBER]
+SEPARATORS = {"&&", "||", ";", "|", "&", "\n", "(", ")"}
+REDIRECTS = {">", ">>"}
+SUMMARY_FILES = {"$GITHUB_STEP_SUMMARY", "${GITHUB_STEP_SUMMARY}"}
+UV_OPTIONS_WITH_VALUE = {"--project", "--directory", "--python", "--with", "--group", "--extra"}
+
+
+def substitute_expressions(run: str) -> str:
+    def value(match: re.Match[str]) -> str:
+        return EXPRESSIONS.get(match.group(1).strip(), "EXPR")
+
+    return re.sub(r"\$\{\{(.*?)\}\}", value, run)
+
+
+def shell_commands(run: str) -> list[tuple[list[str], list[str]]]:
+    """Simple commands in a `run` block, each as (argv, separator that follows it)."""
+    text = substitute_expressions(run).replace("\\\n", " ")
+    commands: list[tuple[list[str], list[str]]] = []
+    for line in text.splitlines():
+        lexer = shlex.shlex(line, posix=True, punctuation_chars=";&|()<>")
+        lexer.whitespace_split = True
+        lexer.commenters = "#"
+        current: list[str] = []
+        for token in lexer:
+            if token in SEPARATORS:
+                if current:
+                    commands.append((current, [token]))
+                current = []
+            else:
+                current.append(token)
+        if current:
+            commands.append((current, ["\n"]))
+    return commands
+
+
+def program_argv(tokens: list[str]) -> list[str]:
+    """Drop env assignments, a `uv run [options]` prefix and redirections."""
+    argv: list[str] = []
+    skip = False
+    for token in tokens:
+        if skip:
+            skip = False
+            continue
+        if token in REDIRECTS or token == "<":
+            skip = True
+            continue
+        argv.append(token)
+    while argv and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", argv[0]):
+        argv = argv[1:]
+    if argv[:2] == ["uv", "run"]:
+        rest = argv[2:]
+        while rest and rest[0].startswith("-"):
+            option = rest.pop(0)
+            if option in UV_OPTIONS_WITH_VALUE and "=" not in option:
+                rest = rest[1:]
+        argv = rest
+    return argv
+
+
+def redirects_to_summary(tokens: list[str]) -> bool:
+    return any(
+        token in REDIRECTS and nxt in SUMMARY_FILES
+        for token, nxt in zip(tokens, tokens[1:], strict=False)
+    )
+
+
+def runs_gate_with_own_status(run: str) -> bool:
+    """The block is exactly `factory gate run --pr <n>`: its exit status is the step's."""
+    commands = shell_commands(run)
+    return len(commands) == 1 and program_argv(commands[0][0]) == GATE_ARGV
+
+
+def mentions_gate_run(run: str) -> bool:
+    return any(program_argv(argv)[:3] == GATE_ARGV[:3] for argv, _ in shell_commands(run) if argv)
+
+
+def publishes_status_to_summary(run: str) -> bool:
+    """`factory status` stdout goes to the summary: redirected, or piped into `tee -a`."""
+    commands = shell_commands(run)
+    for index, (argv, after) in enumerate(commands):
+        if program_argv(argv)[:2] != ["factory", "status"]:
+            continue
+        if redirects_to_summary(argv):
+            return True
+        if after == ["|"] and index + 1 < len(commands):
+            tee = commands[index + 1][0]
+            if tee[:1] == ["tee"] and {"-a", "--append"} & set(tee) and SUMMARY_FILES & set(tee):
+                return True
+    return False
+
+
+GATE_NO_OPS = [
+    "echo 'factory gate run --pr ${{ github.event.number }}'",
+    "# factory gate run --pr ${{ github.event.number }}",
+    'true "factory gate run --pr ${{ github.event.number }}"',
+    "uv run --project scripts/factory factory gate run --pr ${{ github.event.number }} || true",
+    "uv run --project scripts/factory factory gate run --pr ${{ github.event.number }}; exit 0",
+    "uv run --project scripts/factory factory gate run --pr ${{ github.event.number }} | tee log",
+    "set +e\nuv run --project scripts/factory factory gate run --pr ${{ github.event.number }}",
+    "uv run --project scripts/factory factory gate run --pr 1",
+]
+GATE_REAL = "uv run --project scripts/factory factory gate run --pr ${{ github.event.number }}"
+
+SUMMARY_NO_OPS = [
+    "echo 'factory status' >> \"$GITHUB_STEP_SUMMARY\"",
+    "echo factory status >> $GITHUB_STEP_SUMMARY",
+    "# uv run --project scripts/factory factory status >> $GITHUB_STEP_SUMMARY",
+    "uv run --project scripts/factory factory status",
+    "factory status > /dev/null; echo board >> $GITHUB_STEP_SUMMARY",
+    "uv run --project scripts/factory factory status | tee board.md",
+    'echo "uv run --project scripts/factory factory status >> $GITHUB_STEP_SUMMARY"',
+]
+SUMMARY_REAL = [
+    'uv run --project scripts/factory factory status >> "$GITHUB_STEP_SUMMARY"',
+    "uv run --project scripts/factory factory status | tee -a $GITHUB_STEP_SUMMARY",
+]
+
+
 def gates_job() -> dict[str, Any]:
     workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
     job = workflow["jobs"]["factory-gates"]
@@ -469,15 +695,22 @@ def gates_job() -> dict[str, Any]:
 
 
 def test_workflow_gate_run_on_the_pr_is_not_allowed_to_fail() -> None:
+    for run in GATE_NO_OPS:
+        assert not runs_gate_with_own_status(run), f"oracle accepts a no-op: {run!r}"
+    assert runs_gate_with_own_status(GATE_REAL)
     job = gates_job()
     assert "continue-on-error" not in job, job
     steps = job.get("steps", [])
-    gate_steps = [
-        s for s in steps if "factory gate run --pr ${{ github.event.number }}" in s.get("run", "")
-    ]
-    assert len(gate_steps) == 1, steps
-    for step in steps:
-        assert "continue-on-error" not in step, step
+    gate_steps = [s for s in steps if mentions_gate_run(s.get("run", ""))]
+    assert len(gate_steps) == 1, f"expected one `factory gate run` step: {gate_steps}"
+    (step,) = gate_steps
+    assert runs_gate_with_own_status(step["run"]), (
+        f"the gate step must be exactly `factory gate run --pr <event number>`: {step['run']!r}"
+    )
+    assert "if" not in step, step
+    assert step.get("shell", "bash") == "bash", step
+    for each in steps:
+        assert "continue-on-error" not in each, each
 
 
 def test_workflow_can_post_commit_statuses() -> None:
@@ -485,5 +718,18 @@ def test_workflow_can_post_commit_statuses() -> None:
 
 
 def test_workflow_publishes_the_board_in_the_job_summary() -> None:
-    runs = [step.get("run", "") for step in gates_job().get("steps", [])]
-    assert any("factory status" in run and "GITHUB_STEP_SUMMARY" in run for run in runs), runs
+    for run in SUMMARY_NO_OPS:
+        assert not publishes_status_to_summary(run), f"oracle accepts a no-op: {run!r}"
+    for run in SUMMARY_REAL:
+        assert publishes_status_to_summary(run), f"oracle rejects a real summary: {run!r}"
+    steps = gates_job().get("steps", [])
+    summary = [i for i, s in enumerate(steps) if publishes_status_to_summary(s.get("run", ""))]
+    assert len(summary) == 1, f"expected one step writing `factory status` to the summary: {steps}"
+    gate = [i for i, s in enumerate(steps) if mentions_gate_run(s.get("run", ""))]
+    assert gate, steps
+    step = steps[summary[0]]
+    condition = str(step.get("if", ""))
+    runs_after_failure = "always()" in condition or "!cancelled()" in condition
+    assert summary[0] < gate[0] or runs_after_failure, (
+        f"the board must be published even when the gates fail: {step}"
+    )

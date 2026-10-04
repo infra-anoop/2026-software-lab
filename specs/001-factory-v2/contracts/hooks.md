@@ -1,12 +1,18 @@
 # Contract — Cursor hooks (convenience mirrors; CI is authoritative)
 
-File: `.cursor/hooks.json` (version 1). Each hook calls `uv run --project scripts/factory factory hook <name>`; must run offline in < 300 ms. Every hook id appears in the gate registry as `hook_twin_of: <ci gate id>`; `hook-has-ci-twin` fails otherwise.
+File: `.cursor/hooks.json` (version 1). Each hook must run offline in < 300 ms end to end (the exact `hooks.json` command, run through a shell as Cursor runs it). Every hook id appears in the gate registry as `hook_twin_of: <ci gate id>`; `hook-has-ci-twin` fails otherwise.
 
-| Hook name | Event | Behavior | CI twin |
-|-----------|-------|----------|---------|
-| `spawn-guard` | `subagentStart` | **Advisory** (FR-008 waive): warn unless the prompt names a claimed order id (`wo-…`) or a review packet; warn when the last-fetched active count ≥ cap. Authoritative refusal is `factory claim` + the CI twin | `spawn-concurrency-cap` (claim replay), `pr-links-order` |
-| `shell-guard` | `beforeShellExecution` | Deny `git commit` while the checked-out branch is `main`, any `git push` whose target is `main` (I-P10), `pip install`, `gh workflow run`, `git push --force`, writes to `/etc`, `/usr`, `~/.config` outside the repo, `nix-env -i` | `branch-protection-require-pr`, `diff-within-owned-paths`, `block-system-path-edits` (P2) |
-| `owned-path-warn` | `afterFileEdit` | Warn (agent message) when the edited path is outside the current order's owned paths | `diff-within-owned-paths` |
-| `decision-in-chat` | `stop` | Warn when the final assistant turn asks the governor a question and no new `bus/decisions/*/request.yaml` exists in the working tree | `decision-request-no-ids` (+ post-mortem routing count) |
+**Invocation (amendment `wo-20261004-factory-slice-c.amend-01`, A1).** Each hook is registered as `.cursor/hooks/factory-hook.sh <name>`. The wrapper execs the project venv's console script `scripts/factory/.venv/bin/factory-hook <name>` (`factory-hook = "factory.hooks.entry:main"` in `scripts/factory/pyproject.toml`). That entrypoint uses lazy, minimal imports: it loads neither the Typer app (`factory.cli`) nor other slices' packages. When the venv is missing, the wrapper falls back to `uv run --project scripts/factory factory hook <name>`; that fallback path is not held to the budget. `factory hook <name>` remains the slow-path equivalent and must give the same answer. Hooks never go through `uv run` on the fast path (uv's own startup exceeds the budget).
+
+**I/O.** A hook reads the Cursor hook JSON on stdin and prints exactly one JSON object on stdout, using only the output fields the Cursor hooks docs list for its event. It judges the repository named by the payload's `workspace_roots[0]` (process cwd as fallback). `shell-guard` judges the repository each command runs in (`cwd`, `cd`, `git -C`).
+
+| Hook name | Event | Behavior | Output | CI twin |
+|-----------|-------|----------|--------|---------|
+| `spawn-guard` | `subagentStart` | **Advisory** (FR-008 waive): warn unless the prompt names a claimed order id (`wo-…`) or a review packet; warn when the last-fetched active count ≥ cap. Authoritative refusal is `factory claim` + the CI twin | `permission: "allow"` always; warning in `user_message` | `spawn-concurrency-cap` (claim replay), `pr-links-order` |
+| `shell-guard` | `beforeShellExecution` | Deny `git commit` while the checked-out branch is `main`, any `git push` whose destination ref is `main` (update, force or delete; any spelling — refspecs, `git -C`/`-c` option prefixes, wrappers such as `command`/`env`, quoting, chaining, nested `sh -c`) (I-P10), `pip install`, `gh workflow run`, `git push --force`, writes to `/etc`, `/usr`, `~/.config` outside the repo, `nix-env -i`. Text that is not executed (`echo`, comments, quoted arguments) is not a command | `permission: "deny"` + `user_message`/`agent_message`, exit 2; else `permission: "allow"` | `branch-protection-require-pr`, `diff-within-owned-paths`, `block-system-path-edits` (P2) |
+| `owned-path-warn` | `postToolUse`, matcher on write tools (`Write`) | Warn when the written path (`tool_input.file_path`) is outside the current order's owned paths | `additional_context` (injected into the agent's conversation after the tool result) | `diff-within-owned-paths` |
+| `decision-in-chat` | `stop` | Warn when the final assistant turn asks the governor a question and no new `bus/decisions/*/request.yaml` exists in the working tree | `followup_message` (Cursor submits it as the next user message; subject to `loop_limit`) | `decision-request-no-ids` (+ post-mortem routing count) |
 
 Current order for a session is resolved from the checked-out branch `wo/<order-id>`; on `main` the orchestrator role applies.
+
+**Visibility (Cursor hooks docs, checked 2026-10-04).** `afterFileEdit` has no output field that reaches the agent, hence `owned-path-warn` is on `postToolUse`. `subagentStart`'s `user_message` is documented as shown when the subagent is denied; because `spawn-guard` always allows (FR-008 waive), its warning may reach only the Hooks output channel. CI stays the authoritative twin.

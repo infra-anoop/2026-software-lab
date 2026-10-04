@@ -2,30 +2,43 @@
 `owned-path-warn`, `decision-in-chat`.
 
 Each hook reads the Cursor hook JSON on stdin and prints the Cursor hook response on
-stdout (always one JSON object). Payload fields follow the Cursor client:
+stdout (always one JSON object). Payload fields follow the Cursor hooks docs:
 `beforeShellExecution` {command, cwd}, `subagentStart` {task, subagent_type,
-subagent_model, git_branch}, `afterFileEdit` {file_path (absolute), edits}, `stop`
-{status, loop_count, transcript_path}. Transcripts are JSONL lines
-`{"role", "message": {"content": [{"type": "text", "text"}]}}`.
+subagent_model, git_branch}, `postToolUse` {tool_name, tool_input {file_path, …},
+tool_output, cwd}, `stop` {status, loop_count, transcript_path}. Every payload carries
+`workspace_roots`; hooks judge that repository (shell-guard: the repository the command
+runs in). Transcripts are JSONL lines `{"role", "message": {"content": [{"type": "text",
+"text"}]}}`.
 
 - `shell-guard` denies with `permission: "deny"` and exit 2 (Cursor's block code).
 - `spawn-guard` is advisory (FR-008 waive): always `permission: "allow"`, warning in
   `user_message`.
-- `owned-path-warn` warns in `agent_message`; `decision-in-chat` warns in
-  `followup_message`. Both exit 0.
+- `owned-path-warn` (postToolUse, Write tools) warns in `additional_context`;
+  `decision-in-chat` (stop) warns in `followup_message`. Both exit 0.
 
-Hooks are offline: they read the working tree and last-fetched refs, never the network,
-and answer in < 300 ms (in process here; end to end for the `.cursor/hooks.json`
-command below).
+Hooks are offline: they read the working tree and last-fetched refs, never the network.
+Amendment wo-20261004-factory-slice-c.amend-01 (A1): Cursor runs
+`.cursor/hooks/factory-hook.sh <name>`, which execs the project venv's lightweight
+`factory-hook` console script (`factory.hooks.entry:main`) and falls back to
+`uv run --project scripts/factory factory hook <name>` only when the venv is missing.
+`factory hook <name>` stays the slow-path equivalent. Budget (contracts/hooks.md, letter):
+< 300 ms end to end, median of five runs of the exact command; warm in-process logic is
+held to a tighter deterministic budget.
 """
 
 from __future__ import annotations
 
+import importlib
+import io
 import json
+import re
 import shutil
 import socket
+import statistics
 import subprocess
+import sys
 import time
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -37,13 +50,45 @@ from tests.fixtures.repo_builder import REPO_ROOT, RepoBuilder, message, order, 
 
 DAY = "20261006"
 BUDGET_SECONDS = 0.3
-HOOK_COMMAND = "uv run --project scripts/factory factory hook {name}"
+WARM_BUDGET_SECONDS = 0.15
+E2E_RUNS = 5
+WRAPPER = ".cursor/hooks/factory-hook.sh"
+HOOK_COMMAND = WRAPPER + " {name}"
+VENV_HOOK = "scripts/factory/.venv/bin/factory-hook"
+SLOW_PATH = "uv run --project scripts/factory factory hook {name}"
 CONTRACT_HOOKS = {
     "subagentStart": "spawn-guard",
     "beforeShellExecution": "shell-guard",
-    "afterFileEdit": "owned-path-warn",
+    "postToolUse": "owned-path-warn",
     "stop": "decision-in-chat",
 }
+# The field each hook fills when it has something to say (the realistic payloads below do).
+VISIBLE_FIELD = {
+    "shell-guard": "permission",
+    "spawn-guard": "user_message",
+    "owned-path-warn": "additional_context",
+    "decision-in-chat": "followup_message",
+}
+EXPECTED_EXIT = {
+    "shell-guard": exit_codes.REFUSED,
+    "spawn-guard": exit_codes.OK,
+    "owned-path-warn": exit_codes.OK,
+    "decision-in-chat": exit_codes.OK,
+}
+# The fast path must not pay for the Typer app or for other slices' packages.
+HEAVY_MODULES = {"typer", "click", "rich", "httpx"}
+HEAVY_PREFIXES = (
+    "factory.cli",
+    "factory.lifecycle",
+    "factory.board",
+    "factory.metrics",
+    "factory.github",
+    "factory.identity",
+    "factory.orders",
+    "factory.gates.drift",
+    "factory.intent",
+    "factory.mining",
+)
 
 
 def oid(slug: str) -> str:
@@ -92,35 +137,75 @@ def warning(response: dict[str, Any], key: str) -> str:
 
 
 def shell(
-    factory_cli: FactoryCli, repo: RepoBuilder, command: str
+    factory_cli: FactoryCli, repo: RepoBuilder, command: str, *, cwd: Path | None = None
 ) -> tuple[CliResult, dict[str, Any]]:
+    """`{repo}` in a table entry stands for the fixture repo's absolute path."""
+    command = command.replace("{repo}", str(repo.path))
     data = payload(
-        "beforeShellExecution", repo.path, command=command, cwd=str(repo.path), sandbox=False
+        "beforeShellExecution",
+        repo.path,
+        command=command,
+        cwd=str(cwd or repo.path),
+        sandbox=False,
     )
     return call_hook(factory_cli, repo.path, "shell-guard", data)
 
 
-def assert_denied(factory_cli: FactoryCli, repo: RepoBuilder, command: str) -> None:
-    result, response = shell(factory_cli, repo, command)
+def assert_denied(
+    factory_cli: FactoryCli, repo: RepoBuilder, command: str, *, cwd: Path | None = None
+) -> None:
+    result, response = shell(factory_cli, repo, command, cwd=cwd)
     assert response.get("permission") == "deny", f"{command!r} was not denied: {response}"
     assert result.exit_code == exit_codes.REFUSED, result
     reason = warning(response, "user_message") + warning(response, "agent_message")
     assert reason.strip(), f"deny without a reason: {response}"
 
 
-def assert_allowed(factory_cli: FactoryCli, repo: RepoBuilder, command: str) -> None:
-    result, response = shell(factory_cli, repo, command)
+def assert_allowed(
+    factory_cli: FactoryCli, repo: RepoBuilder, command: str, *, cwd: Path | None = None
+) -> None:
+    result, response = shell(factory_cli, repo, command, cwd=cwd)
     assert response.get("permission") == "allow", f"{command!r} was not allowed: {response}"
     assert result.exit_code == exit_codes.OK, result
 
 
-DENIED_ON_ANY_BRANCH = [
+# Every push whose destination ref on the remote is `main` (update, force or delete), however
+# it is spelled: refspec forms, option prefixes, wrappers, quoting, chaining, nested shells.
+PUSH_TO_MAIN = [
     "git push origin main",
     "git push origin HEAD:main",
     "git push origin refs/heads/main",
     "git push origin wo/wo-20261006-x:refs/heads/main",
+    "git push origin main:main",
+    "git push origin +HEAD:main",
+    "git push origin :main",
+    "git push origin :refs/heads/main",
+    "git push origin --delete main",
+    "git push -d origin main",
     "git push -u origin main",
+    "git push origin wo/wo-20261006-x main",
+    "git -C {repo} push origin main",
+    "git -c push.default=current push origin main",
+    "git --no-pager push origin main",
+    "/usr/bin/git push origin main",
+    "command git push origin main",
+    "env git push origin main",
+    "GIT_TRACE=1 git push origin main",
+    'git push origin "main"',
+    "git push 'origin' 'HEAD:main'",
+    'git push origin "HEAD:refs/heads/main"',
     "git status && git push origin main",
+    "echo ok && git push origin main",
+    "cd /tmp && git -C {repo} push origin main",
+    "true; git push origin main",
+    "false || git push origin main",
+    "(git push origin main)",
+    "bash -c 'git push origin main'",
+    'sh -c "git push origin HEAD:main"',
+]
+
+DENIED_ON_ANY_BRANCH = [
+    *PUSH_TO_MAIN,
     "pip install requests",
     "pip3 install requests",
     "python -m pip install requests",
@@ -138,20 +223,40 @@ DENIED_ON_ANY_BRANCH = [
     "nix-env --install hello",
 ]
 
+# Commits on, and pushes of, the checked-out branch: denied when that branch is `main`.
 DENIED_ON_MAIN_ONLY = [
     "git commit -m 'quick fix'",
     "git add -A && git commit -m 'quick fix'",
+    "git -C {repo} commit -m 'quick fix'",
+    "git -c user.name=bot commit -m 'quick fix'",
+    "command git commit -m 'quick fix'",
+    "git commit --amend --no-edit",
     "git push",
     "git push origin",
     "git push origin HEAD",
+    "git push -u origin HEAD",
+    "git -C {repo} push",
 ]
 
+# Nearby controls: same tools and words, destination is not `main`, or nothing executes.
 ALLOWED_ANYWHERE = [
     "ls -la",
     "git status",
     "git log main",
     "git checkout -b wo/wo-20261006-x main",
     "git push origin main-docs",
+    "git push origin feature:feature",
+    "git push origin main:refs/heads/wo/wo-20261006-x",
+    "git push origin HEAD:wo/wo-20261006-x",
+    "git -C {repo} push origin wo/wo-20261006-x",
+    "git push origin --delete wo/wo-20261006-x",
+    "git fetch origin main",
+    "git pull --ff-only origin main",
+    'echo "git push origin main"',
+    "echo git push origin main > /tmp/notes.txt",
+    "# git push origin main",
+    'git log --grep "push origin main"',
+    'rg -n "git push origin main" docs/',
     "pip list",
     "uv sync --locked",
     "gh pr list",
@@ -192,6 +297,29 @@ def test_shell_guard_allows_ordinary_commands_on_main(
     repo: RepoBuilder, factory_cli: FactoryCli, command: str
 ) -> None:
     assert_allowed(factory_cli, repo, command)
+
+
+def test_shell_guard_judges_the_branch_of_the_dash_c_repo(
+    repo: RepoBuilder, factory_cli: FactoryCli, tmp_path: Path
+) -> None:
+    """`git -C <repo> commit` from elsewhere: the branch that matters is <repo>'s."""
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    assert repo.current_branch() == "main"
+    assert_denied(factory_cli, repo, "git -C {repo} commit -m 'quick fix'", cwd=elsewhere)
+    repo.branch(f"wo/{oid('x')}")
+    assert_allowed(factory_cli, repo, "git -C {repo} commit -m 'work'", cwd=elsewhere)
+
+
+def test_shell_guard_judges_the_branch_of_cwd(
+    repo: RepoBuilder, factory_cli: FactoryCli, tmp_path: Path
+) -> None:
+    """A plain `git commit` runs in `cwd`; a non-repo `cwd` is not the fixture's `main`."""
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    assert repo.current_branch() == "main"
+    assert_allowed(factory_cli, repo, "git commit -m 'scratch'", cwd=elsewhere)
+    assert_denied(factory_cli, repo, "cd {repo} && git commit -m 'quick fix'", cwd=elsewhere)
 
 
 # --- spawn-guard --------------------------------------------------------------------------
@@ -301,16 +429,27 @@ def test_spawn_guard_does_not_count_merged_orders(
 WORK = oid("calc")
 
 
-def edit(factory_cli: FactoryCli, repo: RepoBuilder, relative: str) -> str:
-    data = payload(
-        "afterFileEdit",
+def tool_payload(repo: RepoBuilder, tool_name: str, file_path: str) -> dict[str, Any]:
+    tool_input: dict[str, Any] = {"file_path": file_path}
+    if tool_name == "Write":
+        tool_input["content"] = "X = 1\n"
+    return payload(
+        "postToolUse",
         repo.path,
-        file_path=str(repo.path / relative),
-        edits=[{"old_string": "", "new_string": "X = 1\n"}],
+        tool_name=tool_name,
+        tool_input=tool_input,
+        tool_output=json.dumps({"file_path": file_path, "success": True}),
+        tool_use_id="tool-1",
+        cwd=str(repo.path),
+        duration=12,
     )
+
+
+def edit(factory_cli: FactoryCli, repo: RepoBuilder, relative: str, *, tool: str = "Write") -> str:
+    data = tool_payload(repo, tool, str(repo.path / relative))
     result, response = call_hook(factory_cli, repo.path, "owned-path-warn", data)
     assert result.exit_code == exit_codes.OK, result
-    return warning(response, "agent_message")
+    return warning(response, "additional_context")
 
 
 def on_work_branch(repo: RepoBuilder, owned_paths: list[str]) -> None:
@@ -353,6 +492,12 @@ def test_owned_path_uses_effective_order(repo: RepoBuilder, factory_cli: Factory
 
 def test_owned_path_quiet_on_main(repo: RepoBuilder, factory_cli: FactoryCli) -> None:
     assert edit(factory_cli, repo, "deploy/railway/demo.toml") == ""
+
+
+def test_owned_path_quiet_for_reads(repo: RepoBuilder, factory_cli: FactoryCli) -> None:
+    on_work_branch(repo, ["apps/demo/app/calc.py"])
+    assert edit(factory_cli, repo, "deploy/railway/demo.toml", tool="Read") == ""
+    assert edit(factory_cli, repo, "deploy/railway/demo.toml", tool="Write").strip()
 
 
 # --- decision-in-chat ---------------------------------------------------------------------
@@ -437,7 +582,43 @@ def test_decision_in_chat_quiet_without_transcript(
     assert stop(factory_cli, repo, tmp_path / "missing.jsonl") == ""
 
 
-# --- offline and fast ---------------------------------------------------------------------
+# --- fast path: offline, warm budget, parity with `factory hook` --------------------------
+
+
+def hook_entry() -> Any:
+    try:
+        return importlib.import_module("factory.hooks.entry")
+    except ModuleNotFoundError as exc:
+        raise AssertionError(f"factory.hooks.entry is not implemented: {exc}") from exc
+
+
+def call_entry(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    name: str,
+    data: dict[str, Any],
+) -> tuple[int, dict[str, Any]]:
+    """`factory-hook <name>` in process: Cursor JSON on stdin, one JSON object on stdout."""
+    main = hook_entry().main
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(data)))
+    capsys.readouterr()
+    code = main([name])
+    out = capsys.readouterr().out
+    try:
+        response = json.loads(out)
+    except ValueError as exc:
+        raise AssertionError(f"factory-hook {name} stdout is not one JSON object: {out!r}") from exc
+    assert isinstance(response, dict), response
+    return code, response
+
+
+def prepared_hook_repo(repo: RepoBuilder, tmp_path: Path) -> dict[str, dict[str, Any]]:
+    """Realistic payloads: each hook takes its full path (bus reads, git refs, transcript)."""
+    for name in ("alpha", "bravo"):
+        issue(repo, oid(name))
+    on_work_branch(repo, ["apps/demo/app/calc.py"])
+    transcript = write_transcript(tmp_path / "t.jsonl", [("user", "Go."), ("assistant", QUESTION)])
+    return contract_payloads(repo, transcript)
 
 
 def contract_payloads(repo: RepoBuilder, transcript: Path) -> dict[str, dict[str, Any]]:
@@ -450,14 +631,9 @@ def contract_payloads(repo: RepoBuilder, transcript: Path) -> dict[str, dict[str
             repo.path,
             subagent_type="generalPurpose",
             task=worker_task(oid("alpha")),
-            git_branch="main",
+            git_branch=repo.current_branch(),
         ),
-        "owned-path-warn": payload(
-            "afterFileEdit",
-            repo.path,
-            file_path=str(repo.path / "deploy/railway/demo.toml"),
-            edits=[],
-        ),
+        "owned-path-warn": tool_payload(repo, "Write", str(repo.path / "deploy/railway/demo.toml")),
         "decision-in-chat": payload(
             "stop", repo.path, status="completed", loop_count=0, transcript_path=str(transcript)
         ),
@@ -475,22 +651,119 @@ def offline(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(socket, "create_connection", refuse)
 
 
+def test_hook_entry_imports_neither_the_cli_nor_other_slices() -> None:
+    code = "import sys, factory.hooks.entry; print('\\n'.join(sorted(sys.modules)))"
+    completed = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, check=False
+    )
+    assert completed.returncode == 0, completed.stderr
+    loaded = completed.stdout.split()
+    heavy = [m for m in loaded if m in HEAVY_MODULES or m.startswith(HEAVY_PREFIXES)]
+    assert heavy == [], f"factory.hooks.entry imports {heavy}"
+
+
 @pytest.mark.parametrize("name", sorted(CONTRACT_HOOKS.values()))
-def test_hook_runs_offline_within_budget(
-    repo: RepoBuilder, factory_cli: FactoryCli, tmp_path: Path, offline: None, name: str
+def test_hook_entry_is_offline_warm_fast_and_matches_the_cli(
+    repo: RepoBuilder,
+    factory_cli: FactoryCli,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+    offline: None,
+    name: str,
 ) -> None:
-    issue(repo, oid("alpha"))
+    data = prepared_hook_repo(repo, tmp_path)[name]
     repo.git("remote", "set-url", "origin", str(repo.root / "unreachable.git"))
-    transcript = write_transcript(tmp_path / "t.jsonl", [("user", "Go."), ("assistant", QUESTION)])
-    data = contract_payloads(repo, transcript)[name]
-    call_hook(factory_cli, repo.path, name, data)
+    monkeypatch.chdir(tmp_path)
+    call_entry(monkeypatch, capsys, name, data)
     started = time.perf_counter()
-    call_hook(factory_cli, repo.path, name, data)
+    code, response = call_entry(monkeypatch, capsys, name, data)
     elapsed = time.perf_counter() - started
-    assert elapsed < BUDGET_SECONDS, f"{name} took {elapsed * 1000:.0f} ms (budget 300 ms)"
+    assert elapsed < WARM_BUDGET_SECONDS, (
+        f"{name} took {elapsed * 1000:.0f} ms warm (budget {WARM_BUDGET_SECONDS * 1000:.0f} ms)"
+    )
+    cli_result, cli_response = call_hook(factory_cli, repo.path, name, data)
+    assert (code, response) == (cli_result.exit_code, cli_response), (
+        f"factory-hook {name} and `factory hook {name}` disagree"
+    )
+    assert code == EXPECTED_EXIT[name], (code, response)
+    assert response.get(VISIBLE_FIELD[name]), f"{name} took its quiet path: {response}"
 
 
-# --- .cursor/hooks.json (the live repo's registration, read only) -------------------------
+# --- registration: pyproject console script, wrapper, .cursor/hooks.json -----------------
+
+
+def test_pyproject_declares_the_lightweight_console_script() -> None:
+    project = tomllib.loads((REPO_ROOT / "scripts/factory/pyproject.toml").read_text("utf-8"))
+    scripts = project["project"]["scripts"]
+    assert scripts.get("factory-hook") == "factory.hooks.entry:main", scripts
+    assert scripts.get("factory") == "factory.cli.app:main", scripts
+
+
+def fake_executable(path: Path, log: Path, stdout: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "#!/bin/sh\n"
+        f'printf "%s\\n" "$0 $*" >> "{log}"\n'
+        f'cat > "{log}.stdin"\n'
+        f"printf '%s' '{stdout}'\n",
+        encoding="utf-8",
+    )
+    path.chmod(0o755)
+
+
+def wrapper_sandbox(tmp_path: Path, *, with_venv: bool) -> tuple[Path, Path, dict[str, str]]:
+    wrapper = REPO_ROOT / WRAPPER
+    assert wrapper.is_file(), f"{wrapper} is missing"
+    root = tmp_path / "project"
+    target = root / WRAPPER
+    target.parent.mkdir(parents=True)
+    shutil.copy2(wrapper, target)
+    log = tmp_path / "calls.log"
+    if with_venv:
+        fake_executable(root / VENV_HOOK, log, '{"permission": "allow"}')
+    fake_bin = tmp_path / "bin"
+    fake_executable(fake_bin / "uv", log, '{"permission": "allow"}')
+    env = {"PATH": f"{fake_bin}:/usr/bin:/bin", "HOME": str(tmp_path)}
+    return root, log, env
+
+
+def run_wrapper(root: Path, env: dict[str, str], stdin: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        HOOK_COMMAND.format(name="shell-guard"),
+        shell=True,
+        cwd=root,
+        env=env,
+        input=stdin,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def test_wrapper_runs_the_venv_console_script(tmp_path: Path) -> None:
+    root, log, env = wrapper_sandbox(tmp_path, with_venv=True)
+    completed = run_wrapper(root, env, '{"command": "ls"}')
+    assert completed.returncode == 0, completed
+    assert json.loads(completed.stdout) == {"permission": "allow"}, completed.stdout
+    calls = log.read_text(encoding="utf-8").splitlines()
+    assert len(calls) == 1, calls
+    program, *args = calls[0].split()
+    assert program.endswith(VENV_HOOK), calls
+    assert args == ["shell-guard"], calls
+    assert Path(f"{log}.stdin").read_text(encoding="utf-8") == '{"command": "ls"}'
+
+
+def test_wrapper_falls_back_to_uv_run_without_the_venv(tmp_path: Path) -> None:
+    root, log, env = wrapper_sandbox(tmp_path, with_venv=False)
+    completed = run_wrapper(root, env, '{"command": "ls"}')
+    assert completed.returncode == 0, completed
+    calls = log.read_text(encoding="utf-8").splitlines()
+    assert len(calls) == 1, calls
+    program, *args = calls[0].split()
+    assert program.endswith("/uv"), calls
+    assert args == SLOW_PATH.format(name="shell-guard").split()[1:], calls
+    assert Path(f"{log}.stdin").read_text(encoding="utf-8") == '{"command": "ls"}'
 
 
 def live_hooks() -> dict[str, Any]:
@@ -501,47 +774,63 @@ def live_hooks() -> dict[str, Any]:
     return data
 
 
+def live_entries(event: str, name: str) -> list[dict[str, Any]]:
+    hooks = live_hooks().get("hooks", {})
+    command = HOOK_COMMAND.format(name=name)
+    return [entry for entry in hooks.get(event, []) if entry.get("command") == command]
+
+
 def test_live_hooks_json_registers_every_contract_hook() -> None:
     data = live_hooks()
     assert data.get("version") == 1, data
-    hooks = data.get("hooks", {})
     for event, name in CONTRACT_HOOKS.items():
-        commands = [entry.get("command") for entry in hooks.get(event, [])]
-        assert HOOK_COMMAND.format(name=name) in commands, (event, commands)
+        assert len(live_entries(event, name)) == 1, (event, data.get("hooks", {}).get(event))
+
+
+def test_live_hooks_json_routes_factory_hooks_through_the_wrapper() -> None:
+    for event, entries in live_hooks().get("hooks", {}).items():
+        for entry in entries:
+            command = entry.get("command", "")
+            if "factory" in command:
+                assert command.startswith(f"{WRAPPER} "), (event, command)
+    assert live_entries("afterFileEdit", "owned-path-warn") == []
+
+
+def test_live_owned_path_warn_matches_write_tools_only() -> None:
+    (entry,) = live_entries("postToolUse", "owned-path-warn")
+    matcher = entry.get("matcher")
+    assert matcher, f"owned-path-warn would run after every tool: {entry}"
+    assert re.search(matcher, "Write"), matcher
+    for tool in ("Read", "Shell", "Grep", "Task"):
+        assert not re.search(matcher, tool), (matcher, tool)
 
 
 @pytest.mark.parametrize(("event", "name"), sorted(CONTRACT_HOOKS.items()))
-def test_live_hook_command_answers_within_budget(event: str, name: str, tmp_path: Path) -> None:
-    """End to end: the exact `.cursor/hooks.json` command, best of three runs."""
-    hooks = live_hooks().get("hooks", {})
-    commands = [entry.get("command") for entry in hooks.get(event, [])]
+def test_live_hook_command_answers_within_budget(
+    repo: RepoBuilder, tmp_path: Path, event: str, name: str
+) -> None:
+    """End to end through a shell, as Cursor runs it: median of five runs < 300 ms."""
+    assert len(live_entries(event, name)) == 1, (event, name)
     command = HOOK_COMMAND.format(name=name)
-    assert command in commands, (event, commands)
-    assert shutil.which("uv"), "uv is not on PATH"
-    transcript = write_transcript(tmp_path / "t.jsonl", [("user", "Go."), ("assistant", "Done.")])
-    data = {
-        "shell-guard": payload(event, REPO_ROOT, command="ls", cwd=str(REPO_ROOT)),
-        "spawn-guard": payload(event, REPO_ROOT, task=f"Read {REVIEW_PACKET}.", git_branch="main"),
-        "owned-path-warn": payload(
-            event, REPO_ROOT, file_path=str(REPO_ROOT / "README.md"), edits=[]
-        ),
-        "decision-in-chat": payload(
-            event, REPO_ROOT, status="completed", loop_count=0, transcript_path=str(transcript)
-        ),
-    }[name]
+    data = json.dumps(prepared_hook_repo(repo, tmp_path)[name])
     timings = []
-    for _ in range(3):
+    for _ in range(E2E_RUNS):
         started = time.perf_counter()
         completed = subprocess.run(
-            command.split(),
+            command,
+            shell=True,
             cwd=REPO_ROOT,
-            input=json.dumps(data),
+            input=data,
             capture_output=True,
             text=True,
             check=False,
         )
         timings.append(time.perf_counter() - started)
-        assert completed.returncode in (0, 2), completed
-        assert isinstance(json.loads(completed.stdout), dict), completed.stdout
-    best = min(timings)
-    assert best < BUDGET_SECONDS, f"{command} took {best * 1000:.0f} ms at best (budget 300 ms)"
+        assert completed.returncode == EXPECTED_EXIT[name], completed
+        response = json.loads(completed.stdout)
+        assert response.get(VISIBLE_FIELD[name]), f"{name} took its quiet path: {response}"
+    median = statistics.median(timings)
+    assert median < BUDGET_SECONDS, (
+        f"{command} median {median * 1000:.0f} ms over {E2E_RUNS} runs (budget 300 ms); "
+        f"runs: {[round(t * 1000) for t in timings]}"
+    )
