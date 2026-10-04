@@ -10,7 +10,7 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from factory.bus.models import KIND_MODELS, MESSAGE_KINDS, parse_message
+from factory.bus.models import KIND_MODELS, MESSAGE_KINDS, Lock, parse_message
 
 MESSAGES_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "messages"
 SAMPLE_FILES = {
@@ -214,6 +214,35 @@ def test_waived_lock_requires_waiver_ref() -> None:
     assert "waiver_ref" in rejects(data)
     data["locks"][0]["waiver_ref"] = "board-web-view.lock"
     parse_message(data)
+
+
+@pytest.mark.parametrize("tokens", [[], [""], ["  "], ["70%", " "]])
+def test_letter_lock_requires_non_empty_letter_tokens(tokens: list[str]) -> None:
+    data = sample("order")
+    data["locks"][0]["letter_tokens"] = tokens
+    assert "letter_tokens" in rejects(data)
+
+
+def test_intent_lock_may_omit_letter_tokens() -> None:
+    data = sample("order")
+    data["locks"][0].update(fidelity="intent", letter_tokens=[])
+    parse_message(data)
+
+
+def test_lock_substitutes_are_optional() -> None:
+    assert "substitutes" in Lock.model_fields, "Lock has no substitutes field"
+    data = sample("order")
+    assert parse_message(data).locks[0].substitutes == []
+    data["locks"][0]["substitutes"] = ["60%", "best effort"]
+    assert parse_message(data).locks[0].substitutes == ["60%", "best effort"]
+
+
+@pytest.mark.parametrize("substitutes", [["70%"], [""], ["  "]])
+def test_lock_substitutes_must_be_distinct_non_blank(substitutes: list[str]) -> None:
+    assert "substitutes" in Lock.model_fields, "Lock has no substitutes field"
+    data = sample("order")
+    data["locks"][0]["substitutes"] = substitutes
+    assert "substitutes" in rejects(data)
 
 
 def test_amendment_values_validated_like_order_fields() -> None:
