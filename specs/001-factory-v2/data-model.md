@@ -86,7 +86,7 @@ Rework loops, overrides, and first-pass acceptance are derived from verdicts and
 
 ## Gate (registry entry, `scripts/factory/gates.yaml`)
 
-`id`, `class: drift|governor-only`, `category: drift|spend|secrets|irreversible|governor_decision`, `intents: list`, `ci_job`, `hook_twin_of?`, `priority: P1|P2|P3`, `scope: changed_lines|repo`. Rule: `class: governor-only` ⇔ `category ∈ {spend, secrets, irreversible, governor_decision}`.
+`id`, `class: drift|governor-only`, `category: drift|spend|secrets|irreversible|governor_decision`, `intents: list`, `ci_job`, `hook_twin_of?`, `priority: P1|P2|P3`, `scope: changed_lines|repo`, `entrypoint: "module:function"`. Rule: `class: governor-only` ⇔ `category ∈ {spend, secrets, irreversible, governor_decision}`.
 
 ## Lifecycle (derived — never stored)
 
