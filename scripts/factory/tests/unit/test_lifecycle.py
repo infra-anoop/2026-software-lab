@@ -82,8 +82,8 @@ GREEN_STATUSES = {"red-first-proof": "success", "test-seam-ban": "success"}
 GREEN_RUNS = {"factory-tests": ("completed", "success")}
 
 # Required set = a `factory/<gate-id>` commit status for every id in the order's `checks`
-# (success, or failed and overridden for that gate) AND every check run on the PR head
-# completed with success.
+# (success, or failed and overridden for that same gate). Other check runs on the PR head
+# are not required until branch-protection required checks are readable (T066).
 CHECK_CASES = {
     "all-green": (GREEN_STATUSES, GREEN_RUNS, None, OrderState.ACCEPTED),
     "failed-overridden": (
@@ -111,17 +111,11 @@ CHECK_CASES = {
         "test-seam-ban",
         OrderState.IN_REVIEW,
     ),
-    "check-run-failed": (
+    "unrelated-run-pending": (
         GREEN_STATUSES,
-        {"factory-tests": ("completed", "failure")},
+        {**GREEN_RUNS, "advisory-scan": ("in_progress", None)},
         None,
-        OrderState.IN_REVIEW,
-    ),
-    "mixed-runs": (
-        GREEN_STATUSES,
-        {**GREEN_RUNS, "verify": ("in_progress", None)},
-        None,
-        OrderState.IN_REVIEW,
+        OrderState.ACCEPTED,
     ),
 }
 

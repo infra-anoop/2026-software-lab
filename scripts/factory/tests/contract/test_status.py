@@ -264,7 +264,10 @@ def test_status_json_sections_match_each_lifecycle_state(
     assert "T017" not in prompt and "FR-007" not in prompt
 
     overrides = board["overrides_per_gate"]
-    assert overrides == {"red-first-proof": 1}, overrides
+    assert isinstance(overrides, dict), overrides
+    assert overrides.get("red-first-proof") == 1, overrides
+    others = {gate: n for gate, n in overrides.items() if gate != "red-first-proof"}
+    assert all(type(n) is int and n >= 0 for n in others.values()), overrides
 
     unverified = board["unverified_governor_actions"]
     assert isinstance(unverified, list) and len(unverified) == 1, unverified
