@@ -272,7 +272,7 @@ Report: [`SPEC_REVIEW.md`](./SPEC_REVIEW.md) (F1–F9). Reviewer family: GPT.
 
 ## Assumptions
 
-- Postgres via Supabase (A27) in a dedicated project for this app (backlog P6: one project per app) — ops HITL: governor creates the project; names go in the secrets schema.
+- Postgres via Supabase (A27) in the shared lab project `2026-software-lab`, in SWV2's own schemas with its own logins and buckets (backlog A31) — ops HITL: governor runs the role bootstrap and creates the buckets; names go in the secrets schema.
 - Anthropic API key (`ANTHROPIC_API_KEY`) in the vault for the writer — production, staging, and eval CI (D4) — ops HITL. The OpenAI key already in the vault also serves the judge and support checker in eval CI (D4).
 - Uploads move to object storage in the same Supabase project.
 - Single Railway replica remains acceptable; the in-process rate limiter stays in memory.
