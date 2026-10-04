@@ -5,7 +5,7 @@
 | Field | Value |
 |-------|-------|
 | Packet id | `2026-10-03-lab-db-bootstrap` |
-| Status | implemented — green; ready for PR (orchestrator opens it) |
+| Status | done — merged in PR #18 (da0505d); live run T112 green for staging and production, re-run no-op (2026-10-04) |
 | Feature / spec | `specs/002-swv2-durable-evals/` (P0 ops: T013 done, T018 amended, T109–T112) |
 | Branch | `packet/2026-10-03-lab-db-bootstrap` |
 | Agent mode | **background** |
