@@ -113,3 +113,38 @@ What would have to be true for the suite to be right anyway: T013 is treated str
 5. Frozen files owned by no slice: accepted; amendment path is explicit.
 6. Missing commit-status read: T1 blocker.
 7. Adapter factory paths: accepted as a minimal frozen convention.
+
+## Round 2 — re-review at `b878606`
+
+### Verdict
+
+**Reject.** T1, T3, T4, T5, and T6 are resolved with direct test and code evidence. T2 is improved but not resolved at the governor's strict semantic fidelity: the automatic catalog row still includes thinner behavior, while the new seed explicitly delegates that case to a reviewer. The amendment also changed frozen spec contracts outside the order's owned paths without adding a bus amendment.
+
+### Finding resolutions
+
+| ID | Resolution | Evidence |
+|----|------------|----------|
+| T1 | **Resolved** | `GitHubPort.list_commit_statuses()` and typed `CommitStatus` now cover the missing read API. `assert_commit_status_read_after_write()` verifies latest-per-context, SHA isolation, field preservation, and empty results against `FakeGitHub`; the unit suite passes. |
+| T2 | **Not resolved** | `Lock` now rejects empty/blank letter tokens, models distinct registered substitutes, and seeds token-only-in-comment/deleted-line/order/docs plus Fly substitution and a passing Railway case. But `acceptance.md` `seed.substitution_declared` and US3 scenario 8 require blocking a different tool/host/**thinner behavior** automatically; `test_seed_declared_lock_violated` explicitly says thinner behavior is left to reviewer judgment. Greening these tests can therefore leave the auto catalog promise false. |
+| T3 | **Resolved** | `test_json_envelope` covers 26 success/refusal/usage/config scenarios across every non-hook command group and validates exact success/error envelope keys, command path, error code, and non-blank message. The still-unimplemented scenarios fail first on the expected exit assertion, then will exercise envelope shape when slices implement them. |
+| T4 | **Resolved** | The Gate contract now includes `scope: changed_lines\|repo\|pr`, matching the registry and PR-scoped gates. |
+| T5 | **Resolved** | Tests independently cover all id forms, option labels, each of the governor-approved eight configured terms, case insensitivity, offender naming, and four near-miss passing guards. The fixture reads the repository jargon list rather than a stale copy. |
+| T6 | **Resolved** | Repo discovery walks from CWD only to the git root, explicit `--repo` wins, and relative schema paths remain CWD-relative. The packet-exact command now exits 0 with `schema ok`; tests cover nested discovery, git-root confinement, and explicit override. |
+
+### New findings
+
+| ID | Severity | Tag | Lens | Locus | Finding | Suggested resolution |
+|----|----------|-----|------|-------|---------|----------------------|
+| T7 | Blocker | process | Owned-path enforcement | commits `8e2f3b7`, `c8fd90a`; `specs/001-factory-v2/data-model.md`, `contracts/cli.md` | The fixes changed frozen spec contracts outside the P0 order's owned paths. The original packet allowed only the data-model Gate line for `entrypoint`; it did not authorize the Lock line or `contracts/cli.md`. No `<order-id>.amend-NN` bus message records expanded ownership, despite the handoff calling this “Amendment 1.” This contradicts FR-014 and the bootstrap owned-path manual equivalent. | Add and validate an order amendment authorizing the exact spec paths/changes, or move the contract edits to an appropriately owned orchestrator order before accepting the bootstrap verdict. |
+
+No other new test weakness was found. The T1 conformance test is behavioral rather than protocol-presence-only; the T3 tests do not pass vacuously; and the T5 passing guards constrain obvious false positives.
+
+### Commands
+
+| Command | Result |
+|---------|--------|
+| `cd scripts/factory && uv sync --locked` | PASS — 25 packages installed/audited from the lock |
+| `uv run pytest -q` | Expected RED — **100 failed, 225 passed**; all failures are `AssertionError`; no collection, `ImportError`, or `ModuleNotFoundError` failures |
+| `uv run ruff check .` | PASS |
+| `uv run factory check schema --path tests/fixtures/messages/` | PASS — `schema ok` |
+| changed paths vs authorized ownership | FAIL — the Lock line in `data-model.md` and `contracts/cli.md` are outside the recorded order ownership (T7) |
