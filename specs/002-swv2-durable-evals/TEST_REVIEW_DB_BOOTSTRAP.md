@@ -143,3 +143,27 @@ The round-1 blockers and accepted process findings are genuinely resolved in the
 - `pytest scripts/ --ignore=scripts/factory`: **90 failed, 119 passed, 18 skipped**; every failure is in this packet's tests.
 - `uvx ruff check` on the three packet files: clean.
 - By hand with psql as `lab_admin`: after the grant, `swv2_prod` can create and drop `public.sneaky`; re-running `env_roles.sql` for prod raises "swv2_prod can create objects in public"; the revoke-then-drop reset works.
+
+## Round 3 review
+
+### Verdict
+
+**accept**
+
+R2-1 and R2-2 are resolved by executable tests, and the expected red-first counts reproduce cleanly. The `public` grant-option fixture is a faithful capability stand-in for the Supabase `postgres` runner: it gives the non-owner test admin the authority needed to stage the adversarial grant, while the committed bootstrap SQL itself neither grants nor revokes privileges on `public`. It therefore does not hide a production-only bootstrap behavior difference.
+
+### Findings
+
+| ID | Severity | Tag | Locus | Finding | Suggested resolution |
+|----|----------|-----|-------|---------|----------------------|
+| R3-1 | Nit | product | `scripts/test_db_bootstrap_pg.py::test_probe_and_ensure_reject_create_on_public` | **Strength:** the test directly grants `CREATE` on `public`, proves the login received it with `has_schema_privilege`, requires `probe_login` to raise `ProbeError`, and requires `ensure` to fail instead of returning `noop`. This closes R2-1 without pinning probe SQL. | Retain. |
+| R3-2 | Nit | process | `scripts/test_db_bootstrap.py::_assert_error_chain_scrubbed`; helper self-test | **Strength:** the helper now checks the rendered traceback and follows explicit causes plus only unsuppressed implicit contexts. Its self-test proves `from None` is allowed while explicit and visible implicit chains containing a sentinel are rejected. This closes R2-2. | Retain. |
+| R3-3 | Nit | process | PostgreSQL fixture and `.github/workflows/db-bootstrap-tests.yml` | `CREATE ON SCHEMA public WITH GRANT OPTION` is appropriate for the fixture. On supported PostgreSQL, the database owner has owner-equivalent authority over `public` through `pg_database_owner`; Supabase's `postgres` is the database owner (and on older ownership layouts owns `public` directly). The extra fixture privilege is used to create the bad state under test; it cannot make `env_roles.sql` succeed incorrectly because that SQL only checks the app login's public capability and fails when it is present. | Keep the grant option and the fixture-fidelity assertion. The first live Supabase run remains the check that the Management API executes as the locked `postgres` identity. |
+
+### Verification record
+
+- `nix develop -c uv run --with pytest --with 'psycopg[binary]>=3.2' --with 'pyyaml>=6' --with 'httpx>=0.27' pytest -q scripts/test_db_bootstrap.py scripts/test_ops_runtime_tag.py` — **90 failed, 29 passed**; no collection errors.
+- Throwaway PostgreSQL 17 cluster with `lab_admin NOSUPERUSER CREATEROLE`, database `CREATE`, and `CREATE ON SCHEMA public WITH GRANT OPTION`; `pytest -q scripts/test_db_bootstrap_pg.py` — **15 failed, 1 passed**; the fixture-fidelity test passed and every failure was missing stub behavior.
+- Without `LAB_TEST_PG_ADMIN_URL`, `pytest -q scripts/test_db_bootstrap_pg.py` — **16 skipped**.
+- `nix develop -c env -u LAB_TEST_PG_ADMIN_URL uv run --with pytest --with 'psycopg[binary]>=3.2' --with 'pyyaml>=6' --with 'httpx>=0.27' pytest -q scripts/ --ignore=scripts/factory` — **90 failed, 119 passed, 18 skipped**; failures remain confined to this packet's tests.
+- `nix develop -c uvx ruff check scripts/db_bootstrap.py scripts/test_db_bootstrap.py scripts/test_db_bootstrap_pg.py` — **passed**.
