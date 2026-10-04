@@ -8,8 +8,12 @@
 """Create annotated agent tags for ops (A23/A26) and one-app ship.
 
 Preferred agent path from a Codespace: push ``sync/<app>/<env>``,
-``bootstrap/<app>/<env>`` (``ops-runtime.yml``) or ``ship/<app>/<env>``
-(``ship-one.yml``).
+``bootstrap/<app>/<env>``, ``db/<app>/<env>`` (``ops-runtime.yml``) or
+``ship/<app>/<env>`` (``ship-one.yml``).
+
+``db`` ensures the app's database login (``scripts/db_bootstrap.py``) and is valid
+only when ``deploy/db/<app>.yml`` declares that environment. ``bootstrap`` also runs
+that step when ``deploy/db/<app>.yml`` exists (``parse`` reports ``db_bootstrap``).
 
 Does **not** need ``INFISICAL_TOKEN``, ``RAILWAY_*``, or ``actions:write``.
 Ordinary git push auth is enough for ``--push``.
@@ -33,14 +37,15 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ALLOWED_ENVIRONMENTS = frozenset({"production", "staging"})
-ALLOWED_KINDS = frozenset({"sync", "bootstrap", "ship"})
+ALLOWED_KINDS = frozenset({"sync", "bootstrap", "ship", "db"})
 OPS_TAG_RE = re.compile(
-    r"^(?P<kind>sync|bootstrap|ship)/(?P<app_id>[^/]+)/(?P<environment>[^/]+)$"
+    r"^(?P<kind>sync|bootstrap|ship|db)/(?P<app_id>[^/]+)/(?P<environment>[^/]+)$"
 )
 SHIP_WORKFLOW = "ship-one.yml"
 OPS_WORKFLOW = "ops-runtime.yml"
 
-Kind = Literal["sync", "bootstrap", "ship"]
+Kind = Literal["sync", "bootstrap", "ship", "db"]
+KIND_PATTERN = "sync|bootstrap|ship|db"
 
 
 class OpsTagError(Exception):
@@ -65,21 +70,21 @@ def _err(msg: str) -> None:
 
 
 def parse_ops_tag(ref_name: str) -> OpsTag:
-    """Parse ``sync|bootstrap|ship/<app_id>/<environment>``. Fail closed on extras."""
+    """Parse ``sync|bootstrap|ship|db/<app_id>/<environment>``. Fail closed on extras."""
     raw = ref_name.strip()
     if not raw:
         raise OpsTagError("empty ops tag")
     if raw.count("/") != 2:
         raise OpsTagError(
             f"invalid ops tag {raw!r}: expected "
-            "sync|bootstrap|ship/<app_id>/<environment> "
+            f"{KIND_PATTERN}/<app_id>/<environment> "
             "(no extra path segments)"
         )
     m = OPS_TAG_RE.fullmatch(raw)
     if m is None:
         raise OpsTagError(
             f"invalid ops tag {raw!r}: expected "
-            "sync|bootstrap|ship/<app_id>/<environment>"
+            f"{KIND_PATTERN}/<app_id>/<environment>"
         )
     kind = m.group("kind")
     app_id = m.group("app_id").strip()
@@ -403,8 +408,27 @@ def print_success(
         print("pushed: no (pass --push to push origin refs/tags/...)")
 
 
+def _db_declaration_path(app_id: str, *, repo_root: Path) -> Path:
+    return repo_root / "deploy" / "db" / f"{app_id}.yml"
+
+
+def _validate_db(app_id: str, environment: str, *, repo_root: Path) -> None:
+    """``deploy/db/<app>.yml`` declares the environment (no registry / secrets-schema check)."""
+    rel = f"deploy/db/{app_id}.yml"
+    path = _db_declaration_path(app_id, repo_root=repo_root)
+    if not path.is_file():
+        raise OpsTagError(f"db tag needs {rel} (missing)")
+    loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
+    envs = loaded.get("environments") if isinstance(loaded, dict) else None
+    if not isinstance(envs, dict) or environment not in envs:
+        raise OpsTagError(f"environment {environment!r} not declared in {rel}")
+
+
 def _validate_for_kind(tag: OpsTag) -> tuple[str, str] | None:
     """Validate registry/schema (and ship extras). Return nix/image for ship."""
+    if tag.kind == "db":
+        _validate_db(tag.app_id, tag.environment, repo_root=REPO_ROOT)
+        return None
     if tag.kind == "ship":
         return validate_ship_app_environment(
             tag.app_id, tag.environment, repo_root=REPO_ROOT
@@ -425,6 +449,9 @@ def cmd_parse(args: argparse.Namespace) -> int:
     if ship_fields is not None:
         nix_attr, image_name = ship_fields
         extra = f"nix_attr={nix_attr}\nimage_name={image_name}\n"
+    if tag.kind == "bootstrap":
+        has_db = _db_declaration_path(tag.app_id, repo_root=REPO_ROOT).is_file()
+        extra += f"db_bootstrap={'true' if has_db else 'false'}\n"
 
     lines = (
         f"kind={tag.kind}\n"
@@ -544,6 +571,13 @@ def build_parser() -> argparse.ArgumentParser:
     add_tag_flags(ship)
     ship.set_defaults(kind="ship")
 
+    db = sub.add_parser(
+        "db",
+        help="Create db/<app>/<env> annotated tag (database login ensure only)",
+    )
+    add_tag_flags(db)
+    db.set_defaults(kind="db")
+
     parse = sub.add_parser(
         "parse",
         help="Parse/validate a tag ref (used by ops-runtime.yml / ship-one.yml)",
@@ -556,7 +590,7 @@ def build_parser() -> argparse.ArgumentParser:
     parse.add_argument(
         "--github-output",
         action="store_true",
-        help="Append kind/app_id/environment/tag to $GITHUB_OUTPUT",
+        help="Append kind/app_id/environment/tag (+ db_bootstrap for bootstrap) to $GITHUB_OUTPUT",
     )
     return p
 
@@ -566,7 +600,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(list(argv) if argv is not None else None)
     if args.command == "parse":
         return cmd_parse(args)
-    if args.command in ("sync", "bootstrap", "ship"):
+    if args.command in ("sync", "bootstrap", "ship", "db"):
         return cmd_tag(args)
     parser.error(f"unknown command {args.command!r}")
     return 2

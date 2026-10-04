@@ -1,0 +1,83 @@
+# Database login bootstrap tests (spec 002 T109; packet 2026-10-03-lab-db-bootstrap).
+#
+# Unit tests (no network) + real-Postgres tests against an ephemeral postgres:17
+# whose admin login mirrors Supabase's `postgres`: NOSUPERUSER CREATEROLE, CREATE on
+# the database, and CREATE on schema public with grant option (Supabase's `postgres`
+# owns its database and so can grant on public). No Supabase or Infisical account is used.
+
+name: DB bootstrap tests
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/db_bootstrap.py'
+      - 'scripts/test_db_bootstrap.py'
+      - 'scripts/test_db_bootstrap_pg.py'
+      - 'scripts/ops_runtime_tag.py'
+      - 'scripts/test_ops_runtime_tag.py'
+      - 'scripts/secrets_sync/**'
+      - 'deploy/db/**'
+      - 'apps/smart-writer-v2/db/bootstrap/**'
+      - '.github/workflows/ops-runtime.yml'
+      - '.github/workflows/db-bootstrap-tests.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-bootstrap-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: labdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      LAB_TEST_PG_ADMIN_URL: postgresql://lab_admin:lab_admin_pw@localhost:5432/labdb
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Create Supabase-like admin role (non-superuser CREATEROLE)
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d labdb -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE lab_admin LOGIN NOSUPERUSER CREATEROLE NOCREATEDB PASSWORD 'lab_admin_pw';
+          GRANT CREATE ON DATABASE labdb TO lab_admin;
+          GRANT CREATE ON SCHEMA public TO lab_admin WITH GRANT OPTION;
+          SQL
+
+      - name: Unit + real-Postgres tests
+        run: >
+          uv run --with pytest --with 'psycopg[binary]>=3.2' --with 'pyyaml>=6' --with 'httpx>=0.27'
+          pytest -v
+          scripts/test_db_bootstrap.py
+          scripts/test_db_bootstrap_pg.py
+          scripts/test_ops_runtime_tag.py
+          scripts/test_sync_runtime_secrets.py
+
+      - name: Ruff (files this packet owns)
+        run: >
+          uvx ruff check
+          scripts/db_bootstrap.py
+          scripts/test_db_bootstrap.py
+          scripts/test_db_bootstrap_pg.py

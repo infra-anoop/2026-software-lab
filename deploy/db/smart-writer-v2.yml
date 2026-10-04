@@ -1,0 +1,34 @@
+# Smart Writer V2 — per-environment database login in the shared lab Supabase project
+# (backlog A31; spec 002 T109–T112; packet notes/packets/2026-10-03-lab-db-bootstrap.md).
+#
+# Names and non-secret parts only. Values live in Infisical and are read (never written)
+# by scripts/db_bootstrap.py, run by the ops tag db/smart-writer-v2/<environment>.
+# The session-pooler host is read from the Supabase pooler-config API at run time.
+
+supabase_project_ref: oguydvttuzbbiovvnxoj   # project 2026-software-lab
+access_token_vault_ref:
+  project: 2026-software-lab
+  env: production
+  path: /
+  key: SUPABASE_ACCESS_TOKEN
+bootstrap_sql: apps/smart-writer-v2/db/bootstrap/env_roles.sql
+port: 5432        # session pooler; the pooler user is <login>.<supabase_project_ref>
+dbname: postgres
+
+environments:
+  production:
+    sql_env: prod
+    login: swv2_prod
+    password_vault_ref:
+      project: 2026-software-lab
+      env: production
+      path: /
+      key: SMART_WRITER_V2_DB_PASSWORD
+  staging:
+    sql_env: staging
+    login: swv2_staging
+    password_vault_ref:
+      project: 2026-software-lab
+      env: production
+      path: /
+      key: SMART_WRITER_V2_STAGING_DB_PASSWORD
