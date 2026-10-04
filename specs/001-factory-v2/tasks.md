@@ -82,11 +82,11 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 
 ### Implementation
 
-- [ ] T021 [P] [US1] GitHub REST adapter implementing `GitHubPort` with httpx in `scripts/factory/src/factory/github/rest.py` (token from typed settings; the only module that calls GitHub — I-A4)
-- [ ] T022 [US1] Lifecycle derivation `scripts/factory/src/factory/lifecycle/derive.py` → `LifecycleSnapshot` (reads `bus.store` on each `wo/*` branch + `GitHubPort`; writes nothing)
-- [ ] T023 [US1] Board rendering `scripts/factory/src/factory/board/render.py` (markdown + JSON) and `factory status`, `factory decisions` in `scripts/factory/src/factory/cli/board.py`
-- [ ] T024 [US1] Bookkeeping-commit counter `scripts/factory/src/factory/metrics/history.py` (consumed by `factory scorecard`)
-- [ ] T025 [US1] Update `acceptance.md` evidence for `board.matches_reality`, `bus.no_handwritten_status`, `history.no_bookkeeping` with the test ids above
+- [x] T021 [P] [US1] GitHub REST adapter implementing `GitHubPort` with httpx in `scripts/factory/src/factory/github/rest.py` (token from typed settings; the only module that calls GitHub — I-A4)
+- [x] T022 [US1] Lifecycle derivation `scripts/factory/src/factory/lifecycle/derive.py` → `LifecycleSnapshot` (reads `bus.store` on each `wo/*` branch + `GitHubPort`; writes nothing)
+- [x] T023 [US1] Board rendering `scripts/factory/src/factory/board/render.py` (markdown + JSON) and `factory status`, `factory decisions` in `scripts/factory/src/factory/cli/board.py`
+- [x] T024 [US1] Bookkeeping-commit counter `scripts/factory/src/factory/metrics/history.py` (consumed by `factory scorecard`)
+- [x] T025 [US1] Update `acceptance.md` evidence for `board.matches_reality`, `bus.no_handwritten_status`, `history.no_bookkeeping` with the test ids above
 
 **Checkpoint**: `factory status` shows real orders; T017–T020 green.
 
@@ -107,15 +107,15 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 - [x] T030 [P] [US2] Contract test `scripts/factory/tests/contract/test_bus_pr.py` — `bus pr` refuses changes outside `bus/decisions/`, `bus/corrections/`, `bus/postmortems/`
 - [x] T031 [P] [US2] Unit test `scripts/factory/tests/unit/test_scorecard.py` — scorecard from events, verdicts, overrides, corrections, decision locks: drift, first-pass acceptance, decision points per feature, governor minutes, rework loops, Wave 1 start/exit dates — catalogs `scorecard.computed`, `wave1.timebox`
 - [x] T032 [P] [US2] Unit test `scripts/factory/tests/unit/test_identity.py` — recorded-only mode marks governor actions unverified; verified mode counts a governor message only when its PR has an approving review by `governor_login`; App token minting builds a JWT from `FACTORY_GITHUB_APP_ID` + `FACTORY_GITHUB_APP_PRIVATE_KEY` and exchanges it (recorded response)
-- [ ] T033 [US2] Spawn T* review for T017–T032 (packet `notes/packets/<date>-factory-v2-slice-a-test-review-t.md`); triage into `TEST_REVIEW.md` before T034
+- [x] T033 [US2] Spawn T* review for T017–T032 (packet `notes/packets/<date>-factory-v2-slice-a-test-review-t.md`); triage into `TEST_REVIEW.md` before T034
 
 ### Implementation
 
-- [ ] T034 [US2] `order new` / `order issue` / `claim` / `release` / `handoff` / `pr open` / `verdict` / `bus pr` in `scripts/factory/src/factory/cli/orders.py` with logic in `scripts/factory/src/factory/orders/` (git plumbing via subprocess in `scripts/factory/src/factory/orders/git.py`; no business logic in the CLI module — I-A1)
-- [ ] T035 [US2] Scorecard `scripts/factory/src/factory/metrics/scorecard.py` + `factory scorecard` in `scripts/factory/src/factory/cli/board.py`
-- [ ] T036 [US2] Identity adapter `scripts/factory/src/factory/identity/adapter.py` (implements `IdentityPort`; mode from config: `recorded` until the App exists, then `verified`) and App token minting + repo-local git credential helper `scripts/factory/src/factory/identity/app_token.py` (1-hour installation tokens)
-- [ ] T037 [US2] Secret names: add a `tooling:` section to `deploy/secrets/schema.yaml` with `factory` → Codespace target, names `FACTORY_GITHUB_APP_ID` and `FACTORY_GITHUB_APP_PRIVATE_KEY` (no values), and teach `scripts/validate_secrets_schema.py` + `scripts/test_validate_secrets_schema.py` to accept the section
-- [ ] T038 [US2] Update `acceptance.md` evidence for every row tested in T026–T032
+- [x] T034 [US2] `order new` / `order issue` / `claim` / `release` / `handoff` / `pr open` / `verdict` / `bus pr` in `scripts/factory/src/factory/cli/orders.py` with logic in `scripts/factory/src/factory/orders/` (git plumbing via subprocess in `scripts/factory/src/factory/orders/git.py`; no business logic in the CLI module — I-A1)
+- [x] T035 [US2] Scorecard `scripts/factory/src/factory/metrics/scorecard.py` + `factory scorecard` in `scripts/factory/src/factory/cli/board.py`
+- [x] T036 [US2] Identity adapter `scripts/factory/src/factory/identity/adapter.py` (implements `IdentityPort`; mode from config: `recorded` until the App exists, then `verified`) and App token minting + repo-local git credential helper `scripts/factory/src/factory/identity/app_token.py` (1-hour installation tokens)
+- [x] T037 [US2] Secret names: add a `tooling:` section to `deploy/secrets/schema.yaml` with `factory` → Codespace target, names `FACTORY_GITHUB_APP_ID` and `FACTORY_GITHUB_APP_PRIVATE_KEY` (no values), and teach `scripts/validate_secrets_schema.py` + `scripts/test_validate_secrets_schema.py` to accept the section
+- [x] T038 [US2] Update `acceptance.md` evidence for every row tested in T026–T032
 
 **Checkpoint (part of CP1)**: one fixture order runs issue → merge, derived end to end; T026–T032 green.
 
