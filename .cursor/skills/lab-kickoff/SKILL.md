@@ -48,7 +48,8 @@ Read, don't skim-and-guess. Ground every claim in a file or command output. [gov
    rows that are still open), plus `specs/*/intent.yaml` when present.
 5. `specs/*/FINISH_BAR.md`: is **Implement unblocked: yes** set?
 6. Open packets: `notes/packets/*.md` (skip `_*` templates and `README.md`).
-   Cross-check with `gh pr list --state open` and `git branch -r`.
+   Cross-check with open PRs and `git branch -r`. The `gh` CLI is absent in the
+   Codespace; use REST: `curl -s -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/repos/infra-anoop/2026-software-lab/pulls?state=open`.
 7. Factory board, degrading gracefully:
 
 ```bash
