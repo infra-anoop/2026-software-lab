@@ -167,10 +167,14 @@ def test_seed_lock_honored_passes(repo: RepoBuilder) -> None:
     assert result.passed is True, result.messages
 
 
-# Thinner behavior at letter fidelity (data-model Lock). Unless the id says "in_place",
-# every blocked seed keeps each token present at head, so a presence-only check misses it.
+# Thinner behavior at letter fidelity (data-model Lock). The weakened seeds (except
+# "in_place") and `other_file_still_has_it` keep each token present at head in a changed
+# file, so a presence-only check misses them.
 
-DEPLOY_TWO = "#!/bin/sh\nrailway up --service demo\nrailway up --service worker\n"
+DEPLOY_ONE = "#!/bin/sh\nrailway up --service demo\n"
+DEPLOY_TWO = DEPLOY_ONE + "railway up --service worker\n"
+DEPLOY_THREE = "#!/bin/sh\nrailway link\n" + DEPLOY_TWO.removeprefix("#!/bin/sh\n")
+RELEASE = "#!/bin/sh\nrailway up --service worker\n"
 COVERAGE = "[report]\nfail_under = 70\n"
 CLAIM = "#!/bin/sh\nfactory claim --cap 3\n"
 FLOOR = {
@@ -184,18 +188,29 @@ EXACT = {"id": "D8", "letter_tokens": ["cap 3"], "fidelity": "letter"}
 
 
 @pytest.mark.parametrize(
-    "head",
+    ("base_files", "head_files"),
     [
-        "#!/bin/sh\nrailway up --service demo\n",
-        "#!/bin/sh\nrailway up --service demo\n# railway up --service worker  (paused)\n",
+        (
+            {"scripts/deploy.sh": DEPLOY_ONE},
+            {"scripts/deploy.sh": '#!/bin/sh\necho "deploy skipped"\n'},
+        ),
+        (
+            {"scripts/deploy.sh": DEPLOY_ONE},
+            {"scripts/deploy.sh": "#!/bin/sh\n# railway up --service demo  (paused)\n"},
+        ),
+        (
+            {"scripts/deploy.sh": DEPLOY_ONE, "scripts/release.sh": RELEASE},
+            {"scripts/deploy.sh": "#!/bin/sh\n", "scripts/release.sh": RELEASE + "echo done\n"},
+        ),
     ],
-    ids=["deleted", "restated_only_in_comment"],
+    ids=["only_file", "only_file_restated_in_comment", "other_file_still_has_it"],
 )
-def test_seed_lock_token_removed(repo: RepoBuilder, head: str) -> None:
-    """A deleted code line drops the token and no added code line restores it."""
-    ctx = lock_context(
-        repo, {"scripts/deploy.sh": head}, base_files={"scripts/deploy.sh": DEPLOY_TWO}
-    )
+def test_seed_lock_token_removed(
+    repo: RepoBuilder, base_files: dict[str, str], head_files: dict[str, str]
+) -> None:
+    """Per file (governor 2026-10-04): a code file that honored the token at base no
+    longer does at head, and no added code line elsewhere restores it (not a move)."""
+    ctx = lock_context(repo, head_files, base_files=base_files)
     assert_blocked("lock.letter-tokens", ctx)
 
 
@@ -255,6 +270,13 @@ def test_seed_lock_numeric_token_weakened(
             {"scripts/coverage.toml": COVERAGE},
             {"scripts/coverage.toml": COVERAGE + "port = 8080\nfail_under_ratio = 0.5\n"},
         ),
+        (None, {"scripts/deploy.sh": DEPLOY_TWO}, {"scripts/deploy.sh": DEPLOY_ONE}),
+        (None, {"scripts/deploy.sh": DEPLOY_THREE}, {"scripts/deploy.sh": DEPLOY_ONE}),
+        (
+            None,
+            {"scripts/deploy.sh": DEPLOY_TWO},
+            {"scripts/deploy.sh": DEPLOY_ONE + "# railway up --service worker  (paused)\n"},
+        ),
     ],
     ids=[
         "min_floor_raised",
@@ -263,6 +285,9 @@ def test_seed_lock_numeric_token_weakened(
         "numeric_token_restated_unchanged",
         "token_moved_to_another_file",
         "unrelated_numbers",
+        "t8_repro_one_of_two_lines_deleted",
+        "several_occurrences_deleted_file_still_has_token",
+        "occurrence_commented_out_file_still_has_token",
     ],
 )
 def test_seed_lock_thinner_near_miss_passes(
