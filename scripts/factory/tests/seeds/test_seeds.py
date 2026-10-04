@@ -7,6 +7,8 @@ Each test builds its violating fixture with `RepoBuilder` and asserts that
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 import pytest
 
 from factory.api import GateContext, GateEntrypointError, GateResult, run_gate
@@ -62,13 +64,14 @@ FLY_CONFIG = 'app = "demo"\nprimary_region = "iad"\n'
 
 def lock_context(
     repo: RepoBuilder,
-    head_files: dict[str, str],
+    head_files: Mapping[str, str | None],
     *,
     base_files: dict[str, str] | None = None,
     substitutes: list[str] | None = None,
     goal: str = "Deploy the demo app.",
+    lock: dict[str, object] | None = None,
 ) -> GateContext:
-    lock: dict[str, object] = {"id": "D1", "letter_tokens": ["railway"], "fidelity": "letter"}
+    lock = dict(lock or {"id": "D1", "letter_tokens": ["railway"], "fidelity": "letter"})
     if substitutes is not None:
         lock["substitutes"] = substitutes
     repo.add_demo_feature()
@@ -87,9 +90,8 @@ def test_seed_declared_lock_violated(repo: RepoBuilder) -> None:
     """Order declares letter fidelity to Railway; the diff deploys somewhere else.
 
     Letter fidelity is semantic (US3 #8, SC-002; governor lock 2026-10-03): a different
-    tool or host breaks it even when the token still appears somewhere. "Thinner
-    behavior" is judged by the independent reviewer's fidelity rubric, not by this gate;
-    a reject verdict blocks merge.
+    tool or host breaks it even when the token still appears somewhere. Thinner behavior
+    is blocked mechanically by the removal and weaker-number seeds below (data-model Lock).
     """
     ctx = lock_context(repo, {"deploy/fly/demo.toml": FLY_CONFIG})
     assert_blocked("lock.letter-tokens", ctx)
@@ -161,6 +163,116 @@ def test_seed_lock_honored_passes(repo: RepoBuilder) -> None:
         {"scripts/deploy.sh": "#!/bin/sh\nrailway up --service demo\n"},
         substitutes=["fly", "flyctl"],
     )
+    result = run_seed("lock.letter-tokens", ctx)
+    assert result.passed is True, result.messages
+
+
+# Thinner behavior at letter fidelity (data-model Lock). Unless the id says "in_place",
+# every blocked seed keeps each token present at head, so a presence-only check misses it.
+
+DEPLOY_TWO = "#!/bin/sh\nrailway up --service demo\nrailway up --service worker\n"
+COVERAGE = "[report]\nfail_under = 70\n"
+CLAIM = "#!/bin/sh\nfactory claim --cap 3\n"
+FLOOR = {
+    "id": "D2",
+    "letter_tokens": ["fail_under = 70"],
+    "fidelity": "letter",
+    "direction": "min",
+}
+CEILING = {"id": "D7", "letter_tokens": ["$5"], "fidelity": "letter", "direction": "max"}
+EXACT = {"id": "D8", "letter_tokens": ["cap 3"], "fidelity": "letter"}
+
+
+@pytest.mark.parametrize(
+    "head",
+    [
+        "#!/bin/sh\nrailway up --service demo\n",
+        "#!/bin/sh\nrailway up --service demo\n# railway up --service worker  (paused)\n",
+    ],
+    ids=["deleted", "restated_only_in_comment"],
+)
+def test_seed_lock_token_removed(repo: RepoBuilder, head: str) -> None:
+    """A deleted code line drops the token and no added code line restores it."""
+    ctx = lock_context(
+        repo, {"scripts/deploy.sh": head}, base_files={"scripts/deploy.sh": DEPLOY_TWO}
+    )
+    assert_blocked("lock.letter-tokens", ctx)
+
+
+@pytest.mark.parametrize(
+    ("lock", "path", "base", "head"),
+    [
+        (
+            FLOOR,
+            "scripts/coverage.toml",
+            COVERAGE,
+            COVERAGE + "\n[report.nightly]\nfail_under=60\n",
+        ),
+        (CEILING, "deploy/budget.toml", 'run_cap = "$5"\n', 'run_cap = "$5"\nnightly = "$12"\n'),
+        (EXACT, "scripts/claim.sh", CLAIM, CLAIM + "factory claim --retry --cap 4\n"),
+        (EXACT, "scripts/claim.sh", CLAIM, "#!/bin/sh\nfactory claim --cap 2\n"),
+    ],
+    ids=["min_floor_lowered", "max_ceiling_raised", "exact_changed", "exact_lowered_in_place"],
+)
+def test_seed_lock_numeric_token_weakened(
+    repo: RepoBuilder, lock: dict[str, object], path: str, base: str, head: str
+) -> None:
+    """An added code line restates a numeric token's text with a weaker number."""
+    ctx = lock_context(repo, {path: head}, base_files={path: base}, lock=lock)
+    assert_blocked("lock.letter-tokens", ctx)
+
+
+@pytest.mark.parametrize(
+    ("lock", "base_files", "head_files"),
+    [
+        (
+            FLOOR,
+            {"scripts/coverage.toml": COVERAGE},
+            {"scripts/coverage.toml": "[report]\nfail_under = 80\n"},
+        ),
+        (
+            CEILING,
+            {"deploy/budget.toml": 'run_cap = "$5"\n'},
+            {"deploy/budget.toml": 'run_cap = "$3"\n'},
+        ),
+        (
+            None,
+            {"scripts/deploy.sh": DEPLOY_TWO},
+            {"scripts/deploy.sh": DEPLOY_TWO.replace("worker\n", "worker --detach\n")},
+        ),
+        (
+            EXACT,
+            {"scripts/claim.sh": CLAIM},
+            {"scripts/claim.sh": CLAIM.replace("--cap 3", "--cap 3 --json")},
+        ),
+        (
+            None,
+            {"scripts/deploy.sh": DEPLOY_TWO},
+            {"scripts/deploy.sh": None, "scripts/release.sh": DEPLOY_TWO},
+        ),
+        (
+            FLOOR,
+            {"scripts/coverage.toml": COVERAGE},
+            {"scripts/coverage.toml": COVERAGE + "port = 8080\nfail_under_ratio = 0.5\n"},
+        ),
+    ],
+    ids=[
+        "min_floor_raised",
+        "max_ceiling_lowered",
+        "token_restated_in_edited_line",
+        "numeric_token_restated_unchanged",
+        "token_moved_to_another_file",
+        "unrelated_numbers",
+    ],
+)
+def test_seed_lock_thinner_near_miss_passes(
+    repo: RepoBuilder,
+    lock: dict[str, object] | None,
+    base_files: dict[str, str],
+    head_files: dict[str, str | None],
+) -> None:
+    """False-positive guards: none of these is thinner than the lock."""
+    ctx = lock_context(repo, head_files, base_files=base_files, lock=lock)
     result = run_seed("lock.letter-tokens", ctx)
     assert result.passed is True, result.messages
 
