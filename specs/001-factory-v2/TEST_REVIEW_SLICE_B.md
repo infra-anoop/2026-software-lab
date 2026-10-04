@@ -124,3 +124,58 @@ Test-shape choices a round-2 reviewer may debate (none changes a frozen CP0 inte
 - **Sprint pointers:** a sprint pointer's OD does not double as an OD-id reference.
 - **`--require-target` failure:** it carries `details.coverage`.
 - **Eval files:** a `.yml` extension counts as YAML, and an unsupported extension blocks.
+
+## Round 2 review
+
+Reviewed `wo/wo-20261004-factory-slice-b` at `21fc8e35bb4875707b1c333abe9177e810fcf07c`.
+
+### Verdict
+
+**Verdict: reject — Do not implement against these tests yet.**
+
+T-B2, T-B3, T-B4, T-B6, and T-B7 are resolved in executable assertions, and the focused/full counts reproduce exactly. T-B1's new goal cases are executable but encode a synthetic single-value table convention that does not constrain a parser against the lab's real Open Decision rows, which frequently contain multiple bold values, dates, explanatory prose, and multiword lock descriptions. T-B5 covers the five valid layouts and the named lexical path cases, but still permits a tracked symlink escape or fail-open handling of malformed supported files. Those two Blockers leave matching implementation unsafe.
+
+### Findings
+
+| ID | Severity | Tag | Lens | Locus | Finding | Suggested resolution |
+|----|----------|-----|------|-------|---------|----------------------|
+| T-B2-1 | Blocker | process | Lock discovery / fixture representativeness | `test_fidelity.py::test_declared_*goal*`; `order-fidelity-declared`; real `specs/*/spec.md` Open Decisions tables | The tests prove D1 and the single synthetic value `Railway`, but not the stated rule “locked value is the bold text after `—`” against real table shapes. Actual rows contain several bold values in one status (factory D2; Smart Writer D2; durable-evals D4), multiword descriptive locks (factory D4), and value prose mixed with dates/links. An implementation that extracts only the first bold span, hardcodes Railway, requires an entire multiword span, or splits it into generic words can pass all six goal tests while missing real locks or generating false positives. | Add table-driven cases copied from at least three real row shapes: multiple numeric values, provider/family values, and a multiword tool/identity lock. Pin whether each bold span is an independent whole phrase/token and add generic-word false-positive guards. Prefer an explicit machine-readable lock-token source if prose extraction cannot be defined without heuristics. |
+| T-B2-2 | Blocker | process | Fail-closed eval validation / path traversal | `test_catalog_linkage.py` eval cases; governor lock T-B5 | Lexical absolute/`..`, deleted, untracked, unsupported-extension, and five valid-layout cases are strong, but two wrong implementations still green. First, `git ls-tree` followed by `Path.read_text()` can treat a tracked symlink as “in git at head” and follow it outside the repository. Second, a parser can catch malformed YAML/JSON/JSONL or wrong supported-file shapes and return pass; no assertion requires malformed content, non-list `cases`, non-mapping entries, or entries without `id` to block. The lock says the file itself contains one of the five exact layouts, so both paths must fail closed. | Add a tracked symlink whose target is outside the repo and contains the requested case; require block. Add malformed YAML, JSON, and JSONL plus valid syntax with a wrong top-level shape, non-list `cases`, and list entries lacking mapping/id; each must block. Reading the git blob at `head` rather than the checkout avoids symlink traversal and proves head custody directly. |
+| T-B2-3 | Nit | process | Strength | round-1 remediation set; focused/full runs | Strength: modified requests are judged at head with clean and legacy controls; sprint pointers distinguish waived/open/locked decisions; report-only coverage and the 17/19, 9/10, 19/20 target boundaries match the governor lock; planned humans remain uncovered; all five valid eval layouts, exact ids, backticks, deletion, untracked files, and lexical traversal are covered. | Preserve these assertions while adding T-B2-1 and T-B2-2. |
+
+### Round-1 finding resolution judgments
+
+| Finding | Judgment | Evidence |
+|---------|----------|----------|
+| T-B1 | **Not fully resolved** | Goal-only D1 id/value block/pass and two near misses are executable, but they do not constrain the proposed parser against actual table diversity (T-B2-1). |
+| T-B2 | **Resolved** | Prompt and option-label modifications block; clean modification passes; editing any part judges the whole head request; untouched legacy remains exempt. |
+| T-B3 | **Resolved** | `→ sprint 03 (D1)` passes only with waived D1 and blocks for open/locked/no-OD; arbitrary phases block; plain existing OD and plan/file pointers retain their distinct behavior. |
+| T-B4 | **Resolved** | Plain `--coverage` still succeeds at 3/8. `--coverage --require-target` fails at 17/19 and succeeds at exactly 9/10 and 19/20. T081 explicitly requires the sprint-close caller and refusal. The pending CLI-contract wording is an orchestrator edit, not a test defect. |
+| T-B5 | **Not fully resolved** | Five valid layouts, exact case ids, missing/deleted/untracked files, backticks, unsupported extension, Unix absolute path and lexical `..` are covered. Symlink traversal and malformed supported files remain fail-open gaps (T-B2-2). |
+| T-B6 | **Resolved** | `kind: human, status: planned` is uncovered at 1/2 and becomes covered only after a committed flip to `exists`, reaching 2/2. The pending FR-023/SC-005b wording is an orchestrator edit, not a test defect. |
+| T-B7 | **Resolved** | The repository smoke independently parses every discovered intent file, requires multiple nonempty files, and compares the checker result to the exact union without naming another feature's ids. |
+
+### Test-shape judgments
+
+- **(a) Bold status-cell value extraction: reject as insufficiently pinned.** The repository consistently uses an em dash in many locked rows, but not a single-value grammar. Rows may contain several independently material bold values (`3`, `10`, `8`; OpenAI and Anthropic), a long bold phrase, links, and dates. The synthetic Railway row does not define how those become matchable lock tokens. This is T-B2-1.
+- **(b) Sprint-pointer OD does not double-count: accept.** The general OD-reference alternative allows `deferred (D1)` while D1 is open. The more specific contract example `→ sprint 03` explicitly requires a waived OD; allowing the same open D1 to satisfy the generic clause would erase that condition. The tests preserve both forms.
+- **(c) Backticks ignored: accept.** Backticks are Markdown presentation around the evidence cell, not part of the pytest node or eval reference. Separate node/eval guards make this normalization explicit.
+
+### Fresh adversarial pass
+
+**Wrong implementation that still greens:** parse only the first bold span after an em dash; recognize `Railway` and `D1`; validate eval paths with `git ls-tree`, then open the checkout path; on parse errors return “no violation.” It passes every current remediation assertion, misses later values in multi-value locks, can follow a tracked symlink outside the repository, and treats malformed supported eval files as linked.
+
+**Over-constraint check:** judging a modified decision request as a whole is faithful because the head request is what reaches the governor. The sprint-pointer distinction is also faithful to the specific waived-OD clause. Requiring `.yml` as YAML and ignoring evidence backticks add compatible forms rather than rejecting a conforming implementation.
+
+### Verification record
+
+| Check | Result |
+|-------|--------|
+| Reviewed head | `21fc8e35bb4875707b1c333abe9177e810fcf07c` |
+| Slice B focused suite | Expected RED — **172 failed** in 56.57 s; no collection errors or xfails |
+| Full suite | Expected RED — **288 failed / 237 passed** in 84.36 s; no collection errors or xfails |
+| `nix develop ../.. -c uv run ruff check .` | PASS |
+| 90% boundaries | 17/19 failure; 9/10 and 19/20 success are executable assertions |
+| Eval valid layouts | YAML list, YAML `cases`, JSON list, JSON `cases`, JSONL all present |
+| Frozen CP0 files | PASS — no round-1 remediation changed a frozen CP0 file |
+| Diff hygiene | PASS — `git diff --check 7ec3c23..21fc8e3` |
