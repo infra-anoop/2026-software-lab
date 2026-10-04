@@ -155,3 +155,20 @@ The strongest still-green wrong implementation would enumerate every GitHub chec
 | `uv run ruff format --check tests/contract tests/unit` | PASS — 19 files already formatted. |
 | OpenSSL in Nix | PASS — OpenSSL 3.3.3. |
 | Frozen CP0 files | PASS — no edits to `api.py`, `bus/`, `config/`, `cli/app.py`, `cli/exit_codes.py`, or `gates/registry.py`; the new bus verdict/amendment files are order records, not edits to `factory.bus`. |
+
+## Triage (orchestrator, round 2)
+
+Agent-adjudicated (2026-10-04); every round-2 finding is process-tagged. Bus: `wo-20261004-factory-slice-a.verdict-02` (reviewer) and `.amend-02` (this triage plus the JWT dependency decision).
+
+| ID | Disposition | Decided by | Resolution |
+|----|-------------|------------|------------|
+| T-A2-1 | accept — option 2 (no configured required-run set, because `config/` is frozen CP0) | orchestrator (process) | `test_lifecycle.py::test_accepted_needs_verdict_and_full_required_check_set`: the required set is a `factory/<gate>` commit status for every gate in the order's `checks`, each green or failed and overridden for that same gate; other check runs are not required. Kept: `all-green`, `failed-overridden` (accepted); `status-failed`, `status-pending`, `status-missing`, `override-other-gate` (stay `in_review`). Removed `check-run-failed`; `mixed-runs` became `unrelated-run-pending` (all required statuses green plus one unrelated run in progress → accepted) |
+| T-A2-2 | accept | orchestrator (process) | `test_status.py`: `overrides["red-first-proof"] == 1` and every other value is a non-negative integer, so a dense map such as `{"test-seam-ban": 0}` passes |
+| T-A2-3 | noted — no change to `verdict-01` | orchestrator (process) | Future transcriptions say "faithfully summarized" unless the bytes are copied |
+| T-A2-4 | noted — strengths | orchestrator (process) | No action |
+
+**JWT dependency (decided in `amend-02`, not added in this run):** the implementation signs the RS256 App JWT with `pyjwt[crypto]` (`>=2.9,<3`, which pulls `cryptography`). The owned paths now include `scripts/factory/pyproject.toml`, `uv.lock`, a new decision row in `research.md`, and the Primary Dependencies line in `plan.md`. Rejected alternatives: shelling out to the `openssl` CLI (a runtime binary dependency plus hand-rolled JWT encoding), and `githubkit`, a non-sibling full GitHub SDK with built-in App auth (it replaces the thin httpx adapter with a much larger surface).
+
+### Later
+
+- After T066 (branch protection, CP2), the factory can read branch-protection required checks. Non-factory required check runs join the required set then, with lifecycle cases for a failed and a pending required run.
