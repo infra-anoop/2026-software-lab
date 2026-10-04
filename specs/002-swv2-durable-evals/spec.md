@@ -137,7 +137,7 @@ As the governor, the UI is built as part of producing the deployable image; buil
 - The eval budget would be exceeded on a PR → the run stops at the budget and the PR reports partial results as "incomplete", not as a pass.
 - The noise band is not yet measured → the gate reports but does not block until measured.
 - The judge is not yet calibrated (D1 unmet) → the gate reports but does not block.
-- The nightly full set finds a regression the per-PR subset missed → a regression item opens on the factory board, owned by the orchestrator, and every later app PR reports it until resolved or overridden with a reason (plan defines time bound).
+- The nightly full set finds a regression the per-PR subset missed → a regression item opens on the factory board, owned by the orchestrator, and every subsequent app PR reports it until resolved or overridden with a reason (plan defines time bound).
 - A migration fails on staging → production deploy does not proceed.
 - Legacy V1 / Research Auditor → untouched this sprint (SW-X4).
 
@@ -233,7 +233,7 @@ Check instances: [`acceptance.md`](./acceptance.md).
 | Models + tests | US3, US5 (config part) | First to touch the generate/revise graph |
 | Evals | US2, US5 (bake-off) | Needs per-role model config |
 | Durability | US1, US6 | Checkpointing after the Models lane's graph changes |
-| Ship | US7, US4 latency measurement | Independent |
+| Ship | US7, US4 latency measurement | Independent (the latency report rides the Evals nightly run, which owns the harness → plan P2b) |
 
 US4 spend ceiling (FR-017) lands with the Models + tests lane.
 
@@ -271,13 +271,13 @@ Report: [`SPEC_REVIEW.md`](./SPEC_REVIEW.md) (F1–F9). Reviewer family: GPT.
 - Uploads move to object storage in the same Supabase project.
 - Single Railway replica remains acceptable; the in-process rate limiter stays in memory.
 - Baseline D7 upload limits unchanged.
-- Shared pieces (durable store, model config, eval harness, checkpointer wiring) may live in `modules/lab_shared` as designed-for-reuse modules declaring intended consumers (factory I-A5); V1/RA adopt later.
-- Hobbyist scale (~10 users; stretch ~100).
+- Shared pieces (durable store, model config, eval harness, checkpointer wiring) may live in `modules/lab_shared` as designed-for-reuse modules declaring intended consumers (factory I-A5); V1/RA adopt them in a subsequent sprint (SW-X4).
+- Hobbyist scale (~10 users; headroom ~100).
 
 ## Out of scope (this version)
 
-- Accounts / sign-in, document editor, streaming, export (later workspace direction) — SW-X1, SW-X2.
-- Funder-intelligence research (later direction) — SW-X3.
+- Accounts / sign-in, document editor, streaming, export (a subsequent workspace direction) — SW-X1, SW-X2.
+- Funder-intelligence research (a subsequent direction) — SW-X3.
 - V1 / Research Auditor adoption — SW-X4.
 - Prompt/quality improvements beyond the Wave 3 bake-off and measured prompt pass.
 - Gating on latency (measured only).

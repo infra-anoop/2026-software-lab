@@ -11,7 +11,7 @@
 | `org_materials` | list of `{path, sha256}` under `evals/golden/materials/` (content-addressed; CI verifies hashes) |
 | `prompt` | the user's opening message(s) |
 | `web_research` | bool (per-PR subset forces `false`; nightly honors it) |
-| `expectations` | optional governor notes; never shown to the judge |
+| `expectations` | governor notes (may be omitted); never shown to the judge |
 
 **Held-out custody (sealed):** `heldout` cases live under `evals/golden/heldout/`. The eval runner refuses to load them unless invoked as `evals.run --postmortem` with sprint id; `eval.heldout_sealed` scans every workflow and run config for that path. Their drafts and scores are first generated at the post-mortem.
 

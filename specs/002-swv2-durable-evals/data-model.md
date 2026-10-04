@@ -9,7 +9,7 @@ Baseline entities ([`../smart-writer-v2/data-model.md`](../smart-writer-v2/data-
 | production | `swv2_prod` | `swv2_prod_langgraph` | `swv2_prod_queue` | `swv2_prod` | `uploads-prod` |
 | staging | `swv2_staging` | `swv2_staging_langgraph` | `swv2_staging_queue` | `swv2_staging` | `uploads-staging` |
 
-Each login has `USAGE`/DML grants **only** on its own three schemas and `search_path` set to them at the role level. The checkpointer and queue connect with that login, so their tables are created in the env's own schemas. Migrations are schema-qualified. A CI lint rejects unqualified DDL, and an isolation test proves the staging login cannot read `swv2_prod*`. Production migrations run only after the same migration succeeded on staging (governor-only "irreversible" gate).
+Each login owns its own three schemas — `USAGE`, `CREATE` and DML on its own three schemas only, nothing elsewhere — and has `search_path` set to them at the role level. The checkpointer and queue connect with that login, so their tables are created in the env's own schemas; each pool sets its own schema first in `search_path` (app pool → app schema, checkpointer → checkpoint schema, queue → queue schema) so setup DDL lands in the right one. Migrations are schema-qualified: they are written once with an `{{app_schema}}` token that `app/migrate.py` renders per environment (from the connected login) before dbmate runs. A CI lint rejects unqualified DDL, and an isolation test proves the staging login cannot read `swv2_prod*`. Production migrations run only after the same migration succeeded on staging (governor-only "irreversible" gate).
 
 ## Tables (in the env app schema)
 
@@ -42,7 +42,7 @@ Crash safety: a crash between steps 1 and 2 leaves `deleting_at` set; the next s
 ## Job execution (review P2 — Procrastinate locked)
 
 - **Enqueue** (HTTP): in one transaction, insert `jobs` row (`queued`, `attempt 0`, reservation check) and the Procrastinate job (`queueing_lock = job_id`, so a job cannot be enqueued twice).
-- **Worker** (in-process Procrastinate async worker, started in FastAPI lifespan, concurrency 1): marks `running`, `attempt += 1`, and invokes the graph with `thread_id = job_id`. On the first attempt it starts fresh; on later attempts it resumes from the last checkpoint (`ainvoke(None, config)`).
+- **Worker** (in-process Procrastinate async worker, started in FastAPI lifespan, concurrency 1): marks `running`, `attempt += 1`, and invokes the graph with `thread_id = job_id`. On the first attempt it starts fresh; on subsequent attempts it resumes from the last checkpoint (`ainvoke(None, config)`).
 - **Stalled jobs:** worker heartbeats; on startup and every minute, stalled jobs (no heartbeat for > 2 minutes) are retried. This covers a crash mid-run.
 - **Retry policy:** max 2 attempts. After that the job is `failed` with `fail_reason = interrupted_retry`, and the user sees "retry".
 - **Repeated node after resume:** the node from the last checkpoint re-runs. Model calls inside it repeat, and their cost is charged again against the same job's reservation (FR-017 holds across attempts). Publication is idempotent via `artifact_versions.job_id unique` (`ON CONFLICT DO NOTHING`).

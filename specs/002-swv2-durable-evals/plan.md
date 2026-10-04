@@ -10,7 +10,7 @@
 
 ## Summary
 
-Make every piece of user work durable (Postgres + Storage in a dedicated Supabase project, versioned migrations proven on staging, resumable jobs via the LangGraph Postgres checkpointer, anonymous cookie ownership with 30-day visible retention). Make quality measurable: a Gemini program-officer judge plus a source-support checker in pydantic-evals, gated per PR against a nightly noise band, calibrated to the governor. Remove the test seam, so tests run the shipped graph with models substituted at the boundary. Models come from per-role config with a per-job cost meter, and the UI is built in the image.
+Make every piece of user work durable (Postgres + Storage in a dedicated Supabase project, versioned migrations proven on staging, resumable jobs via the LangGraph Postgres checkpointer, anonymous cookie ownership with 30-day visible retention). Make quality measurable: a Gemini program-officer judge plus a source-support checker in pydantic-evals, gated per PR by a paired main-vs-PR comparison against a noise band from no-change pairs, calibrated to the governor. Remove the test seam, so tests run the shipped graph with models substituted at the boundary. Models come from per-role config with a per-job cost meter, and the UI is built in the image.
 
 ## Architecture *(mandatory — first-class)*
 
@@ -28,8 +28,8 @@ Make every piece of user work durable (Postgres + Storage in a dedicated Supabas
 - **Data stores**: Supabase Postgres with three schemas per environment (app, checkpoints, queue) under a per-environment database login, and a private Storage bucket per environment (data-model § Environments).
 - **External systems**: OpenAI (and any non-Gemini bake-off winners) at runtime; Gemini (judge, support checker) in eval CI only; Tavily (unchanged); Logfire (traces + eval results); Supabase; Railway.
 
-**Shared (`modules/lab_shared`, designed for reuse; each module declares consumers `[smart-writer-v2]` now, intended `[smart-writer, research-auditor]` later — I-A5):**
-- `lab_shared.db` — psycopg pool from typed settings, health check.
+**Shared (`modules/lab_shared`, designed for reuse; each module declares consumers `[smart-writer-v2]` now, intended next `[smart-writer, research-auditor]` — I-A5):**
+- `lab_shared.db.pool` — psycopg pool from typed settings, health check (new module inside the existing `lab_shared/db/` package; not imported by its `__init__`, so V1/RA stay psycopg-free).
 - `lab_shared.checkpoint` — `AsyncPostgresSaver` setup and teardown.
 - `lab_shared.model_config` — price table + `CostMeter`.
 - `lab_shared.evals` — paired comparison, no-change noise band, per-dimension gate decision, report-only state, spend ledger.
@@ -44,17 +44,18 @@ App-specific (schema, repositories, golden set, judge rubric) stays in the app.
 | `persistence/*` | SQL + transactions per aggregate; cascade semantics | Business rules (caps, retention timing) |
 | `storage_adapter` | Upload bytes put/get/delete | Ownership checks |
 | `ownership` | Token issue, hash, lookup; `owner_id` for requests | Retention |
-| `retention` | `touch(conversation)` on every use; hourly sweep (Storage first, then row) | Which routes count as use (declared in `entrypoints` per FR-004 list) |
+| `retention` | `touch(conversation)` on every use; hourly sweep per data-model § Sweep protocol (claim row, delete rows + enqueue Storage outbox, drain outbox) | Which routes count as use (declared in `entrypoints` per FR-004 list) |
 | `orchestrator/*` | Graphs, nodes, checkpointer config | Job records (JobRepo) |
 | `spend` + `lab_shared.model_config` | Cost accounting per job; stop before exceeding the ceiling | Choosing models |
 | `evals/` (app) | Golden set, subset list, judge and support evaluators, calibration sheets | Gate math (`lab_shared.evals`) |
-| CI `swv2-evals.yml` | Per-PR subset run, nightly full ×3, ledger, job summary, check run | Merging decisions beyond its check |
+| CI `swv2-evals.yml` | Per-PR paired subset run, nightly no-change pair + full tuning set ×1, ledger, job summary, check run | Merging decisions beyond its check |
 
 ### Topology & runtime custody
 
 - **Runtimes / hosts**: per environment, one Railway service `smart-writer-v2` serving FastAPI and the static UI (baseline D5) plus one Supabase database (form per **D5**). Environments: production (exists) and **staging (new)**.
 - **How UI calls API**: same-origin `fetch`; the `swv2_owner` HttpOnly cookie is sent automatically; preview audit secret unchanged.
-- **Secret custody**: the service holds `SMART_WRITER_V2_DATABASE_URL`, `SMART_WRITER_V2_SUPABASE_URL`, `SMART_WRITER_V2_SUPABASE_SECRET_KEY`, and the provider keys. The browser holds only the opaque owner cookie (HttpOnly) and the preview secret (baseline). GitHub Actions holds `OPENAI_API_KEY`, `GEMINI_API_KEY`, and `SMART_WRITER_V2_STAGING_DATABASE_URL` (migration proof).
+- **Secret custody**: the service holds `SMART_WRITER_V2_DATABASE_URL`, `SMART_WRITER_V2_SUPABASE_URL`, `SMART_WRITER_V2_SUPABASE_SECRET_KEY`, and the provider keys. The browser holds only the opaque owner cookie (HttpOnly) and the preview secret (baseline). GitHub Actions holds `OPENAI_API_KEY`, `GEMINI_API_KEY`, and `SMART_WRITER_V2_STAGING_DATABASE_URL` (migration proof), plus `TAVILY_API_KEY` (nightly cases honor `web_research`) and `LOGFIRE_TOKEN` (eval results go to Logfire).
+- **Production migrations**: run at service start (`python -m app.migrate up`, dbmate in the image) under the production login, so the production database URL never leaves the service. A production ship refuses unless staging has already applied the same migration version, and a ship carrying new migrations waits on governor approval (the "irreversible" gate).
 - **Cattle manifests**: `deploy/railway/{production,staging}/smart-writer-v2.yml`, `deploy/secrets/schema.yaml`, `apps/smart-writer-v2/db/migrations/`, `flake.nix` (UI build), `.github/workflows/swv2-evals.yml`, and the migration job in the PR pipeline.
 
 ### Staging database *(spec D5 — **locked 2026-10-03: option A**, with per-env checkpoint and queue schemas and per-env logins per review P6)*
@@ -104,7 +105,7 @@ Before every model call, `spend` **reserves** the worst-case cost: `price(model)
 | **P0 — ops** `[HITL]` | Ops | Footprints exist | SWV2 Supabase project; staging per D5; Railway staging service via `ops_runtime_tag.py bootstrap`; GitHub Actions secrets | Secrets schema validates; staging `/health` 200; migration job can reach the staging DB |
 | **P1a — Models + tests** (first) | Models+tests | Truthful tests, config models, spend stop | Role factories, `models_config`, `spend`, seam removal, `Agent.override` fixtures, node coverage | SC-008 (zero seams, all nodes executed, baseline rows green); SC-009 (engineered overspend stops); no hardcoded model ids |
 | **P1b — Durability: storage** (parallel with P1a; disjoint paths) | Durability | Data survives and is isolated | dbmate migrations, repositories, Storage adapter, ownership cookie, retention + disclosure | SC-001, SC-002, SC-003, SC-012, SC-014 against a real Postgres in CI + staging |
-| **P1c — Ship** (parallel) | Ship | UI built in the image; latency measured | `flake.nix` buildNpmPackage; remove committed assets | FR-022 check (no built assets in git); image serves the UI in the offline boot smoke |
+| **P1c — Ship** (parallel) | Ship | UI built in the image (latency measurement rides the P2b nightly run, which owns the harness) | `flake.nix` buildNpmPackage; remove committed assets | FR-022 check (no built assets in git); image serves the UI in the offline boot smoke |
 | **P2a — Durability: jobs** (after P1a merges) | Durability | Jobs never silently lost | Procrastinate worker, checkpointer wiring, `jobs` table, stalled-job retry, idempotent publication | SC-004 (kill mid-pipeline → resumed or failed with reason) |
 | **P2b — Evals** (after P1a merges) | Evals | Measured quality gate | Golden set `[HITL review]`, judge + support evaluators, calibration `[HITL]`, nightly paired no-change + tuning monitor, paired per-PR gate + ledger, sealed held-out runner | SC-005, SC-006, SC-007, SC-013; gate blocking only after D1 met |
 | **P3 — Bake-off** (Wave 3) | Evals | Evidence-chosen models | Bake-off runner, bundle comparison, judge-by-agreement ranking | SC-011; governor locks bake-off and D3 ceiling |
@@ -129,7 +130,7 @@ Before every model call, `spend` **reserves** the worst-case cost: `price(model)
 
 **Constraints**: $3 hard per draft; ~$1–2 per PR eval; single replica; changed-lines architecture lints (factory)
 
-**Scale/Scope**: ~10 users (stretch ~100)
+**Scale/Scope**: ~10 users (headroom ~100)
 
 ## Constitution Check
 
@@ -155,11 +156,11 @@ specs/002-swv2-durable-evals/
 └── evidence/                # bake-off records, calibration + blinded review results (committed)
 
 apps/smart-writer-v2/
-├── app/{persistence/,storage_adapter.py,ownership.py,retention.py,models_config.py,spend.py}
-├── db/migrations/ · db/schema.sql
-├── evals/{golden/,subset.yaml,judge.py,support.py,run.py,calibrate.py}
+├── app/{persistence/,storage_adapter.py,ownership.py,retention.py,models_config.py,spend.py,migrate.py,worker.py}
+├── db/bootstrap/ · db/migrations/ · db/schema.sql
+├── evals/{golden/,subset.yaml,judge.py,support.py,run.py,calibrate.py,bakeoff.py}
 └── web/                     # source only; no out/ or app/static/ui in git
-modules/lab_shared/src/lab_shared/{db.py,checkpoint.py,model_config.py,evals.py}
+modules/lab_shared/src/lab_shared/{db/pool.py,checkpoint.py,model_config.py,evals.py}
 deploy/railway/staging/smart-writer-v2.yml
 .github/workflows/swv2-evals.yml
 ```

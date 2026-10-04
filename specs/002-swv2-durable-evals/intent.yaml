@@ -221,17 +221,17 @@ intents:
   # ── Anti-goals (this version) ────────────────────────────────────────────
   - id: SW-X1
     kind: anti_goal
-    statement: No accounts or sign-in (later workspace direction).
+    statement: No accounts or sign-in (a subsequent workspace direction).
     source: charter
     checks: [{ kind: review, ref: rubric.scope, status: planned }]
   - id: SW-X2
     kind: anti_goal
-    statement: No document editor, streaming, or export (later workspace direction).
+    statement: No document editor, streaming, or export (a subsequent workspace direction).
     source: charter
     checks: [{ kind: review, ref: rubric.scope, status: planned }]
   - id: SW-X3
     kind: anti_goal
-    statement: No funder-intelligence research (later direction).
+    statement: No funder-intelligence research (a subsequent direction).
     source: charter
     checks: [{ kind: review, ref: rubric.scope, status: planned }]
   - id: SW-X4
