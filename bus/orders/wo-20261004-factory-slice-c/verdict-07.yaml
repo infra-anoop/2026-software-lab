@@ -1,0 +1,69 @@
+schema_version: 1
+kind: verdict
+id: wo-20261004-factory-slice-c.verdict-07
+created: 2026-10-05T20:46:30Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - bus/orders/wo-20261004-factory-slice-c/verdict-06.yaml
+  - bus/orders/wo-20261004-factory-slice-c/amendment-05.yaml
+  - specs/001-factory-v2/TEST_REVIEW_SLICE_C.md
+decision: reject
+findings:
+  - id: T-C4-1
+    severity: blocker
+    tag: product
+    text: >-
+      Root-cause class: the privileged-shell policy is a partial denylist
+      rather than a fail-closed executable allowlist. Harm: head_code_reason
+      accepts env bash -c, command bash -c, and git -C checkout forms that can
+      check out and execute the PR head in the trusted job holding
+      GITHUB_TOKEN and statuses:write. Consequence: a same-repository PR can
+      expose the credential or forge successful factory/* statuses, breaking
+      the letter locks D5, FR-022a and PR-C1. Likelihood: medium because these
+      wrappers and git global options are ordinary workflow spellings.
+      Smallest fix: allowlist the exact trusted commands/actions and permitted
+      arguments, recursively rejecting wrappers and nested shells, with one
+      regression table for this root-cause class.
+  - id: T-C4-2
+    severity: later
+    tag: process
+    text: >-
+      The fail-closed bundle matrix rejects a wrong head_sha but does not bind
+      a wrong full-length base_sha. Wave 1 remains explicitly self-reported and
+      the independent T-star run is the proof of record, so harden this later.
+  - id: T-C4-3
+    severity: later
+    tag: process
+    text: >-
+      The evidence workflow requires one factory gate evidence call but does
+      not prove that producer executable comes from a separate main checkout.
+      D7 already labels Wave 1 self-reported, so this is contract precision
+      rather than additional trusted authority.
+  - id: T-C4-4
+    severity: later
+    tag: process
+    text: >-
+      The hook-wrapper tests do not cover an exit-zero malformed or non-JSON
+      answer from the Nix fallback. Hooks are advisory and fail open, so
+      normalize this degraded case after the locked trust-boundary defect.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: notes/packets/2026-10-04-factory-v2-slice-c.handoff.md
+    sha: 46c21f560a2f98c5ea271b06388d1740e8e87a6a
+  - path: bus/orders/wo-20261004-factory-slice-c/amendment-05.yaml
+    sha: 46c21f560a2f98c5ea271b06388d1740e8e87a6a
+  - path: scripts/factory/tests/contract/test_ci_trust_boundary.py
+    sha: 46c21f560a2f98c5ea271b06388d1740e8e87a6a
+  - path: scripts/factory/tests/unit/gates/test_registry_checks.py
+    sha: 46c21f560a2f98c5ea271b06388d1740e8e87a6a
+  - path: scripts/factory/tests/unit/hooks/test_hook_wrapper.py
+    sha: 46c21f560a2f98c5ea271b06388d1740e8e87a6a
+  - path: specs/001-factory-v2/PLAN_DELTA.md
+    sha: 46c21f560a2f98c5ea271b06388d1740e8e87a6a
+  - path: specs/001-factory-v2/PLAN_REVIEW.md
+    sha: 46c21f560a2f98c5ea271b06388d1740e8e87a6a
+  - path: specs/001-factory-v2/contracts/gates.md
+    sha: 46c21f560a2f98c5ea271b06388d1740e8e87a6a
