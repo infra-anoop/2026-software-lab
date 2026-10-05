@@ -12,6 +12,7 @@ dependencies = [
 
 [project.scripts]
 factory = "factory.cli.app:main"
+factory-hook = "factory.hooks.entry:main"
 
 [dependency-groups]
 dev = [
