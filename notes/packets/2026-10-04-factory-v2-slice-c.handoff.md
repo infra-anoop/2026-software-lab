@@ -2,13 +2,13 @@
 
 | Field | Value |
 |-------|-------|
-| Branch | `wo/wo-20261004-factory-slice-c` (pushed; **no PR opened**) |
-| State | **Implemented T055–T060: all 254 Slice C tests green. T064 waits for Slice B** |
+| Branch | `wo/wo-20261004-factory-slice-c` (pushed; draft PR #21) |
+| State | **Implemented T055–T060, then Phase 6a T094–T099: every Slice C test green. T064 and the `red_first.py` split wait for Slice B; T100 for A and B** (see § Phase 6a phase 2) |
 | Author model | Claude family (worker); one model for the whole run. The bootstrap verdict must come from a non-Anthropic reviewer (D3, FR-037) |
 | Accept SHA (T* round 3) | **`9445788`**: `verdict-03` `decision: accept` (one strength nit, T-C3-1) |
-| Tests since accept | `git diff 9445788 -- scripts/factory/tests` is **empty**. No accepted test was edited, skipped or weakened |
+| Tests since accept | Through T060, `git diff 9445788 -- scripts/factory/tests` was **empty**. Phase 6a: the round-4 oracle fix plus two one-line test repairs (listed in § Phase 6a phase 2) |
 | Base | `origin/main` @ `c2af7f2` (CP0 merge `8cd8cb7`); Slice A (PR #20) is **not** merged here |
-| Frozen CP0 files | not edited (`api.py`, `bus/`, `config/`, `gates/registry.py`, `cli/common.py`, `cli/app.py`) |
+| Frozen CP0 files | not edited through T060. Phase 6a amended `api.py`, `config/settings.py` and `cli/app.py` additively under `amendment-06` |
 
 ## Commits
 
@@ -187,9 +187,45 @@ PR review PR-C1 to PR-C4 and spec D5 to D8. No implementation in this phase; T* 
 - **PR-C4:** the packet is restored to its `origin/main` content.
 - **Bootstrap messages:** `order.yaml`, `claim.yaml` and `handoff.yaml` (FR-037) are in the branch-tip commit.
 
+## Phase 6a rework, phase 2 (2026-10-05): T* round 4 triage and implementation
+
+`verdict-07` (round 4) rejected on one Blocker, T-C4-1: the trusted-job oracle was a denylist that `env bash -c`, `command bash -c` and `git -C . checkout` bypassed. Triage in `amendment-06.yaml` and `TEST_REVIEW_SLICE_C.md` § Triage (round 4): fix now, with no fifth T* round; verification moves to the PR code re-review.
+
+- **Commits:** `370df0f` (review merge, round 4), `97d4969` (T-C4-1 allowlist oracle, red), `c1907ec` (implementation, green), then this handoff commit.
+- **Oracle fix (`97d4969`):** the denylist (`FORBIDDEN_PROGRAMS`, `FORBIDDEN_GIT`, `head_code_reason`, its fixtures and `test_trusted_steps_never_execute_head_code`) became an allowlist. `test_trusted_job_is_exactly_the_allowlist` requires the trusted job's steps to equal three SHA-pinned actions with listed `with:` keys and three commands compared as parsed argv. One regression test covers the class, parametrized over the three bypass forms plus an unlisted `echo`. Denylist assertions the allowlist covers were removed.
+- **Implementation (`c1907ec`), T097 and T098:**
+  - `factory-pr-evidence.yml` (untrusted): `pull_request`, `contents: read`, no secrets. `Factory tests` runs the full suite with no selector (T100's test). `red-first-evidence` runs `factory gate evidence` and uploads `factory-evidence`.
+  - `factory-gates.yml` (trusted): `workflow_run` of "Factory PR evidence" `completed`; same-repository runs only; exactly the allowlist; actions pinned to commit SHAs.
+  - CP0 amendments approved in `amendment-06`: `GitHubPort.get_pr` (with `FakeGitHub`), typed `evidence_max_bytes` and `github.actions_app_id`, and `gate evidence` in `cli/app.py`.
+  - `gates/evidence.py`: the producer, a strict bundle loader and a fail-closed judge. `red-first-proof` statuses start `self-reported:` (D7).
+  - Validators run `main`'s scripts with `--repo-root <exported head>` (both scripts gained `--repo-root`).
+  - `branch-protection-require-pr` fails unless every required `factory/*` context is pinned to the configured Actions app id (P9).
+  - `ci-cd-pipeline.yml`: workflow-level `permissions: contents: read`.
+  - `factory-hook.sh`: venv, then `uv`, then `nix develop`, then the hook's quiet fail-open JSON with the reason on stderr and exit 0.
+- **Accepted tests touched beyond the oracle:** two lines, each because no implementation could pass the test as written.
+  - `test_registry_checks.py::test_branch_protection_compares_with_the_configured_actions_app_id` built two contexts in one repo, and the second recreated branch `feature/head`. It now deletes that branch locally and on the fixture origin between the two. Both assertions are unchanged.
+  - `test_ci_trust_boundary.py::test_trusted_gate_step_runs_every_gate_bound_to_the_event` found the download step by identity (`is`) across two YAML loads. It now compares by equality.
+- **Results:** full suite 574 passed, 102 failed. The 102 are exactly the pre-round baseline: Slice A's `test_cli_contract.py` (50) and Slice B's `tests/seeds/test_seeds.py` (52). Every Slice C test is green. `ruff check` and `ruff format --check` pass in `scripts/factory`. The validator scripts' lint findings are unchanged from `main`. `factory check schema` passes.
+- **`factory gate run --base origin/main --head wo/wo-20261004-factory-slice-c`:** 12 passed, 13 failed. The failures:
+  - 9 Slice B gates are not importable yet;
+  - `factory-status-test` has no owner (see the cross-slice table);
+  - `branch-protection-require-pr` lacks the T066 snapshot (governor, D6);
+  - `validate-secrets-schema` and `validate-deploy-env` fail because `main`'s copies predate `--repo-root`. This is a one-time bootstrap failure: with this branch as the base, both pass.
+- **Cross-slice:**
+  - Slice A's REST adapter (`factory.github.rest`) must implement `GitHubPort.get_pr`.
+  - Slice B owns the `red_first.py` producer/judge split. `gates/evidence.py` imports `collect_facts` lazily and records `crashed` while it is absent.
+  - The `Factory tests` check stays red until A and B are merged into C, because the selector is gone.
+- **Later (owner Slice C, review at the Wave 1 retro):**
+  - T-C4-2: a wrong `base_sha` in the bundle is untested; the judge does not check it.
+  - T-C4-3: the evidence producer's main checkout is not proven.
+  - T-C4-4: malformed output from the Nix fallback is untested; the wrapper relays it as is.
+- **Not done here:** nothing posted or changed on GitHub besides the branch push; draft PR #21 is still a draft; repository settings, branch protection and the D6 probe are left to the governor.
+
 ## Stop
 
-Implementation done and pushed; **no PR opened** (orchestrator's call). Next steps for the orchestrator:
+Phase 6a phase 2 done and pushed; draft PR #21 left as a draft. Next: the PR code re-review of the allowlist (T-C4-1), then the steps below.
+
+Earlier next steps for the orchestrator:
 
 - Merge `main` once PR #20 lands, then resolve the `pyproject.toml` `[project.scripts]` and `acceptance.md` `handoff.concurrency_cap` conflicts.
 - After Slice B's T063, run T064.

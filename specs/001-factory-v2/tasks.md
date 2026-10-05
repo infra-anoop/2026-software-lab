@@ -183,7 +183,7 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 
 ### Tests (write first, must fail)
 
-- [ ] T094 [P] [US4] [OD:D5] PR-C1 red tests. New `scripts/factory/tests/contract/test_ci_trust_boundary.py`, which replaces the three T-C1 workflow assertions in `scripts/factory/tests/contract/test_gate_run.py` (`test_workflow_gate_run_on_the_pr_is_not_allowed_to_fail`, `test_workflow_can_post_commit_statuses`, `test_workflow_publishes_the_board_in_the_job_summary`); accepted tests change only through this task and T096. Assertions, per `contracts/gates.md` § CI topology and trust boundary and `contracts/cli.md` § CI mode:
+- [x] T094 [P] [US4] [OD:D5] PR-C1 red tests. New `scripts/factory/tests/contract/test_ci_trust_boundary.py`, which replaces the three T-C1 workflow assertions in `scripts/factory/tests/contract/test_gate_run.py` (`test_workflow_gate_run_on_the_pr_is_not_allowed_to_fail`, `test_workflow_can_post_commit_statuses`, `test_workflow_publishes_the_board_in_the_job_summary`); accepted tests change only through this task and T096. Assertions, per `contracts/gates.md` § CI topology and trust boundary and `contracts/cli.md` § CI mode:
   - **Untrusted workflow:** `factory-pr-evidence.yml` runs on `pull_request` with workflow-level permissions exactly `contents: read`, references no `secrets.*`, and posts no status.
   - **Trusted workflow:** `factory-gates.yml` runs on `workflow_run` of "Factory PR evidence" `completed` and is the only job with `statuses: write`. Its checkout has no `ref:` and `persist-credentials: false`. The head is fetched by SHA only. No step runs `uv`/`python`/`pytest`/a script against a head path. `${{ }}` inside `run:` is limited to the allowed set, delivered via `env:`.
   - **Repo-wide:** no `pull_request_target` with a head checkout or execution; no `pull_request` job holds `statuses: write` or secrets.
@@ -197,10 +197,10 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
   - **Red-first strength (D7, Wave 1):** every `red-first-proof` status description starts `self-reported:`, whether it passes or fails.
   - **Status source (P9):** `branch-protection-require-pr` fails a snapshot in which any required `factory/*` context lacks the GitHub Actions app id as its expected source, or in which a `factory/*` context is missing. It passes a snapshot where every one is pinned. These tests go in `scripts/factory/tests/unit/gates/test_registry_checks.py`; existing branch-protection fixtures gain the app id.
   - Catalog `ci.trusted_base`, `ci.status_source_pinned`.
-- [ ] T095 [P] [US4] PR-C2 red test `scripts/factory/tests/unit/hooks/test_hook_wrapper.py`: integration test running `.cursor/hooks/factory-hook.sh <name>` for each of the four hooks, in a repo with no `scripts/factory/.venv` and a `PATH` without `uv`:
+- [x] T095 [P] [US4] PR-C2 red test `scripts/factory/tests/unit/hooks/test_hook_wrapper.py`: integration test running `.cursor/hooks/factory-hook.sh <name>` for each of the four hooks, in a repo with no `scripts/factory/.venv` and a `PATH` without `uv`:
   - With a stub `nix` on `PATH`, the wrapper calls `nix develop <repo root> -c uv run --project scripts/factory factory hook <name>` and relays its stdout.
   - With no `nix`, or a `nix` that exits non-zero without output, stdout is exactly that hook's quiet fail-open JSON, the exit code is 0 and the reason is on stderr. Never exit 127.
-- [ ] T096 [US4] Spawn T* review for T094–T095 (packet `notes/packets/<date>-factory-v2-slice-c-rework-test-review-t.md`) after the delta P* review is triaged; triage into `TEST_REVIEW_SLICE_C.md` before T097
+- [x] T096 [US4] Spawn T* review for T094–T095 (packet `notes/packets/<date>-factory-v2-slice-c-rework-test-review-t.md`) after the delta P* review is triaged; triage into `TEST_REVIEW_SLICE_C.md` before T097
 
 ### Implementation
 
@@ -214,8 +214,9 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
   - The `self-reported:` prefix on `red-first-proof` statuses (D7).
   - `branch-protection-require-pr` asserts the GitHub Actions app id as expected source on every required `factory/*` context (`scripts/factory/src/factory/gates/repo/branch_protection.py`, P9).
   - Fill `ci.trusted_base` and `ci.status_source_pinned` evidence.
-- [ ] T098 [US4] PR-C2: wrapper `.cursor/hooks/factory-hook.sh` per `contracts/hooks.md` § Invocation (Nix fallback; wrapper-level quiet fail-open)
-- [ ] T099 [POLICY] PR-C4: revert the `Status` line of `notes/packets/2026-10-04-factory-v2-slice-c.md` to its `main` text (no net diff on the packet vs `main`); progress stays in the append-only handoff and verdicts
+  - **Status 2026-10-05:** done except the `red_first.py` producer/judge split, which waits for Slice B's merge into C (the producer imports `collect_facts` lazily meanwhile); `ci.status_source_pinned`'s live-rule half waits for T103.
+- [x] T098 [US4] PR-C2: wrapper `.cursor/hooks/factory-hook.sh` per `contracts/hooks.md` § Invocation (Nix fallback; wrapper-level quiet fail-open)
+- [x] T099 [POLICY] PR-C4: revert the `Status` line of `notes/packets/2026-10-04-factory-v2-slice-c.md` to its `main` text (no net diff on the packet vs `main`); progress stays in the append-only handoff and verdicts
 - [ ] T100 [US4] PR-C5: once Slices A and B are merged into `wo/wo-20261004-factory-slice-c`, `factory-tests` (now in `factory-pr-evidence.yml`) runs the full factory suite with no `-m` / `-k` / `--deselect` selector, and the CP1 bootstrap comment goes; T094's workflow test asserts no selector
 
 ### Cross-order dependencies for the C merge
