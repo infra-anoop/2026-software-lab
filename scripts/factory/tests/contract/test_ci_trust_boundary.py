@@ -13,6 +13,10 @@ from the event through `env:`, and is the only job holding `statuses: write`.
 
 Workflows are judged by what the runner and the shell would do, not by text: `run` blocks
 are tokenized into simple commands, and `$VAR` arguments are resolved through `env:`.
+The trusted job is held to an allowlist (verdict-07 T-C4-1): its steps must equal an
+enumerated set of SHA-pinned actions and `run` commands, compared as parsed argv, with
+allowlisted keys and env names. Anything else fails, so wrappers (`env`, `command`),
+nested shells and git global options need no rule of their own.
 
 Fail-closed reasons named by the red-first judge (each a substring of its message):
 `missing` (no bundle), the unexpected file name (wrong or extra file), `unreadable` (not
@@ -105,41 +109,40 @@ REDIRECTS = {">", ">>"}
 SUMMARY_FILES = {"$GITHUB_STEP_SUMMARY", "${GITHUB_STEP_SUMMARY}"}
 UV_OPTIONS_WITH_VALUE = {"--project", "--directory", "--python", "--with", "--group", "--extra"}
 FACTORY_PROJECT = "scripts/factory"
-FORBIDDEN_PROGRAMS = {
-    "python",
-    "python3",
-    "pytest",
-    "pip",
-    "pip3",
-    "uvx",
-    "sh",
-    "bash",
-    "zsh",
-    "source",
-    ".",
-    "eval",
-    "exec",
-    "node",
-    "npm",
-    "npx",
-    "make",
-    "nix",
+UV_RUN = ("uv", "run", "--locked", "--project", FACTORY_PROJECT)
+
+# The trusted job's allowlist: workflow, job and step keys; env names; actions (each
+# pinned to a full commit sha) with their `with:` keys; `run` commands as parsed argv.
+TRUSTED_WORKFLOW_KEYS = {"name", "on", True, "permissions", "jobs"}
+TRUSTED_JOB_KEYS = {"name", "if", "runs-on", "permissions", "env", "steps"}
+TRUSTED_STEP_KEYS = {"name", "if", "uses", "with", "run", "env"}
+TRUSTED_ENV_NAMES = {"GITHUB_TOKEN", "PR_NUMBER", "HEAD_SHA", "EVIDENCE_DIR"}
+TRUSTED_ACTIONS = {
+    "actions/checkout": {"persist-credentials", "fetch-depth"},
+    "astral-sh/setup-uv": {"enable-cache"},
+    "actions/download-artifact": {"name", "run-id", "path", "github-token"},
 }
-FORBIDDEN_GIT = {
-    "checkout",
-    "switch",
-    "worktree",
-    "restore",
-    "reset",
-    "clone",
-    "submodule",
-    "pull",
-    "merge",
-    "rebase",
-    "apply",
-    "am",
-    "stash",
+TRUSTED_COMMANDS = {
+    ("uv", "sync", "--locked", "--project", FACTORY_PROJECT),
+    (
+        *UV_RUN,
+        "factory",
+        "gate",
+        "run",
+        "--pr",
+        "$PR_NUMBER",
+        "--expect-head",
+        "$HEAD_SHA",
+        "--evidence",
+        "$EVIDENCE_DIR",
+    ),
+    (*UV_RUN, "factory", "status", ">>", "$GITHUB_STEP_SUMMARY"),
 }
+TRUSTED_STEPS = sorted(
+    [("uses", (action,)) for action in TRUSTED_ACTIONS]
+    + [("run", command) for command in TRUSTED_COMMANDS]
+)
+PINNED_SHA = re.compile(r"[0-9a-f]{40}")
 
 
 def load_workflow(path: Path) -> dict[str, Any]:
@@ -325,36 +328,54 @@ def mentions(run: str, *words: str) -> bool:
     )
 
 
-def head_code_reason(run: str) -> str | None:
-    """Why a trusted `run` block could execute head code, or None when it cannot."""
-    for tokens, _ in shell_commands(run):
-        argv = raw_argv(tokens)
-        if not argv:
-            continue
-        program = argv[0]
-        if program in FORBIDDEN_PROGRAMS or "/" in program:
-            return f"runs {program!r}"
-        if program == "git" and len(argv) > 1 and argv[1] in FORBIDDEN_GIT:
-            return f"runs git {argv[1]}"
-        if program == "uv":
-            sub = argv[1] if len(argv) > 1 else ""
-            if sub == "sync":
-                flags = argv[2:]
-                if flags.count("--project") != 1:
-                    return "uv sync without --project scripts/factory"
-                project = flags[flags.index("--project") + 1 :][:1]
-                extra = set(flags) - {"--locked", "--frozen", "--project", FACTORY_PROJECT}
-                if project != [FACTORY_PROJECT] or extra or "--locked" not in flags:
-                    return f"uv sync {' '.join(flags)}"
-            elif sub == "run":
-                options, rest = uv_run_options(argv)
-                if options.get("--project") != FACTORY_PROJECT or rest[:1] != ["factory"]:
-                    return f"uv run {' '.join(argv[2:])}"
-                if set(options) - {"--project", "--locked", "--frozen", "--no-sync"}:
-                    return f"uv run options {sorted(options)}"
-            else:
-                return f"uv {sub}"
+Signature = tuple[str, tuple[str, ...]]
+
+
+def step_signature(step: dict[str, Any]) -> Signature | None:
+    """`("uses", (action,))` or `("run", argv)` for one action or one command, else None."""
+    if "uses" in step and "run" not in step:
+        return ("uses", (uses(step),))
+    if "run" in step and "uses" not in step:
+        commands = shell_commands(str(step["run"]))
+        if len(commands) == 1:
+            return ("run", tuple(commands[0][0]))
     return None
+
+
+def unlisted_env(scope: dict[str, Any]) -> list[str]:
+    return sorted(set(scope.get("env") or {}) - TRUSTED_ENV_NAMES)
+
+
+def step_problems(job_steps: list[dict[str, Any]]) -> list[str]:
+    """Why the steps differ from the trusted allowlist (empty when they equal it)."""
+    problems: list[str] = []
+    signatures: list[Signature] = []
+    for step in job_steps:
+        label = f"step {step.get('name')!r}"
+        if set(step) - TRUSTED_STEP_KEYS:
+            problems.append(f"{label}: unlisted keys {sorted(set(step) - TRUSTED_STEP_KEYS)}")
+        if unlisted_env(step):
+            problems.append(f"{label}: unlisted env {unlisted_env(step)}")
+        signature = step_signature(step)
+        if signature is None:
+            problems.append(f"{label}: not exactly one action or one command")
+            continue
+        kind, value = signature
+        if kind == "uses":
+            action, pin = value[0], str(step["uses"]).partition("@")[2]
+            if action not in TRUSTED_ACTIONS:
+                problems.append(f"{label}: unlisted action {step['uses']!r}")
+            elif not PINNED_SHA.fullmatch(pin):
+                problems.append(f"{label}: {action} is not pinned to a commit sha ({pin!r})")
+            elif set(step_with(step)) - TRUSTED_ACTIONS[action]:
+                extra = sorted(set(step_with(step)) - TRUSTED_ACTIONS[action])
+                problems.append(f"{label}: unlisted `with:` keys {extra}")
+        elif value not in TRUSTED_COMMANDS:
+            problems.append(f"{label}: unlisted command {list(value)}")
+        signatures.append(signature)
+    if sorted(signatures) != TRUSTED_STEPS:
+        problems.append(f"steps {sorted(signatures)} are not exactly {TRUSTED_STEPS}")
+    return problems
 
 
 def publishes_status_to_summary(run: str) -> bool:
@@ -453,27 +474,6 @@ GATE_NO_OPS = [
     'uv run --project scripts/factory factory gate run --pr "$PR_NUMBER" --expect-head "$HEAD_SHA" '
     "--evidence ./evidence",
 ]
-HEAD_CODE_RUNS = [
-    "python head/scripts/validate_secrets_schema.py",
-    "cd head && pytest",
-    "uv run --project head/scripts/factory factory gate run --pr 1",
-    "uv sync --locked --project head/scripts/factory",
-    "uv sync",
-    "uv run pytest",
-    "./head/run.sh",
-    "bash head/x.sh",
-    "git checkout $HEAD_SHA",
-    "git worktree add ../head $HEAD_SHA",
-    "uvx ruff check head",
-    "nix develop ./head -c true",
-]
-TRUSTED_RUNS = [
-    "uv sync --locked --project scripts/factory",
-    'git fetch --no-tags origin "$HEAD_SHA"',
-    GATE_REAL[0],
-    'uv run --project scripts/factory factory status >> "$GITHUB_STEP_SUMMARY"',
-    'mkdir -p "$EVIDENCE_DIR"',
-]
 SUMMARY_NO_OPS = [
     "echo 'factory status' >> \"$GITHUB_STEP_SUMMARY\"",
     "uv run --project scripts/factory factory status",
@@ -524,13 +524,6 @@ def check_gate_oracle() -> None:
         assert not gate_step_is_bound(run, GOOD_ENV, GOOD_EVIDENCE_PATH), f"accepts {run!r}"
     assert not condition_never_skips("failure()")
     assert condition_never_skips("${{ !cancelled() }}")
-
-
-def check_head_code_oracle() -> None:
-    for run in HEAD_CODE_RUNS:
-        assert head_code_reason(run) is not None, f"oracle misses head execution: {run!r}"
-    for run in TRUSTED_RUNS:
-        assert head_code_reason(run) is None, f"oracle rejects a trusted step: {run!r}"
 
 
 def check_summary_oracle() -> None:
@@ -677,32 +670,42 @@ def test_trusted_job_skips_runs_from_another_repository() -> None:
 
 
 def test_trusted_job_checks_out_main_only_without_credentials() -> None:
+    """No `ref`/`repository` (the `with:` allowlist), so `workflow_run` checks out `main`."""
     checkouts = [step for step, _ in trusted_steps() if uses(step) == "actions/checkout"]
     assert len(checkouts) == 1, checkouts
-    options = step_with(checkouts[0])
-    assert "ref" not in options and "repository" not in options, options
-    assert is_false(options.get("persist-credentials")), options
-    workflow_text = GATES_WORKFLOW.read_text(encoding="utf-8")
-    for banned in ("github.event.pull_request.head", "github.event.workflow_run.head_branch"):
-        assert banned not in workflow_text, banned
-    assert "refs/pull/" not in workflow_text
+    assert is_false(step_with(checkouts[0]).get("persist-credentials")), checkouts
 
 
-def test_trusted_steps_never_execute_head_code() -> None:
-    check_head_code_oracle()
-    job = trusted_job()
-    directory = (job.get("defaults") or {}).get("run", {}).get("working-directory")
-    assert directory in (None, "."), directory
-    for step, _ in trusted_steps():
-        assert step.get("working-directory") in (None, "."), step
-        reason = head_code_reason(str(step.get("run") or ""))
-        assert reason is None, f"step {step.get('name')!r} {reason}"
+def test_trusted_job_is_exactly_the_allowlist() -> None:
+    """Supersedes the denylist oracle `head_code_reason` (verdict-07 T-C4-1)."""
+    workflow, job = gates_workflow(), trusted_job()
+    assert set(workflow) <= TRUSTED_WORKFLOW_KEYS, sorted(map(str, workflow))
+    assert set(jobs(workflow)) == {TRUSTED_JOB}, sorted(jobs(workflow))
+    assert set(job) <= TRUSTED_JOB_KEYS, sorted(job)
+    assert not unlisted_env(job), unlisted_env(job)
+    assert step_problems(steps(job)) == []
+
+
+BYPASS_FORMS = [
+    ("env wrapper", "env bash -c 'git checkout \"$HEAD_SHA\" && python steal.py'"),
+    ("command wrapper", "command bash -c 'git checkout \"$HEAD_SHA\" && python steal.py'"),
+    ("git global option", 'git -C . checkout "$HEAD_SHA"'),
+    ("unlisted command", 'echo "$HEAD_SHA"'),
+]
+
+
+@pytest.mark.parametrize(("label", "run"), BYPASS_FORMS, ids=[f[0] for f in BYPASS_FORMS])
+def test_trusted_allowlist_rejects_a_step_it_does_not_list(label: str, run: str) -> None:
+    """Regression for T-C4-1's class: the forms the denylist let through, plus any other."""
+    injected = {"name": label, "run": run}
+    problems = step_problems([*steps(trusted_job()), injected])
+    assert any(problem.startswith(f"step {label!r}: unlisted command") for problem in problems), (
+        problems
+    )
 
 
 def test_trusted_runs_take_expressions_only_through_env() -> None:
     workflow, job = gates_workflow(), trusted_job()
-    for step, _ in trusted_steps():
-        assert "${{" not in str(step.get("run") or ""), f"`${{{{ }}}}` inside run: {step}"
     for scope in (workflow.get("env") or {}, job.get("env") or {}):
         for value in scope.values():
             assert set(expressions_in(value)) <= ENV_EXPRESSIONS, value
@@ -718,9 +721,6 @@ def test_trusted_job_downloads_only_the_triggering_runs_evidence() -> None:
     options = step_with(found[0])
     assert options.get("name") == "factory-evidence", options
     assert expression(options.get("run-id")) == RUN_ID_EXPR, options
-    assert "pattern" not in options and "merge-multiple" not in options, options
-    repository = options.get("repository")
-    assert repository is None or expression(repository) == "github.repository", options
     assert canonical_path(str(options.get("path") or "")).startswith(f"{RUNNER_TEMP}/"), options
 
 
@@ -729,19 +729,13 @@ def test_trusted_job_restores_no_cache() -> None:
     runs_on = trusted_job().get("runs-on")
     assert isinstance(runs_on, str) and runs_on.startswith("ubuntu-"), runs_on
     for step, _ in trusted_steps():
-        action = uses(step)
-        assert not action.startswith("actions/cache"), step
-        if action == "astral-sh/setup-uv":
+        if uses(step) == "astral-sh/setup-uv":
             assert is_false(step_with(step).get("enable-cache")), step
-        if action == "actions/setup-python":
-            assert "cache" not in step_with(step), step
 
 
 def test_trusted_gate_step_runs_every_gate_bound_to_the_event() -> None:
     """Supersedes `test_workflow_gate_run_on_the_pr_is_not_allowed_to_fail` (T059)."""
     check_gate_oracle()
-    job = trusted_job()
-    assert "continue-on-error" not in job, job
     (download,) = download_steps()
     evidence_path = str(step_with(download).get("path"))
     gate_steps = [
@@ -756,8 +750,6 @@ def test_trusted_gate_step_runs_every_gate_bound_to_the_event() -> None:
         f"<event head sha> --evidence <download path>`: {step}"
     )
     assert condition_never_skips(step.get("if")), step.get("if")
-    assert step.get("shell", "bash") == "bash", step
-    assert "continue-on-error" not in step, step
     download_index = next(i for i, (s, _) in enumerate(trusted_steps()) if s is download)
     assert download_index < index, "the evidence is downloaded after the gates ran"
 

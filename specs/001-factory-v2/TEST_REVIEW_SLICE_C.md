@@ -291,3 +291,24 @@ breaking D5 / FR-022a / PR-C1.
 | Focused Round-4 suite | Expected RED — **75 failed / 32 passed in 12.59 s**; no collection errors, xfails or hangs |
 | Oracle adversarial probe | `env bash -c`, `command bash -c`, and `git -C . checkout` each returned no rejection reason |
 | Known facts | Slice B stub, CP0/phase-2 items, and absent Slice B gates were not re-raised |
+
+## Triage (round 4)
+
+Recorded 2026-10-05 by the orchestrator under constitution §J (after round 3). Bus: `wo-20261004-factory-slice-c.verdict-07` (the round 4 review) and `.amend-06` (this triage, the CP0 approvals and the phase-2 owned paths). The orchestrator's triage, verbatim:
+
+> - **Blocker: fix now, with no fifth T\* round.** Its root-cause class is that the trusted-job oracle is a denylist of banned forms, so wrappers like `env bash -c` or `command bash -c`, and git options like `git -C … checkout`, slip through. The fix addresses that class once:
+>   - Replace the denylist with an **allowlist**. The trusted `workflow_run` job's steps must equal an exact, enumerated set of permitted `uses:` actions (pinned) and `run:` commands, matched as parsed argv rather than substrings. Anything else fails.
+>   - Keep at most ONE regression test for the class, parametrized over the three bypass forms the reviewer named, plus one unlisted command.
+>   - Remove denylist assertions the allowlist makes redundant; don't stack both.
+>   - Verification of this fix moves to the PR code re-review, which I will scope to it explicitly.
+> - **Later, owner Slice C, review at the Wave 1 retro.** Record these three in the order folder and the handoff:
+>   - a wrong `base_sha` is untested;
+>   - the evidence producer's main checkout isn't proven;
+>   - malformed Nix fallback output is untested.
+
+| ID | Disposition | Decided by | Resolution |
+|----|-------------|------------|------------|
+| T-C4-1 | **fix now, no fifth T\* round** | orchestrator (§J) | `test_ci_trust_boundary.py`: `FORBIDDEN_PROGRAMS`, `FORBIDDEN_GIT`, `head_code_reason`, its self-check fixtures and `test_trusted_steps_never_execute_head_code` are removed. `test_trusted_job_is_exactly_the_allowlist` requires the workflow, job and step keys and env names to be allowlisted, the gates workflow to hold only the trusted job, and its steps to equal exactly three SHA-pinned actions (`actions/checkout`, `astral-sh/setup-uv`, `actions/download-artifact`, each with allowlisted `with:` keys) and three `run` commands compared as parsed argv (`uv sync --locked --project scripts/factory`, the `factory gate run --pr --expect-head --evidence` call, the `factory status` summary). One regression test, `test_trusted_allowlist_rejects_a_step_it_does_not_list`, is parametrized over `env bash -c`, `command bash -c`, `git -C . checkout` and an unlisted `echo`. Denylist assertions the allowlist makes redundant are removed: checkout `ref`/`repository` and the head-text bans, `${{` inside `run`, download `pattern`/`merge-multiple`/`repository`, `actions/cache` and `setup-python`, job and step `continue-on-error`, step `shell`, and `working-directory`. Verification moves to the PR code re-review |
+| T-C4-2 | Later — owner Slice C, Wave 1 retro | orchestrator | A wrong full-length `base_sha` in the bundle is untested |
+| T-C4-3 | Later — owner Slice C, Wave 1 retro | orchestrator | The evidence producer's `main` checkout is not proven by the workflow tests |
+| T-C4-4 | Later — owner Slice C, Wave 1 retro | orchestrator | Exit-0 malformed or non-JSON output from the Nix fallback is untested |
