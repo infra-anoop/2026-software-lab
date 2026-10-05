@@ -83,3 +83,28 @@ Orchestrator decisions on `wo-20261004-factory-slice-a.verdict-05`, recorded ver
 | PR-A6 | `tests/contract/test_handoff.py::test_handoff_refuses_while_a_registered_gate_fails` (changed: fixture commits a valid handoff; asserts exit 2 naming `diff-within-owned-paths`) | red until Slice B lands the gate: handoff now reaches the gate step and reports it not enforced |
 
 Also found while writing the tests: `git push --porcelain` reports a non-fast-forward rejection on stdout, but `orders/git.py::push` checks only stderr for rejection markers. So a lost race exits 4 (external) instead of 2 (refused). The rejection test pins exit 2, and the accepted race test already allows either code.
+
+### Orchestrator decisions on the Phase 1 open items (amendment-05)
+
+Recorded verbatim by the Slice A worker (2026-10-05). The exit rule, the new finding and what this supersedes in amendment-04 are spelled out in `bus/orders/wo-20261004-factory-slice-a/amendment-05.yaml`.
+
+1. **Push-race defect (porcelain `[rejected]` on stdout): FIX later in phase 2.** Now, tighten the accepted race test so a lost race must exit 2 (lease conflict), not 4. Add this as a finding `PR-A7` (should-fix, process; found by implementer) in amendment-05. (→ `bus/orders/wo-20261004-factory-slice-a/amendment-05.yaml`)
+2. **Accepted tests reading the local checked-out `wo/<id>`: AMEND.**
+   - Change `test_handoff_writes_run_complete_event` and `test_verdict_commits_valid_different_family_verdict` to read the new commit from `origin/wo/<id>`, the pushed ref. Change only the read path, not the assertions.
+   - Ref-only plumbing, with no move of a checked-out branch, stands.
+3. **SC-013 'every P1 check implemented and passing': keep to the LETTER and do NOT waive.** Wave 1 exit requires all three of the following:
+   - (a) every Wave 1 order has a run record and has been accepted and landed, as you have it;
+   - (b) every `priority: P1` row in `gates.yaml` is implemented, meaning its entrypoint resolves;
+   - (c) the `main` commit at the exit point has a `success` `factory/<id>` commit status for every P1 gate. Read this through the same recorded-REST GitHub port the lifecycle uses.
+   - Amend the accepted exit fixture/test to include those statuses, and add negative cases: one P1 status missing or failing means no exit, and one P1 entrypoint unresolvable means no exit.
+   - Remove the 'fidelity gap' disclosure from amendment-04 by superseding it in amendment-05.
+4. **Wave 1 boundary = `bus/postmortems/wave1-retro.yaml` landing on main; sprint membership = `refs` include `notes/sprints/<S>.md`: ACCEPTED provisionally.** The T* reviewer will judge both. Make sure they are spelled out in the test docstrings.
+5. **Severity mismatch:** in amendment-05, state that PR-A4/A5/A6 are should-fix. Do not edit verdict-05; it is immutable.
+
+### Phase 1 record, round 2 (supersedes the PR-A5 row above)
+
+| Finding | Tests | State before the fix |
+|---------|-------|----------------------|
+| PR-A2 | amended accepted reads: `tests/contract/test_handoff.py::test_handoff_writes_run_complete_event`, `tests/contract/test_pr_and_verdict.py::test_verdict_commits_valid_different_family_verdict` (read `origin/wo/<id>` after fetch; assertions unchanged) | green; they stay green once the checked-out branch is no longer moved |
+| PR-A5 | amended accepted: `tests/unit/test_scorecard.py::test_scorecard_wave1_exit_when_every_order_merged[fifth-working-day\|sixth-working-day]` (P1 statuses on the exit commit, P1 entrypoints resolvable, read via `factory scorecard --json`); new `::test_scorecard_wave1_not_exited_unless_every_p1_gate_implemented_and_green[status-missing\|status-failure\|status-on-other-commit\|unresolvable]`; the round-1 PR-A5 tests now run via the CLI with (b) and (c) satisfied | amended accepted: green; new: red, because exit is set from landings alone |
+| PR-A7 | amended accepted: `tests/contract/test_claim.py::test_claim_fast_forward_exactly_one_of_two_concurrent_wins` (loser must exit 2); new `::test_lost_claim_race_at_the_push_is_refused` (deterministic) | amended: green in 12 of 12 runs (the loser usually refuses at "already claimed"); new: red, `[0, 4]` |

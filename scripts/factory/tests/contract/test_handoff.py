@@ -122,14 +122,9 @@ def test_handoff_writes_run_complete_event(repo: RepoBuilder, factory_cli: Facto
         f"expected exit 0, got {result.exit_code}\n{result.stdout}\n{result.stderr}"
     )
     relative = f"bus/orders/{order_id}/run-complete.yaml"
-    assert (repo.path / relative).is_file() or relative in repo.git(
-        "ls-tree", "-r", "--name-only", f"wo/{order_id}"
-    )
-    text = (
-        repo.git("show", f"HEAD:{relative}")
-        if (repo.path / relative).is_file()
-        else repo.git("show", f"wo/{order_id}:{relative}")
-    )
+    repo.git("fetch", "-q", "origin")
+    assert relative in repo.git("ls-tree", "-r", "--name-only", f"origin/wo/{order_id}")
+    text = repo.git("show", f"origin/wo/{order_id}:{relative}")
     for key in ("wall_minutes", "governor_interrupts", "deviations_count"):
         assert key in text
     assert "cost_usd" in text

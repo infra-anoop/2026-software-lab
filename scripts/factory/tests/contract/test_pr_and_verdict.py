@@ -147,12 +147,13 @@ def test_verdict_commits_valid_different_family_verdict(
     assert result.exit_code == exit_codes.OK, (
         f"expected exit 0, got {result.exit_code}\n{result.stdout}\n{result.stderr}"
     )
-    new_commits = repo.git("rev-list", f"{head}..wo/{order_id}").splitlines()
+    repo.git("fetch", "-q", "origin")
+    new_commits = repo.git("rev-list", f"{head}..origin/wo/{order_id}").splitlines()
     assert len(new_commits) == 1, f"verdict must be exactly one commit on the branch: {new_commits}"
     verdict_file = f"bus/orders/{order_id}/verdict-01.yaml"
     changes = repo.git("diff-tree", "--no-commit-id", "--name-status", "-r", new_commits[0])
     assert changes.splitlines() == [f"A\t{verdict_file}"], changes
-    committed = yaml.safe_load(repo.git("show", f"wo/{order_id}:{verdict_file}"))
+    committed = yaml.safe_load(repo.git("show", f"origin/wo/{order_id}:{verdict_file}"))
     for field in VERDICT_FIELDS:
         assert committed.get(field) == submitted.get(field), f"{field}: {committed.get(field)!r}"
 

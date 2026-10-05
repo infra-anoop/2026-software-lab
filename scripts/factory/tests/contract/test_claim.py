@@ -63,7 +63,7 @@ def test_claim_fast_forward_exactly_one_of_two_concurrent_wins(repo: RepoBuilder
         other = pool.submit(claim, second)
         codes = [first.result(), other.result()]
     assert codes.count(exit_codes.OK) == 1, codes
-    assert codes.count(exit_codes.REFUSED) + codes.count(exit_codes.EXTERNAL) == 1, codes
+    assert codes.count(exit_codes.REFUSED) == 1, f"a lost claim race is a refusal (2): {codes}"
     claim_files = repo.git("ls-tree", "-r", "--name-only", f"origin/wo/{order_id}")
     assert f"bus/orders/{order_id}/claim.yaml" in claim_files
 
@@ -178,3 +178,38 @@ def test_open_pr_still_holds_a_slot(repo: RepoBuilder, factory_cli: FactoryCli) 
         f"an order in review is active: exit {result.exit_code}\n{result.stdout}\n{result.stderr}"
     )
     assert repo.head_sha(f"origin/wo/{waiting}") == before, "refused claim must push nothing"
+
+
+def test_lost_claim_race_at_the_push_is_refused(repo: RepoBuilder) -> None:
+    """PR-A7: a claim that loses the race at its own push exits 2, not 4.
+
+    The claimers use different models so their claim commits differ. Each clone's
+    `remote.origin.receivepack` waits before connecting (1 s here, 3 s for the
+    second clone). Both claimers fetch at once and see no claim; the first push lands at ~1 s;
+    the second connects at ~3 s, finds origin ahead, and git rejects it client-side
+    (`[rejected] (fetch first)`, reported on `--porcelain` stdout).
+    """
+    order_id = _issue(repo, "push-race")
+    second = repo.root / "work-b"
+    shutil.copytree(repo.path, second, symlinks=True)
+    for work, delay in ((repo.path, 1), (second, 3)):
+        for key, value in (
+            ("remote.origin.url", str(repo.origin)),
+            ("remote.origin.receivepack", f"sleep {delay}; git-receive-pack"),
+        ):
+            subprocess.run(
+                ["git", "-C", str(work), "config", key, value], check=True, capture_output=True
+            )
+
+    def claim(work: Path, model: str) -> int:
+        return run(["claim", order_id, "--actor-model", model, "--repo", str(work)])
+
+    claimers = ((repo.path, "claude-opus-5.5"), (second, "gpt-5.6-sol"))
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(claim, work, model) for work, model in claimers]
+        codes = [future.result() for future in futures]
+    assert codes == [exit_codes.OK, exit_codes.REFUSED], (
+        f"first claim wins (0); the second lost the race at the push and is refused (2): {codes}"
+    )
+    claim_files = repo.git("ls-tree", "-r", "--name-only", f"origin/wo/{order_id}")
+    assert f"bus/orders/{order_id}/claim.yaml" in claim_files
