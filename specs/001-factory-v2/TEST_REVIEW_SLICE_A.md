@@ -399,3 +399,49 @@ Recorded by the Slice A worker on the orchestrator's instruction (2026-10-05). D
 Evidence: sabotaging PR-A7 so claimer 2 is never released, with a 3 s bound, failed in 3.4 s ("command 2 did not exit within 3s; killed every held command") and left no processes behind. Full suite: 100 failed, 347 passed (the 100 reds are unchanged; the 4 meta-tests are new). The barrier tests ran 12 times with identical outcomes every time. Not changed: the accepted atomic-race guard `test_claim_fast_forward_exactly_one_of_two_concurrent_wins` uses no barrier and still uses an untimed `ThreadPoolExecutor`.
 
 **Follow-up before round 7** (`amendment-09.yaml`; orchestrator, process; same class as T-A6-1; assertions unchanged). The atomic-race guard now runs its two claims as killable `HeldCommands` children with a bounded `result` (60 s). It still uses no barrier, and its assertions are untouched. `PushBarrier` now extends `HeldCommands`, the barrier-free spawn / kill-group / reap base class. An audit of `scripts/factory/tests` found no other executor, thread, or untimed `.result()` / `.join()` wait. Results: full suite 100 failed, 347 passed. Race tests: 12 of 12 runs identical, atomic guard green in every run.
+
+## Round 7
+
+### Verdict
+
+**Verdict: accept — T-A6-1 is resolved.**
+
+Held commands now have a finite parent-side deadline and a finite cleanup deadline. Timeout,
+early child exit, and ordinary context exit all kill the entire child process group and reap
+the direct child; four green meta-tests exercise the failure and cleanup paths. The atomic
+race's move to the same harness preserves its three assertions and leaves it unsynchronised,
+while making both claims genuinely process-parallel and bounded.
+
+### Findings
+
+| ID | Severity | Tag | Locus | Finding | Suggested resolution |
+|----|----------|-----|-------|---------|----------------------|
+| T-A7-1 | Nit | process | `tests/contract/push_barrier.py`; `test_push_barrier.py` | Strength: T-A6-1 is resolved. `wait_arrived` and `result` use monotonic deadlines; `_fail` and context exit kill every process group; `kill` repeats SIGKILL until the child is reaped and `/proc` shows no live group member, with its own 10-second deadline. The never-arrives, never-exits, context-exit, return-value, and child-exception paths all terminate and verify cleanup. | Preserve the process-group and meta-test coverage. |
+| T-A7-2 | Nit | process | `test_claim.py::test_claim_fast_forward_exactly_one_of_two_concurrent_wins`; amendment-09 | Strength: the harness amendment is not a weakening. The test still launches both claims back-to-back without a barrier and retains exactly-one-OK, exactly-one-REFUSED, and claim-on-origin assertions. Forking increases real parallelism; 12/12 repetitions kept the atomic guard green while PR-A7 and PR-A8 retained their intended reds. | No change. |
+| T-A7-3 | Later | process | synchronous CLI calls; fixture and helper `subprocess.run` calls across `scripts/factory/tests` | These pre-existing synchronous calls have no timeout and could hang if a frozen fixture, git, or openssl process wedges. They are outside T-A6-1's held-command race/barrier class, are not introduced by amendments 08/09, and showed no hang in the full run. | Non-blocking Later: establish a suite-wide timeout policy when CP0 fixtures are next amended; do not widen this narrow round. |
+
+### Confirmation
+
+- **No hang path in held race/barrier commands:** confirmed. Every parent poll and cleanup loop
+  has a deadline; descendants inherit the child-led process group and are killed together.
+- **Process safety:** confirmed on Linux. Children call `setpgid`, the parent closes that race
+  with its own `setpgid`, direct children are reaped with `waitpid`, and live descendants are
+  checked through `/proc`. No sleeper, git, or receive-pack process remained after verification.
+- **Inherited state:** confirmed by executable behavior. Fork preserves the PR-A8 monkeypatched
+  clock/environment and the fixture FakeGitHub snapshot; PR-A8 still builds the identical
+  commit, and held `factory_cli` paths reach their prior asserted seams.
+- **Joint satisfiability and red-first:** confirmed. The four harness meta-tests are legitimate
+  green guards; product reds remain assertion failures. There are no collection errors,
+  xfails, or module-level imports of missing implementation modules.
+
+### Verification record
+
+| Check | Result |
+|-------|--------|
+| Reviewed head | `5ea8197e8d653aa471f134a02fff0df4761b1a14` |
+| Full `uv run pytest -q` | Expected RED: **100 failed, 347 passed**; no collection errors or xfails. |
+| Harness meta-tests | **4 passed** in 2.48 s; cleanup assertions passed and no matching leftover process remained. |
+| Race repetitions | **12/12 identical**: atomic guard passed; PR-A7 and PR-A8 failed for their intended `[0, 4]` and `[0, 0]` current-code outcomes. |
+| `factory check schema` | PASS — `schema ok` before verdict-08. |
+| Production-source diff | PASS — no `scripts/factory/src` change since `ea6a554`. |
+| Bus append-only | PASS through reviewed head — all nine records since `ea6a554` are additions; none is modified or deleted. |

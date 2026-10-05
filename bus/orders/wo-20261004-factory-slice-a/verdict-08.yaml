@@ -1,0 +1,68 @@
+schema_version: 1
+kind: verdict
+id: wo-20261004-factory-slice-a.verdict-08
+created: 2026-10-05T15:40:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - wo-20261004-factory-slice-a.verdict-07
+  - wo-20261004-factory-slice-a.amend-08
+  - wo-20261004-factory-slice-a.amend-09
+decision: accept
+findings:
+  - id: T-A7-1
+    severity: nit
+    tag: process
+    text: >-
+      T-A6-1 is resolved. Held-command arrival and result polls have monotonic
+      deadlines; timeout, early exit, and context exit kill every child process
+      group; cleanup repeatedly SIGKILLs until the direct child is reaped and
+      /proc shows no live group member, with its own ten-second deadline. Four
+      green meta-tests cover never-arrives, never-exits, context-exit cleanup,
+      successful return, and child exception behavior.
+  - id: T-A7-2
+    severity: nit
+    tag: process
+    text: >-
+      Amendment-09 is not a weakening. The accepted atomic-race test still
+      starts two claims back-to-back without a barrier and retains exactly one
+      OK, exactly one REFUSED, and claim-on-origin assertions. Forking makes the
+      two claims genuinely process-parallel while bounding them. Twelve of
+      twelve repetitions kept this guard green and retained the intended PR-A7
+      and PR-A8 reds.
+  - id: T-A7-3
+    severity: later
+    tag: process
+    text: >-
+      Synchronous in-process CLI calls and pre-existing fixture/helper
+      subprocess.run calls elsewhere in the suite have no timeout. A wedged git,
+      openssl, or frozen fixture could therefore hang a broader test run, but
+      these calls are outside T-A6-1's held race/barrier class, were not
+      introduced by amendments 08 or 09, and did not hang in verification.
+      Record a non-blocking Later for a suite-wide timeout policy when CP0
+      fixtures are next amended.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: bus/orders/wo-20261004-factory-slice-a/amendment-08.yaml
+    sha: 5ea8197e8d653aa471f134a02fff0df4761b1a14
+  - path: bus/orders/wo-20261004-factory-slice-a/amendment-09.yaml
+    sha: 5ea8197e8d653aa471f134a02fff0df4761b1a14
+  - path: scripts/factory/tests/contract/push_barrier.py
+    sha: 5ea8197e8d653aa471f134a02fff0df4761b1a14
+  - path: scripts/factory/tests/contract/test_push_barrier.py
+    sha: 5ea8197e8d653aa471f134a02fff0df4761b1a14
+  - path: scripts/factory/tests/contract/test_claim.py
+    sha: 5ea8197e8d653aa471f134a02fff0df4761b1a14
+  - path: scripts/factory/tests/contract/test_git_safety.py
+    sha: 5ea8197e8d653aa471f134a02fff0df4761b1a14
+  - path: specs/001-factory-v2/TEST_REVIEW_SLICE_A.md
+    sha: 5ea8197e8d653aa471f134a02fff0df4761b1a14
+bootstrap: true
+manual_equivalents:
+  - "full suite expected red: 100 failed, 347 passed; no collection errors or xfails"
+  - "four held-command meta-tests passed and no matching sleeper/git/receive-pack process remained"
+  - "12 of 12 race repetitions: atomic guard passed; PR-A7 failed [0, 4]; PR-A8 failed [0, 0]"
+  - "factory check schema passed before verdict-08"
+  - "no scripts/factory/src changes since ea6a554; bus changes through 5ea8197 are additions only"
