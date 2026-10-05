@@ -309,3 +309,27 @@ safety cases do not cover the full ref-only behavior pinned by amendment 04.
 | Production-source diff | PASS — `git diff ea6a554 a83fb28 -- scripts/factory/src` is empty. |
 | Test diff hygiene | PASS — `git diff --check ea6a554 a83fb28 -- scripts/factory/tests`. |
 | Bus append-only | PASS through reviewed head — amendment-04, amendment-05, amendment-06 and verdict-05 are additions; no existing bus record is modified or deleted. |
+
+## Triage (round 5)
+
+Recorded by the Slice A worker on the orchestrator's instruction (2026-10-05). Details: `bus/orders/wo-20261004-factory-slice-a/amendment-07.yaml`.
+
+**Decision (orchestrator, process):** FIX both T-A5-1 and T-A5-2. Keep every amendment and choice T-A5-3 accepted. The CPU-stress run was skipped on orchestrator instruction: the barrier makes ordering independent of load by construction, and 12/12 repeat runs are sufficient evidence.
+
+**Barrier** (`scripts/factory/tests/contract/push_barrier.py`). Each clone's `remote.origin.receivepack` is a wrapper that git runs only when the command connects to push, after fetch and event build. It writes `arrived-<n>`, blocks until `go-<n>`, records origin's refs (the exact advertisement) in `advertised-<n>`, then execs `git-receive-pack`. Waits are bounded: the wrapper gives up after 30 s; the test fails if a command exits before arriving, or if arrival takes over 30 s.
+
+- **PR-A7:** both claimers arrive, so both built on the unclaimed tip. Claimer 1 is released and exits, then claimer 2. Claimer 2 is advertised claimer 1's commit, which it does not hold, so git rejects client-side (`[rejected] (fetch first)`). The winner order is fixed at `[0, 2]`.
+- **PR-A8:** same orchestration with clock, commit dates and actor pinned. Claimer 2 holds the advertised commit (it built it itself), so its push is up to date. Hand-verified: with `--quiet` git prints only `Done` (exit 0); without it, `=` … `[up to date]`. Phase 2 must drop `--quiet` or compare the remote ref.
+- **Push rejection:** origin moves only while the handoff push is held, so an initial fetch cannot refuse.
+
+| Finding | Test | State before the fix |
+|---------|------|----------------------|
+| T-A5-1 / PR-A7 | `test_claim.py::test_lost_claim_race_at_the_push_is_refused` (rewritten) | red `[0, 4]` |
+| T-A5-1 / PR-A8 | `test_claim.py::test_identical_same_second_claims_have_one_winner` (rewritten) | red `[0, 0]` |
+| T-A5-2 / PR-A2 | `test_git_safety.py::test_handoff_and_verdict_leave_a_checked_out_order_branch_where_it_was[handoff\|verdict]` (new) | red: branch moved |
+| T-A5-2 / PR-A2 | `test_git_safety.py::test_claim_leaves_an_order_branch_checked_out_in_another_worktree_alone` (new) | red: branch moved |
+| T-A5-2 / PR-A2 | `test_git_safety.py::test_claim_fast_forwards_an_order_branch_that_is_not_checked_out` (new) | green guard |
+| T-A5-2 / PR-A2 | `test_git_safety.py::test_claim_leaves_a_diverged_local_order_branch_alone[before-command\|during-push]` (new) | red: no `git pull --ff-only` report |
+| T-A5-2 / PR-A2 | `test_git_safety.py::test_handoff_push_rejection_leaves_local_refs_and_worktree_unchanged` (rewritten on the barrier) | red: branch moved |
+
+Divergence follows amendment-04's letter: origin takes the event (exit 0), and the divergent local branch is left alone and reported. Repetitions: 12/12 identical outcomes.

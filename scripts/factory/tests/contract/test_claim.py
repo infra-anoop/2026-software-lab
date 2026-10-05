@@ -10,12 +10,14 @@ import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import NamedTuple
 
 import pytest
 
 from factory.cli import exit_codes
 from factory.cli.app import run
 from factory.cli.common import DEPS
+from tests.contract.push_barrier import WAIT_SECONDS, PushBarrier, has_object, origin_sha
 from tests.fixtures.cli_runner import FactoryCli
 from tests.fixtures.repo_builder import RepoBuilder, message, order
 
@@ -23,6 +25,7 @@ pytestmark = pytest.mark.contract
 
 DAY = "20261007"
 OPEN_DECISION = "pick-host"
+RACE_TIMEOUT = 2 * WAIT_SECONDS
 
 
 def oid(slug: str) -> str:
@@ -181,39 +184,78 @@ def test_open_pr_still_holds_a_slot(repo: RepoBuilder, factory_cli: FactoryCli) 
     assert repo.head_sha(f"origin/wo/{waiting}") == before, "refused claim must push nothing"
 
 
-def test_lost_claim_race_at_the_push_is_refused(repo: RepoBuilder) -> None:
-    """PR-A7: a claim that loses the race at its own push exits 2, not 4.
+class HeldRace(NamedTuple):
+    codes: list[int]
+    base: str
+    winner: str
+    loser_had_winner: bool
+    advertised_to_loser: str | None
 
-    The claimers use different models so their claim commits differ. Each clone's
-    `remote.origin.receivepack` waits before connecting (1 s here, 3 s for the
-    second clone). Both claimers fetch at once and see no claim; the first push lands at ~1 s;
-    the second connects at ~3 s, finds origin ahead, and git rejects it client-side
-    (`[rejected] (fetch first)`, reported on `--porcelain` stdout).
+
+def _held_race(repo: RepoBuilder, order_id: str, models: tuple[str, str]) -> HeldRace:
+    """Two claims of `order_id`; both pushes are held at origin until both claimers arrive.
+
+    Claimer 1 (`repo.path`) is released first and must exit before claimer 2 (a copy of the
+    clone) is released. `loser_had_winner` is read between the two releases, while claimer 2
+    is still blocked in its push and cannot have fetched.
     """
-    order_id = _issue(repo, "push-race")
+    branch = f"wo/{order_id}"
     second = repo.root / "work-b"
     shutil.copytree(repo.path, second, symlinks=True)
-    for work, delay in ((repo.path, 1), (second, 3)):
-        for key, value in (
-            ("remote.origin.url", str(repo.origin)),
-            ("remote.origin.receivepack", f"sleep {delay}; git-receive-pack"),
-        ):
-            subprocess.run(
-                ["git", "-C", str(work), "config", key, value], check=True, capture_output=True
-            )
+    subprocess.run(
+        ["git", "-C", str(second), "remote", "set-url", "origin", str(repo.origin)],
+        check=True,
+        capture_output=True,
+    )
+    barrier = PushBarrier(repo.root / "push-barrier")
+    barrier.install(repo.path, 1)
+    barrier.install(second, 2)
+    base = origin_sha(repo.origin, branch)
 
     def claim(work: Path, model: str) -> int:
         return run(["claim", order_id, "--actor-model", model, "--repo", str(work)])
 
-    claimers = ((repo.path, "claude-opus-5.5"), (second, "gpt-5.6-sol"))
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        futures = [pool.submit(claim, work, model) for work, model in claimers]
-        codes = [future.result() for future in futures]
-    assert codes == [exit_codes.OK, exit_codes.REFUSED], (
-        f"first claim wins (0); the second lost the race at the push and is refused (2): {codes}"
+    with ThreadPoolExecutor(max_workers=2) as pool, barrier:
+        first = pool.submit(claim, repo.path, models[0])
+        other = pool.submit(claim, second, models[1])
+        barrier.wait_arrived(1, 2, commands=[first, other])
+        barrier.release(1)
+        first_code = first.result(timeout=RACE_TIMEOUT)
+        winner = origin_sha(repo.origin, branch)
+        loser_had_winner = has_object(second, winner)
+        barrier.release(2)
+        other_code = other.result(timeout=RACE_TIMEOUT)
+    return HeldRace(
+        codes=[first_code, other_code],
+        base=base,
+        winner=winner,
+        loser_had_winner=loser_had_winner,
+        advertised_to_loser=barrier.advertised(2).get(f"refs/heads/{branch}"),
     )
-    claim_files = repo.git("ls-tree", "-r", "--name-only", f"origin/wo/{order_id}")
-    assert f"bus/orders/{order_id}/claim.yaml" in claim_files
+
+
+def test_lost_claim_race_at_the_push_is_refused(repo: RepoBuilder) -> None:
+    """PR-A7: a claim that loses the race at its own push exits 2, not 4.
+
+    `_held_race` holds both pushes at origin until both claimers have fetched (no claim yet)
+    and built their claim, then releases claimer 1, then claimer 2. The claimers use different
+    models, so their commits differ and claimer 2 has never seen claimer 1's. Receive-pack
+    advertises claimer 1's commit to claimer 2, which git cannot verify as a fast-forward and
+    rejects client-side (`[rejected] (fetch first)`, reported on `--porcelain` stdout).
+    """
+    order_id = _issue(repo, "push-race")
+    race = _held_race(repo, order_id, ("claude-opus-5.5", "gpt-5.6-sol"))
+    assert race.winner != race.base, f"claimer 1's push did not land: {race.codes}"
+    assert race.advertised_to_loser == race.winner, "claimer 2 is shown claimer 1's claim"
+    assert not race.loser_had_winner, (
+        "claimer 2 must not hold claimer 1's commit, so git rejects its push (fetch first)"
+    )
+    assert race.codes == [exit_codes.OK, exit_codes.REFUSED], (
+        f"claimer 1 wins (0); claimer 2 lost the race at the push and is refused (2): {race.codes}"
+    )
+    repo.git("fetch", "-q", "origin")
+    claim_text = repo.git("show", f"origin/wo/{order_id}:bus/orders/{order_id}/claim.yaml")
+    assert "actor_model: claude-opus-5.5" in claim_text, claim_text
 
 
 def test_identical_same_second_claims_have_one_winner(
@@ -222,33 +264,25 @@ def test_identical_same_second_claims_have_one_winner(
     """PR-A8: a push that finds origin already at our commit lost the race (exit 2, not 0).
 
     Clock, git commit dates and actor are pinned, so both claimers build byte-identical claim
-    commits on the same tip. Receivepack delays (1 s, then 3 s) make the first push land
-    before the second connects; the second push then reports `=` / `[up to date]`.
+    commits on the same tip. `_held_race` holds both pushes at origin until both are built,
+    then lets claimer 1's land before claimer 2's receive-pack starts. Receive-pack advertises
+    claimer 1's commit, which is claimer 2's own commit, so claimer 2's push reports
+    `=` / `[up to date]`.
     """
     order_id = _issue(repo, "same-second")
-    second = repo.root / "work-b"
-    shutil.copytree(repo.path, second, symlinks=True)
-    for work, delay in ((repo.path, 1), (second, 3)):
-        for key, value in (
-            ("remote.origin.url", str(repo.origin)),
-            ("remote.origin.receivepack", f"sleep {delay}; git-receive-pack"),
-        ):
-            subprocess.run(
-                ["git", "-C", str(work), "config", key, value], check=True, capture_output=True
-            )
     pinned = datetime(2026, 10, 7, 12, 0, tzinfo=UTC)
     monkeypatch.setattr(DEPS, "clock", lambda: pinned)
     for name in ("GIT_AUTHOR_DATE", "GIT_COMMITTER_DATE"):
         monkeypatch.setenv(name, "2026-10-07T12:00:00+0000")
 
-    def claim(work: Path) -> int:
-        return run(["claim", order_id, "--actor-model", "claude-opus-5.5", "--repo", str(work)])
-
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        futures = [pool.submit(claim, work) for work in (repo.path, second)]
-        codes = [future.result() for future in futures]
-    assert sorted(codes) == sorted([exit_codes.OK, exit_codes.REFUSED]), (
-        f"identical claims: exactly one wins (0) and the other is refused (2): {codes}"
+    race = _held_race(repo, order_id, ("claude-opus-5.5", "claude-opus-5.5"))
+    assert race.winner != race.base, f"claimer 1's push did not land: {race.codes}"
+    assert race.loser_had_winner, "claimer 2 built the very commit claimer 1 pushed"
+    assert race.advertised_to_loser == race.winner, (
+        "claimer 2 is shown its own commit, so its push is `[up to date]`"
+    )
+    assert race.codes == [exit_codes.OK, exit_codes.REFUSED], (
+        f"identical claims: claimer 1 wins (0) and claimer 2 is refused (2): {race.codes}"
     )
     repo.git("fetch", "-q", "origin")
     claims = repo.git(
