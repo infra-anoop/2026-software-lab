@@ -253,3 +253,59 @@ Both lines of defense are now executable: issuance refuses empty checks before p
 | `uv run ruff format --check tests/contract tests/unit` | PASS — 19 files already formatted. |
 | `factory check schema` | PASS — `schema ok`. |
 | Diff hygiene | PASS — `git diff --check d79fbb6..e42b379`. |
+
+## Round 5 (PR-fix tests)
+
+### Verdict
+
+**Verdict: reject — two test-shape Blockers remain before the PR fixes are implemented.**
+
+The accepted-test amendments are justified and preserve their original assertions, all 17
+PR-fix reds fail against the reviewed implementation, and the suite is jointly satisfiable.
+The concurrency orchestration is not deterministic on a loaded runner, however, and the git
+safety cases do not cover the full ref-only behavior pinned by amendment 04.
+
+### Findings
+
+| ID | Severity | Tag | Locus | Finding | Suggested resolution |
+|----|----------|-----|-------|---------|----------------------|
+| T-A5-1 | Blocker | process | `test_claim.py::test_lost_claim_race_at_the_push_is_refused`; `::test_identical_same_second_claims_have_one_winner` | The one- and three-second `receivepack` sleeps do not synchronize both claimers past fetch before either push lands. On a loaded two-core runner, the second future may start or fetch after the first push, then refuse as already claimed. Both tests can therefore pass without exercising the PR-A7 porcelain-rejection or PR-A8 up-to-date outcome; PR-A7 can also invert its hard-coded first winner. Eight local repetitions produced the intended reds, but repetition does not remove the scheduling race. | Replace elapsed-time ordering with an explicit pre-push barrier and deterministic receivepack release order. Assert evidence that each intended push outcome was actually reached. |
+| T-A5-2 | Blocker | process | `test_git_safety.py`; PR-A2 behavior in amendment 04 | Successful checked-out-branch cases cover claim and release only; handoff and verdict can still move the caller checkout and pass. There is no linked-worktree case, no successful CAS advancement of a non-checked-out local branch, and no divergent-local-branch case. The rejection fixture moves origin before command start, so an implementation that refuses during an initial fetch can pass without proving push-rejection rollback safety. | Add success cases for handoff and verdict, a branch checked out in another linked worktree, successful non-checked-out CAS advancement, and divergent-local refusal. Force the remote move after event construction and before push for rejection safety. |
+| T-A5-3 | Nit | process | Accepted amendments; scorecard fixtures and choices | Strength: reading `origin/wo/<id>` is the correct consequence of ref-only plumbing; exit 2 strengthens the race contract; the valid handoff fixture removes the PR-A6 false positive; and the scorecard now runs through the CLI with status evidence on the exact exit commit. The `sys.modules` fixtures are legitimate sibling-module seams, not production test branching: normal import resolution is still exercised and the scorecard never runs a gate. The retro-on-main boundary and `refs` sprint membership are explicit, coherent, and satisfiable. | Preserve these choices while fixing T-A5-1 and T-A5-2. |
+
+### Amendment and choice judgments
+
+- **Accepted tests:** all amendments are justified and are not weakenings. The two event tests
+  retain their assertions and read the authoritative pushed ref. Requiring exit 2 removes an
+  external-error escape hatch. The handoff test now reaches and names the registered gate.
+  The accepted Wave 1 exit cases add, rather than substitute, P1 implementation and status
+  evidence.
+- **P1 entrypoint stubs:** accepted. Slices B and C own the real modules; a unit fixture may
+  supply those collaborators while testing ordinary `importlib`/`getattr` resolution. There is
+  no app-code test-only branch and the stub raises if the scorecard improperly executes a gate.
+- **Wave 1 boundary:** accepted provisionally as the first main commit containing
+  `bus/postmortems/wave1-retro.yaml`. T069 creates that artifact and T070 forbids Wave 2 issuance
+  before retro disposition, so later orders cannot move or erase the computed Wave 1 exit.
+- **Sprint membership:** accepted as an order `refs` entry for `notes/sprints/<S>.md`. It is an
+  immutable, explicit relation and the CLI cases prove both scoped and unscoped behavior.
+- **Concurrency timing:** rejected. Fixed clocks make commits reproducible, but receivepack
+  sleeps do not make thread scheduling or pre-push progress deterministic.
+- **Satisfiability:** the amended and new requirements can pass together: build and push event
+  commits ref-only, classify rejected/up-to-date first-writer pushes as refusal, derive capacity
+  from lifecycle plus PR reality, and compute a CLI scorecard from the scoped pre-retro cohort,
+  accepted run records, resolvable P1 entrypoints, and statuses on the exit commit.
+
+### Verification record
+
+| Check | Result |
+|-------|--------|
+| Reviewed head | `a83fb28befb464155607846db4cbbe600aaa724f` |
+| Full `uv run pytest -q` | Expected RED: **95 failed, 342 passed** in 87.34s; the prior 78 baseline failures remain and 17 PR-fix tests are red; no collection errors or xfails. |
+| PR-A7 / PR-A8 repetitions | Both tests produced their intended current-code failures in **8/8** runs each; T-A5-1 is the structural scheduling gap. |
+| Failure reasons | PR-A2 cases fail on checkout/ref mutation; PR-A4 on retained closed-PR capacity; PR-A5 on landing-only/unscoped exit logic; PR-A7 on exit 4; PR-A8 on two exit-0 claimers. |
+| `uv run ruff check tests` | PASS. |
+| `uv run ruff format --check tests/contract tests/unit` | PASS — 20 files already formatted. |
+| `factory check schema` | PASS before verdict-06; rerun after writing the verdict. |
+| Production-source diff | PASS — `git diff ea6a554 a83fb28 -- scripts/factory/src` is empty. |
+| Test diff hygiene | PASS — `git diff --check ea6a554 a83fb28 -- scripts/factory/tests`. |
+| Bus append-only | PASS through reviewed head — amendment-04, amendment-05, amendment-06 and verdict-05 are additions; no existing bus record is modified or deleted. |
