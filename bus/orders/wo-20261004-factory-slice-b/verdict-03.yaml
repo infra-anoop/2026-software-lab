@@ -1,0 +1,53 @@
+schema_version: 1
+kind: verdict
+id: wo-20261004-factory-slice-b.verdict-03
+created: 2026-10-05T06:20:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - wo-20261004-factory-slice-b.verdict-02
+  - wo-20261004-factory-slice-b.amend-02
+  - specs/001-factory-v2/TEST_REVIEW_SLICE_B.md
+decision: accept
+findings: []
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: bus/orders/wo-20261004-factory-slice-b/verdict-02.yaml
+    sha: d36172e805c80c7740ac6fa1feee895efe513063
+  - path: bus/orders/wo-20261004-factory-slice-b/amendment-02.yaml
+    sha: d36172e805c80c7740ac6fa1feee895efe513063
+  - path: notes/packets/2026-10-04-factory-v2-slice-b.md
+    sha: d36172e805c80c7740ac6fa1feee895efe513063
+  - path: notes/packets/2026-10-04-factory-v2-slice-b.handoff.md
+    sha: d36172e805c80c7740ac6fa1feee895efe513063
+  - path: specs/001-factory-v2/TEST_REVIEW_SLICE_B.md
+    sha: d36172e805c80c7740ac6fa1feee895efe513063
+  - path: scripts/factory/tests/unit/gates/drift/test_fidelity.py
+    sha: d36172e805c80c7740ac6fa1feee895efe513063
+  - path: scripts/factory/tests/unit/gates/drift/test_catalog_linkage.py
+    sha: d36172e805c80c7740ac6fa1feee895efe513063
+  - path: scripts/factory/tests/unit/gates/drift/test_decision_ids.py
+    sha: d36172e805c80c7740ac6fa1feee895efe513063
+  - path: scripts/factory/tests/unit/gates/drift/test_deferral_words.py
+    sha: d36172e805c80c7740ac6fa1feee895efe513063
+  - path: scripts/factory/tests/contract/test_intent.py
+    sha: d36172e805c80c7740ac6fa1feee895efe513063
+  - path: specs/001-factory-v2/spec.md
+    sha: d36172e805c80c7740ac6fa1feee895efe513063
+  - path: specs/002-swv2-durable-evals/spec.md
+    sha: d36172e805c80c7740ac6fa1feee895efe513063
+  - path: specs/smart-writer-v2/spec.md
+    sha: d36172e805c80c7740ac6fa1feee895efe513063
+bootstrap: true
+manual_equivalents:
+  - "T-B2-1: resolved; 29 tests pin real locked and re-locked status-cell shapes, whole-phrase case-insensitive matching, and the triaged exclusions"
+  - "T-B2-2: resolved; 17 tests pin head-blob custody, reject inside/outside tracked symlinks, and fail closed on 14 malformed or wrong-shape layouts"
+  - "test-shape judgments: status keyword, currency, locked-row scope, all symlinks, and whole-file fail-closed behavior accepted"
+  - "satisfiability: positive and negative expectations admit one strict parser and no contradictory effective inputs were found"
+  - "red-first: focused Slice B suite reproduced 218 assertion failures with no collection errors or xfails and no missing module-level implementation imports"
+  - "full suite: 334 failed and 237 passed; CI selector 224 passed and 200 Slice B failures with 147 deselected"
+  - "production source: unchanged from base da0505d; round-two diff remains within amendment-02 owned paths"
+  - "bus append-only: pass; factory check schema reports schema ok"
+  - "ruff check and format check: pass"
