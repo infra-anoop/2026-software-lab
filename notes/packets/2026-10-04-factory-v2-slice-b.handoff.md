@@ -1,15 +1,65 @@
-# Handoff (interim) — Factory v2 Slice B — drift gates + intent traceability
+# Handoff — Factory v2 Slice B — drift gates + intent traceability
 
 | Field | Value |
 |-------|-------|
 | Packet | `notes/packets/2026-10-04-factory-v2-slice-b.md` |
 | Branch | `wo/wo-20261004-factory-slice-b` (base `origin/main` `da0505d`) |
-| Status | **T\* round 2 applied; round-3 confirmation requested** — still phase 1 (red tests). No implementation yet. |
+| Status | **Implemented.** All 218 Slice B tests and all 52 seeds are green. No PR is opened (orchestrator's call) |
+| Accept-SHA | `a68b95d884c65eea1e805835cf54b9b1c17ffdda`: the `--no-ff` merge of `review/wo-20261004-factory-slice-b-r3` (`wo-20261004-factory-slice-b.verdict-03`, accept) |
 | Round 1 | `wo-20261004-factory-slice-b.verdict-01` (reject, merged from `review/wo-20261004-factory-slice-b` at `670f120`) → triage in `specs/001-factory-v2/TEST_REVIEW_SLICE_B.md` § Triage (round 1) + `bus/orders/wo-20261004-factory-slice-b/amendment-01.yaml` |
 | Round 2 | `wo-20261004-factory-slice-b.verdict-02` (reject, merged `--no-ff` from `review/wo-20261004-factory-slice-b-r2` at `5464528`) → triage in § Triage (round 2) + `bus/orders/wo-20261004-factory-slice-b/amendment-02.yaml` (owned paths unchanged) |
-| Tasks ticked | T039, T040, T061 (tests written). T041/T062 (T\* review) and T042–T049, T063 (impl) open |
+| Implement | `amendment-03.yaml` widens owned paths to the FR-023 / SC-005(b) lines of `spec.md` and the `factory check intent` row of `contracts/cli.md`, and records the governor locks of 2026-10-04 |
+| Tasks ticked | T039, T040, T041, T042–T048, T061, T062, T063. **T049 stays open** (two `seed.*` rows remain `planned`; see § Catalog evidence) |
 
-## What changed
+## Implementation (phase 2)
+
+**Accepted tests are unchanged since accept.** `git diff a68b95d HEAD -- scripts/factory/tests` is empty. No frozen CP0 file (`api.py`, `bus/`, `config/`, `cli/app.py`, `cli/exit_codes.py`, `gates/registry.py`, `tests/fixtures/`) changed. `gates.yaml` needed no edits: all nine Slice B entrypoints were pre-registered and now import.
+
+| Commit | Change |
+|--------|--------|
+| `0336b25` | `gates/drift/_git.py` (git reads at merge-base / head, `--no-renames`, regular blobs only), `_common.py` (effective order = order + amendments in order; glob, code-line and whole-word helpers), `_specs.py` (pipe tables, Open Decisions, lock tokens, task lines); `fidelity.py`: `order-fidelity-declared`, `lock.letter-tokens` (T046) |
+| `71efad9` | `owned_paths.py`: `diff-within-owned-paths` (T044); `decision_ids.py`: `decision-request-no-ids` (T047) |
+| `5ae820d` | `deferral_words.py`: `deferral-words-need-od` (T045); `test_seam.py`: `test-seam-ban` (T043) |
+| `9507726` | `catalog_linkage.py`: `catalog-test-linkage`, pytest node ids via AST and eval cases via head blob (T048) |
+| `76a75de` | `red_first.py`: `red-first-proof`, base tree with changed test support overlaid vs head tree, each run in a child pytest (T042) |
+| `40dab71` | `intent/coverage.py`: presence, effective coverage, `presence_gate` (`factory-check-intent`) and `group_by_intent()` for T064; `cli/intent.py`: `factory check intent [--coverage [--require-target]]` (T063) |
+| `63eb0bf` | `amendment-03.yaml`; `spec.md` FR-023 and SC-005(b); `contracts/cli.md` check-intent row; `contracts/gates.md` eval head-blob / symlink / malformed wording |
+| `5b6a575` | `acceptance.md` evidence for nine Slice B rows; `tasks.md` checkboxes |
+| `39e8354` | Fix found by running the gates on this branch: `red-first-proof` extracts the whole tree, because `scripts/factory/tests/conftest.py` reads the repo-root `factory.toml`. A pytest abort (exit 2–4) with no reports is a crash, not "not collected" |
+
+### Catalog evidence (T049)
+
+Filled with real node ids: `seed.substitution_declared`, `seed.hidden_deferral`, `seed.not_red_first`, `seed.test_seam`, `seed.outside_owned_paths`, `seed.jargon_to_governor`, `seed.catalog_unlinked`, `trace.presence`, `trace.effective_coverage`.
+
+Left `planned`:
+- **`seed.substitution_undeclared`.** The row expects "Issuing is refused", which is Slice A's `factory order new` / `order issue` refusal (`test_cli_contract.py::test_order_new_refuses_touched_named_lock_without_fidelity`, still red). Slice B's PR-side gate is covered by `seeds/test_seeds.py::test_seed_undeclared_substitution` (green). Pointing the row at the gate seed would thin the row's outcome, so it waits for Slice A.
+- **`seed.code_before_test_review`.** This is Wave 2 (FR-012b).
+
+### Deviations
+
+- **red-first child process.** Tests run in a child `python -c <bootstrap>` (through `uv run --directory <project> --locked` when the project has a `pyproject.toml`). The child removes inherited `PYTEST_*` variables from its own environment before importing pytest, so an outer pytest run cannot leak options. The parent reads no environment (TID251 / I-A3 hold); the only `os.environ` text is inside the child's bootstrap source string. Conservative choice: no `env=` built from the parent's environment.
+- **red-first runtime.** On this branch (130 new or changed tests, base `origin/main`) the gate takes about 110 seconds, because the whole repo is extracted twice and a project venv is created per tree. The timeout stays at 900 seconds.
+- **`contracts/cli.md`.** The shared `factory check schema | intent | …` row loses `intent` / FR-023; `factory check intent` gets its own row. No other command's text changed.
+
+### Cross-slice dependencies
+
+- **Slice A:** `factory check intent --coverage` builds its GitHub port through `DEPS.github` → `factory.github.rest:build_github` (T021). Until that lands, `--coverage` outside tests exits 3 with "adapter … is not available"; presence needs no adapter. `seed.substitution_undeclared` evidence waits on Slice A's `order new` refusal.
+- **Slice C:** T064 (runner per-intent report) consumes `factory.intent.coverage.group_by_intent(results, registry)`. It groups by each result's `intent_ids`, falling back to the gate's registry `intents`. `factory gate run` / CI statuses (T058/T059) produce the `factory/<gate-id>` statuses that effective coverage reads.
+- **Not copied or reimplemented:** no Slice A or C module. The effective-order helper (`gates/drift/_common.py:effective_order`) is local to the drift gates and reads only the frozen `bus/` models.
+
+### Gates run by hand on this branch (bootstrap verdict input, FR-037)
+
+`run_gate(<id>, GateContext(base=origin/main, head=HEAD, order_id=None))` from `scripts/factory`:
+
+| Gate | Result |
+|------|--------|
+| `factory-check-intent` | pass (81 intents mapped) |
+| `red-first-proof` | pass (130 new or changed tests red on base, green on head) |
+| `test-seam-ban`, `decision-request-no-ids`, `catalog-test-linkage` | pass |
+| `order-fidelity-declared`, `lock.letter-tokens`, `diff-within-owned-paths` | pass vacuously (no base order file for this Wave 1 packet). Manual equivalent: every changed path is in amend-03 `owned_paths`; no named lock is touched |
+| `deferral-words-need-od` | **block**: `specs/001-factory-v2/TEST_REVIEW_SLICE_B.md:80`, "normalize optional Markdown backticks", in the reviewer's § F edit list. That section is outside my line scope (Triage sections only). Suggested fix for the orchestrator: "normalize surrounding Markdown backticks" |
+
+## Test-phase history
 
 ### Round 0 (`4e88515`) — 132 red tests
 
@@ -66,20 +116,29 @@
   - 14 malformed or wrong-shape files block.
 - **amend-02:** records the triage. Owned paths are restated unchanged. Validated with `factory check schema`; a broken copy (`supersedes: [not_a_field]`) was rejected.
 
-No production code changed, and no frozen CP0 file was edited.
+No production code changed in the test phase, and no frozen CP0 file was edited.
 
 ## Commands + results
 
-Run from `scripts/factory`:
+Phase 2, at the handoff head, run from `scripts/factory`:
 
 | Command | Result |
 |---------|--------|
-| `nix develop ../.. -c uv run pytest -q` | **237 passed, 334 failed** (116 pre-existing red + 218 Slice B), 571 collected, **0 collection errors** |
-| `… uv run pytest tests/unit/gates/drift tests/contract/test_intent.py` | 218 failed: 202 `AssertionError: gate <id> is not implemented`, 16 CLI exit-code assertions (exit 3 today); 0 errors, 0 xfail. All 46 round-2 tests fail at "not implemented" |
-| `… uv run pytest -m "not contract and not seed"` (CI subset) | 224 passed, 200 failed (all 200 = Slice B drift unit tests), 147 deselected |
+| `nix develop ../.. -c uv run pytest -q` | **509 passed, 62 failed**, 571 collected. All 62 are in `tests/contract/test_cli_contract.py`, for commands other lanes own: Slice A 39 (`status`, `decisions`, `scorecard`, `order new/issue`, `claim`, `release`, `handoff`, `pr open`, `verdict`, `bus pr`), Slice C 18 (`override`, `gate run`, `hook`, `check hooks/registry/immutability`, `retro`), US7 / Wave 2 5 (`correction new`, `sprint close`). Each fails with exit 3 "not implemented" |
+| `… uv run pytest tests/unit/gates/drift tests/contract/test_intent.py` | **218 passed** |
+| `… uv run pytest -m seed` | **52 passed** |
+| `… uv run pytest -m "not contract and not seed"` (CI subset) | **424 passed**, 147 deselected |
+| `… uv run pytest tests/contract/test_cli_contract.py -k intent` | 2 passed |
 | `… uv run ruff check .` | All checks passed |
-| `… uv run ruff format --check .` | 44 files already formatted |
-| `… uv run factory check schema --repo ../..` | schema ok (amendment-02 included) |
+| `… uv run ruff format --check .` | 57 files already formatted |
+| `… uv run factory check schema` | schema ok (amendment-03 included) |
+
+Phase 1, at the round-2 head (kept for the record):
+
+| Command | Result |
+|---------|--------|
+| `nix develop ../.. -c uv run pytest -q` | 237 passed, 334 failed (116 pre-existing red + 218 Slice B), 571 collected, 0 collection errors |
+| `… uv run pytest -m "not contract and not seed"` (CI subset) | 224 passed, 200 failed (all 200 = Slice B drift unit tests), 147 deselected |
 
 **Vacuity check.** I re-ran the throwaway constant stubs, which live outside the repo and have been removed:
 - An always-pass stub leaves failures in every Slice B file. Examples: catalog 23 of 34, deferral 18 of 33, fidelity 15 of 32, decision ids 6 of 10.
@@ -108,21 +167,32 @@ Run from `scripts/factory`:
 Not in this slice's red set:
 - `handoff.per_intent_results` (T064): the runner file belongs to Slice C. Slice B supplies `intent.coverage.group_by_intent()`.
 - `seed.code_before_test_review`: Wave 2.
-- `acceptance.md` evidence cells (T049): filled when the tests turn green.
 
 ## Red-first commit pairs (DoD)
 
-| Red commit | Green commit |
-|------------|--------------|
-| `4e88515` (132 tests) + round-1 triage `21fc8e3` (40 tests) + round-2 triage commit (46 tests) | pending (phase 2) |
+Red commits: `4e88515` (132 tests), round-1 triage `21fc8e3` (40 tests), round-2 triage `d36172e` (46 tests). Accepted at `a68b95d`.
+
+| Tests | Green commit |
+|-------|--------------|
+| `test_fidelity.py` (61), lock seeds | `0336b25` |
+| `test_owned_paths.py` (12), `test_decision_ids.py` (10), their seeds | `71efad9` |
+| `test_deferral_words.py` (33), `test_test_seam.py` (21), their seeds | `5ae820d` |
+| `test_catalog_linkage.py` (51), `test_seed_catalog_unlinked` | `9507726` |
+| `test_red_first.py` (12), `test_seed_not_red_first` | `76a75de` |
+| `test_intent.py` (18), `test_cli_contract.py -k intent` (2) | `40dab71` |
 
 ## Amendment requests
 
-No changes to frozen CP0 interfaces. The orchestrator's amend-01 handles the owned-path widening.
+No changes to frozen CP0 interfaces.
 
-**For the orchestrator** (outside my paths):
-1. **T-B6 wording.** "Explicit governor-judged mapping" is defined in `spec.md` FR-023, SC-005b and US5 #2. To match the lock, it could read "a `kind: human` mapping with `status: exists`, flipped by the PR that records the governor's judgment". I recorded the rule in the `test_intent.py` contract docstring and in the triage only.
-2. **T-B4 caller.** The new T081 line covers the sprint-close caller. `contracts/cli.md` may want `--require-target` listed under `factory check intent`; that file is not in my paths.
+Done in amend-03 (were open requests here):
+1. **T-B6 wording.** FR-023 and SC-005(b) now define governor-judged as `kind: human` with `status: exists`.
+2. **T-B4 caller.** `contracts/cli.md` lists `--require-target` on its own `factory check intent` row. SC-005(b) states that coverage is report-only during the sprint.
+
+**For the orchestrator** (outside my line scope):
+1. **Deferral-words hit on this branch.** `TEST_REVIEW_SLICE_B.md` § F line 80 says "optional Markdown backticks". `deferral-words-need-od` blocks it as written. Suggested: "surrounding".
+2. **Red-first regression test.** No accepted test covers a project whose tests read repo files outside the project directory. That is the shape that broke this branch's self-run before `39e8354`. Accepted tests are frozen, so I did not add one. Suggestion: add it in a follow-up with its own T\* look.
+3. **FR-018 eval wording.** FR-018 says "names an existing test or eval". It agrees with the head-blob lock in `contracts/gates.md`, so I left it unedited (outside amend-03's line scope).
 
 ## Open questions
 
@@ -153,4 +223,4 @@ All are **non_blocking**. Nothing here needs a governor decision.
 
 ## Next
 
-The orchestrator spawns the round-3 T\* confirmation (T041/T062) on this branch head. After it accepts, phase 2 implements T042–T049 and T063 against these tests and turns the CP0 seeds green.
+The orchestrator opens the Slice B PR when ready (not opened by the worker). T049 closes when Slice A's `order new` refusal lands and `seed.substitution_undeclared` gets its evidence. T064 runs in Slice C's lane on top of `group_by_intent()`.

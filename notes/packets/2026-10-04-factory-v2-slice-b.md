@@ -46,11 +46,11 @@ Implement drift gates + intent traceability against the frozen P0 contracts, tes
 
 ## Definition of Done
 
-- [ ] Red first: every new test was committed failing (assertion failure) before the commit that makes it pass; list the pairs of commits in the handoff
-- [ ] `uv run --project scripts/factory pytest` green for this slice's tests; `ruff check scripts/factory` clean; type hints on all signatures; no `os.getenv` outside `factory/config/`
-- [ ] `specs/001-factory-v2/acceptance.md` evidence filled (real test ids) for this slice's rows; `tasks.md` checkboxes ticked for this slice's tasks only
-- [ ] Handoff `notes/packets/<this-packet-id>.handoff.md`: what changed, commands + results, deviations (why + conservative choice), open questions (`blocker_governor` / `non_blocking`), manual equivalents of P1 gates run by hand (bootstrap verdict input, FR-037)
-- [ ] Commits on the packet branch only; no push to `main`; no force-push
+- [x] Red first: every new test was committed failing (assertion failure) before the commit that makes it pass; list the pairs of commits in the handoff
+- [x] `uv run --project scripts/factory pytest` green for this slice's tests; `ruff check scripts/factory` clean; type hints on all signatures; no `os.getenv` outside `factory/config/`
+- [ ] `specs/001-factory-v2/acceptance.md` evidence filled (real test ids) for this slice's rows; `tasks.md` checkboxes ticked for this slice's tasks only (open: `seed.substitution_undeclared` waits on slice A's `order new` refusal; `seed.code_before_test_review` is Wave 2; see handoff)
+- [x] Handoff `notes/packets/<this-packet-id>.handoff.md`: what changed, commands + results, deviations (why + conservative choice), open questions (`blocker_governor` / `non_blocking`), manual equivalents of P1 gates run by hand (bootstrap verdict input, FR-037)
+- [x] Commits on the packet branch only; no push to `main`; no force-push
 
 ## Out of scope
 
