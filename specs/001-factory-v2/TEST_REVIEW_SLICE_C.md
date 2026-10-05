@@ -250,3 +250,44 @@ The governor's log-only lock is represented consistently in FR-008, the acceptan
 | `nix develop ../.. -c uv run factory check schema --repo ../..` | PASS — `schema ok`, including verdict-03 |
 | Authoritative refusal tests | PASS — `test_claim_refuses_at_cap` and `test_cap_blocks_pr_without_claim` are unchanged by round 2 |
 | Worktree setup | No `.cursor/worktrees.json` in either repository root or worktree; setup skipped after both checks |
+
+## Round 4 (final, harm bar)
+
+Reviewed `wo/wo-20261004-factory-slice-c` at
+`46c21f560a2f98c5ea271b06388d1740e8e87a6a`, compared with the round-3 accepted
+state `94457882b42e68c5db8dc3196a353dd2d385b75d`.
+
+### Verdict
+
+**Verdict: reject — one locked-shall harm remains.**
+
+The 75 new cases are honestly red and terminate: **75 failed / 32 passed in 12.59 s**,
+with no collection error, xfail or hang. The evidence-bundle negatives, source-pinned
+branch-protection fixture, Nix wrapper fallback and moved T059 assertions materially
+raise the bar. However, the trusted-job oracle still accepts ordinary wrapper and git
+option forms that execute the PR head while the job holds `statuses: write`, directly
+breaking D5 / FR-022a / PR-C1.
+
+### Blocker
+
+| ID | Root-cause class | Harm statement | Consequence | Likelihood | Smallest sufficient fix |
+|----|------------------|----------------|-------------|------------|-------------------------|
+| T-C4-1 | Privileged-shell policy is a partial denylist rather than a fail-closed executable allowlist | **Locked shall broken + credential exposure:** `head_code_reason()` returns safe for `env bash -c 'git checkout "$HEAD_SHA" && python steal.py'`, `command bash -c '…'`, and `git -C . checkout "$HEAD_SHA"`. A candidate trusted workflow containing those forms can pass `test_trusted_steps_never_execute_head_code` while PR-head code runs in the job holding `GITHUB_TOKEN` and `statuses: write`. | A same-repository PR can execute its code in the trusted publisher, exfiltrate the token, or post forged successful `factory/*` statuses, defeating D5 and branch protection for repository users. | Medium: wrappers and `git -C` are normal workflow spellings; exploitation is immediate once one is admitted. | Replace the denylist with a fail-closed allowlist of the exact trusted commands/actions and their permitted arguments, recursively handling or rejecting wrappers and nested shells. Add **one** regression test for this class: a table containing `env`/`command` nested shell execution and git global-option checkout must all be rejected while the documented trusted commands remain accepted. |
+
+### Later
+
+| ID | Locus | Finding |
+|----|-------|---------|
+| T-C4-2 | Evidence bundle binding | The fail-closed matrix checks a wrong `head_sha` but not a wrong full-length `base_sha`. Wave 1 is explicitly self-reported and the independent T* run is the proof of record, so this does not cross the final-round harm bar; bind both SHAs in a later hardening pass. |
+| T-C4-3 | Evidence producer topology | The workflow tests require one `factory gate evidence` call but do not prove that its producer executable comes from a separate `main` checkout. D7 already labels the whole Wave-1 result self-reported, so this is contract precision rather than additional trusted authority. |
+| T-C4-4 | Hook wrapper degraded output | The wrapper tests cover successful JSON, no Nix, and silent Nix failure, but not exit-0 malformed/non-JSON output from Nix. Hooks are explicitly advisory and fail-open, so normalize this case later rather than blocking Phase 2. |
+
+### Verification
+
+| Check | Result |
+|-------|--------|
+| Worktree head | `46c21f560a2f98c5ea271b06388d1740e8e87a6a` |
+| Locked setup | PASS — `nix develop ../.. -c uv sync --locked` |
+| Focused Round-4 suite | Expected RED — **75 failed / 32 passed in 12.59 s**; no collection errors, xfails or hangs |
+| Oracle adversarial probe | `env bash -c`, `command bash -c`, and `git -C . checkout` each returned no rejection reason |
+| Known facts | Slice B stub, CP0/phase-2 items, and absent Slice B gates were not re-raised |
