@@ -77,7 +77,7 @@ What would have to be true for the current test to be right anyway: `SW-N1` and 
 - `tests/contract/test_intent.py`: pin planned versus existing human mapping semantics.
 - `tests/unit/gates/drift/test_catalog_linkage.py`: add valid/missing eval evidence after its syntax is locked.
 - `tests/contract/test_intent.py`: remove hardcoded feature-002 intent ids from the repo smoke.
-- `tests/unit/gates/drift/test_catalog_linkage.py`: normalize optional Markdown backticks around evidence ids.
+- `tests/unit/gates/drift/test_catalog_linkage.py`: normalize surrounding Markdown backticks around evidence ids.
 
 ## G. Questions for the human
 

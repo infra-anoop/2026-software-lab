@@ -1,0 +1,51 @@
+# Pre-PR fixes after T* round 3 (wo-20261004-factory-slice-b.verdict-03, accept).
+# Recorded by the Slice B worker on the orchestrator's instruction (2026-10-05).
+# Orchestrator decisions:
+#   1. Packet revert: notes/packets/2026-10-04-factory-v2-slice-b.md is restored to its
+#      origin/main content. The worker had edited its Status line and ticked DoD boxes;
+#      completion evidence belongs only in the handoff and verdicts (same finding as the
+#      PR reviews of Slices A and C). The packet leaves owned_paths.
+#   2. Orchestrator-authorized one-word edit to reviewer text, to clear the new
+#      `deferral-words` gate. It does not change the review's meaning:
+#        specs/001-factory-v2/TEST_REVIEW_SLICE_B.md line 80 (section F, round 3 reviewer
+#        text): "normalize optional Markdown backticks around evidence ids" ->
+#        "normalize surrounding Markdown backticks around evidence ids"
+#      The backticks are still optional in the input; the reviewer's ask (strip them
+#      around evidence ids) is unchanged.
+# owned_paths restated from amend-03 (amendments supersede whole fields), minus the packet.
+# Line scope, since owned_paths are globs:
+#   specs/001-factory-v2/TEST_REVIEW_SLICE_B.md    -> worker: the Triage sections and (this
+#                                                     amendment) line 80 only; reviewer round
+#                                                     sections arrive via review-branch merges
+#   notes/packets/2026-10-04-factory-v2-slice-b.md -> not owned; reverted to origin/main
+#   notes/packets/2026-10-04-factory-v2-slice-b.handoff.md -> the handoff
+#   other line scopes unchanged from amend-01 and amend-03
+schema_version: 1
+kind: amendment
+id: wo-20261004-factory-slice-b.amend-04
+created: 2026-10-05T14:45:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/packets/2026-10-04-factory-v2-slice-b.md
+  - specs/001-factory-v2/TEST_REVIEW_SLICE_B.md
+  - wo-20261004-factory-slice-b.verdict-03
+  - wo-20261004-factory-slice-b.amend-03
+supersedes: [owned_paths]
+values:
+  owned_paths:
+    - "scripts/factory/src/factory/gates/drift/**"
+    - "scripts/factory/src/factory/intent/**"
+    - "scripts/factory/src/factory/cli/intent.py"
+    - "scripts/factory/tests/unit/gates/drift/**"
+    - "scripts/factory/tests/contract/test_intent.py"
+    - "scripts/factory/gates.yaml"
+    - "specs/001-factory-v2/spec.md"
+    - "specs/001-factory-v2/contracts/cli.md"
+    - "specs/001-factory-v2/contracts/gates.md"
+    - "specs/001-factory-v2/acceptance.md"
+    - "specs/001-factory-v2/tasks.md"
+    - "specs/001-factory-v2/TEST_REVIEW_SLICE_B.md"
+    - "bus/orders/wo-20261004-factory-slice-b/**"
+    - "notes/packets/2026-10-04-factory-v2-slice-b.handoff.md"

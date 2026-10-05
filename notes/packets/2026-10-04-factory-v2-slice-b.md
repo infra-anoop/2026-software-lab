@@ -5,7 +5,7 @@
 | Field | Value |
 |-------|-------|
 | Packet id | `2026-10-04-factory-v2-slice-b` (order id `wo-20261004-factory-slice-b`) |
-| Status | in_progress — CP0 merged (`8cd8cb7`), P0 test review triaged; phase 1 = red tests, then T* (T041/T062) |
+| Status | blocked — until CP0 merges and the P0 test review (T016) is triaged |
 | Feature / spec | `specs/001-factory-v2/` |
 | Branch | `wo/wo-20261004-factory-slice-b` (isolated worktree) |
 | Agent mode | **background** |
@@ -46,11 +46,11 @@ Implement drift gates + intent traceability against the frozen P0 contracts, tes
 
 ## Definition of Done
 
-- [x] Red first: every new test was committed failing (assertion failure) before the commit that makes it pass; list the pairs of commits in the handoff
-- [x] `uv run --project scripts/factory pytest` green for this slice's tests; `ruff check scripts/factory` clean; type hints on all signatures; no `os.getenv` outside `factory/config/`
-- [ ] `specs/001-factory-v2/acceptance.md` evidence filled (real test ids) for this slice's rows; `tasks.md` checkboxes ticked for this slice's tasks only (open: `seed.substitution_undeclared` waits on slice A's `order new` refusal; `seed.code_before_test_review` is Wave 2; see handoff)
-- [x] Handoff `notes/packets/<this-packet-id>.handoff.md`: what changed, commands + results, deviations (why + conservative choice), open questions (`blocker_governor` / `non_blocking`), manual equivalents of P1 gates run by hand (bootstrap verdict input, FR-037)
-- [x] Commits on the packet branch only; no push to `main`; no force-push
+- [ ] Red first: every new test was committed failing (assertion failure) before the commit that makes it pass; list the pairs of commits in the handoff
+- [ ] `uv run --project scripts/factory pytest` green for this slice's tests; `ruff check scripts/factory` clean; type hints on all signatures; no `os.getenv` outside `factory/config/`
+- [ ] `specs/001-factory-v2/acceptance.md` evidence filled (real test ids) for this slice's rows; `tasks.md` checkboxes ticked for this slice's tasks only
+- [ ] Handoff `notes/packets/<this-packet-id>.handoff.md`: what changed, commands + results, deviations (why + conservative choice), open questions (`blocker_governor` / `non_blocking`), manual equivalents of P1 gates run by hand (bootstrap verdict input, FR-037)
+- [ ] Commits on the packet branch only; no push to `main`; no force-push
 
 ## Out of scope
 
