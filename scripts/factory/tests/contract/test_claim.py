@@ -215,16 +215,16 @@ def _held_race(repo: RepoBuilder, order_id: str, models: tuple[str, str]) -> Hel
     def claim(work: Path, model: str) -> int:
         return run(["claim", order_id, "--actor-model", model, "--repo", str(work)])
 
-    with ThreadPoolExecutor(max_workers=2) as pool, barrier:
-        first = pool.submit(claim, repo.path, models[0])
-        other = pool.submit(claim, second, models[1])
+    with barrier:
+        first = barrier.spawn(claim, repo.path, models[0])
+        other = barrier.spawn(claim, second, models[1])
         barrier.wait_arrived(1, 2, commands=[first, other])
         barrier.release(1)
-        first_code = first.result(timeout=RACE_TIMEOUT)
+        first_code = barrier.result(first, timeout=RACE_TIMEOUT)
         winner = origin_sha(repo.origin, branch)
         loser_had_winner = has_object(second, winner)
         barrier.release(2)
-        other_code = other.result(timeout=RACE_TIMEOUT)
+        other_code = barrier.result(other, timeout=RACE_TIMEOUT)
     return HeldRace(
         codes=[first_code, other_code],
         base=base,

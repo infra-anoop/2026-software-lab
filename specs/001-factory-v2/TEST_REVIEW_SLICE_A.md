@@ -379,3 +379,21 @@ after release can still hang pytest indefinitely.
 | Production-source diff | PASS — `git diff ea6a554..d8f2c47 -- scripts/factory/src` is empty. |
 | Bus append-only | PASS through reviewed head — all six records since `ea6a554` are additions; none is modified or deleted. |
 | Worktree setup | Checked repository root and worktree; no `.cursor/worktrees.json`, so setup was skipped. `nix develop ../.. -c uv sync --locked` passed. |
+
+## Triage (round 6)
+
+Recorded by the Slice A worker on the orchestrator's instruction (2026-10-05). Details: `bus/orders/wo-20261004-factory-slice-a/amendment-08.yaml`.
+
+**Decision (orchestrator, process):** FIX T-A6-1. Keep the barrier ordering and advertisement assertions (T-A6-2) and the PR-A2 coverage (T-A6-3) unchanged.
+
+**Killable held commands** (`scripts/factory/tests/contract/push_barrier.py`). There is no executor any more. `PushBarrier.spawn` forks each held command into a child that leads its own process group, which its git and receive-pack processes inherit. A fork rather than a fresh interpreter keeps the in-process test state: the pinned clock for PR-A8 and the fake GitHub behind `factory_cli`. The child returns its result or traceback through a pickle file. `wait_arrived` and `result` only poll with deadlines. On an arrival or result timeout, a command exiting before it arrives, or leaving the `with` block, every child's group is SIGKILLed and reaped. Survivors are checked through `/proc`: anything alive after `KILL_SECONDS` (10 s) fails the test, and every other case fails with a message naming its cause. Call sites change only from `pool.submit` / `future.result` to `barrier.spawn` / `barrier.result`, in the same order as before.
+
+| Finding | Test | State |
+|---------|------|-------|
+| T-A6-1 | `test_claim.py::_held_race` (PR-A7, PR-A8); `test_git_safety.py::_claim_while_held`; `::test_handoff_push_rejection_leaves_local_refs_and_worktree_unchanged` | unchanged reds: `[0, 4]`, `[0, 0]`, no pull report, branch moved |
+| T-A6-1 (meta) | `test_push_barrier.py::test_a_claimer_that_never_arrives_fails_within_the_bound` (new) | green |
+| T-A6-1 (meta) | `test_push_barrier.py::test_a_claimer_held_at_origin_that_never_exits_fails_within_the_bound` (new; a real git push held at the wrapper) | green |
+| T-A6-1 (meta) | `test_push_barrier.py::test_leaving_the_block_kills_a_command_that_is_still_running` (new) | green |
+| T-A6-1 (meta) | `test_push_barrier.py::test_a_command_returns_its_value_or_reports_its_exception` (new) | green |
+
+Evidence: sabotaging PR-A7 so claimer 2 is never released, with a 3 s bound, failed in 3.4 s ("command 2 did not exit within 3s; killed every held command") and left no processes behind. Full suite: 100 failed, 347 passed (the 100 reds are unchanged; the 4 meta-tests are new). The barrier tests ran 12 times with identical outcomes every time. Not changed: the accepted atomic-race guard `test_claim_fast_forward_exactly_one_of_two_concurrent_wins` uses no barrier and still uses an untimed `ThreadPoolExecutor`.

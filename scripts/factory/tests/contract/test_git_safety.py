@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import subprocess
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import NamedTuple
 
@@ -269,14 +268,14 @@ def _claim_while_held(
     """Run `claim`; `hook()` runs once the claim is built and its push is held at origin."""
     barrier = PushBarrier(repo.root / "push-barrier")
     barrier.install(repo.path, 1)
-    with ThreadPoolExecutor(max_workers=1) as pool, barrier:
-        pending = pool.submit(
-            factory_cli, "claim", order_id, "--actor-model", MODEL, repo=repo.path
+    with barrier:
+        pending = barrier.spawn(
+            lambda: factory_cli("claim", order_id, "--actor-model", MODEL, repo=repo.path)
         )
         barrier.wait_arrived(1, commands=[pending])
         hook()
         barrier.release(1)
-        return pending.result(timeout=COMMAND_TIMEOUT)
+        return barrier.result(pending, timeout=COMMAND_TIMEOUT)
 
 
 @pytest.mark.parametrize("when", ["before-command", "during-push"])
@@ -335,12 +334,12 @@ def test_handoff_push_rejection_leaves_local_refs_and_worktree_unchanged(
         _origin_git(repo, "update-ref", f"refs/heads/{branch}", elsewhere, tip)
         moved.append(elsewhere)
 
-    with ThreadPoolExecutor(max_workers=1) as pool, barrier:
-        pending = pool.submit(factory_cli, "handoff", order_id, repo=repo.path)
+    with barrier:
+        pending = barrier.spawn(lambda: factory_cli("handoff", order_id, repo=repo.path))
         barrier.wait_arrived(1, commands=[pending])
         move_origin()
         barrier.release(1)
-        result = pending.result(timeout=COMMAND_TIMEOUT)
+        result = barrier.result(pending, timeout=COMMAND_TIMEOUT)
 
     assert barrier.advertised(1).get(f"refs/heads/{branch}") == moved[0], (
         "the push met the moved origin"
