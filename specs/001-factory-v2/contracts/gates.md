@@ -41,7 +41,7 @@ A gate that fails looks for `bus/orders/<order-id>/override-NN.yaml` with `gate:
 **Catalog-linkage rule detail:** every `how: auto` row in an `acceptance.md` carries `evidence`. A row whose id is in the PR's effective order `checks` must name existing evidence, not `planned` (FR-018). Rows the PR adds or edits and the order's rows are judged; untouched rows are not. Evidence is judged at the PR head in git, and Markdown backticks around the value are ignored. Two forms are accepted (governor 2026-10-04):
 
 - **pytest node id** `<repo-relative path>::<test name>`: the file exists at head and defines that test.
-- **eval case** `eval:<repo-relative path>#<case-id>`: the file exists at head and contains a case with `id == <case-id>`. The file is YAML or JSON (a top-level list, or a `cases:` list, of mappings with an `id` key) or JSONL (one object per line with `id`). A reference with no `#`, an absolute path, or a `..` segment is malformed and blocks.
+- **eval case** `eval:<repo-relative path>#<case-id>`: the file is read as the git blob at the PR head (never the checkout) and contains a case with `id == <case-id>`. The file is YAML or JSON (a top-level list, or a `cases:` list, of mappings with an `id` key) or JSONL (one object per line with `id`). A reference with no `#`, an absolute path, or a `..` segment is malformed and blocks. A tracked symlink blocks, whatever it points to. Malformed YAML, JSON or JSONL (any bad line), a wrong top-level shape, a `cases` that is not a list, and an entry that is not a mapping with `id` all block.
 
 ## P2 registry (Wave 2, by sprint close)
 
