@@ -10,18 +10,21 @@ A gate whose entrypoint is missing or raises fails closed.
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any, Literal
 
 from factory.api import GateContext, GateEntrypointError, GateResult, run_gate
 from factory.bus.models import Override
 from factory.config.settings import Settings
+from factory.gates.evidence import GATE_ID as RED_FIRST_GATE
+from factory.gates.evidence import SELF_REPORTED
 from factory.gates.overrides import honored_overrides, order_overrides
 from factory.gates.pr._bus import load_tolerant
 from factory.gates.registry import Gate, Registry
 
 Outcome = Literal["pass", "fail", "overridden"]
+Judge = Callable[[GateContext], GateResult]
 WORK_ORDER_REF = re.compile(r"^(?:refs/heads/|refs/remotes/[^/]+/|origin/)?wo/(?P<id>[^/]+)$")
 STATUS_DESCRIPTION_LIMIT = 140
 
@@ -56,9 +59,9 @@ def build_context(
     )
 
 
-def _call(gate: Gate, ctx: GateContext) -> GateResult:
+def _call(gate: Gate, ctx: GateContext, judge: Judge | None) -> GateResult:
     try:
-        return run_gate(gate.id, ctx)
+        return judge(ctx) if judge is not None else run_gate(gate.id, ctx)
     except GateEntrypointError as exc:
         reason = f"not implemented ({exc})"
     except Exception as exc:
@@ -67,14 +70,20 @@ def _call(gate: Gate, ctx: GateContext) -> GateResult:
 
 
 def run_gates(
-    gates: list[Gate], ctx: GateContext, *, verify: Callable[[Override], bool]
+    gates: list[Gate],
+    ctx: GateContext,
+    *,
+    verify: Callable[[Override], bool],
+    judges: Mapping[str, Judge] | None = None,
 ) -> dict[str, Any]:
+    """`judges` replaces a gate's registry entrypoint (CI mode judges red-first from
+    the evidence bundle instead of executing head code)."""
     overrides = order_overrides(list(ctx.bus_snapshot), ctx.order_id)
     entries: list[dict[str, Any]] = []
     counts: dict[str, int] = {}
     intents: dict[str, list[dict[str, str]]] = {}
     for gate in gates:
-        result = _call(gate, ctx)
+        result = _call(gate, ctx, (judges or {}).get(gate.id))
         outcome: Outcome = "pass" if result.passed else "fail"
         messages = list(result.messages)
         summary = None
@@ -124,6 +133,8 @@ def commit_status(entry: dict[str, Any]) -> tuple[Literal["success", "failure"],
     else:
         state = "failure"
         description = entry["messages"][0] if entry["messages"] else "failed"
+    if entry["id"] == RED_FIRST_GATE and not description.startswith(SELF_REPORTED):
+        description = f"{SELF_REPORTED} {description}"
     if len(description) > STATUS_DESCRIPTION_LIMIT:
         description = description[: STATUS_DESCRIPTION_LIMIT - 1] + "…"
     return state, description

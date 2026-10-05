@@ -26,6 +26,9 @@ from factory.cli.common import (
     resolve_repo,
 )
 from factory.config.settings import Settings, load_env, load_settings
+from factory.gates.evidence import BUNDLE_FILE, produce, write_bundle
+from factory.gates.evidence import GATE_ID as RED_FIRST_GATE
+from factory.gates.evidence import judge as judge_evidence
 from factory.gates.registry import Gate, RegistryError, load_registry
 from factory.gates.repo._git import git, object_type, rev_parse
 from factory.gates.runner import (
@@ -42,7 +45,6 @@ from factory.hooks.entry import run_hook
 OVERRIDERS = ("governor", "orchestrator")
 OVERRIDE_FILE = re.compile(r"^override-(\d{2})\.ya?ml$")
 DEFAULT_BASES = ("origin/main", "main")
-PR_BRANCH_PREFIXES = ("wo/", "bus/")
 
 
 class _Adapters:
@@ -149,26 +151,11 @@ def override(
     )
 
 
-def _branch_names(root: Path) -> list[str]:
-    """Local and remote-tracking branch names, `wo/*` and `bus/*` first."""
-    out = git(root, "for-each-ref", "--format=%(refname)", "refs/heads/", "refs/remotes/")
-    names: list[str] = []
-    for ref in out.split():
-        if ref.startswith("refs/heads/"):
-            name = ref.removeprefix("refs/heads/")
-        else:
-            name = ref.removeprefix("refs/remotes/").split("/", 1)[-1]
-        if name != "HEAD" and name not in names:
-            names.append(name)
-    return sorted(names, key=lambda name: not name.startswith(PR_BRANCH_PREFIXES))
-
-
-def _find_pr(root: Path, github: GitHubPort, number: int) -> PullRequest:
-    for branch in _branch_names(root):
-        for candidate in github.list_prs_by_head(branch):
-            if candidate.number == number:
-                return candidate
-    raise CommandError(exit_codes.USAGE, f"PR {number}: no local or fetched branch is its head")
+def _find_pr(github: GitHubPort, number: int) -> PullRequest:
+    pull = github.get_pr(number)
+    if pull is None:
+        raise CommandError(exit_codes.USAGE, f"PR {number} does not exist in this repository")
+    return pull
 
 
 def _resolve(root: Path, ref: str, what: str) -> str:
@@ -192,6 +179,14 @@ def gate_run(
     pr: Annotated[int | None, typer.Option("--pr", help="PR number.")] = None,
     base: Annotated[str | None, typer.Option("--base", help="Base ref.")] = None,
     head: Annotated[str | None, typer.Option("--head", help="Head ref.")] = None,
+    expect_head: Annotated[
+        str | None,
+        typer.Option("--expect-head", help="Head sha the run is for; post nothing if it moved."),
+    ] = None,
+    evidence: Annotated[
+        Path | None,
+        typer.Option("--evidence", help=f"Directory holding {BUNDLE_FILE} (red-first)."),
+    ] = None,
     json_out: JsonOpt = False,
     repo: RepoOpt = None,
 ) -> None:
@@ -201,10 +196,23 @@ def gate_run(
     selected = [_registered(gate_id) for gate_id in gate] if gate else ci_gates(load_registry())
     adapters = _Adapters(settings)
     pull: PullRequest | None = None
+    if expect_head is not None and pr is None:
+        raise CommandError(exit_codes.USAGE, "--expect-head needs --pr")
     if pr is not None:
         if base or head:
             raise CommandError(exit_codes.USAGE, "--pr cannot be combined with --base/--head")
-        pull = _find_pr(root, adapters.github, pr)
+        pull = _find_pr(adapters.github, pr)
+        if expect_head is not None and pull.head_sha != expect_head:
+            emit(
+                "gate run",
+                as_json=json_out,
+                text=(
+                    f"PR {pr} head moved to {pull.head_sha[:12]} (this run is for "
+                    f"{expect_head[:12]}): no statuses posted"
+                ),
+                data={"pr": pr, "head": pull.head_sha, "expected_head": expect_head, "posted": 0},
+            )
+            return
         if object_type(root, f"{pull.head_sha}^{{commit}}") != "commit":
             raise CommandError(exit_codes.EXTERNAL, f"PR {pr} head {pull.head_sha} is not fetched")
         head_sha = pull.head_sha
@@ -224,7 +232,10 @@ def gate_run(
     def verify(message: Override) -> bool:
         return adapters.identity.is_governor_verified(message, pull)
 
-    report = run_gates(selected, ctx, verify=verify)
+    judges = {}
+    if pull is not None or evidence is not None:
+        judges[RED_FIRST_GATE] = lambda context: judge_evidence(context, evidence)
+    report = run_gates(selected, ctx, verify=verify, judges=judges)
     if pull is not None:
         for entry in report["gates"]:
             state, description = commit_status(entry)
@@ -240,6 +251,41 @@ def gate_run(
             exit_codes.GATE_FAILURE, f"{len(failing)} gate(s) failed: {', '.join(failing)}", report
         )
     emit("gate run", as_json=json_out, text=text, data=report)
+
+
+def gate_evidence(
+    base: Annotated[str, typer.Option("--base", help="Base ref or sha.")],
+    head: Annotated[str, typer.Option("--head", help="Head ref or sha.")],
+    out: Annotated[Path, typer.Option("--out", help=f"Directory to write {BUNDLE_FILE} into.")],
+    json_out: JsonOpt = False,
+    repo: RepoOpt = None,
+) -> None:
+    """Record red-first raw facts for the trusted judge (untrusted side; posts nothing)."""
+    root = resolve_repo(repo)
+    settings = load_settings(root)
+    head_sha = _resolve(root, head, "head")
+    ctx = build_context(
+        root,
+        settings,
+        base_sha=_resolve(root, base, "base"),
+        head_sha=head_sha,
+        order_id=order_id_from_ref(head),
+        pr_number=None,
+    )
+    bundle = produce(ctx)
+    target = write_bundle(bundle, out)
+    red_first = bundle.red_first
+    summary = (
+        f"{len(red_first.tests)} test fact(s)"
+        if red_first.status == "ran"
+        else f"producer crashed: {red_first.error}"
+    )
+    emit(
+        "gate evidence",
+        as_json=json_out,
+        text=f"wrote {target} ({summary})",
+        data={"path": str(target), "status": red_first.status, "tests": len(red_first.tests)},
+    )
 
 
 def hook(

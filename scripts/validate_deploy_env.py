@@ -235,9 +235,25 @@ def validate_repo(repo_root: Path | None = None) -> list[str]:
     return errors
 
 
-def main() -> int:
+def set_repo_root(root: Path) -> None:
+    """Judge the tree at ``root`` instead of this script's checkout."""
+    global REPO_ROOT, REGISTRY_PATH, RAILWAY_ROOT
+    REPO_ROOT = root.resolve()
+    REGISTRY_PATH = REPO_ROOT / "apps" / "registry.yaml"
+    RAILWAY_ROOT = REPO_ROOT / "deploy" / "railway"
+
+
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Validate Railway env checklists vs Settings catalogs")
-    parser.parse_args()
+    parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=None,
+        help="Tree to validate (default: this script's repository)",
+    )
+    args = parser.parse_args(argv)
+    if args.repo_root is not None:
+        set_repo_root(args.repo_root)
     errors = validate_repo()
     for msg in errors:
         _err(msg)

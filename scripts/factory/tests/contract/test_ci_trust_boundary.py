@@ -750,7 +750,7 @@ def test_trusted_gate_step_runs_every_gate_bound_to_the_event() -> None:
         f"<event head sha> --evidence <download path>`: {step}"
     )
     assert condition_never_skips(step.get("if")), step.get("if")
-    download_index = next(i for i, (s, _) in enumerate(trusted_steps()) if s is download)
+    download_index = next(i for i, (s, _) in enumerate(trusted_steps()) if s == download)
     assert download_index < index, "the evidence is downloaded after the gates ran"
 
 

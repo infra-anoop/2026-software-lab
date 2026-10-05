@@ -391,6 +391,8 @@ def test_branch_protection_compares_with_the_configured_actions_app_id(repo: Rep
     )
     body = snapshot(required_status_checks=pinned(required_contexts(), configured))
     assert_passes("branch-protection-require-pr", protection_ctx(repo, body))
+    repo.git("branch", "-D", "feature/head")
+    repo.git("push", "-q", "origin", "--delete", "feature/head")
     default = snapshot()
     assert_blocks("branch-protection-require-pr", protection_ctx(repo, default), UNPINNED)
 

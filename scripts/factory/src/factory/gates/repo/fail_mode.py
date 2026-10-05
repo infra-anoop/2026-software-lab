@@ -26,7 +26,10 @@ def _error_text(exc: ValidationError) -> str:
     parts = []
     for error in exc.errors():
         where = ".".join(str(part) for part in error["loc"])
-        parts.append(f"{where}: {error['msg']}" if where else str(error["msg"]))
+        message = str(error["msg"])
+        if where and error["type"] != "missing":
+            message += f" (got {error['input']!r})"
+        parts.append(f"{where}: {message}" if where else message)
     return "; ".join(parts)
 
 

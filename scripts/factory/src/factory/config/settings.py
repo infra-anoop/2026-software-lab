@@ -16,6 +16,8 @@ from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 CONFIG_FILENAME = "factory.toml"
 DEFAULT_AUTONOMY_HORIZON_MINUTES = 60
+GITHUB_ACTIONS_APP_ID = 15368
+DEFAULT_EVIDENCE_MAX_BYTES = 1024 * 1024
 
 
 class ConfigError(Exception):
@@ -33,6 +35,9 @@ class GitHubConfig(BaseModel):
 
     repository: str = Field(pattern=r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
     api_url: str = "https://api.github.com"
+    # The GitHub Actions integration: the only source every required `factory/*` status
+    # check may be pinned to (contracts/gates.md § Status source).
+    actions_app_id: int = Field(default=GITHUB_ACTIONS_APP_ID, ge=1)
 
 
 class DecisionLintConfig(BaseModel):
@@ -58,6 +63,9 @@ class Settings(BaseModel):
     identity: IdentityConfig = Field(default_factory=IdentityConfig)
     github: GitHubConfig
     decision_lint: DecisionLintConfig = Field(default_factory=DecisionLintConfig)
+    # Largest `factory-evidence.json` the trusted judge reads (contracts/gates.md § Evidence
+    # bundle).
+    evidence_max_bytes: int = Field(default=DEFAULT_EVIDENCE_MAX_BYTES, ge=1)
 
     def family_of(self, model_name: str) -> str | None:
         """Family for a model name by longest matching prefix in `[families]`."""

@@ -40,6 +40,9 @@ class FakeGitHub:
     def list_prs_by_head(self, head_branch: str) -> list[PullRequest]:
         return [pr for pr in self.prs.values() if pr.head_ref == head_branch]
 
+    def get_pr(self, number: int) -> PullRequest | None:
+        return self.prs.get(number)
+
     def pr_reviews(self, pr_number: int) -> list[PullRequestReview]:
         return list(self.reviews.get(pr_number, []))
 

@@ -25,6 +25,11 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Read-only by default; ship and deploy grant themselves what they need. Only the trusted
+# factory-gates job may write commit statuses (specs/001-factory-v2, D5).
+permissions:
+  contents: read
+
 concurrency:
   group: pipeline-${{ github.ref }}
   cancel-in-progress: true
