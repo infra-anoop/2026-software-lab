@@ -1,0 +1,72 @@
+# FR-037 bootstrap order, reconstructed 2026-10-05 from notes/packets/2026-10-04-factory-v2-slice-c.md
+# (packet issued in 9bb5525, 2026-10-04T00:09:03Z) on the orchestrator's instruction of 2026-10-05
+# (Phase 6a rework, phase 1). Wave 1 slices were issued as packets before `factory order issue`
+# existed, so this order is added at the branch tip, after the amendments and verdicts it governs.
+# checks: gate ids only, from the packet's Definition of Done (red first, acceptance evidence,
+# owned paths, branch-and-PR, fidelity, bootstrap verdict) and its Fidelity table (two gate
+# classes -> gate.fail-mode-category; no direct commits to main -> branch-protection-require-pr;
+# hooks advisory, CI authoritative -> hook-has-ci-twin).
+# intents: those of the registry rows this slice owns; factory-status-test (I-M4) is left out
+# because the slice did not implement it (handoff, cross-slice table).
+# Known bootstrap distortions (disclosed in the handoff):
+#   - size_minutes holds the schema minimum (1); the true size is in `refs`.
+#   - the scorecard dates this order's issue from this commit, not the packet date.
+schema_version: 1
+kind: order
+id: wo-20261004-factory-slice-c
+created: 2026-10-05T17:25:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/packets/2026-10-04-factory-v2-slice-c.md
+  - "FR-037 bootstrap: reconstructed from the packet (issued 2026-10-04T00:09:03Z, 9bb5525)"
+  - "FR-037 bootstrap: true size is multi-hour, about 25.5 h wall-clock from the claim (399dfd9, 2026-10-04T15:43:51Z) to the Phase 6a phase-1 head (c7bea2c, 2026-10-05T17:17:00Z), with the Phase 6a implementation still to come; size_minutes holds the schema minimum"
+feature: 001-factory-v2
+goal: Implement gate framework, PR gates, hooks, CI workflow against the frozen P0 contracts, test first, so CP1 (each slice green on its own) is reached by working day 2 (max day 4).
+intents: [I-M2, I-P1, I-X3, I-X4, I-P3, I-M1, I-P9, I-G5, I-P10, I-B8, I-B3, I-O2, I-A3, I-O1, I-O3]
+owned_paths:
+  - "scripts/factory/src/factory/gates/runner.py"
+  - "scripts/factory/src/factory/gates/overrides.py"
+  - "scripts/factory/src/factory/gates/retro.py"
+  - "scripts/factory/src/factory/gates/pr/**"
+  - "scripts/factory/src/factory/gates/repo/**"
+  - "scripts/factory/src/factory/hooks/**"
+  - "scripts/factory/src/factory/cli/gates.py"
+  - "scripts/factory/src/factory/cli/checks.py"
+  - "scripts/factory/tests/contract/test_gate_run.py"
+  - "scripts/factory/tests/unit/gates/test_registry_checks.py"
+  - "scripts/factory/tests/unit/gates/pr/**"
+  - "scripts/factory/tests/unit/hooks/**"
+  - ".cursor/hooks.json"
+  - ".github/workflows/factory-gates.yml"
+  - "scripts/factory/gates.yaml"
+  - "specs/001-factory-v2/acceptance.md"
+  - "specs/001-factory-v2/tasks.md"
+checks:
+  - red-first-proof
+  - catalog-test-linkage
+  - diff-within-owned-paths
+  - pr-links-order
+  - order-fidelity-declared
+  - lock.letter-tokens
+  - verdict.reviewer-family-differs
+  - verdict.inputs-isolated
+  - gate.fail-mode-category
+  - hook-has-ci-twin
+  - branch-protection-require-pr
+locks:
+  - id: D3
+    letter_tokens: ["GPT (OpenAI)"]
+    fidelity: letter
+  - id: D4
+    letter_tokens: ["agents get their own GitHub App identity, set up during Wave 1"]
+    fidelity: letter
+size_minutes: 1
+stop_conditions:
+  - A frozen interface is insufficient
+  - Any edit needed outside Owned paths
+  - A test cannot be made red by a real assertion
+depends_on_decisions: []
+tasks: [T050, T051, T052, T053, T055, T056, T057, T058, T059, T060, T064]
+worker_runtime: local_subagent

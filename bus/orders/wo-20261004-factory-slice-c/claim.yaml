@@ -1,0 +1,14 @@
+# FR-037 bootstrap claim, recorded 2026-10-05 (orchestrator's instruction, Phase 6a phase 1). The
+# worker began on the packet before `factory claim` existed; claimed_at is the first worker commit
+# on the branch (399dfd9, "slice C packet: status in_progress", authored 2026-10-04T15:43:51Z).
+schema_version: 1
+kind: claim
+id: wo-20261004-factory-slice-c.claim
+created: 2026-10-05T17:25:00Z
+actor: worker
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - "FR-037 bootstrap: claimed_at = first worker commit 399dfd9"
+claimed_at: 2026-10-04T15:43:51Z
+worker_runtime: local_subagent
