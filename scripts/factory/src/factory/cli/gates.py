@@ -1,12 +1,94 @@
-"""Slice C: `factory override`, `gate run`, `hook`, `retro` (stubs at CP0)."""
+"""Slice C: `factory override`, `gate run`, `hook` (`retro` is Phase 9, T069)."""
 
 from __future__ import annotations
 
-from typing import Annotated
+import json
+import re
+import sys
+from pathlib import Path
+from typing import Annotated, Any
 
 import typer
+import yaml
+from pydantic import ValidationError
 
-from factory.cli.common import JsonOpt, RepoOpt, not_implemented
+from factory.api import GitHubPort, IdentityPort, PullRequest
+from factory.bus.models import ORDER_ID_RE, Override, parse_message
+from factory.bus.store import expected_path
+from factory.cli import exit_codes
+from factory.cli.common import (
+    DEPS,
+    CommandError,
+    JsonOpt,
+    RepoOpt,
+    emit,
+    not_implemented,
+    resolve_repo,
+)
+from factory.config.settings import Settings, load_env, load_settings
+from factory.gates.registry import Gate, RegistryError, load_registry
+from factory.gates.repo._git import git, object_type, rev_parse
+from factory.gates.runner import (
+    build_context,
+    ci_gates,
+    commit_status,
+    failures,
+    order_id_from_ref,
+    render_text,
+    run_gates,
+)
+from factory.hooks.entry import run_hook
+
+OVERRIDERS = ("governor", "orchestrator")
+OVERRIDE_FILE = re.compile(r"^override-(\d{2})\.ya?ml$")
+DEFAULT_BASES = ("origin/main", "main")
+PR_BRANCH_PREFIXES = ("wo/", "bus/")
+
+
+class _Adapters:
+    """GitHub and identity adapters, built only when a command needs them."""
+
+    def __init__(self, settings: Settings) -> None:
+        self.settings = settings
+        self._github: GitHubPort | None = None
+        self._identity: IdentityPort | None = None
+
+    @property
+    def github(self) -> GitHubPort:
+        if self._github is None:
+            self._github = DEPS.github(self.settings, load_env())
+        return self._github
+
+    @property
+    def identity(self) -> IdentityPort:
+        if self._identity is None:
+            self._identity = DEPS.identity(self.settings, self.github)
+        return self._identity
+
+
+def _registered(gate_id: str) -> Gate:
+    try:
+        return load_registry().get(gate_id)
+    except RegistryError as exc:
+        raise CommandError(exit_codes.USAGE, str(exc)) from exc
+
+
+def _next_override_number(order_dir: Path) -> int:
+    numbers = [
+        int(match[1])
+        for path in (order_dir.iterdir() if order_dir.is_dir() else [])
+        if (match := OVERRIDE_FILE.match(path.name))
+    ]
+    return max(numbers, default=0) + 1
+
+
+def _open_pr_number(adapters: _Adapters, order_id: str) -> int:
+    open_prs = [pr for pr in adapters.github.list_prs_by_head(f"wo/{order_id}") if pr.open]
+    if len(open_prs) != 1:
+        raise CommandError(
+            exit_codes.USAGE, f"--pr is required: wo/{order_id} has {len(open_prs)} open PRs"
+        )
+    return open_prs[0].number
 
 
 def override(
@@ -24,7 +106,85 @@ def override(
     repo: RepoOpt = None,
 ) -> None:
     """Write an override message for a failing gate."""
-    not_implemented("override")
+    root = resolve_repo(repo)
+    settings = load_settings(root)
+    if not ORDER_ID_RE.match(order_id):
+        raise CommandError(exit_codes.USAGE, f"{order_id!r} is not an order id")
+    if actor not in OVERRIDERS:
+        raise CommandError(exit_codes.USAGE, f"--actor must be one of {', '.join(OVERRIDERS)}")
+    if actor != "governor" and not actor_model:
+        raise CommandError(exit_codes.USAGE, f"--actor-model is required for actor {actor}")
+    registered = _registered(gate)
+    number = pr if pr is not None else _open_pr_number(_Adapters(settings), order_id)
+    order_dir = root / settings.bus_dir / "orders" / order_id
+    message_id = f"{order_id}.override-{_next_override_number(order_dir):02d}"
+    data: dict[str, Any] = {
+        "schema_version": 1,
+        "kind": "override",
+        "id": message_id,
+        "created": DEPS.clock().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "actor": actor,
+        **({"actor_model": actor_model} if actor_model else {}),
+        "gate": registered.id,
+        "pr": number,
+        "reason": reason,
+        "gate_class": registered.gate_class,
+        "refs": [order_id],
+    }
+    try:
+        message = parse_message(data, autonomy_horizon_minutes=settings.autonomy_horizon_minutes)
+    except ValidationError as exc:
+        problem = "; ".join(str(error["msg"]) for error in exc.errors())
+        raise CommandError(exit_codes.REFUSED, f"override refused: {problem}") from exc
+    relative = expected_path(message, settings.bus_dir)
+    target = root / relative
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with target.open("x", encoding="utf-8") as handle:
+        handle.write(yaml.safe_dump(data, sort_keys=False, allow_unicode=True))
+    emit(
+        "override",
+        as_json=json_out,
+        text=f"wrote {relative} ({registered.gate_class} gate {registered.id}, PR {number})",
+        data={"id": message.id, "path": str(relative), "gate_class": registered.gate_class},
+    )
+
+
+def _branch_names(root: Path) -> list[str]:
+    """Local and remote-tracking branch names, `wo/*` and `bus/*` first."""
+    out = git(root, "for-each-ref", "--format=%(refname)", "refs/heads/", "refs/remotes/")
+    names: list[str] = []
+    for ref in out.split():
+        if ref.startswith("refs/heads/"):
+            name = ref.removeprefix("refs/heads/")
+        else:
+            name = ref.removeprefix("refs/remotes/").split("/", 1)[-1]
+        if name != "HEAD" and name not in names:
+            names.append(name)
+    return sorted(names, key=lambda name: not name.startswith(PR_BRANCH_PREFIXES))
+
+
+def _find_pr(root: Path, github: GitHubPort, number: int) -> PullRequest:
+    for branch in _branch_names(root):
+        for candidate in github.list_prs_by_head(branch):
+            if candidate.number == number:
+                return candidate
+    raise CommandError(exit_codes.USAGE, f"PR {number}: no local or fetched branch is its head")
+
+
+def _resolve(root: Path, ref: str, what: str) -> str:
+    sha = rev_parse(root, ref)
+    if sha is None:
+        raise CommandError(exit_codes.USAGE, f"{what} {ref!r} is not a commit in {root}")
+    return sha
+
+
+def _default_base(root: Path) -> str:
+    return next((ref for ref in DEFAULT_BASES if rev_parse(root, ref)), DEFAULT_BASES[0])
+
+
+def _default_base_for(root: Path, base_ref: str) -> str:
+    remote = f"origin/{base_ref}"
+    return remote if rev_parse(root, remote) else base_ref
 
 
 def gate_run(
@@ -36,7 +196,50 @@ def gate_run(
     repo: RepoOpt = None,
 ) -> None:
     """Run registered gates; print per-intent results."""
-    not_implemented("gate run")
+    root = resolve_repo(repo)
+    settings = load_settings(root)
+    selected = [_registered(gate_id) for gate_id in gate] if gate else ci_gates(load_registry())
+    adapters = _Adapters(settings)
+    pull: PullRequest | None = None
+    if pr is not None:
+        if base or head:
+            raise CommandError(exit_codes.USAGE, "--pr cannot be combined with --base/--head")
+        pull = _find_pr(root, adapters.github, pr)
+        if object_type(root, f"{pull.head_sha}^{{commit}}") != "commit":
+            raise CommandError(exit_codes.EXTERNAL, f"PR {pr} head {pull.head_sha} is not fetched")
+        head_sha = pull.head_sha
+        base_sha = _resolve(root, _default_base_for(root, pull.base_ref), "base")
+        order_id = order_id_from_ref(pull.head_ref)
+    else:
+        head_ref = head or "HEAD"
+        head_sha = _resolve(root, head_ref, "head")
+        base_sha = _resolve(root, base or _default_base(root), "base")
+        if head_ref == "HEAD":
+            head_ref = git(root, "rev-parse", "--abbrev-ref", "HEAD").strip()
+        order_id = order_id_from_ref(head_ref)
+    ctx = build_context(
+        root, settings, base_sha=base_sha, head_sha=head_sha, order_id=order_id, pr_number=pr
+    )
+
+    def verify(message: Override) -> bool:
+        return adapters.identity.is_governor_verified(message, pull)
+
+    report = run_gates(selected, ctx, verify=verify)
+    if pull is not None:
+        for entry in report["gates"]:
+            state, description = commit_status(entry)
+            adapters.github.set_commit_status(
+                head_sha, f"factory/{entry['id']}", state, description
+            )
+    text = render_text(report)
+    failing = failures(report)
+    if failing:
+        if not json_out:
+            typer.echo(text)
+        raise CommandError(
+            exit_codes.GATE_FAILURE, f"{len(failing)} gate(s) failed: {', '.join(failing)}", report
+        )
+    emit("gate run", as_json=json_out, text=text, data=report)
 
 
 def hook(
@@ -45,7 +248,9 @@ def hook(
     repo: RepoOpt = None,
 ) -> None:
     """Cursor hook entrypoint: stdin JSON -> stdout JSON."""
-    not_implemented("hook")
+    code, response = run_hook(name, sys.stdin.read(), fallback_root=repo or Path.cwd())
+    typer.echo(json.dumps(response))
+    raise typer.Exit(code)
 
 
 def retro(
