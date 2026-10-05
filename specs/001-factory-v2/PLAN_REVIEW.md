@@ -145,3 +145,15 @@ Recorded 2026-10-05 by the Slice C worker on the orchestrator's instruction, aga
 | P20 | Later | arch | **Residuals accepted as recorded:** source attribution is verified live with a fail-closed check-run amendment fallback; App `checks: write` cannot satisfy an Actions-pinned requirement; fork PRs remain an explicitly accepted same-repository limitation. |
 
 The current D6 sequence is operationally proportionate: the window is short, no other actor is expected to merge, the probe never merges, and T103 records and audits the interval. It must remain a bootstrap exception, not a reusable substitute for mechanical protection.
+
+## Triage (confirmation)
+
+Recorded 2026-10-05 by the Slice C worker on the orchestrator's instruction, against verdict-06. Record: [`PLAN_DELTA.md`](./PLAN_DELTA.md) § Round 3.
+
+| ID | Disposition | Adjudicator | Resolution |
+|----|-------------|-------------|------------|
+| P15–P18 | confirmed | — | Nothing to change |
+| P19 | accept (Blocker), adopted verbatim | orchestrator (arch) | The sealed runner and its runner-owned outcome capture move to a separate job with no status-write permission; the privileged publisher validates that exact job/run result as hostile data and executes no head code. Written into T104, plan § CI topology and Major risks, `contracts/gates.md` § Red-first strength, `acceptance.md` `ci.redfirst_sealed`, and a dated note on the spec D7 row. Stricter than D7's same-job wording, so it does not dilute a lock. **Agent-closed for Wave 1:** T104 is Wave 2 and no Wave 1 task depends on it. A Wave 2 P* confirmation of T104's design is required before T104 is implemented |
+| P20 | accepted as recorded | orchestrator | No change |
+
+**Next:** Phase 6a Wave 1 red tests (T094–T095), then T* review (T096).

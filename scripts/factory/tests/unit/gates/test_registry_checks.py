@@ -14,7 +14,10 @@ a hook row).
 Branch protection (I-P10, T066): `deploy/github/branch-protection.json` is the GitHub
 REST "get branch protection" body for `main`. It must require a PR, enforce it for
 admins with no bypass allowances, require code-owner review, and require a
-`factory/<gate-id>` status for every P1 CI gate in the registry.
+`factory/<gate-id>` status for every P1 CI gate in the registry. Each of those contexts is
+listed in `required_status_checks.checks` with `app_id` equal to typed config
+`github.actions_app_id`, the GitHub Actions integration (delta P* P9, T094): a context
+without a source, with `-1` (any source) or with another app's id fails.
 """
 
 from __future__ import annotations
@@ -27,6 +30,7 @@ import yaml
 
 from factory.api import GateContext
 from factory.cli import exit_codes
+from factory.config.settings import GitHubConfig
 from factory.gates.registry import REGISTRY_PATH, load_registry
 from tests.fixtures.cli_runner import FactoryCli
 from tests.fixtures.repo_builder import RepoBuilder
@@ -256,9 +260,22 @@ def required_contexts() -> list[str]:
     ]
 
 
+def actions_app_id() -> int:
+    """Typed config `github.actions_app_id`: the GitHub Actions integration (P9)."""
+    configured = getattr(GitHubConfig(repository="fixture/demo"), "actions_app_id", None)
+    assert isinstance(configured, int), "typed config `github.actions_app_id` is missing"
+    return configured
+
+
+def pinned(contexts: list[str], app_id: int | None = None) -> dict[str, Any]:
+    """`required_status_checks` with every context pinned to one source app (P9)."""
+    source = actions_app_id() if app_id is None else app_id
+    return {"strict": True, "checks": [{"context": c, "app_id": source} for c in contexts]}
+
+
 def snapshot(**changes: Any) -> dict[str, Any]:
     body: dict[str, Any] = {
-        "required_status_checks": {"strict": True, "contexts": required_contexts()},
+        "required_status_checks": pinned(required_contexts()),
         "enforce_admins": {"enabled": True},
         "required_pull_request_reviews": {
             "require_code_owner_reviews": True,
@@ -322,9 +339,60 @@ def test_branch_protection_blocks_without_code_owner_review(repo: RepoBuilder) -
 
 def test_branch_protection_blocks_missing_required_gate_status(repo: RepoBuilder) -> None:
     contexts = [c for c in required_contexts() if c != "factory/bus.immutable"]
-    body = snapshot(required_status_checks={"strict": True, "contexts": contexts})
+    body = snapshot(required_status_checks=pinned(contexts))
     ctx = protection_ctx(repo, body)
     assert_blocks("branch-protection-require-pr", ctx, "factory/bus.immutable")
+
+
+# P9: every required `factory/*` context names the GitHub Actions integration as source.
+
+UNPINNED = "factory/bus.immutable"
+
+
+def unpin(body: dict[str, Any], **check: Any) -> dict[str, Any]:
+    for entry in body["required_status_checks"]["checks"]:
+        if entry["context"] == UNPINNED:
+            entry.pop("app_id")
+            entry.update(check)
+    return body
+
+
+@pytest.mark.parametrize(
+    ("label", "source"),
+    [("no app_id", {}), ("any source", {"app_id": -1}), ("null", {"app_id": None})],
+)
+def test_branch_protection_blocks_factory_context_without_pinned_source(
+    repo: RepoBuilder, label: str, source: dict[str, Any]
+) -> None:
+    body = unpin(snapshot(), **source)
+    assert_blocks("branch-protection-require-pr", protection_ctx(repo, body), UNPINNED)
+
+
+def test_branch_protection_blocks_factory_context_pinned_to_another_app(
+    repo: RepoBuilder,
+) -> None:
+    body = unpin(snapshot(), app_id=actions_app_id() + 1)
+    assert_blocks("branch-protection-require-pr", protection_ctx(repo, body), UNPINNED)
+
+
+def test_branch_protection_blocks_context_list_without_sources(repo: RepoBuilder) -> None:
+    """The plain `contexts` list names no source at all."""
+    body = snapshot(required_status_checks={"strict": True, "contexts": required_contexts()})
+    assert_blocks("branch-protection-require-pr", protection_ctx(repo, body), UNPINNED)
+
+
+def test_branch_protection_compares_with_the_configured_actions_app_id(repo: RepoBuilder) -> None:
+    assert "actions_app_id" in GitHubConfig.model_fields, "typed config is missing"
+    configured = actions_app_id() + 4242
+    toml = (repo.path / "factory.toml").read_text(encoding="utf-8")
+    repo.write(
+        "factory.toml",
+        toml.replace("[github]\n", f"[github]\nactions_app_id = {configured}\n", 1),
+    )
+    body = snapshot(required_status_checks=pinned(required_contexts(), configured))
+    assert_passes("branch-protection-require-pr", protection_ctx(repo, body))
+    default = snapshot()
+    assert_blocks("branch-protection-require-pr", protection_ctx(repo, default), UNPINNED)
 
 
 # --- existing lab checks wrapped as gates (T059) ------------------------------------------

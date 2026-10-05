@@ -172,6 +172,21 @@ None found wrong; none needed changing. One weak assertion, noted for a future r
 2. `factory-status-test` was left unimplemented; see the cross-slice table above.
 3. `tasks.md` T053 wording still says "advisory warning" (unchanged; only T057 wording is owned).
 
+## Phase 6a rework, phase 1 (2026-10-05): red tests only
+
+PR review PR-C1 to PR-C4 and spec D5 to D8. No implementation in this phase; T* review comes next.
+
+- **New red tests:**
+  - `tests/contract/test_ci_trust_boundary.py` (T094, 50 tests): the two-workflow topology and the banned forms; main's gate code and registry, with head as data; P12 provenance; the evidence bundle and the fail-closed judge; `self-reported:` statuses; the `factory gate evidence` producer.
+  - `tests/unit/gates/test_registry_checks.py` (P9, 6 tests).
+  - `tests/unit/hooks/test_hook_wrapper.py` (T095 / PR-C2, 12 tests).
+- **Accepted tests amended:**
+  - The three T059 workflow tests in `test_gate_run.py` moved to the trusted-job tests in `test_ci_trust_boundary.py`.
+  - The branch-protection `snapshot()` fixture now pins each required context to the GitHub Actions app id (P9).
+- **Slice B seam stubbed:** `factory.gates.drift.red_first.collect_facts`, through `sys.modules`, when absent.
+- **PR-C4:** the packet is restored to its `origin/main` content.
+- **Bootstrap messages:** `order.yaml`, `claim.yaml` and `handoff.yaml` (FR-037) are in the branch-tip commit.
+
 ## Stop
 
 Implementation done and pushed; **no PR opened** (orchestrator's call). Next steps for the orchestrator:

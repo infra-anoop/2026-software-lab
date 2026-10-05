@@ -22,11 +22,27 @@ Registry: `scripts/factory/gates.yaml` (schema in [`../data-model.md`](../data-m
 
 **Execution-derived gates.** A gate whose verdict needs head code executed takes its evidence from the bundle. Today that is only `red-first-proof`. Every other P1 gate judges git data directly in the trusted job. The existing validators run `main`'s `scripts/validate_secrets_schema.py` / `scripts/validate_deploy_env.py` against the exported head tree (they parse with `ast`/YAML and import nothing from it). A gate added later that needs head execution must declare it and get the same split (D5).
 
-**Evidence bundle (`factory-evidence`, untrusted).** It is a Pydantic-modelled JSON document validated by `main`'s code, carrying at least `schema_version`, `base_sha`, `head_sha`, and for red-first each node id with its base and head outcome (and the base error class the red-first rule needs). The trusted gate fails closed, naming the reason, when the bundle is absent, unreadable, over the size limit in typed config, fails its schema, carries a `head_sha` other than the run's head, lists a test outside the test files the diff adds or changes, or omits such a file. The bundle never supplies the PR number, head SHA, base ref, order id or registry.
+**Evidence bundle (`factory-evidence`, untrusted; model owned by Slice C, T097).** The artifact holds exactly one file, `factory-evidence.json`: UTF-8 JSON, at most `evidence_max_bytes` (typed config in `factory.toml`, default 1 MiB). It is validated by `main`'s Pydantic model with unknown keys forbidden at every level:
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `schema_version` | `1` | Bundle format version |
+| `kind` | `"factory-evidence"` | Fixed |
+| `base_sha`, `head_sha` | 40-hex strings | The pair the producer ran on |
+| `red_first.status` | `"ran"` \| `"crashed"` | `crashed`: the producer could not produce facts (exception, run crash, timeout) |
+| `red_first.error` | string \| null | Raw text when `crashed`; null when `ran` |
+| `red_first.tests[]` | list | One raw fact per new or changed test function, sorted by `node_id`; empty when `crashed` |
+| `tests[].node_id` | string | Repo-relative `path::name` (`path::Class::name`) |
+| `tests[].base_outcome`, `tests[].head_outcome` | `passed` \| `failed` \| `error` \| `skipped` \| `not_collected` | pytest's outcome per side; `error` = setup or teardown error; `not_collected` = absent on that side or its file failed collection |
+| `tests[].base_error` | string \| null | Raw collection or error text from the base run, unclassified |
+
+**Raw facts, not classification.** Slice B's `red_first.collect_facts(ctx)` returns the raw per-test facts; the producer (`factory gate evidence`) only serializes them. A producer exception or an outcome word outside the vocabulary is written as `status: crashed` with the raw text, never as a guessed outcome. No field carries a judgment: words such as "red", "base broken" or "not red" are not outcome values, and an extra key (a `verdict`, a PR number, an order id) fails the schema. The trusted judge alone classifies, with the red-first rule of `red-first-proof` (a base `failed` is red; a base `error` / `not_collected` is red only when every missing name in `base_error` is a module or symbol the PR adds; every test must be `passed` on head).
+
+**Fail closed.** The trusted gate fails, naming the reason, when the bundle is absent, unreadable (not UTF-8 or not JSON), over the size limit (checked before parsing), fails its schema, carries a `head_sha` other than the run's head, has `status: crashed`, lists a node that is not a new or changed test function, or omits one. The set of new and changed test functions is derived by `main`'s code from git data (AST over base and head sources, no execution). The bundle never supplies the PR number, head SHA, base ref, order id or registry.
 
 **Red-first strength (D7).**
 - **Wave 1:** the bundle is produced by a job that executes head tests, so its outcomes are **self-reported**: binding rules catch mix-ups, not fabrication. Every `red-first-proof` status description starts with `self-reported:`, and the gate's report says the outcomes came from the read-only run. For FR-012 the proof of record is the independent T* reviewer's re-run, recorded in the T* review.
-- **Wave 2 (T104):** a **sealed trusted run** replaces the bundle as red-first's input. Inside the trusted job, `main`'s harness runs the head's new and changed tests in a locked-down sandbox with no credentials:
+- **Wave 2 (T104):** a **sealed trusted run** replaces the bundle as red-first's input. Per P19, the sealed runner and its runner-owned outcome capture run in a **separate job with no status-write permission**; the status-writing job executes no head code and validates only that exact job/run's parent-recorded result, as hostile data. In the sealed job, `main`'s harness runs the head's new and changed tests in a locked-down sandbox with no credentials:
   - `persist-credentials: false`, and no job token or runner directory reachable from the sandbox;
   - a separate user or container;
   - the head tree mounted read-only;
@@ -40,11 +56,11 @@ Registry: `scripts/factory/gates.yaml` (schema in [`../data-model.md`](../data-m
 - by the exact name `factory-evidence` (no `pattern:`, no `merge-multiple`);
 - into a fresh temporary directory outside the checkout.
 
-`factory gate run --evidence` rejects a directory holding zero or more than one bundle file. An execution-derived gate then fails closed, naming the reason.
+`factory gate run --evidence` accepts a directory holding exactly one file, `factory-evidence.json`. An empty directory, a missing `--evidence`, any other file name or any second file fails each execution-derived gate closed, naming the reason; the other gates still run.
 
 **Privileged environment (P12).** The trusted job runs on a fresh GitHub-hosted runner. It restores no cache that any workflow triggered by a PR can write: no `actions/cache` (restore or save), `setup-uv` with `enable-cache: false`, no `setup-python` cache. Tools come from pinned actions and `main`'s lockfile only.
 
-**Status source (P9, D8).** Only the trusted job posts `factory/*` statuses. Branch protection requires every `factory/*` context with the GitHub Actions integration as its expected source. The snapshot `deploy/github/branch-protection.json` records, per required context, that integration's app id as read from the live API. No identity the factory controls holds `statuses: write` besides the trusted job: the agents' App has none (D8), and the factory mints no token with it. A status or same-named check run from any other source (for example the Codespace user token) cannot satisfy the rule.
+**Status source (P9, D8).** Only the trusted job posts `factory/*` statuses. Branch protection requires every `factory/*` context with the GitHub Actions integration as its expected source. The snapshot `deploy/github/branch-protection.json` records, per required context, that integration's app id as read from the live API (`required_status_checks.checks[]` entries `{context, app_id}`). `branch-protection-require-pr` compares each `factory/*` entry's `app_id` with typed config `github.actions_app_id` (in `factory.toml`; T101 confirms the value against the live API). A context listed without an `app_id`, with `-1` (any source) or with another app's id fails the gate. No identity the factory controls holds `statuses: write` besides the trusted job: the agents' App has none (D8), and the factory mints no token with it. A status or same-named check run from any other source (for example the Codespace user token) cannot satisfy the rule.
 
 **PR identity and status target.** The PR number and head SHA come from the `workflow_run` event payload (`github.event.workflow_run.pull_requests`, `.head_sha`) and are confirmed through REST (same-repository PR, open, head SHA equal). If the PR's head has moved, the run posts nothing and exits 0; the newer evidence run triggers a newer judgment. Statuses go only to that head SHA.
 

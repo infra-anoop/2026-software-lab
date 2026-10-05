@@ -2,7 +2,7 @@
 
 Template: [`docs/agent-os/PLAN_DELTA_TEMPLATE.md`](../../docs/agent-os/PLAN_DELTA_TEMPLATE.md).
 
-**Gate:** Do not spawn implement/ops workers that depend on these locks until this checklist is complete (and `/speckit-analyze` recorded). Status: **round 1 (D5) and round 2 (D6–D8, P* triage) steps 1–3 complete.** Step 4: the delta P* review ran (not approved; P9 and P12 blockers, P10 and P11 debates). It is triaged in § Round 2; **a narrow P* confirmation of round 2 comes next**. Phase 6a tests and rework wait for it. No Open Decision is open.
+**Gate:** Do not spawn implement/ops workers that depend on these locks until this checklist is complete (and `/speckit-analyze` recorded). Status: **round 1 (D5) and round 2 (D6–D8, P* triage) steps 1–3 complete.** Step 4: the delta P* review ran (not approved; P9 and P12 blockers, P10 and P11 debates) and was triaged in § Round 2. The narrow P* confirmation (verdict-06) confirmed P9, P12, D6 and D7 Wave 1, and raised one Blocker, P19, on T104's Wave 2 shape. **The orchestrator agent-closed P19 for Wave 1 purposes** (§ Round 3); a Wave 2 P* confirmation of T104's design is required before T104 is implemented. **Phase 6a Wave 1 red tests are unblocked.** No Open Decision is open.
 
 ## Meta
 
@@ -158,6 +158,41 @@ Input: [`PLAN_REVIEW.md`](./PLAN_REVIEW.md) § Delta review — D5 (verdict-05, 
 | M1–M4 | carried | MEDIUM | round 1 | as round 1 (M4 schedule pressure grows with round 2) | Unchanged |
 | L4 | Inconsistency | LOW | tasks T065 | The App keeps `checks: write`, so same-named check runs are possible | **Recorded** — neutralized by P9 pinning |
 | L5 | Consistency | LOW | acceptance `seed.not_red_first` | The seed stays "PR blocked"; in Wave 1 that rests on self-reported outcomes | **Recorded** — gate-level seed unaffected; D7 states the strength |
+
+## Round 3 — narrow P* confirmation triage (2026-10-05)
+
+Input: [`PLAN_REVIEW.md`](./PLAN_REVIEW.md) § Confirmation (round 2) (verdict-06, "do not approve architecture yet"); triage in `PLAN_REVIEW.md` § Triage (confirmation).
+
+### Decision (orchestrator, arch): P19 adopted verbatim
+
+P19 resolution, adopted verbatim into T104, `plan.md` and here: "move the sealed runner and runner-owned outcome capture to a separate job with no status-write permission, then have the privileged publisher validate that exact job/run result without executing head code." And: "Keep the sealed parent-owned result, but run the child in a separate job with no status-write permission; let the status-writing job consume only the parent-recorded result as hostile data."
+
+- **Consistent with D7's intent.** The run stays sealed, credential-free, with parent-owned outcomes.
+- **Stricter than the same-job shape, so it does not dilute a lock (§I).** Every property D7 names is kept. D7's row says "the trusted job runs head tests"; the governor's text is left as written, and a dated note in the row points to this placement, which also keeps D5's letter ("PR-head code never runs with status-write permission").
+- **Wave 2 only.** T104 is Wave 2 (P2), and no Wave 1 task depends on it. **A Wave 2 P* confirmation of T104's design is required before T104 is implemented** (recorded in T104). That makes this the agent-closure of P19 for Wave 1 purposes.
+
+### Artifacts amended (round 3)
+
+- [x] `tasks.md` — T104: P19 shape (verbatim), Wave 2 P* gate before implement, two new red tests (sealed job has no status-write permission; the publisher runs no head code and fails closed on a missing, foreign or mismatched result)
+- [x] `plan.md` — § CI topology, Execution-derived evidence (Wave 2 bullet); Major risks (sealed run closed in shape by P19)
+- [x] `contracts/gates.md` — § Red-first strength, Wave 2 bullet (separate job; publisher data-only)
+- [x] `spec.md` — D7 row: dated placement note only (governor text unchanged)
+- [x] `acceptance.md` — `ci.redfirst_sealed` threshold adds "job with no status-write permission" and "the status-writing job runs no head code"
+- [x] `PLAN_REVIEW.md` — § Triage (confirmation) appended; reviewer text untouched
+- [x] `bus/orders/wo-20261004-factory-slice-c/amendment-05.yaml` — owned paths for the Phase 6a red tests and bootstrap messages
+
+### Closures
+
+| Finding | Disposition |
+|---------|-------------|
+| P15 (P9), P16 (P12), P17 (D6), P18 (D7 Wave 1) | Confirmed; nothing to change |
+| P19 | Agent-closed for Wave 1 (above); Wave 2 P* confirmation gates T104 |
+| P20 | Accepted as recorded (round-2 residuals M5, L4; fork PRs) |
+| Round-2 H3 (sealed run inside the status-writing job vs D5) | **Closed** by P19: the sealed run leaves that job |
+
+### `/speckit-analyze` (round 3)
+
+**Not re-run:** coverage is unchanged. No FR, SC or task was added or removed; T104 keeps its FR-012 / SC-002 mapping and its catalog row. The round-2 result stands, minus H3 (closed above): 0 critical, 0 high, medium M1–M6 as filed.
 
 ## Forbidden (honored)
 

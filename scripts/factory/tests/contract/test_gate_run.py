@@ -1,4 +1,7 @@
-"""T050 — `factory gate run`, override resolution, `factory override`; T059 workflow.
+"""T050 — `factory gate run`, override resolution, `factory override`.
+
+The T059 workflow assertions moved to `test_ci_trust_boundary.py` (T094, spec D5): the
+gate step now runs in the trusted `workflow_run` job.
 
 contracts/gates.md § Override resolution: a failing gate looks for
 `bus/orders/<order-id>/override-NN.yaml` with `gate: <id>` at the PR head.
@@ -22,8 +25,6 @@ from __future__ import annotations
 
 import importlib
 import json
-import re
-import shlex
 import sys
 import types
 from pathlib import Path
@@ -43,8 +44,6 @@ from tests.fixtures.repo_builder import BaseHeadPair, RepoBuilder, message, orde
 
 pytestmark = pytest.mark.contract
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
-WORKFLOW = REPO_ROOT / ".github/workflows/factory-gates.yml"
 ORDER_ID = "wo-20261006-gated"
 ORDER_DIR = f"bus/orders/{ORDER_ID}"
 OTHER = "wo-20261006-merged-earlier"
@@ -558,207 +557,3 @@ def test_override_cli_rejects_unregistered_gate(
     assert result.exit_code != exit_codes.OK, result
     assert "no-such-gate" in result.stdout + result.stderr, result
     assert not (repo.path / ORDER_DIR / "override-01.yaml").exists()
-
-
-# --- T059: the workflow is authoritative ------------------------------------------------------
-
-
-# Steps are judged by what the shell would execute, not by text: each `run` block is
-# tokenized (comments, quoting and operators honored) into simple commands. GitHub
-# expressions are substituted first, as the runner does.
-
-PR_NUMBER = "42"
-EXPRESSIONS = {"github.event.number": PR_NUMBER, "github.event.pull_request.number": PR_NUMBER}
-GATE_ARGV = ["factory", "gate", "run", "--pr", PR_NUMBER]
-SEPARATORS = {"&&", "||", ";", "|", "&", "\n", "(", ")"}
-REDIRECTS = {">", ">>"}
-SUMMARY_FILES = {"$GITHUB_STEP_SUMMARY", "${GITHUB_STEP_SUMMARY}"}
-UV_OPTIONS_WITH_VALUE = {"--project", "--directory", "--python", "--with", "--group", "--extra"}
-
-
-def substitute_expressions(run: str) -> str:
-    def value(match: re.Match[str]) -> str:
-        return EXPRESSIONS.get(match.group(1).strip(), "EXPR")
-
-    return re.sub(r"\$\{\{(.*?)\}\}", value, run)
-
-
-def shell_commands(run: str) -> list[tuple[list[str], list[str]]]:
-    """Simple commands in a `run` block, each as (argv, separator that follows it)."""
-    text = substitute_expressions(run).replace("\\\n", " ")
-    commands: list[tuple[list[str], list[str]]] = []
-    for line in text.splitlines():
-        lexer = shlex.shlex(line, posix=True, punctuation_chars=";&|()<>")
-        lexer.whitespace_split = True
-        lexer.commenters = "#"
-        current: list[str] = []
-        for token in lexer:
-            if token in SEPARATORS:
-                if current:
-                    commands.append((current, [token]))
-                current = []
-            else:
-                current.append(token)
-        if current:
-            commands.append((current, ["\n"]))
-    return commands
-
-
-def program_argv(tokens: list[str]) -> list[str]:
-    """Drop env assignments, a `uv run [options]` prefix and redirections."""
-    argv: list[str] = []
-    skip = False
-    for token in tokens:
-        if skip:
-            skip = False
-            continue
-        if token in REDIRECTS or token == "<":
-            skip = True
-            continue
-        argv.append(token)
-    while argv and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", argv[0]):
-        argv = argv[1:]
-    if argv[:2] == ["uv", "run"]:
-        rest = argv[2:]
-        while rest and rest[0].startswith("-"):
-            option = rest.pop(0)
-            if option in UV_OPTIONS_WITH_VALUE and "=" not in option:
-                rest = rest[1:]
-        argv = rest
-    return argv
-
-
-def redirects_to_summary(tokens: list[str]) -> bool:
-    return any(
-        token in REDIRECTS and nxt in SUMMARY_FILES
-        for token, nxt in zip(tokens, tokens[1:], strict=False)
-    )
-
-
-def runs_gate_with_own_status(run: str) -> bool:
-    """The block is exactly `factory gate run --pr <n>`: its exit status is the step's."""
-    commands = shell_commands(run)
-    return len(commands) == 1 and program_argv(commands[0][0]) == GATE_ARGV
-
-
-def mentions_gate_run(run: str) -> bool:
-    return any(program_argv(argv)[:3] == GATE_ARGV[:3] for argv, _ in shell_commands(run) if argv)
-
-
-def publishes_status_to_summary(run: str) -> bool:
-    """`factory status` stdout goes to the summary: redirected, or piped into `tee -a`."""
-    commands = shell_commands(run)
-    for index, (argv, after) in enumerate(commands):
-        if program_argv(argv)[:2] != ["factory", "status"]:
-            continue
-        if redirects_to_summary(argv):
-            return True
-        if after == ["|"] and index + 1 < len(commands):
-            tee = commands[index + 1][0]
-            if tee[:1] == ["tee"] and {"-a", "--append"} & set(tee) and SUMMARY_FILES & set(tee):
-                return True
-    return False
-
-
-GATE_NO_OPS = [
-    "echo 'factory gate run --pr ${{ github.event.number }}'",
-    "# factory gate run --pr ${{ github.event.number }}",
-    'true "factory gate run --pr ${{ github.event.number }}"',
-    "uv run --project scripts/factory factory gate run --pr ${{ github.event.number }} || true",
-    "uv run --project scripts/factory factory gate run --pr ${{ github.event.number }}; exit 0",
-    "uv run --project scripts/factory factory gate run --pr ${{ github.event.number }} | tee log",
-    "set +e\nuv run --project scripts/factory factory gate run --pr ${{ github.event.number }}",
-    "uv run --project scripts/factory factory gate run --pr 1",
-]
-GATE_REAL = "uv run --project scripts/factory factory gate run --pr ${{ github.event.number }}"
-
-SUMMARY_NO_OPS = [
-    "echo 'factory status' >> \"$GITHUB_STEP_SUMMARY\"",
-    "echo factory status >> $GITHUB_STEP_SUMMARY",
-    "# uv run --project scripts/factory factory status >> $GITHUB_STEP_SUMMARY",
-    "uv run --project scripts/factory factory status",
-    "factory status > /dev/null; echo board >> $GITHUB_STEP_SUMMARY",
-    "uv run --project scripts/factory factory status | tee board.md",
-    'echo "uv run --project scripts/factory factory status >> $GITHUB_STEP_SUMMARY"',
-]
-SUMMARY_REAL = [
-    'uv run --project scripts/factory factory status >> "$GITHUB_STEP_SUMMARY"',
-    "uv run --project scripts/factory factory status | tee -a $GITHUB_STEP_SUMMARY",
-]
-
-
-def gates_job() -> dict[str, Any]:
-    workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
-    job = workflow["jobs"]["factory-gates"]
-    assert isinstance(job, dict), job
-    return job
-
-
-NEVER_SKIPPING_CONDITIONS = {"always()", "!cancelled()"}
-SKIPPING_CONDITIONS = [
-    "false",
-    "${{ false }}",
-    "github.event_name == 'push'",
-    "${{ github.event_name != 'pull_request' }}",
-    "failure()",
-    "always() && false",
-    "!cancelled() && github.actor == 'governor'",
-]
-
-
-def gate_condition_never_skips(condition: object) -> bool:
-    """No `if:` at all, or one that runs the step on every pull request (T-C2-4)."""
-    if condition is None:
-        return True
-    text = str(condition).strip()
-    match = re.fullmatch(r"\$\{\{(.*)\}\}", text, flags=re.S)
-    if match:
-        text = match.group(1).strip()
-    return text in NEVER_SKIPPING_CONDITIONS
-
-
-def test_workflow_gate_run_on_the_pr_is_not_allowed_to_fail() -> None:
-    for run in GATE_NO_OPS:
-        assert not runs_gate_with_own_status(run), f"oracle accepts a no-op: {run!r}"
-    assert runs_gate_with_own_status(GATE_REAL)
-    for condition in SKIPPING_CONDITIONS:
-        assert not gate_condition_never_skips(condition), f"oracle accepts {condition!r}"
-    for condition in (None, "always()", "${{ always() }}", "${{ !cancelled() }}", "!cancelled()"):
-        assert gate_condition_never_skips(condition), f"oracle rejects {condition!r}"
-    job = gates_job()
-    assert "continue-on-error" not in job, job
-    steps = job.get("steps", [])
-    gate_steps = [s for s in steps if mentions_gate_run(s.get("run", ""))]
-    assert len(gate_steps) == 1, f"expected one `factory gate run` step: {gate_steps}"
-    (step,) = gate_steps
-    assert runs_gate_with_own_status(step["run"]), (
-        f"the gate step must be exactly `factory gate run --pr <event number>`: {step['run']!r}"
-    )
-    assert gate_condition_never_skips(step.get("if")), (
-        f"the gate step's `if:` can skip it on a pull request: {step.get('if')!r}"
-    )
-    assert step.get("shell", "bash") == "bash", step
-    for each in steps:
-        assert "continue-on-error" not in each, each
-
-
-def test_workflow_can_post_commit_statuses() -> None:
-    assert gates_job().get("permissions", {}).get("statuses") == "write"
-
-
-def test_workflow_publishes_the_board_in_the_job_summary() -> None:
-    for run in SUMMARY_NO_OPS:
-        assert not publishes_status_to_summary(run), f"oracle accepts a no-op: {run!r}"
-    for run in SUMMARY_REAL:
-        assert publishes_status_to_summary(run), f"oracle rejects a real summary: {run!r}"
-    steps = gates_job().get("steps", [])
-    summary = [i for i, s in enumerate(steps) if publishes_status_to_summary(s.get("run", ""))]
-    assert len(summary) == 1, f"expected one step writing `factory status` to the summary: {steps}"
-    gate = [i for i, s in enumerate(steps) if mentions_gate_run(s.get("run", ""))]
-    assert gate, steps
-    step = steps[summary[0]]
-    condition = str(step.get("if", ""))
-    runs_after_failure = "always()" in condition or "!cancelled()" in condition
-    assert summary[0] < gate[0] or runs_after_failure, (
-        f"the board must be published even when the gates fail: {step}"
-    )

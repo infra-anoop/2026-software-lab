@@ -179,7 +179,7 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 
 **Source**: PR review [`PR_REVIEW_SLICE_C.md`](./PR_REVIEW_SLICE_C.md) (verdict-04, reject) and its § Triage; spec D5 (locked 2026-10-05, architecture-affecting) reconciled in [`PLAN_DELTA.md`](./PLAN_DELTA.md). Appended 2026-10-05; no earlier IDs renumbered.
 
-**Gate**: no test or implement work here starts until the delta P* review of the D5 amendment is triaged (constitution §G.1 step 4). It was triaged 2026-10-05 (`PLAN_REVIEW.md` § Triage (delta P*); locks D6–D8); a narrow P* confirmation of that round must pass first. Tests come first (§V); T096 T* triage comes before T097–T098.
+**Gate**: no test or implement work here starts until the delta P* review of the D5 amendment is triaged (constitution §G.1 step 4). It was triaged 2026-10-05 (`PLAN_REVIEW.md` § Triage (delta P*); locks D6–D8); the narrow P* confirmation (verdict-06) confirmed it, and its one Blocker, P19, concerns Wave 2's T104 only and is agent-closed for Wave 1 (`PLAN_DELTA.md` § Round 3). Tests come first (§V); T096 T* triage comes before T097–T098.
 
 ### Tests (write first, must fail)
 
@@ -189,8 +189,9 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
   - **Repo-wide:** no `pull_request_target` with a head checkout or execution; no `pull_request` job holds `statuses: write` or secrets.
   - **Gate run (fixture repos + `FakeGitHub`):** the registry comes from the installed package. A head that rewires a gate's entrypoint, deletes a row, or edits a gate module to always pass is still judged by the installed gate, and the head registry is still validated as data (T-C2). With `--expect-head`, a mismatch posts nothing and exits 0. Statuses go only to the expected head.
   - **Validators:** a head whose copy of a validator script is replaced by `sys.exit(0)` and whose schema is invalid still fails.
-  - **Evidence bundle:** red-first fails closed, naming the reason, on a bundle that is absent, malformed, for another `head_sha`, lists a test outside the diff's test files, omits a changed test file, or exceeds the size limit. A valid red→green bundle passes. PR number and order fields in a bundle are ignored.
-  - **`factory gate evidence`:** writes the bundle, exits 0 with failing tests, and records no status call.
+  - **Evidence bundle** (model in `contracts/gates.md` § Evidence bundle): red-first fails closed, naming the reason, on a bundle that is absent, unreadable, over the size limit, fails its schema (including any extra key such as a verdict, a PR number or an order id, and any outcome word outside the vocabulary), is for another `head_sha`, reports a crashed producer, lists a node that is not a new or changed test function, or omits one. A valid red→green bundle passes; the red-first rule is applied to the raw facts by the judge. The other selected gates still run.
+  - **`factory gate evidence`:** serializes Slice B's `red_first.collect_facts(ctx)` raw facts (sorted by node id) into `factory-evidence.json`, exits 0 with failing tests, records a crash or an unknown outcome as `status: crashed`, builds no GitHub adapter and records no status call; without `--out` it is a usage error.
+  - **Head as data:** CI-mode runs work with no head branch present (the PR is looked up by number) and leave the checkout on `main`, clean, with no extra worktree; no head code runs (planted conftest, test module, validator scripts and gate module never execute).
   - **Artifact provenance (P12):** the trusted workflow's download step names `run-id: github.event.workflow_run.id`, this repository and `name: factory-evidence`, with no `pattern:` and no `merge-multiple`, into a fresh directory outside the checkout. A run whose `workflow_run.repository` or `head_repository` is not this repository posts nothing and exits 0. `--evidence` with zero or with two bundle files fails red-first closed, naming the reason.
   - **Cache isolation (P12):** the trusted workflow has no `actions/cache` step, `setup-uv` sets `enable-cache: false`, and no `setup-python` cache is used.
   - **Red-first strength (D7, Wave 1):** every `red-first-proof` status description starts `self-reported:`, whether it passes or fails.
@@ -208,7 +209,7 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
   - Add `factory gate run --expect-head --evidence` and `factory gate evidence` in `scripts/factory/src/factory/cli/gates.py` + `scripts/factory/src/factory/gates/runner.py`.
   - Split red-first into an evidence producer and a bundle judge in `scripts/factory/src/factory/gates/drift/red_first.py`. That is Slice B's path, so it waits until B is merged into C and needs an order amendment.
   - Validators run `main`'s scripts against the exported head tree (`scripts/factory/src/factory/gates/repo/existing.py`); add a repo-root argument to `scripts/validate_secrets_schema.py` / `scripts/validate_deploy_env.py` if missing (order amendment).
-  - The evidence-bundle model, its size limit in typed config and any `GateContext` field are CP0 frozen-interface changes (`api.py`, `config/`), made by amendment.
+  - The evidence-bundle model, its size limit in typed config and any `GateContext` field are CP0 frozen-interface changes (`api.py`, `config/`), made by amendment. The phase-1 red tests also need, by amendment: typed config `evidence_max_bytes` and `github.actions_app_id` (`config/settings.py`); a PR lookup by number on `GitHubPort` plus `FakeGitHub` (`api.py`, `tests/fixtures/`), since the trusted job has no head branch; the `gate evidence` command registered in `cli/app.py`; explicit read-only `permissions:` in `.github/workflows/ci-cd-pipeline.yml` (its `pull_request` jobs inherit the repository's default token today).
   - Artifact provenance and cache isolation per `contracts/gates.md` § Artifact provenance / § Privileged environment (P12).
   - The `self-reported:` prefix on `red-first-proof` statuses (D7).
   - `branch-protection-require-pr` asserts the GitHub Actions app id as expected source on every required `factory/*` context (`scripts/factory/src/factory/gates/repo/branch_protection.py`, P9).
@@ -328,14 +329,18 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 - [ ] T091 [P] Spec Kit hook bridge: `.specify/extensions.yml` `after_tasks` hook calling `factory check intent` and `deferral-words-need-od` so the base stays swappable
 - [ ] T092 Run every `quickstart.md` section on the live repo; record results in `specs/001-factory-v2/quickstart.md` § Results
 - [ ] T104 [OD:D7] Sealed trusted red-first run (Wave 2, P2, D7), test first:
+  - **Shape (P19, adopted verbatim):** "move the sealed runner and runner-owned outcome capture to a separate job with no status-write permission, then have the privileged publisher validate that exact job/run result without executing head code." "Keep the sealed parent-owned result, but run the child in a separate job with no status-write permission; let the status-writing job consume only the parent-recorded result as hostile data."
+  - **Gate before implement:** a Wave 2 P* confirmation of this design (the sealed job, how its result reaches the publisher, and the publisher's validation) is required before any T104 implementation. No Wave 1 task depends on T104.
   - **Red tests** in `scripts/factory/tests/contract/test_red_first_sealed.py`, then T* review:
+    - the sealed job's `permissions:` grant no `statuses: write` (nor `checks: write`, `contents: write`, `pull-requests: write`);
+    - the status-writing job executes no head code: it only reads the sealed job's parent-recorded result, from that exact job/run, as hostile data, and fails closed when it is missing, malformed, from another run or bound to another head SHA;
     - the sandbox has no reachable credential: no persisted git credential, no job token or `ACTIONS_*` variable, no runner work or temp directory mounted;
     - it runs as a separate user or container;
     - the head tree is read-only: a head test that writes the tree, the harness or the outcome file fails to;
     - outcomes come from the parent: a head test that prints or writes a fake "passed" record does not change the recorded outcome;
     - a sandbox start failure fails red-first closed.
-  - **Implement:** the sealed runner in `main`'s harness inside the trusted job. `red-first-proof` judges from it and the `self-reported:` prefix goes. The evidence bundle stops feeding red-first.
-  - Amend `contracts/gates.md` § Red-first strength and plan § CI topology.
+  - **Implement:** the sealed runner in `main`'s harness, in its own job without status-write permission; the publisher validates its result as data. `red-first-proof` judges from it and the `self-reported:` prefix goes. The evidence bundle stops feeding red-first.
+  - Amend `contracts/gates.md` § Red-first strength and plan § CI topology if the Wave 2 P* confirmation changes the shape.
   - Catalog `ci.redfirst_sealed`.
 - [ ] T093 [POLICY] Sprint post-mortem `bus/postmortems/2026-10-sprint-02.yaml` via `factory bus pr`: disposition every correction; review overrides per gate, reversed locks, rework; record `routing.zero` and `capture.budget` evidence (hybrid); scorecard vs `intent.yaml` targets; then `factory sprint close`
 
