@@ -78,6 +78,8 @@ One of: `Approve architecture as-is` | `Approve architecture with minor edits` |
 |----|----------|------|------------|---------|----------------------------------|
 | P1 | Blocker / Debate / Later / Nit | … | … | … | … |
 
+**Round budget (constitution §J).** State the round number. Every Blocker carries root-cause class, consequence, likelihood and the smallest sufficient fix. From round 3 only harm-bar findings block; the rest are Later.
+
 Define:
 - **Blocker** — fix or explicitly accept before plan → approved
 - **Debate** — real Architecture fork (including stack/host/UI-path forks); human must choose
