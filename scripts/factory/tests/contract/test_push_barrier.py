@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.contract.push_barrier import KILL_SECONDS, PushBarrier, group_members
+from tests.contract.push_barrier import KILL_SECONDS, HeldCommands, PushBarrier, group_members
 from tests.fixtures.repo_builder import RepoBuilder
 
 pytestmark = pytest.mark.skipif(
@@ -90,8 +90,8 @@ def test_a_claimer_held_at_origin_that_never_exits_fails_within_the_bound(
 
 def test_leaving_the_block_kills_a_command_that_is_still_running(tmp_path: Path) -> None:
     started = time.monotonic()
-    with PushBarrier(tmp_path / "barrier") as barrier:
-        command = barrier.spawn(time.sleep, 600)
+    with HeldCommands(tmp_path / "commands") as commands:
+        command = commands.spawn(time.sleep, 600)
     assert time.monotonic() - started < KILL_SECONDS
     assert command.done()
     assert group_members(command.pid) == []

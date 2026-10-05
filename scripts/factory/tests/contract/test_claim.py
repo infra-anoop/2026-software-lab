@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import shutil
 import subprocess
-from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import NamedTuple
@@ -17,7 +16,13 @@ import pytest
 from factory.cli import exit_codes
 from factory.cli.app import run
 from factory.cli.common import DEPS
-from tests.contract.push_barrier import WAIT_SECONDS, PushBarrier, has_object, origin_sha
+from tests.contract.push_barrier import (
+    WAIT_SECONDS,
+    HeldCommands,
+    PushBarrier,
+    has_object,
+    origin_sha,
+)
 from tests.fixtures.cli_runner import FactoryCli
 from tests.fixtures.repo_builder import RepoBuilder, message, order
 
@@ -62,10 +67,13 @@ def test_claim_fast_forward_exactly_one_of_two_concurrent_wins(repo: RepoBuilder
             ]
         )
 
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        first = pool.submit(claim, repo.path)
-        other = pool.submit(claim, second)
-        codes = [first.result(), other.result()]
+    with HeldCommands(repo.root / "race") as commands:
+        first = commands.spawn(claim, repo.path)
+        other = commands.spawn(claim, second)
+        codes = [
+            commands.result(first, timeout=RACE_TIMEOUT),
+            commands.result(other, timeout=RACE_TIMEOUT),
+        ]
     assert codes.count(exit_codes.OK) == 1, codes
     assert codes.count(exit_codes.REFUSED) == 1, f"a lost claim race is a refusal (2): {codes}"
     claim_files = repo.git("ls-tree", "-r", "--name-only", f"origin/wo/{order_id}")

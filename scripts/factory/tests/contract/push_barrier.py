@@ -13,8 +13,9 @@ push is held, so `advertised-<n>` is exactly what receive-pack advertises. git d
 `[up to date]` (advertised sha == pushed sha) and `[rejected] (fetch first)` (advertised sha
 unknown to the client) from that advertisement alone.
 
-Held commands run in forked children (`PushBarrier.spawn`), so they keep the test's in-process
-state (monkeypatched clock, fake GitHub) yet can be killed. Each child leads its own process
+Held commands run in forked children (`HeldCommands.spawn`; `PushBarrier` extends it), so they
+keep the test's in-process state (monkeypatched clock, fake GitHub) yet can be killed. Tests
+that race without a barrier use `HeldCommands` directly. Each child leads its own process
 group, which its git and receive-pack processes inherit. Every wait is bounded: on an arrival
 or result timeout, and on leaving the `with` block, every child's group is SIGKILLed and
 reaped, and any survivor fails the test. No wait depends on a command choosing to exit.
@@ -34,7 +35,7 @@ import traceback
 from collections.abc import Callable, Iterable
 from pathlib import Path
 from types import TracebackType
-from typing import Any, NoReturn
+from typing import Any, NoReturn, Self
 
 WAIT_SECONDS = 30.0
 KILL_SECONDS = 10.0
@@ -122,33 +123,13 @@ class HeldCommand[T]:
             time.sleep(POLL_SECONDS)
 
 
-class PushBarrier:
-    """Hold pushes from up to N clones at origin; release them one at a time."""
+class HeldCommands:
+    """Commands in forked children; leaving the `with` block kills and reaps every one."""
 
     def __init__(self, root: Path) -> None:
         self.root = root
         self.root.mkdir(parents=True, exist_ok=True)
-        self._installed: list[int] = []
         self._commands: list[HeldCommand[Any]] = []
-
-    def install(self, work: Path, n: int) -> None:
-        script = self.root / f"receive-pack-{n}"
-        script.write_text(
-            _WRAPPER.format(
-                dir=shlex.quote(str(self.root)),
-                n=n,
-                polls=int(WAIT_SECONDS / POLL_SECONDS),
-                poll=POLL_SECONDS,
-            ),
-            encoding="utf-8",
-        )
-        script.chmod(0o755)
-        subprocess.run(
-            ["git", "-C", str(work), "config", "remote.origin.receivepack", str(script)],
-            check=True,
-            capture_output=True,
-        )
-        self._installed.append(n)
 
     def spawn[T](self, fn: Callable[..., T], *args: Any) -> HeldCommand[T]:
         """Run `fn(*args)` in a forked child that leads a new process group."""
@@ -188,6 +169,53 @@ class PushBarrier:
         self.kill_all()
         raise AssertionError(f"{reason}; killed every held command")
 
+    def result[T](self, command: HeldCommand[T], timeout: float) -> T:
+        """`command`'s return value once it exits; fail if it is still running at `timeout`."""
+        deadline = time.monotonic() + timeout
+        while not command.done():
+            if time.monotonic() >= deadline:
+                self._fail(f"{command.label} did not exit within {timeout:.0f}s")
+            time.sleep(POLL_SECONDS)
+        return command.outcome()
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        self.kill_all()
+
+
+class PushBarrier(HeldCommands):
+    """Hold pushes from up to N clones at origin; release them one at a time."""
+
+    def __init__(self, root: Path) -> None:
+        super().__init__(root)
+        self._installed: list[int] = []
+
+    def install(self, work: Path, n: int) -> None:
+        script = self.root / f"receive-pack-{n}"
+        script.write_text(
+            _WRAPPER.format(
+                dir=shlex.quote(str(self.root)),
+                n=n,
+                polls=int(WAIT_SECONDS / POLL_SECONDS),
+                poll=POLL_SECONDS,
+            ),
+            encoding="utf-8",
+        )
+        script.chmod(0o755)
+        subprocess.run(
+            ["git", "-C", str(work), "config", "remote.origin.receivepack", str(script)],
+            check=True,
+            capture_output=True,
+        )
+        self._installed.append(n)
+
     def arrived(self, n: int) -> bool:
         return (self.root / f"arrived-{n}").exists()
 
@@ -208,15 +236,6 @@ class PushBarrier:
                 )
             time.sleep(POLL_SECONDS)
 
-    def result[T](self, command: HeldCommand[T], timeout: float) -> T:
-        """`command`'s return value once it exits; fail if it is still running at `timeout`."""
-        deadline = time.monotonic() + timeout
-        while not command.done():
-            if time.monotonic() >= deadline:
-                self._fail(f"{command.label} did not exit within {timeout:.0f}s")
-            time.sleep(POLL_SECONDS)
-        return command.outcome()
-
     def release(self, n: int) -> None:
         (self.root / f"go-{n}").touch()
 
@@ -227,9 +246,6 @@ class PushBarrier:
         lines = path.read_text().splitlines()
         return dict(line.split(" ", 1) for line in lines if line)
 
-    def __enter__(self) -> PushBarrier:
-        return self
-
     def __exit__(
         self,
         exc_type: type[BaseException] | None,
@@ -237,7 +253,7 @@ class PushBarrier:
         traceback: TracebackType | None,
     ) -> None:
         try:
-            self.kill_all()
+            super().__exit__(exc_type, exc, traceback)
         finally:
             for n in self._installed:
                 self.release(n)

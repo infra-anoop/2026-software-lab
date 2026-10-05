@@ -1,0 +1,84 @@
+# Accepted-test harness amendment (orchestrator, process), same class as T-A6-1. Recorded by the
+# Slice A worker on the orchestrator's instruction (2026-10-05), before T* round 7.
+# Still Phase 1: tests only, no fix code. Assertions unchanged.
+#
+# Orchestrator decision (summarised):
+#   test_claim.py::test_claim_fast_forward_exactly_one_of_two_concurrent_wins (accepted earlier)
+#   has the same unbounded-wait defect as T-A6-1: two claims in a ThreadPoolExecutor with untimed
+#   Future.result() calls. Bring it under the same bounded spawn, kill-group and reap mechanism.
+#   No barrier: the test deliberately races without one. Keep its assertions exactly. Audit the
+#   rest of scripts/factory/tests for unbounded executor / .result() / .join() waits; fix only
+#   those in Slice A's owned test files, under this amendment.
+#
+# Change:
+#   - tests/contract/push_barrier.py: spawn, result, kill_all and the kill-on-exit context move
+#     into a barrier-free base class `HeldCommands`; `PushBarrier(HeldCommands)` adds install,
+#     wait_arrived, release and advertised. Behaviour of every barrier test is unchanged.
+#   - The atomic race now runs both claims as `HeldCommands.spawn` children, collected with
+#     `result(timeout=RACE_TIMEOUT)` (60 s). Both still start back to back with no ordering, so
+#     the race is unsynchronised as before (now true process parallelism, not GIL-shared threads).
+#     Its three assertions (one exit 0, one exit 2, claim.yaml on origin/wo/<id>) are untouched.
+#   - test_push_barrier.py::test_leaving_the_block_kills_a_command_that_is_still_running now
+#     exercises `HeldCommands` directly, so the base class has its own block-exit kill check.
+#
+# Audit of scripts/factory/tests (ThreadPoolExecutor, threading, multiprocessing, Popen,
+#   .result(), .join(), .wait(), communicate, queues, locks, sleep loops):
+#   - test_claim.py:65-68 atomic race: ThreadPoolExecutor + untimed .result() x2. FIXED here.
+#   - No other executor, thread or untimed .result() / .join() wait exists. Every other `.join(`
+#     hit is str.join. test_push_barrier.py's `sleeper.wait()` runs inside a forked meta-test child
+#     and is what the meta-test kills. push_barrier.py's poll loops are all deadline-bounded.
+#   - Not this class, recorded only: synchronous in-process CLI calls and fixture
+#     subprocess.run git calls carry no timeout anywhere in the suite (fixtures are frozen at CP0).
+#
+# owned_paths: restated whole and unchanged from amend-08 (the schema requires a superseded field).
+schema_version: 1
+kind: amendment
+id: wo-20261004-factory-slice-a.amend-09
+created: 2026-10-05T15:30:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/packets/2026-10-04-factory-v2-slice-a.md
+  - specs/001-factory-v2/TEST_REVIEW_SLICE_A.md
+  - wo-20261004-factory-slice-a.verdict-07
+  - wo-20261004-factory-slice-a.amend-08
+supersedes: [owned_paths]
+values:
+  owned_paths:
+    - "scripts/factory/src/factory/lifecycle/**"
+    - "scripts/factory/src/factory/board/**"
+    - "scripts/factory/src/factory/metrics/**"
+    - "scripts/factory/src/factory/github/**"
+    - "scripts/factory/src/factory/identity/**"
+    - "scripts/factory/src/factory/orders/**"
+    - "scripts/factory/src/factory/cli/board.py"
+    - "scripts/factory/src/factory/cli/orders.py"
+    - "scripts/factory/tests/contract/test_status.py"
+    - "scripts/factory/tests/contract/test_orders.py"
+    - "scripts/factory/tests/contract/test_claim.py"
+    - "scripts/factory/tests/contract/test_handoff.py"
+    - "scripts/factory/tests/contract/test_pr_and_verdict.py"
+    - "scripts/factory/tests/contract/test_bus_pr.py"
+    - "scripts/factory/tests/contract/test_git_safety.py"
+    - "scripts/factory/tests/contract/push_barrier.py"
+    - "scripts/factory/tests/contract/test_push_barrier.py"
+    - "scripts/factory/tests/unit/test_lifecycle.py"
+    - "scripts/factory/tests/unit/test_github_adapter.py"
+    - "scripts/factory/tests/unit/test_no_bookkeeping.py"
+    - "scripts/factory/tests/unit/test_scorecard.py"
+    - "scripts/factory/tests/unit/test_identity.py"
+    - "scripts/factory/tests/fixtures/github_recorded/**"
+    - "scripts/factory/pyproject.toml"
+    - "scripts/factory/uv.lock"
+    - "deploy/secrets/schema.yaml"
+    - "scripts/validate_secrets_schema.py"
+    - "scripts/test_validate_secrets_schema.py"
+    - "specs/001-factory-v2/acceptance.md"
+    - "specs/001-factory-v2/tasks.md"
+    - "specs/001-factory-v2/research.md"
+    - "specs/001-factory-v2/plan.md"
+    - "specs/001-factory-v2/TEST_REVIEW_SLICE_A.md"
+    - "specs/001-factory-v2/PR_REVIEW_SLICE_A.md"
+    - "bus/orders/wo-20261004-factory-slice-a/**"
+    - "notes/packets/2026-10-04-factory-v2-slice-a.handoff.md"
