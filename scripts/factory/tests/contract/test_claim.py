@@ -15,6 +15,7 @@ import pytest
 
 from factory.cli import exit_codes
 from factory.cli.app import run
+from factory.cli.common import DEPS
 from tests.fixtures.cli_runner import FactoryCli
 from tests.fixtures.repo_builder import RepoBuilder, message, order
 
@@ -213,3 +214,44 @@ def test_lost_claim_race_at_the_push_is_refused(repo: RepoBuilder) -> None:
     )
     claim_files = repo.git("ls-tree", "-r", "--name-only", f"origin/wo/{order_id}")
     assert f"bus/orders/{order_id}/claim.yaml" in claim_files
+
+
+def test_identical_same_second_claims_have_one_winner(
+    repo: RepoBuilder, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """PR-A8: a push that finds origin already at our commit lost the race (exit 2, not 0).
+
+    Clock, git commit dates and actor are pinned, so both claimers build byte-identical claim
+    commits on the same tip. Receivepack delays (1 s, then 3 s) make the first push land
+    before the second connects; the second push then reports `=` / `[up to date]`.
+    """
+    order_id = _issue(repo, "same-second")
+    second = repo.root / "work-b"
+    shutil.copytree(repo.path, second, symlinks=True)
+    for work, delay in ((repo.path, 1), (second, 3)):
+        for key, value in (
+            ("remote.origin.url", str(repo.origin)),
+            ("remote.origin.receivepack", f"sleep {delay}; git-receive-pack"),
+        ):
+            subprocess.run(
+                ["git", "-C", str(work), "config", key, value], check=True, capture_output=True
+            )
+    pinned = datetime(2026, 10, 7, 12, 0, tzinfo=UTC)
+    monkeypatch.setattr(DEPS, "clock", lambda: pinned)
+    for name in ("GIT_AUTHOR_DATE", "GIT_COMMITTER_DATE"):
+        monkeypatch.setenv(name, "2026-10-07T12:00:00+0000")
+
+    def claim(work: Path) -> int:
+        return run(["claim", order_id, "--actor-model", "claude-opus-5.5", "--repo", str(work)])
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(claim, work) for work in (repo.path, second)]
+        codes = [future.result() for future in futures]
+    assert sorted(codes) == sorted([exit_codes.OK, exit_codes.REFUSED]), (
+        f"identical claims: exactly one wins (0) and the other is refused (2): {codes}"
+    )
+    repo.git("fetch", "-q", "origin")
+    claims = repo.git(
+        "log", "--format=%H", f"origin/wo/{order_id}", "--", f"bus/orders/{order_id}/claim.yaml"
+    ).splitlines()
+    assert len(claims) == 1, f"only one claim lands on origin/wo/{order_id}: {claims}"

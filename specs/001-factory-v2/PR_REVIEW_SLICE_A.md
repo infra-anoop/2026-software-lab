@@ -108,3 +108,15 @@ Recorded verbatim by the Slice A worker (2026-10-05). The exit rule, the new fin
 | PR-A2 | amended accepted reads: `tests/contract/test_handoff.py::test_handoff_writes_run_complete_event`, `tests/contract/test_pr_and_verdict.py::test_verdict_commits_valid_different_family_verdict` (read `origin/wo/<id>` after fetch; assertions unchanged) | green; they stay green once the checked-out branch is no longer moved |
 | PR-A5 | amended accepted: `tests/unit/test_scorecard.py::test_scorecard_wave1_exit_when_every_order_merged[fifth-working-day\|sixth-working-day]` (P1 statuses on the exit commit, P1 entrypoints resolvable, read via `factory scorecard --json`); new `::test_scorecard_wave1_not_exited_unless_every_p1_gate_implemented_and_green[status-missing\|status-failure\|status-on-other-commit\|unresolvable]`; the round-1 PR-A5 tests now run via the CLI with (b) and (c) satisfied | amended accepted: green; new: red, because exit is set from landings alone |
 | PR-A7 | amended accepted: `tests/contract/test_claim.py::test_claim_fast_forward_exactly_one_of_two_concurrent_wins` (loser must exit 2); new `::test_lost_claim_race_at_the_push_is_refused` (deterministic) | amended: green in 12 of 12 runs (the loser usually refuses at "already claimed"); new: red, `[0, 4]` |
+
+### Orchestrator decision on identical same-second claims (amendment-06)
+
+Recorded verbatim by the Slice A worker (2026-10-05). Details are in `bus/orders/wo-20261004-factory-slice-a/amendment-06.yaml`.
+
+Good catch on the identical same-second claim. Decision (orchestrator, process, spec letter of one-winner claims): FIX it as **PR-A8** (blocker, process, found by implementer). Do not change the frozen bus schema.
+
+Rule for phase 2: a claim or release push whose remote ref was already at our commit counts as a LOST race. Porcelain `=` / `[up to date]` means the push did nothing for us, so it must exit 2 (lease conflict), not 0. The same applies to any event push that must be first-writer.
+
+| Finding | Test | State before the fix |
+|---------|------|----------------------|
+| PR-A8 | new `tests/contract/test_claim.py::test_identical_same_second_claims_have_one_winner` (clock, commit dates and actor pinned; receivepack delays make the second push find origin already at its commit) | red: `[0, 0]`, both claimers report the same SHA |
