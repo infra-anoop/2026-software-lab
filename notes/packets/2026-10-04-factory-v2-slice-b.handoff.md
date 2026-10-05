@@ -3,12 +3,13 @@
 | Field | Value |
 |-------|-------|
 | Packet | `notes/packets/2026-10-04-factory-v2-slice-b.md` |
-| Branch | `wo/wo-20261004-factory-slice-b` (base `origin/main` `da0505d`) |
+| Branch | `wo/wo-20261004-factory-slice-b` (base `origin/main` `da0505d`; `origin/main` `b1760ec` merged at `33fbc9d`) |
 | Status | **Implemented.** All 218 Slice B tests and all 52 seeds are green. No PR is opened (orchestrator's call) |
 | Accept-SHA | `a68b95d884c65eea1e805835cf54b9b1c17ffdda`: the `--no-ff` merge of `review/wo-20261004-factory-slice-b-r3` (`wo-20261004-factory-slice-b.verdict-03`, accept) |
 | Round 1 | `wo-20261004-factory-slice-b.verdict-01` (reject, merged from `review/wo-20261004-factory-slice-b` at `670f120`) → triage in `specs/001-factory-v2/TEST_REVIEW_SLICE_B.md` § Triage (round 1) + `bus/orders/wo-20261004-factory-slice-b/amendment-01.yaml` |
 | Round 2 | `wo-20261004-factory-slice-b.verdict-02` (reject, merged `--no-ff` from `review/wo-20261004-factory-slice-b-r2` at `5464528`) → triage in § Triage (round 2) + `bus/orders/wo-20261004-factory-slice-b/amendment-02.yaml` (owned paths unchanged) |
 | Implement | `amendment-03.yaml` widens owned paths to the FR-023 / SC-005(b) lines of `spec.md` and the `factory check intent` row of `contracts/cli.md`, and records the governor locks of 2026-10-04 |
+| Pre-PR | `amendment-04.yaml` records the packet revert to `origin/main` (the packet leaves owned paths) and the orchestrator-authorized one-word edit to reviewer text at `TEST_REVIEW_SLICE_B.md` line 80 |
 | Tasks ticked | T039, T040, T041, T042–T048, T061, T062, T063. **T049 stays open** (two `seed.*` rows remain `planned`; see § Catalog evidence) |
 
 ## Implementation (phase 2)
@@ -26,6 +27,8 @@
 | `63eb0bf` | `amendment-03.yaml`; `spec.md` FR-023 and SC-005(b); `contracts/cli.md` check-intent row; `contracts/gates.md` eval head-blob / symlink / malformed wording |
 | `5b6a575` | `acceptance.md` evidence for nine Slice B rows; `tasks.md` checkboxes |
 | `39e8354` | Fix found by running the gates on this branch: `red-first-proof` extracts the whole tree, because `scripts/factory/tests/conftest.py` reads the repo-root `factory.toml`. A pytest abort (exit 2–4) with no reports is a crash, not "not collected" |
+| `33fbc9d` | Merge of `origin/main` `b1760ec` (#19; no overlap with this branch) |
+| `e1c67ea` | `amendment-04.yaml`; packet reverted to `origin/main`; `TEST_REVIEW_SLICE_B.md` line 80 "optional" → "surrounding" |
 
 ### Catalog evidence (T049)
 
@@ -49,15 +52,15 @@ Left `planned`:
 
 ### Gates run by hand on this branch (bootstrap verdict input, FR-037)
 
-`run_gate(<id>, GateContext(base=origin/main, head=HEAD, order_id=None))` from `scripts/factory`:
+`run_gate(<id>, GateContext(base=origin/main b1760ec, head=e1c67ea, order_id=None, bus_snapshot=load_all(head)))` from `scripts/factory`:
 
 | Gate | Result |
 |------|--------|
 | `factory-check-intent` | pass (81 intents mapped) |
 | `red-first-proof` | pass (130 new or changed tests red on base, green on head) |
 | `test-seam-ban`, `decision-request-no-ids`, `catalog-test-linkage` | pass |
-| `order-fidelity-declared`, `lock.letter-tokens`, `diff-within-owned-paths` | pass vacuously (no base order file for this Wave 1 packet). Manual equivalent: every changed path is in amend-03 `owned_paths`; no named lock is touched |
-| `deferral-words-need-od` | **block**: `specs/001-factory-v2/TEST_REVIEW_SLICE_B.md:80`, "normalize optional Markdown backticks", in the reviewer's § F edit list. That section is outside my line scope (Triage sections only). Suggested fix for the orchestrator: "normalize surrounding Markdown backticks" |
+| `deferral-words-need-od` | pass. It blocked line 80 of `TEST_REVIEW_SLICE_B.md` before amend-04 |
+| `order-fidelity-declared`, `lock.letter-tokens`, `diff-within-owned-paths` | pass vacuously (no order file on the bus for this Wave 1 packet). Manual equivalent: the gate's own `Change.of(ctx).files` + `matches_any` against amend-04 `owned_paths` puts 37 changed paths in scope and none outside. No named lock is touched |
 
 ## Test-phase history
 
@@ -120,7 +123,7 @@ No production code changed in the test phase, and no frozen CP0 file was edited.
 
 ## Commands + results
 
-Phase 2, at the handoff head, run from `scripts/factory`:
+Phase 2, re-run at `e1c67ea` (after the `origin/main` merge and amend-04) from `scripts/factory`:
 
 | Command | Result |
 |---------|--------|
@@ -131,7 +134,7 @@ Phase 2, at the handoff head, run from `scripts/factory`:
 | `… uv run pytest tests/contract/test_cli_contract.py -k intent` | 2 passed |
 | `… uv run ruff check .` | All checks passed |
 | `… uv run ruff format --check .` | 57 files already formatted |
-| `… uv run factory check schema` | schema ok (amendment-03 included) |
+| `… uv run factory check schema` | schema ok (amendment-04 included) |
 
 Phase 1, at the round-2 head (kept for the record):
 
@@ -189,10 +192,15 @@ Done in amend-03 (were open requests here):
 1. **T-B6 wording.** FR-023 and SC-005(b) now define governor-judged as `kind: human` with `status: exists`.
 2. **T-B4 caller.** `contracts/cli.md` lists `--require-target` on its own `factory check intent` row. SC-005(b) states that coverage is report-only during the sprint.
 
+Done in amend-04 (pre-PR):
+1. **Deferral-words hit on this branch.** `TEST_REVIEW_SLICE_B.md` § F line 80 now reads "surrounding Markdown backticks", an orchestrator-authorized one-word edit to reviewer text that keeps the review's meaning. `deferral-words-need-od` passes.
+2. **Packet revert.** `notes/packets/2026-10-04-factory-v2-slice-b.md` is back to its `origin/main` content. Completion evidence is in this handoff and the verdicts only.
+
+**Follow-up the orchestrator is scheduling** (not in this branch):
+- **Red-first whole-repo test.** No accepted test pins that `red-first-proof` unpacks the whole repo. It must, because `scripts/factory/tests/conftest.py` reads the repo-root `factory.toml`; that is what broke this branch's self-run before `39e8354`. Accepted tests are frozen, so the test lands in a follow-up order with its own T\* review.
+
 **For the orchestrator** (outside my line scope):
-1. **Deferral-words hit on this branch.** `TEST_REVIEW_SLICE_B.md` § F line 80 says "optional Markdown backticks". `deferral-words-need-od` blocks it as written. Suggested: "surrounding".
-2. **Red-first regression test.** No accepted test covers a project whose tests read repo files outside the project directory. That is the shape that broke this branch's self-run before `39e8354`. Accepted tests are frozen, so I did not add one. Suggestion: add it in a follow-up with its own T\* look.
-3. **FR-018 eval wording.** FR-018 says "names an existing test or eval". It agrees with the head-blob lock in `contracts/gates.md`, so I left it unedited (outside amend-03's line scope).
+1. **FR-018 eval wording.** FR-018 says "names an existing test or eval". It agrees with the head-blob lock in `contracts/gates.md`, so I left it unedited (outside amend-03's line scope).
 
 ## Open questions
 
