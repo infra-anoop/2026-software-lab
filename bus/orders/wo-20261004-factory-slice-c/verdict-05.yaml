@@ -1,0 +1,76 @@
+schema_version: 1
+kind: verdict
+id: wo-20261004-factory-slice-c.verdict-05
+created: 2026-10-05T15:19:27Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - bus/orders/wo-20261004-factory-slice-c/verdict-04.yaml
+  - notes/packets/2026-10-05-factory-v2-d5-delta-pstar.md
+  - specs/001-factory-v2/PLAN_DELTA.md
+decision: reject
+findings:
+  - id: P9
+    severity: blocker
+    tag: arch
+    text: >-
+      Required factory contexts are not pinned to GitHub Actions as their
+      expected source, so the Codespace token or future agent App can satisfy
+      the same checks outside the trusted workflow and bypass D5's trust root.
+  - id: P10
+    severity: debate
+    tag: product
+    text: >-
+      Schema and SHA binding prevent evidence mix-ups but not fabrication by
+      head test code; choose runner-owned isolation or explicitly weaken
+      red-first from proof to reviewable self-attestation.
+  - id: P11
+    severity: debate
+    tag: arch
+    text: >-
+      D6 should use a no-other-merges post-C probe followed by source-pinned
+      factory-check activation; hand-posted bootstrap passes would defeat
+      source provenance.
+  - id: P12
+    severity: blocker
+    tag: arch
+    text: >-
+      The privileged workflow is not required to fetch exactly one evidence
+      artifact from the triggering workflow run or to reject caches writable
+      by the untrusted workflow, leaving the workflow_run boundary underspecified.
+  - id: P13
+    severity: nit
+    tag: arch
+    text: >-
+      Strength: research compares the relevant non-sibling alternatives, and
+      workflow_run plus a hostile-data artifact is the mainstream P1 fit once
+      source, provenance, and cache hardening are contractual.
+  - id: P14
+    severity: nit
+    tag: arch
+    text: >-
+      Strength: the delta preserves D5's letter locks on credential separation,
+      post-merge gate effect, and the ban on pull_request_target with head
+      checkout or execution.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: notes/packets/2026-10-05-factory-v2-d5-delta-pstar.md
+    sha: 62e449ddeb03cf52184473cebad5f3006fdfa4c9
+  - path: specs/001-factory-v2/PLAN_DELTA.md
+    sha: 62e449ddeb03cf52184473cebad5f3006fdfa4c9
+  - path: specs/001-factory-v2/spec.md
+    sha: 62e449ddeb03cf52184473cebad5f3006fdfa4c9
+  - path: specs/001-factory-v2/plan.md
+    sha: 62e449ddeb03cf52184473cebad5f3006fdfa4c9
+  - path: specs/001-factory-v2/research.md
+    sha: 62e449ddeb03cf52184473cebad5f3006fdfa4c9
+  - path: specs/001-factory-v2/contracts/gates.md
+    sha: 62e449ddeb03cf52184473cebad5f3006fdfa4c9
+  - path: specs/001-factory-v2/tasks.md
+    sha: 62e449ddeb03cf52184473cebad5f3006fdfa4c9
+  - path: specs/001-factory-v2/PR_REVIEW_SLICE_C.md
+    sha: 62e449ddeb03cf52184473cebad5f3006fdfa4c9
+  - path: specs/001-factory-v2/PLAN_REVIEW.md
+    sha: 62e449ddeb03cf52184473cebad5f3006fdfa4c9

@@ -56,3 +56,57 @@ No. A cold agent can generate tasks for schemas, most gates, adapters, and the b
 3. Should git remain the authoritative work lease after adding abandon/reconcile events, or should a managed tracker own leases while git remains the audit log?
 4. May P1 expose governor-only actions as visibly audit-only, or must distinct identity exist before those checks count as live?
 5. Must red-first prove a collected test/assertion failure, or may collection/import failure count for this version?
+
+## Delta review — D5 (2026-10-05)
+
+### A. Executive verdict
+
+`Do not approve architecture yet`
+
+The two-workflow split is the right realization of D5: `workflow_run` lets the privileged half run the default branch's code, and the plan keeps PR-head execution away from `statuses: write`. The approval gap is now narrower but still material: required `factory/*` contexts are not pinned to their expected GitHub Actions source, and the artifact contract does not bind download provenance or prohibit an untrusted workflow's cache from entering the privileged run. Red-first also remains a real Architecture Debate because schema/SHA validation proves which PR supplied a claim, not that head test code did not forge the claimed outcomes. Phasing is otherwise ordered, but CP2 and D6 need the source-pinned activation sequence.
+
+### B. Findings table
+
+| ID | Severity | Lens | Plan locus | Finding | Suggested resolution (for human) |
+|----|----------|------|------------|---------|----------------------------------|
+| P9 | Blocker | Topology & trust boundary [arch] | `plan.md` Major risks; `tasks.md` T101; `contracts/gates.md` PR identity and status target | Branch protection requires context names but does not require the GitHub Actions App as their expected source, so the Codespace token or future agent App can satisfy the same `factory/*` checks outside the trusted workflow; that defeats D5's claim that `main`'s judge controls merge authority. | Require every `factory/*` context with the GitHub Actions integration as expected source, record the integration/app id in the branch-protection snapshot, and remove `statuses: write` from non-CI identities unless another documented use needs it. |
+| P10 | Debate | Data & contracts / proof integrity [product] | `plan.md` Execution-derived evidence and Major risks; `contracts/gates.md` Evidence bundle; FR-012 | Binding an untrusted JSON bundle to a head SHA and test-file list prevents mix-ups, not fabrication: head test code can tamper with an in-process harness or emit invented red→green outcomes, so the current artifact is self-attestation rather than FR-012's “proven” result. | Choose (A) a runner-owned isolation boundary where head code cannot write the harness or bundle and the parent records process outcomes, or (B) explicitly weaken red-first to reviewable advisory evidence and amend the “proof” requirement; I recommend A. |
+| P11 | Debate | Bootstrap / phased delivery [arch] | `PLAN_DELTA.md` D6; `tasks.md` T101/T103; P1 exit | D6 option A is safer, but source pinning normally becomes operational only after the expected app has produced a check/status; “right after C merges” therefore needs a no-other-merges bootstrap probe before the checks become required, while option B's hand-posted passes destroy source provenance. | Lock A as: merge C on bootstrap review, open a non-merging probe to obtain trusted statuses, pin and require every factory context to GitHub Actions, verify the live rule, then permit any other merge. |
+| P12 | Blocker | Workflow boundary [arch] | `contracts/gates.md` workflows/evidence; `tasks.md` T094/T097 | The privileged consumer is not required to download `factory-evidence` from the exact triggering `workflow_run.id`, and no rule forbids restoring caches writable by the untrusted workflow. GitHub's `workflow_run` pattern is safe only when artifacts are treated as hostile and privileged execution cannot ingest attacker-poisoned state. | Contract-test exact run-id/repository/name provenance, reject zero or multiple matching artifacts, use a fresh privileged environment, and prohibit restore of any cache the PR workflow can populate. |
+| P13 | Nit | Learning / SOTA fit [arch] | `research.md` Topology & runtime custody | Strength: the delta compares the single privileged PR job, `pull_request_target`, ruleset-required workflows, and a hosted App; `workflow_run` plus a hostile-data artifact is the mainstream GitHub pattern for a privileged follow-up, while a hosted App is cleaner but disproportionate for P1 and required-workflow availability is not established for this personal repository. | Keep the Actions split for P1 after P9/P12 hardening; retain the hosted App service as the P3 migration option and do not claim ruleset-required workflows are available until verified. |
+| P14 | Nit | Spec lock fidelity [arch] | `plan.md` CI topology; `contracts/gates.md` Head as data; T094 | Strength: the amendment preserves all three letter locks—no PR-head execution with status-write, gate changes take effect only after merge, and no `pull_request_target` plus head checkout/execute—and gives contract tests concrete banned forms. | Preserve these bans verbatim while adding source and artifact-provenance checks. |
+
+### C. Adversarial positions
+
+#### 1. Position: remove execution-derived artifacts from the trusted verdict path
+
+Do not let a privileged status publisher convert a PR-authored outcome document into `red-first-proof=success`. Run the head's ordinary tests as a read-only required job, but keep red-first human-reviewed until there is a runner-owned containment boundary: immutable base harness, head test tree mounted read-only, isolated child/container, no shared writable cache, and bundle serialization performed only by the parent. This narrows the first release and avoids calling self-attestation proof.
+
+**What would have to be true for the plan's stance to be right anyway:** bundle creation must be outside head-code control, exact artifact provenance must be established, and deliberate environment-sensitive tests must remain visible enough for review to catch.
+
+#### 2. Position: use a hosted Check Run App instead of privileged Actions
+
+A GitHub App webhook worker can fetch PR objects as data, run trusted gate code on an independently deployed revision, and publish app-owned checks without giving the repository's untrusted workflow any path toward the credential. It also gives branch protection an unambiguous source and avoids `workflow_run` artifact/cache hazards. That is the cleaner managed trust boundary.
+
+**What would have to be true for the plan's stance to be right anyway:** Actions source pinning must be enforced, artifact provenance/cache isolation must be contract-tested, and the operating cost of a hosted service must exceed the residual risk at this solo-repository scale.
+
+### D. Independence / tasks readiness
+
+Not yet. A cold agent can implement the two-workflow topology and D5's head-as-data rules, and `research.md` does not leave the main stack fork chat-shaped. It would still have to invent how the artifact is selected, whether caches cross the boundary, how red-first outcomes are isolated from head code, and how source pinning fits the first post-C run. After P9/P12 are made contractual and P10/D6 are locked, T094–T103 are taskable without chat archaeology.
+
+### E. Edit list (Architecture-first)
+
+- **Topology & runtime custody** — require GitHub Actions as the expected source for every `factory/*` required context.
+- **Contracts / gate status target** — include expected integration/app id in the branch-protection snapshot and drift assertion.
+- **Contracts / evidence bundle** — bind download to the exact triggering workflow run and require exactly one named artifact.
+- **Contracts / privileged environment** — ban restoration of caches writable by the untrusted workflow.
+- **Architecture / execution-derived evidence** — lock the containment boundary or explicitly weaken the red-first claim.
+- **Tasks T094/T097** — test exact artifact provenance, cache isolation, and source pinning before implementation.
+- **Tasks T101/T103 / CP2** — encode merge C → trusted probe → source-pin/require → verify → reopen merges.
+- **Research** — mark ruleset-required-workflow availability unverified for this personal repository; preserve hosted App as the cleaner P3 alternative.
+
+### F. Questions for the human
+
+1. For red-first, do you require runner-owned isolation (recommended), or accept that its result is reviewable self-attestation rather than proof?
+2. Do you lock D6 to the post-C probe and source-pinned activation sequence in P11?
+3. May the future agent App lose `statuses: write` unless a separate approved use is demonstrated?
