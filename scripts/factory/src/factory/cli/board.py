@@ -89,7 +89,11 @@ def scorecard(
 ) -> None:
     """Compute the scorecard from run events, verdicts, corrections, overrides."""
     root, settings = _open(repo)
-    card = compute_scorecard(root, settings=settings)
+    github = DEPS.github(settings, load_env())
+    try:
+        card = compute_scorecard(root, settings=settings, github=github, sprint=sprint)
+    except GitHubError as exc:
+        raise CommandError(exit_codes.EXTERNAL, str(exc)) from exc
     card["sprint"] = sprint
     lines = ["# Scorecard", ""]
     lines.extend(f"- {key}: {value}" for key, value in card.items() if not isinstance(value, dict))

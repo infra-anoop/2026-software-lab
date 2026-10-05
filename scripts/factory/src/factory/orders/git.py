@@ -1,8 +1,11 @@
 """Git plumbing for order commands and lifecycle reads (subprocess; no business logic).
 
-Event commits are built with `hash-object` / `mktree` / `commit-tree` on a base commit,
-so writing an event never touches the caller's index or working tree. Pushes are plain
-(never forced): a non-fast-forward rejection is how a lost claim race shows up.
+Ref-only: event commits are built with `hash-object` / `mktree` / `commit-tree` on a base
+commit and pushed. Nothing here merges, checks out, resets or writes HEAD, the index or a
+working tree. Pushes are plain (never forced); their outcome is read from `--porcelain`
+stdout, where a lost race shows up as `!` (rejected) or, for a first-writer push whose
+commit origin already holds, `=` (up to date). Local branches move only after a push
+landed, by compare-and-swap, and never while checked out in any worktree.
 """
 
 from __future__ import annotations
@@ -36,6 +39,10 @@ class GitError(Exception):
 
 class PushRejected(GitError):
     """The remote refused a push (someone else moved the branch first)."""
+
+
+class PushUpToDate(PushRejected):
+    """A first-writer push found origin already at our commit: someone else wrote it."""
 
 
 def run_git(repo: Path, *args: str, stdin: bytes | None = None) -> bytes:
@@ -124,13 +131,20 @@ def changed_paths(repo: Path, base: str, head: str) -> list[str]:
     return [line for line in out.splitlines() if line]
 
 
-def added_dates(repo: Path, ref: str, path: str, *, first_parent: bool = False) -> list[datetime]:
-    """Committer dates of commits on `ref` that added `path` (newest first)."""
-    args = ["log", "--diff-filter=A", "--format=%cI"]
+def added_commits(
+    repo: Path, ref: str, path: str, *, first_parent: bool = False
+) -> list[tuple[str, datetime]]:
+    """(sha, committer date) of commits on `ref` that added `path` (newest first)."""
+    args = ["log", "--diff-filter=A", "--format=%H %cI"]
     if first_parent:
         args.append("--first-parent")
     out = git_text(repo, *args, ref, "--", path)
-    return [datetime.fromisoformat(line).astimezone(UTC) for line in out.splitlines() if line]
+    commits = []
+    for line in out.splitlines():
+        if line:
+            sha, stamp = line.split(" ", 1)
+            commits.append((sha, datetime.fromisoformat(stamp).astimezone(UTC)))
+    return commits
 
 
 def _ls_tree(repo: Path, tree: str) -> list[tuple[str, str, str, str]]:
@@ -167,28 +181,69 @@ def commit_files(repo: Path, base: str, files: dict[str, bytes], message: str) -
     return git_text(repo, "commit-tree", tree, "-p", base, "-m", message)
 
 
-def push(repo: Path, sha: str, branch: str) -> None:
-    """Fast-forward `origin/<branch>` to `sha` (create it when absent); never forces."""
-    try:
-        run_git(repo, "push", "--quiet", "--porcelain", REMOTE, f"{sha}:refs/heads/{branch}")
-    except GitError as exc:
-        text = exc.stderr.lower()
-        if any(marker in text for marker in _REJECTED_MARKERS):
-            raise PushRejected(("push", REMOTE, branch), exc.stderr) from exc
-        raise
+def _porcelain_flag(stdout: str, target: str) -> str | None:
+    """The `--porcelain` status flag git printed for `target` (`!`, `=`, ` `, `*`, ...)."""
+    for line in stdout.splitlines():
+        fields = line.split("\t")
+        if len(fields) >= 2 and fields[1].split(":")[-1] == target and fields[0]:
+            return fields[0][0]
+    return None
+
+
+def push(repo: Path, sha: str, branch: str, *, first_writer: bool = True) -> None:
+    """Fast-forward `origin/<branch>` to `sha` (create it when absent); never forces.
+
+    Raises `PushRejected` when origin refused the update and, when `first_writer`,
+    `PushUpToDate` when origin already held `sha` (our push wrote nothing).
+    """
+    target = f"refs/heads/{branch}"
+    args = ("push", "--porcelain", REMOTE, f"{sha}:{target}")
+    result = subprocess.run(["git", "-C", str(repo), *args], check=False, capture_output=True)
+    stdout = result.stdout.decode(errors="replace")
+    stderr = result.stderr.decode(errors="replace")
+    flag = _porcelain_flag(stdout, target)
+    if flag == "!":
+        raise PushRejected(args, stdout + stderr)
+    if result.returncode != 0:
+        if any(marker in stderr.lower() for marker in _REJECTED_MARKERS):
+            raise PushRejected(args, stderr)
+        raise GitError(args, stderr)
     run_git(repo, "update-ref", remote_ref(branch), sha)
+    if flag == "=" and first_writer:
+        raise PushUpToDate(args, f"origin {target} was already at {sha[:7]}")
 
 
-def advance_local_branch(repo: Path, branch: str, sha: str) -> bool:
-    """Move local `branch` to `sha` when that is a fast-forward; False if left alone."""
+def checked_out_branches(repo: Path) -> set[str]:
+    """Branches checked out in the main worktree or any linked worktree."""
+    out = git_text(repo, "worktree", "list", "--porcelain")
+    prefix = "branch refs/heads/"
+    return {line.removeprefix(prefix) for line in out.splitlines() if line.startswith(prefix)}
+
+
+def advance_local_branch(repo: Path, branch: str, sha: str) -> str | None:
+    """After a landed push: compare-and-swap local `branch` forward to `sha`.
+
+    Returns None when local `branch` is at `sha` (or was created there), else a note for
+    the caller saying why it was left where it was. A branch checked out in any worktree
+    is never moved, nor is one that has commits `sha` lacks.
+    """
     local = f"refs/heads/{branch}"
     old = rev_parse(repo, local)
     if old == sha:
-        return True
-    if old and not is_ancestor(repo, old, sha):
-        return False
-    if current_branch(repo) == branch:
-        run_git(repo, "merge", "--ff-only", "--quiet", sha)
-    else:
-        run_git(repo, "update-ref", local, sha, *([old] if old else []))
-    return True
+        return None
+    if old is not None and not is_ancestor(repo, old, sha):
+        return (
+            f"local {branch} has diverged from origin/{branch} (left at {old[:7]}; origin is at"
+            f" {sha[:7]}), so `git pull --ff-only` cannot pick the event up yet: rebase or merge"
+            f" origin/{branch} first"
+        )
+    if branch in checked_out_branches(repo):
+        return (
+            f"{branch} is checked out, so it was left at {(old or '')[:7]}; origin/{branch} is"
+            f" at {sha[:7]}. Pick the event up with `git pull --ff-only`"
+        )
+    try:
+        run_git(repo, "update-ref", local, sha, old or "")
+    except GitError:
+        return f"local {branch} moved while the event was pushed, so it was left alone"
+    return None

@@ -48,6 +48,13 @@ def _run[T](as_json: bool, action: Callable[[], T]) -> T:
         raise CommandError(_CODES[type(exc)], exc.message, exc.details) from exc
 
 
+def _notes(notes: list[str]) -> list[str]:
+    """Print why a local branch was left where it was (stderr, so --json stays one object)."""
+    for note in notes:
+        typer.echo(note, err=True)
+    return notes
+
+
 def order_new(
     feature: Annotated[str, typer.Option("--feature", help="Feature folder under specs/.")],
     from_task: Annotated[list[str], typer.Option("--from-task", help="Task id (repeatable).")],
@@ -109,7 +116,12 @@ def order_issue(order_id: OrderIdArg, json_out: JsonOpt = False, repo: RepoOpt =
         "order issue",
         as_json=json_out,
         text=f"issued {order_id} on origin/{pushed.branch} ({pushed.sha[:7]})",
-        data={"order_id": order_id, "branch": pushed.branch, "sha": pushed.sha},
+        data={
+            "order_id": order_id,
+            "branch": pushed.branch,
+            "sha": pushed.sha,
+            "notes": _notes(pushed.notes),
+        },
     )
 
 
@@ -126,12 +138,14 @@ def claim(
 ) -> None:
     """Fast-forward push of the claim event to wo/<order-id>."""
     root, settings = _context(repo)
+    github = DEPS.github(settings, load_env())
     pushed = _run(
         json_out,
         lambda: claim_order(
             root,
             settings,
             order_id,
+            github=github,
             actor_model=actor_model,
             worker_runtime=worker_runtime,
             now=DEPS.clock(),
@@ -141,7 +155,12 @@ def claim(
         "claim",
         as_json=json_out,
         text=f"claimed {order_id} ({pushed.sha[:7]})",
-        data={"order_id": order_id, "branch": pushed.branch, "sha": pushed.sha},
+        data={
+            "order_id": order_id,
+            "branch": pushed.branch,
+            "sha": pushed.sha,
+            "notes": _notes(pushed.notes),
+        },
     )
 
 
@@ -169,7 +188,13 @@ def release(
         "release",
         as_json=json_out,
         text=f"released {order_id} ({reason})",
-        data={"order_id": order_id, "branch": pushed.branch, "sha": pushed.sha, "reason": reason},
+        data={
+            "order_id": order_id,
+            "branch": pushed.branch,
+            "sha": pushed.sha,
+            "reason": reason,
+            "notes": _notes(pushed.notes),
+        },
     )
 
 
@@ -191,6 +216,7 @@ def handoff(order_id: OrderIdArg, json_out: JsonOpt = False, repo: RepoOpt = Non
             "run_complete_written": result.run_complete_written,
             "gates_passed": result.gates_passed,
             "gates_not_enforced": result.gates_not_enforced,
+            "notes": _notes(result.notes),
         },
     )
 
@@ -216,12 +242,12 @@ def verdict(
 ) -> None:
     """Validate a verdict (family, isolation inputs) and commit it to the branch."""
     root, settings = _context(repo)
-    path, sha = _run(json_out, lambda: record_verdict(root, settings, order_id, file))
+    path, sha, notes = _run(json_out, lambda: record_verdict(root, settings, order_id, file))
     emit(
         "verdict",
         as_json=json_out,
         text=f"recorded {path} ({sha[:7]})",
-        data={"order_id": order_id, "path": path, "sha": sha},
+        data={"order_id": order_id, "path": path, "sha": sha, "notes": _notes(notes)},
     )
 
 

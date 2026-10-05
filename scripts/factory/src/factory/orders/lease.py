@@ -2,26 +2,35 @@
 
 Issue creates `wo/<order-id>` from `origin/main` with the order file as its only commit.
 Claim and release are fast-forward pushes of one event file; two racing claims build on
-the same branch tip, so the remote accepts exactly one of them.
+the same branch tip, so the remote accepts exactly one of them. A claim whose push is
+rejected, or finds origin already at its commit, lost the race.
 
-Capacity is read from git only: an order holds a slot from its claim until a release
-event or until its order file lands on `main`.
+Capacity uses the board's lifecycle derivation (git plus PR reality through `GitHubPort`):
+an order holds a slot while it is claimed, in review, accepted or rejected. A release
+event or a PR closed unmerged releases it; landing on `main` or a merged PR ends it.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+from factory.api import GitHubPort, OrderState
 from factory.bus.models import Claim, Release, WorkOrder
 from factory.bus.store import BusError, load_file
 from factory.config.settings import Settings
+from factory.github.rest import GitHubError
+from factory.lifecycle.derive import derive_order
 from factory.lifecycle.view import BusView, OrderRecord, load_messages, load_view
 from factory.orders import git
 from factory.orders.errors import External, Refused, Usage
 from factory.orders.messages import build, path_of, to_yaml, utc_stamp
 from factory.orders.paths import overlapping
+
+ACTIVE_STATES = frozenset(
+    {OrderState.CLAIMED, OrderState.IN_REVIEW, OrderState.ACCEPTED, OrderState.REJECTED}
+)
 
 
 @dataclass(frozen=True)
@@ -30,6 +39,7 @@ class Pushed:
     branch: str
     sha: str
     path: str
+    notes: list[str] = field(default_factory=list)
 
 
 def fetch_or_fail(repo: Path) -> None:
@@ -39,9 +49,21 @@ def fetch_or_fail(repo: Path) -> None:
         raise External(f"cannot reach origin: {exc}") from exc
 
 
-def push_or_fail(repo: Path, sha: str, branch: str, *, lost: str) -> None:
+def push_or_fail(
+    repo: Path,
+    sha: str,
+    branch: str,
+    *,
+    lost: str,
+    first_writer: bool = True,
+    advance: bool = True,
+) -> list[str]:
+    """Push `sha` to origin `branch`, then (`advance`) local `branch`; returns caller notes.
+
+    No local ref moves unless the push landed.
+    """
     try:
-        git.push(repo, sha, branch)
+        git.push(repo, sha, branch, first_writer=first_writer)
     except git.PushRejected as exc:
         try:
             git.fetch(repo)
@@ -50,6 +72,8 @@ def push_or_fail(repo: Path, sha: str, branch: str, *, lost: str) -> None:
         raise Refused(lost) from exc
     except git.GitError as exc:
         raise External(f"push to origin failed: {exc}") from exc
+    note = git.advance_local_branch(repo, branch, sha) if advance else None
+    return [note] if note else []
 
 
 def waiting_prompts(view: BusView, order: WorkOrder) -> list[str]:
@@ -91,9 +115,8 @@ def issue_order(repo: Path, settings: Settings, order_id: str) -> Pushed:
     sha = git.commit_files(
         repo, base, {relative: (repo / relative).read_bytes()}, f"order: {order_id}"
     )
-    push_or_fail(repo, sha, branch, lost=f"{order_id} was issued by someone else first")
-    git.advance_local_branch(repo, branch, sha)
-    return Pushed(order_id=order_id, branch=branch, sha=sha, path=relative)
+    notes = push_or_fail(repo, sha, branch, lost=f"{order_id} was issued by someone else first")
+    return Pushed(order_id=order_id, branch=branch, sha=sha, path=relative, notes=notes)
 
 
 def _issued(view: BusView, order_id: str) -> OrderRecord:
@@ -105,8 +128,19 @@ def _issued(view: BusView, order_id: str) -> OrderRecord:
     return record
 
 
-def holds_slot(record: OrderRecord) -> bool:
-    return record.one(Claim) is not None and record.one(Release) is None and not record.on_main
+def active_orders(
+    view: BusView, github: GitHubPort, settings: Settings, now: datetime, *, besides: str
+) -> list[OrderRecord]:
+    """Orders other than `besides` that hold a slot, by the board's lifecycle derivation."""
+    try:
+        return [
+            record
+            for order_id, record in sorted(view.orders.items())
+            if order_id != besides
+            and derive_order(record, view, github, settings, now).state in ACTIVE_STATES
+        ]
+    except GitHubError as exc:
+        raise External(f"cannot read pull requests to count active orders: {exc}") from exc
 
 
 def _append(repo: Path, record: OrderRecord, relative: str, content: bytes, subject: str) -> str:
@@ -119,6 +153,7 @@ def claim_order(
     settings: Settings,
     order_id: str,
     *,
+    github: GitHubPort,
     actor_model: str | None,
     worker_runtime: str,
     now: datetime,
@@ -138,7 +173,7 @@ def claim_order(
     _refuse_if_waiting(view, record.order)
     if record.blocker_questions() and order_id not in view.answered_orders():
         raise Refused(f"{order_id} waits on the governor: {record.blocker_questions()[0]}")
-    active = [r for r in view.orders.values() if r.order_id != order_id and holds_slot(r)]
+    active = active_orders(view, github, settings, now, besides=order_id)
     cap = settings.concurrency_cap
     if len(active) >= cap:
         names = ", ".join(sorted(r.order_id for r in active))
@@ -164,9 +199,10 @@ def claim_order(
     )
     relative = path_of(claim, settings)
     sha = _append(repo, record, relative, to_yaml(claim), f"claim: {order_id}")
-    push_or_fail(repo, sha, record.branch, lost=f"{order_id} was claimed by someone else first")
-    git.advance_local_branch(repo, record.branch, sha)
-    return Pushed(order_id=order_id, branch=record.branch, sha=sha, path=relative)
+    notes = push_or_fail(
+        repo, sha, record.branch, lost=f"{order_id} was claimed by someone else first"
+    )
+    return Pushed(order_id=order_id, branch=record.branch, sha=sha, path=relative, notes=notes)
 
 
 def release_order(
@@ -200,6 +236,5 @@ def release_order(
         raise Usage("not a release event")
     relative = path_of(release, settings)
     sha = _append(repo, record, relative, to_yaml(release), f"release: {order_id}")
-    push_or_fail(repo, sha, record.branch, lost=f"{order_id} moved on origin; try again")
-    git.advance_local_branch(repo, record.branch, sha)
-    return Pushed(order_id=order_id, branch=record.branch, sha=sha, path=relative)
+    notes = push_or_fail(repo, sha, record.branch, lost=f"{order_id} moved on origin; try again")
+    return Pushed(order_id=order_id, branch=record.branch, sha=sha, path=relative, notes=notes)

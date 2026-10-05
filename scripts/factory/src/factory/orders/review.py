@@ -46,6 +46,7 @@ class HandoffResult:
     run_complete_written: bool
     gates_passed: list[str] = field(default_factory=list)
     gates_not_enforced: list[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
 
 
 def _order_dir(settings: Settings, order_id: str) -> str:
@@ -53,11 +54,20 @@ def _order_dir(settings: Settings, order_id: str) -> str:
 
 
 def _branch_ref(repo: Path, order_id: str) -> str:
-    """Local `wo/<id>` when present (it may hold unpushed work), else origin's."""
+    """Local `wo/<id>` (it may hold unpushed work) unless origin's is strictly ahead of it.
+
+    Order commands leave a checked-out branch behind origin, so a local branch that is an
+    ancestor of origin's carries nothing new and origin's tip is the base to build on.
+    """
     branch = git.order_branch(order_id)
-    for ref in (f"refs/heads/{branch}", git.remote_ref(branch)):
-        if git.rev_parse(repo, ref):
-            return ref
+    local, remote = f"refs/heads/{branch}", git.remote_ref(branch)
+    local_sha, remote_sha = git.rev_parse(repo, local), git.rev_parse(repo, remote)
+    if local_sha and remote_sha and git.is_ancestor(repo, local_sha, remote_sha):
+        return remote
+    if local_sha:
+        return local
+    if remote_sha:
+        return remote
     raise Refused(f"{order_id} is not issued (no wo/{order_id} branch)")
 
 
@@ -151,7 +161,9 @@ def handoff_order(repo: Path, settings: Settings, order_id: str, *, now: datetim
         q.question for q in handoff.open_questions if q.question_class == "blocker_governor"
     ]
     if questions:
-        push_or_fail(repo, head, branch, lost=f"origin {branch} moved; pull and retry")
+        push_or_fail(
+            repo, head, branch, lost=f"origin {branch} moved; pull and retry", first_writer=False
+        )
         raise Refused(
             "Waiting on the governor:\n" + "\n".join(f"- {q}" for q in questions),
             details={"questions": questions},
@@ -184,9 +196,10 @@ def handoff_order(repo: Path, settings: Settings, order_id: str, *, now: datetim
             {relative: to_yaml(event, keep_none=("cost_usd",))},
             f"run-complete: {order_id}",
         )
-        git.advance_local_branch(repo, branch, sha)
         written = True
-    push_or_fail(repo, sha, branch, lost=f"origin {branch} moved; pull and retry")
+    notes = push_or_fail(
+        repo, sha, branch, lost=f"origin {branch} moved; pull and retry", first_writer=written
+    )
     return HandoffResult(
         order_id=order_id,
         sha=sha,
@@ -194,6 +207,7 @@ def handoff_order(repo: Path, settings: Settings, order_id: str, *, now: datetim
         run_complete_written=written,
         gates_passed=passed,
         gates_not_enforced=skipped,
+        notes=notes,
     )
 
 
@@ -225,7 +239,9 @@ def open_pr(repo: Path, settings: Settings, github: GitHubPort, order_id: str) -
     record = _record(repo, settings, ref, order_id)
     branch = git.order_branch(order_id)
     sha = git.git_text(repo, "rev-parse", ref)
-    push_or_fail(repo, sha, branch, lost=f"origin {branch} moved; pull and retry")
+    push_or_fail(
+        repo, sha, branch, lost=f"origin {branch} moved; pull and retry", first_writer=False
+    )
     try:
         existing = [pr for pr in github.list_prs_by_head(branch) if pr.open]
         if existing:
@@ -253,8 +269,10 @@ def _load_verdict(path: Path, settings: Settings) -> tuple[Verdict, bytes]:
     return message, content
 
 
-def record_verdict(repo: Path, settings: Settings, order_id: str, file: Path) -> tuple[str, str]:
-    """Validate family + isolation inputs and commit the verdict; returns (path, sha)."""
+def record_verdict(
+    repo: Path, settings: Settings, order_id: str, file: Path
+) -> tuple[str, str, list[str]]:
+    """Validate family + isolation inputs and commit the verdict; returns (path, sha, notes)."""
     verdict, content = _load_verdict(file, settings)
     if order_id_of(verdict.id) != order_id:
         raise Refused(f"the verdict is for {order_id_of(verdict.id)}, not {order_id}")
@@ -288,9 +306,8 @@ def record_verdict(repo: Path, settings: Settings, order_id: str, file: Path) ->
         raise Refused(f"{relative} is already recorded; number the next verdict")
     sha = git.commit_files(repo, base, {relative: content}, f"verdict: {verdict.id}")
     branch = git.order_branch(order_id)
-    push_or_fail(repo, sha, branch, lost=f"origin {branch} moved; pull and retry")
-    git.advance_local_branch(repo, branch, sha)
-    return relative, sha
+    notes = push_or_fail(repo, sha, branch, lost=f"origin {branch} moved; pull and retry")
+    return relative, sha, notes
 
 
 def _bus_relative(repo: Path, settings: Settings, given: Path) -> str:
@@ -338,7 +355,9 @@ def open_bus_pr(
         raise Refused(f"{branch} already exists on origin")
     base = git.git_text(repo, "rev-parse", main)
     sha = git.commit_files(repo, base, contents, f"bus: {slug}")
-    push_or_fail(repo, sha, branch, lost=f"{branch} was created by someone else first")
+    push_or_fail(
+        repo, sha, branch, lost=f"{branch} was created by someone else first", advance=False
+    )
     body = "Bus messages:\n" + "\n".join(f"- `{r}`" for r in sorted(contents)) + "\n"
     try:
         return github.create_pr(branch, git.MAIN, f"bus: {slug}", body)
