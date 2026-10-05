@@ -48,7 +48,7 @@ Every red fails by assertion (`let the violation through`, `blocked a clean chan
 - **W6.** A test file's collection error on base interrupts the whole base run, so sibling tests read "not collected on base". In the first run about 150 accepted Slice B tests were hit.
 - **W7.** `from <package> import <module the PR adds>` reads as "base broken", not red.
 
-The seam test now imports inside the test body, so this PR does not trip either bug. See `PR_REVIEW_SLICE_B.md` § Triage. No tests for W6 or W7 yet; they wait on triage.
+The seam test now imports inside the test body, so this PR does not trip either bug. See `PR_REVIEW_SLICE_B.md` § Triage. Triaged by the orchestrator as one root cause (§J). There is one parametrized regression test, `tests/unit/gates/drift/test_red_first_base_errors.py`, with 2 red cases; the fix is T106. The T\* review is held for round 4, after the Slice A merge and the fixture amendment.
 
 ## Implementation (phase 2)
 

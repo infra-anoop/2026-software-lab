@@ -91,6 +91,7 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 **Checkpoint**: `factory status` shows real orders; T017–T020 green.
 
 - [ ] T105 [US1] Slice A follow-up to the Slice B PR review (`checks` kinds, orchestrator 2026-10-05, `bus/orders/wo-20261004-factory-slice-b/amendment-06.yaml`): in `scripts/factory/src/factory/lifecycle/derive.py`, a registered gate id in an order's `checks` needs its own green `factory/<gate-id>` status (or a counted override). A catalog row id is satisfied by the `factory/catalog-test-linkage` status, which judges catalog rows. Test first in `scripts/factory/tests/unit/test_lifecycle.py`. Wave 1 orders carry gate ids only, so this must land before the first order whose `checks` names a catalog row
+- [ ] T106 [US3] Slice B fix (W6 + W7, one root cause, orchestrator 2026-10-05, §J): `red-first-proof` attributes base-side collection and import errors to their own tests. A sibling file failing import on base must not leave other tests "not collected", and `from pkg import mod` for a module the PR adds is red, not "base broken". The regression test is `scripts/factory/tests/unit/gates/drift/test_red_first_base_errors.py` (2 cases, red); the fix is in `scripts/factory/src/factory/gates/drift/red_first.py`
 
 ---
 
