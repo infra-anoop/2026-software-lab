@@ -130,3 +130,18 @@ Recorded 2026-10-05 by the Slice C worker on the orchestrator's instruction, aga
 **Disclosed for the narrow confirmation:** D7's Wave 2 sealed run executes head tests inside the status-writing job. It is consistent with D5 only if no credential is reachable from the sandbox, which T104 must prove by test (PLAN_DELTA § Round 2, H3). Pinning assumes GitHub attributes `GITHUB_TOKEN` commit statuses to the GitHub Actions integration; T103 step 4 verifies this live (M5).
 
 **Next:** narrow P* confirmation of this round (P9 and P12 contract text, the D6 sequence, and the D7 wording and Wave 2 shape against D5). Then red tests T094–T095 and the T* review (T096).
+
+### Confirmation (round 2)
+
+**Decision: `Do not approve architecture yet`.** P9, P12, D6, and D7's Wave 1 wording are resolved. The remaining blocker is T104's Wave 2 shape: process/container isolation inside the job that owns `statuses: write` is not the letter separation D5 locked, and its failure mode gives hostile head code the merge credential. Keep the sealed parent-owned result, but run the child in a separate job with no status-write permission; let the status-writing job consume only the parent-recorded result as hostile data.
+
+| ID | Severity | Tag | Confirmation |
+|----|----------|-----|--------------|
+| P15 | Nit | arch | **P9 confirmed:** every required `factory/*` context is source-pinned to GitHub Actions; the snapshot stores the app id, the drift gate asserts every context, and D8 removes `statuses: write` from factory-controlled non-CI identities. |
+| P16 | Nit | arch | **P12 confirmed:** exact triggering run id, repository and artifact name are contractual; zero/multiple bundles fail closed; the trusted runner is fresh and cache restore/save is banned; T094 names the tests and T097 the implementation. |
+| P17 | Nit | process | **D6 confirmed:** T101/T103/CP2 encode merge C → freeze → non-merging probe → pin/require → live verification → reopen; a recorded procedural freeze is acceptable for this one-off bootstrap at solo scale because failure keeps the freeze closed. |
+| P18 | Nit | product | **D7 Wave 1 confirmed:** `self-reported:` is mandatory on every red-first status, FR-012 names the independent T* re-run as proof of record, and the weaker CI claim is explicit rather than disguised. |
+| P19 | Blocker | arch | **D7 Wave 2 rejected as shaped:** T104 runs hostile head code inside the job holding `statuses: write`; move the sealed runner and runner-owned outcome capture to a separate job with no status-write permission, then have the privileged publisher validate that exact job/run result without executing head code. |
+| P20 | Later | arch | **Residuals accepted as recorded:** source attribution is verified live with a fail-closed check-run amendment fallback; App `checks: write` cannot satisfy an Actions-pinned requirement; fork PRs remain an explicitly accepted same-repository limitation. |
+
+The current D6 sequence is operationally proportionate: the window is short, no other actor is expected to merge, the probe never merges, and T103 records and audits the interval. It must remain a bootstrap exception, not a reusable substitute for mechanical protection.
