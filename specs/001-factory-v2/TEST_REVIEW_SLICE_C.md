@@ -211,3 +211,42 @@ Recorded 2026-10-04. T-C2-1 is a product Blocker, locked by the governor (option
 | Stale doc | fixed | orchestrator (process) | The `research.md` "Editor hooks (FR-022)" decision block now describes the amended design. The `factory-hook` console script runs through `.cursor/hooks/factory-hook.sh`: venv first, with `uv run` as the fallback. `spawn-guard` on `subagentStart` is log-only, `owned-path-warn` uses `postToolUse` with `Write\|Delete`, and `decision-in-chat` uses `stop` → `followup_message` |
 
 **Owned paths (amend-02).** Adds `specs/001-factory-v2/spec.md` (only the FR-008 line) and `specs/001-factory-v2/research.md` (only the hooks decision block). It widens the line scope of the already-owned `acceptance.md` by the `handoff.concurrency_cap` shall cell and one change-log row; Slice B edits the header lines and Slice A the evidence cells. The T057 wording in `tasks.md` (owned since amend-01) now names the `Write|Delete` matcher and calls spawn-guard log-only.
+
+## Round 3 review
+
+Reviewed `wo/wo-20261004-factory-slice-c` at `cd1132c8eb0abe161f5690e2f7cdf28c1e7a628f`.
+
+### Verdict
+
+**Verdict: accept — the round-2 findings are resolved and Slice C implementation is unblocked.**
+
+The governor's log-only lock is represented consistently in FR-008, the acceptance catalog, the hooks contract, the research decision, and tests that assert allow-plus-log behavior without claiming visibility. The tighter warm-time oracle is gone, `Delete` receives the same owned-path coverage as `Write`, and workflow conditions are narrowed to the two never-skipping forms. The authoritative claim and CI refusal tests were not changed.
+
+### Findings
+
+| ID | Severity | Tag | Lens | Locus | Finding |
+|----|----------|-----|------|-------|---------|
+| T-C3-1 | Nit | process | Strength / lock fidelity | Round-2 remediation set | Strength: T-C2-1 through T-C2-4 are resolved exactly as triaged. The focused and full red-first counts reproduce, with no collection errors or xfails, and the lint, format, and schema checks are clean. |
+
+### Round-2 resolution check
+
+| Finding | Round-3 judgment |
+|---------|------------------|
+| T-C2-1 | **Resolved.** Spawn tests are named `allows_and_logs` / `allows_without_log`, always require `permission: "allow"`, and make no visibility claim. There is no `preToolUse` `agent_message` assertion. FR-008 changed only on its requirement line and carries the exact Hooks-output wording plus the governor note. The catalog shall cell and change log, hooks contract, and research block agree. Claim-at-cap and no-valid-claim CI tests are unchanged. |
+| T-C2-2 | **Resolved.** `WARM_BUDGET_SECONDS` and the hard 150 ms assertion are absent. Offline behavior, import isolation, CLI parity, and the exact-command median-of-five 300 ms check remain. |
+| T-C2-3 | **Resolved.** The registration oracle requires an anchored matcher that matches exactly `Write` and `Delete`. Inside/outside tests exercise both payload shapes, adding the two expected `Delete` cases. |
+| T-C2-4 | **Resolved.** The gate oracle allows no condition, `always()`, or `!cancelled()` (bare or expression-wrapped), and rejects representative skipping conditions. The board-before-gate or never-skipping-condition rule remains. |
+
+### Verification record
+
+| Check | Result |
+|-------|--------|
+| Reviewed head | `cd1132c8eb0abe161f5690e2f7cdf28c1e7a628f` |
+| Locked sync | PASS — `nix develop ../.. -c uv sync --locked` |
+| Slice C focused suite | Expected RED — **254 failed / 0 passed** in 110.41 s; no collection errors or xfails |
+| Full suite | Expected RED — **370 failed / 237 passed** in 164.47 s; no collection errors or xfails |
+| `nix develop ../.. -c uv run ruff check .` | PASS |
+| `nix develop ../.. -c uv run ruff format --check .` | PASS — 43 files already formatted |
+| `nix develop ../.. -c uv run factory check schema --repo ../..` | PASS — `schema ok`, including verdict-03 |
+| Authoritative refusal tests | PASS — `test_claim_refuses_at_cap` and `test_cap_blocks_pr_without_claim` are unchanged by round 2 |
+| Worktree setup | No `.cursor/worktrees.json` in either repository root or worktree; setup skipped after both checks |
