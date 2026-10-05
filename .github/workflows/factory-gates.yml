@@ -2,8 +2,8 @@
 # Factory gates (specs/001-factory-v2)
 # ------------------------------------------------------------------------------
 # factory-tests: the factory's own test suite (own uv project at scripts/factory).
-# factory-gates: runs every registered gate on the PR. Placeholder until CP2, when
-#   it becomes authoritative and posts one `factory/<gate-id>` status per gate.
+# factory-gates: runs every registered CI gate on the PR, posts one `factory/<gate-id>`
+#   commit status per gate, and writes the board to the job summary.
 # ------------------------------------------------------------------------------
 
 name: "Factory gates"
@@ -45,6 +45,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+      statuses: write
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -60,6 +61,9 @@ jobs:
         run: uv sync --locked --project scripts/factory
 
       - name: factory gate run
-        # Placeholder until CP2 (slice C, T059): step-level so the check stays green while `gate run` exits 3.
-        continue-on-error: true
+        # Authoritative: one `factory/<gate-id>` commit status per gate; any failure fails the job.
         run: uv run --project scripts/factory factory gate run --pr ${{ github.event.number }}
+
+      - name: Board in job summary
+        if: ${{ !cancelled() }}
+        run: uv run --project scripts/factory factory status >> "$GITHUB_STEP_SUMMARY"
