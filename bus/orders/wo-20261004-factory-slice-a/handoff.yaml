@@ -1,0 +1,31 @@
+# FR-037 bootstrap handoff, recorded 2026-10-05 (orchestrator decision for all slices). The full
+# handoff, with commands, results, red-first pairs, the PR #20 fixes and the accepted-test changes,
+# is the Markdown file in refs.
+schema_version: 1
+kind: handoff
+id: wo-20261004-factory-slice-a.handoff
+created: 2026-10-05T18:30:00Z
+actor: worker
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/packets/2026-10-04-factory-v2-slice-a.handoff.md
+  - "FR-037 bootstrap"
+summary: |
+  Slice A: GitHub REST adapter, lifecycle derivation, board (`factory status`, `decisions`),
+  order commands (order new/issue, claim, release, handoff, pr open, verdict, bus pr), scorecard,
+  identity adapter and App token minting, and the `tooling:` secret names. PR #20 review fixes
+  (ref-only git, PR-aware capacity, SC-013 Wave 1 exit, porcelain push outcomes) are in phase 2
+  on the PR-fix tests accepted at ccb0b1a. Full detail in
+  notes/packets/2026-10-04-factory-v2-slice-a.handoff.md.
+deviations:
+  - what: handoff skips registered gates whose entrypoint is not importable yet
+    why: fail-closed would turn the accepted exit-0 handoff tests red until Slices B and C land
+    conservative_choice: every importable P1 gate runs, not just the order's checks; skipped gates are printed and returned as gates_not_enforced; CI factory-gates stays the authority
+  - what: scorecard `--sprint` scopes order-derived metrics only
+    why: an order's `refs` place it in a sprint; main-derived metrics carry no such link
+    conservative_choice: decision points, governor minutes, corrections and bookkeeping commits stay repo-wide
+  - what: bootstrap order size_minutes is 1, not the true multi-hour size
+    why: the schema caps size_minutes at the 60-minute horizon; the slice predates orders
+    conservative_choice: true size stated in the order's refs; scorecard dates corrected in the retro
+author_model: claude-opus-5.5
