@@ -9,17 +9,25 @@ only if the file exists at head and holds a case with `id == <case-id>`. YAML/JS
 top-level list, or a `cases:` list, of mappings with `id`; JSONL: one object per line
 with `id`. No `#`, an absolute path, or a `..` segment is malformed. Markdown backticks
 around an evidence value are presentation and are ignored.
+
+Eval files fail closed (T-B2-2, orchestrator 2026-10-05): the file is read as the git
+blob at head, never from the checkout. A tracked symlink (mode 120000) blocks wherever
+it points. Malformed YAML, JSON or JSONL (any bad line), a wrong top-level shape, a
+`cases` value that is not a list, and any entry that is not a mapping with `id` block,
+even when the requested case is otherwise present.
 """
 
 from __future__ import annotations
 
 import json
+import os
+from pathlib import Path
 
 import pytest
 import yaml
 
 from factory.api import GateContext
-from tests.fixtures.repo_builder import RepoBuilder
+from tests.fixtures.repo_builder import BaseHeadPair, RepoBuilder
 from tests.unit.gates.drift.helpers import (
     ORDER_ID,
     amendment_for,
@@ -194,6 +202,68 @@ def test_blocks_malformed_eval_reference(repo: RepoBuilder, reference: str) -> N
     """Each path form would resolve to the real case if it were followed."""
     evidence = reference.format(root=repo.path, name=repo.path.name)
     assert_blocks(GATE, eval_ctx(repo, evidence), "demo.adds")
+
+
+def test_eval_file_is_read_from_the_head_blob_not_the_checkout(repo: RepoBuilder) -> None:
+    """Tracked at head without the case; the checkout's copy holds it."""
+    head_text = yaml.safe_dump([{"id": "adds-large"}])
+    ctx = eval_ctx(repo, f"eval:{EVAL_PATH}#adds-small", {EVAL_PATH: head_text})
+    repo.write(EVAL_PATH, EVAL_TEXT)
+    assert_blocks(GATE, ctx, "demo.adds")
+
+
+LINK_PATH = "apps/demo/evals/linked.yaml"
+
+
+@pytest.mark.parametrize("target", ["inside", "outside"])
+def test_blocks_eval_file_tracked_as_a_symlink(
+    repo: RepoBuilder, tmp_path: Path, target: str
+) -> None:
+    """Both targets hold the requested case; the checkout is left on head so a
+    checkout read would follow the link."""
+    if target == "outside":
+        outside = tmp_path / "outside" / "golden.yaml"
+        outside.parent.mkdir()
+        outside.write_text(EVAL_TEXT, encoding="utf-8")
+        link_target = str(outside)
+    else:
+        link_target = Path(EVAL_PATH).name
+    base_sha = eval_ctx(repo, f"eval:{LINK_PATH}#adds-small").base_sha
+    repo.checkout(f"wo/{ORDER_ID}")
+    os.symlink(link_target, repo.path / LINK_PATH)
+    head_sha = repo.commit("symlinked eval file")
+    repo.push()
+    assert repo.git("ls-tree", head_sha, LINK_PATH).startswith("120000 ")
+    pair = BaseHeadPair(base_sha, head_sha, f"wo/{ORDER_ID}")
+    assert_blocks(GATE, order_ctx(repo, pair), "demo.adds")
+
+
+ADDS_SMALL = {"id": "adds-small"}
+BAD_EVAL_FILES = {
+    "yaml-syntax": ("golden.yaml", "- id: adds-small\n  input: [2, 2\n"),
+    "json-syntax": ("golden.json", '[{"id": "adds-small", "input": [2, 2]},]'),
+    "jsonl-one-bad-line": ("golden.jsonl", '{"id": "adds-small"}\n{"id": "adds-large",\n'),
+    "yaml-empty": ("golden.yaml", ""),
+    "yaml-scalar": ("golden.yaml", "adds-small\n"),
+    "yaml-mapping-without-cases": ("golden.yaml", yaml.safe_dump({"adds-small": {"input": 1}})),
+    "json-single-mapping": ("golden.json", json.dumps(ADDS_SMALL)),
+    "jsonl-line-not-an-object": ("golden.jsonl", '{"id": "adds-small"}\n["adds-large"]\n'),
+    "yaml-cases-mapping": ("golden.yaml", yaml.safe_dump({"cases": {"adds-small": {}}})),
+    "json-cases-string": ("golden.json", json.dumps({"cases": "adds-small"})),
+    "yaml-entries-strings": ("golden.yaml", yaml.safe_dump(["adds-small", "adds-large"])),
+    "json-cases-mixed-entries": ("golden.json", json.dumps({"cases": [ADDS_SMALL, "adds-large"]})),
+    "yaml-entry-without-id": ("golden.yaml", yaml.safe_dump([ADDS_SMALL, {"name": "adds-large"}])),
+    "jsonl-line-without-id": ("golden.jsonl", '{"id": "adds-small"}\n{"name": "adds-large"}\n'),
+}
+
+
+@pytest.mark.parametrize("form", list(BAD_EVAL_FILES))
+def test_blocks_malformed_or_wrong_shape_eval_file(repo: RepoBuilder, form: str) -> None:
+    """Every non-empty file mentions `adds-small`, so a parser that skips what it cannot
+    read would find it."""
+    name, text = BAD_EVAL_FILES[form]
+    path = f"apps/demo/evals/{name}"
+    assert_blocks(GATE, eval_ctx(repo, f"eval:{path}#adds-small", {path: text}), "demo.adds")
 
 
 def test_planned_row_outside_the_orders_checks_passes(repo: RepoBuilder) -> None:

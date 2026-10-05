@@ -3,8 +3,18 @@
 `order-fidelity-declared`: every named lock the effective order's owned paths or goal
 touch has a Lock entry. The demo feature's locked letter decision D1 (host = Railway)
 is touched by task T002, which is tagged `[OD:D1]` and names `deploy/railway/demo.toml`.
-A goal touches D1 when it names the decision id or its locked value (`Railway`, the bold
-value in D1's status cell) as a whole word; `D10` and `trailways` do not (T-B1).
+A goal touches D1 when it names the decision id or one of its lock tokens as a whole
+word; `D10` and `trailways` do not (T-B1).
+
+Lock tokens (T-B2-1, orchestrator 2026-10-05). Each bold span in a locked (or re-locked)
+row's status cell is an independent token, matched as a whole phrase, case-insensitively,
+on word boundaries; a multiword span is never split into words. These spans are not
+tokens: purely numeric or unit-only spans (`3`, `70%`, `$10`, `60 minutes`), spans
+shorter than 3 characters, single generic words (`yes`, `no`, `on`, `off`, `all`,
+`none`), and the leading status keyword (`locked`, `re-locked`). Links, dates, code
+spans and plain prose in the cell are ignored. Numeric locks are discovered only by
+their OD id. Known limitation: a goal that changes a numeric lock without naming its id
+goes undiscovered here (`lock.letter-tokens` still checks declared locks).
 
 `lock.letter-tokens`: for each `fidelity: letter` lock, the PR's code lines honor
 every token, no registered substitute appears in added code, and no token is removed
@@ -133,6 +143,136 @@ def test_declared_goal_near_miss_does_not_touch_the_lock(repo: RepoBuilder, goal
         repo, goal=goal, tasks=["T001"], owned_paths=["apps/demo/app/calc.py"], locks=[]
     )
     assert_passes(DECLARED, ctx)
+
+
+SPEC = "specs/demo-feature/spec.md"
+D1_ENTRY: dict[str, Any] = {"id": "D1", "letter_tokens": [], "fidelity": "intent"}
+STATUS_CELLS = {
+    # specs/001-factory-v2/spec.md D2: one numeric value.
+    "factory-D2": (
+        "**locked** (2026-10-03) — **70%** of mutants killed on changed lines; tune at"
+        " post-mortem from override counts"
+    ),
+    # specs/smart-writer-v2/spec.md D2: several numeric values.
+    "smart-writer-D2": (
+        "**locked** (2026-09-20) — max **3** write jobs / conversation; max **10** clarify"
+        " turns / conversation; max **8** inner writer↔assessor turns / write job. Fail"
+        " closed when hit."
+    ),
+    # specs/002-swv2-durable-evals/spec.md D6: a currency value.
+    "durable-evals-D6": (
+        "**locked** (2026-10-03) — **$10** per model-change PR; beyond that the run waits"
+        " for governor approval"
+    ),
+    # specs/002-swv2-durable-evals/spec.md D4: provider/family values, re-locked, with
+    # code spans, plain-prose providers, a date and a link.
+    "durable-evals-D4": (
+        "**re-locked** (2026-10-03, governor) — **OpenAI** judges (judge + support"
+        " checker); the **writer is Anthropic**; bake-off writer candidates exclude"
+        " OpenAI. Vault/CI key for the writer side: `ANTHROPIC_API_KEY` (production,"
+        " staging, eval CI); `OPENAI_API_KEY` stays (judge in eval CI). Superseded lock"
+        " (2026-10-03): Google Gemini judges, writer candidates exclude Gemini. Reconcile"
+        " → [`PLAN_DELTA.md`](./PLAN_DELTA.md)"
+    ),
+    # specs/001-factory-v2/spec.md D4: a multiword identity/tool lock.
+    "factory-D4": (
+        "**locked** (2026-10-03) — **agents get their own GitHub App identity, set up"
+        " during Wave 1**; governor-only actions show as unverified until the App is live"
+    ),
+    # Synthetic: generic, short and unit-only spans only.
+    "generic-spans": (
+        "**locked** (2026-10-05) — **all** rows; **no** retries; **on** by default;"
+        " **CI** only; **60 minutes** at most"
+    ),
+}
+
+GOALS_TOUCHING_THE_ROW = pytest.mark.parametrize(
+    ("shape", "goal"),
+    [
+        ("factory-D2", "Raise the D1 mutation threshold after the post-mortem."),
+        ("smart-writer-D2", "Lower the D1 write-job cap to 2 per conversation."),
+        ("durable-evals-D6", "Raise the D1 budget for model-change PRs."),
+        ("durable-evals-D4", "Route the judge through OpenAI."),
+        ("durable-evals-D4", "route the judge through openai."),
+        ("durable-evals-D4", "Confirm the writer is Anthropic in settings."),
+        ("factory-D4", "Make sure agents get their own GitHub App identity, set up during Wave 1."),
+        ("factory-D4", "Finish the D1 identity work."),
+        ("generic-spans", "Settle D1 before Friday."),
+    ],
+    ids=[
+        "numeric-by-id",
+        "numerics-by-id",
+        "currency-by-id",
+        "provider-span",
+        "provider-span-lowercase",
+        "multiword-provider-span",
+        "multiword-identity-span",
+        "identity-by-id",
+        "generic-row-by-id",
+    ],
+)
+
+
+def row_ctx(repo: RepoBuilder, shape: str, goal: str, locks: list[dict[str, Any]]) -> GateContext:
+    """D1's status cell on base is the real cell `shape`; tasks and owned paths miss D1."""
+    repo.add_demo_feature()
+    spec = (repo.path / SPEC).read_text(encoding="utf-8")
+    row = next(line for line in spec.splitlines() if line.startswith("| **D1** |"))
+    cells = row.split(" | ")
+    cells[5] = STATUS_CELLS[shape]
+    data = order_for(goal=goal, tasks=["T001"], owned_paths=["apps/demo/app/calc.py"], locks=locks)
+    pair = order_pair(repo, {SPEC: spec.replace(row, " | ".join(cells))}, {}, data)
+    return order_ctx(repo, pair)
+
+
+@GOALS_TOUCHING_THE_ROW
+def test_declared_blocks_a_goal_touching_a_real_row_shape(
+    repo: RepoBuilder, shape: str, goal: str
+) -> None:
+    assert_blocks(DECLARED, row_ctx(repo, shape, goal, locks=[]), "D1")
+
+
+@GOALS_TOUCHING_THE_ROW
+def test_declared_passes_a_goal_touching_a_real_row_shape_when_declared(
+    repo: RepoBuilder, shape: str, goal: str
+) -> None:
+    assert_passes(DECLARED, row_ctx(repo, shape, goal, locks=[D1_ENTRY]))
+
+
+@pytest.mark.parametrize(
+    ("shape", "goal"),
+    [
+        ("factory-D2", "Lower the mutation threshold to 60% of mutants."),
+        ("smart-writer-D2", "Run the calc.py suite on 3 workers."),
+        ("smart-writer-D2", "Retry 10 times, 8 seconds apart."),
+        ("durable-evals-D6", "Spend at most $10 on the calc.py evals."),
+        ("durable-evals-D4", "Ask the writer to cite Anthropic docs."),
+        ("durable-evals-D4", "Wrap the OpenAIClient in calc.py."),
+        ("durable-evals-D4", "Drop Gemini and rotate ANTHROPIC_API_KEY."),
+        ("durable-evals-D4", "Update PLAN_DELTA.md after the 2026-10-03 review."),
+        ("factory-D4", "Set up the GitHub App identity for the demo during Wave 1."),
+        ("factory-D4", "Keep the locked rows untouched."),
+        ("generic-spans", "Use all of it; no retries; turn it on in CI within 60 minutes."),
+    ],
+    ids=[
+        "numeric-value-without-id",
+        "numeric-in-prose",
+        "numerics-in-prose",
+        "currency-in-prose",
+        "multiword-span-split",
+        "provider-inside-a-word",
+        "plain-prose-and-code-span",
+        "link-and-date",
+        "words-of-a-multiword-span",
+        "status-keyword",
+        "generic-short-and-unit-spans",
+    ],
+)
+def test_declared_goal_missing_every_token_of_a_real_row_passes(
+    repo: RepoBuilder, shape: str, goal: str
+) -> None:
+    """The first case is the recorded limitation: numeric locks need their OD id."""
+    assert_passes(DECLARED, row_ctx(repo, shape, goal, locks=[]))
 
 
 def test_declared_judges_the_effective_order_after_amendments(repo: RepoBuilder) -> None:

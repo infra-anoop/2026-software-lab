@@ -179,3 +179,22 @@ T-B2, T-B3, T-B4, T-B6, and T-B7 are resolved in executable assertions, and the 
 | Eval valid layouts | YAML list, YAML `cases`, JSON list, JSON `cases`, JSONL all present |
 | Frozen CP0 files | PASS — no round-1 remediation changed a frozen CP0 file |
 | Diff hygiene | PASS — `git diff --check 7ec3c23..21fc8e3` |
+
+## Triage (round 2)
+
+Both findings are process-tagged and were adjudicated by the **orchestrator on 2026-10-05**. Bus: `wo-20261004-factory-slice-b.verdict-02` (this review) and `.amend-02` (this triage; owned paths unchanged from amend-01 and restated). Test changes land in the same commit as this section.
+
+| ID | Disposition | Decided by | Resolution |
+|----|-------------|------------|------------|
+| T-B2-1 | accept, with a pinned rule | orchestrator (process) | **Lock tokens.** Each bold span in a locked (or re-locked) row's status cell is an independent token. It matches as a whole phrase, case-insensitive, on word boundaries. A multiword span is never split into words. **Not tokens:** purely numeric or unit-only spans (`3`, `70%`, `$10`, `60 minutes`); spans shorter than 3 characters; single generic words (`yes`, `no`, `on`, `off`, `all`, `none`); and the leading status keyword (`locked`, `re-locked`). Links, dates, code spans and plain prose are ignored. Numeric locks are discovered only by their OD id. **Tests** (`test_fidelity.py`): D1's status cell is replaced by a real cell, copied verbatim from factory D2 (`70%`), Smart Writer D2 (`3`, `10`, `8`), durable-evals D6 (`$10`), durable-evals D4 (re-locked; `OpenAI`, `writer is Anthropic`, with code spans, plain-prose providers, a date and a link) and factory D4 (a multiword GitHub App identity phrase), plus a synthetic row of generic, short and unit spans. Nine touching goals each block with no D1 entry and pass with one. Eleven goals that miss every token pass, including "3 workers", "use all of it", a split multiword span, `OpenAIClient`, plain-prose `Gemini`, a code span, a link, a date and the word "locked" |
+| T-B2-2 | accept | orchestrator (process) | `test_catalog_linkage.py`: the eval file is read as the git blob at head. A file tracked at head without the case blocks even when the checkout's copy holds it. A tracked symlink (mode 120000, asserted) blocks whether its target is inside the repo or outside it; both targets hold the requested case, and the checkout is left on head. Fourteen malformed or wrong-shape files block, each still naming `adds-small` (except the empty one): YAML, JSON and JSONL syntax errors (one bad JSONL line among good ones); an empty file, a scalar, a mapping without `cases`, a single JSON mapping, and a JSONL line that is not an object; a `cases` value that is a mapping or a string; entries that are strings, or mixed; and an entry, or a JSONL line, without `id` beside a valid `adds-small` |
+| T-B2-3 | noted — strength | orchestrator (process) | Round-1 assertions are kept unchanged. 218 Slice B tests (46 new) fail on `AssertionError: gate … is not implemented` or the CLI exit code, with 0 errors and 0 xfail. The full suite is 334 failed / 237 passed (the 237 are unchanged) |
+
+**Known limitation (T-B2-1).** An order that changes a numeric lock without naming its OD id (for example "lower the mutation threshold to 60%") goes undiscovered by `order-fidelity-declared`. The test pins this as a pass. `lock.letter-tokens` still checks numeric tokens on declared locks. A machine-readable lock-token source is a **Wave 2 post-mortem candidate**; it is not built now.
+
+Test-shape choices a round-3 reviewer may debate (none changes a frozen CP0 interface):
+- **Status keyword.** The leading bold `locked` / `re-locked` is the row's status, not a value. It joins the generic stop list, so the goal "Keep the locked rows untouched." does not touch D1.
+- **Currency.** `$10` counts as numeric or unit-only.
+- **Locked rows.** A re-locked row is a locked row. Bold spans in waived or open rows are not pinned.
+- **Symlinks.** An in-repo target also blocks, because the rule is the tracked mode, not where the link points.
+- **One bad entry.** A bad entry blocks the whole file, even when the requested case is a valid entry.

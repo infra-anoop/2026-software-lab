@@ -1,0 +1,52 @@
+# Orchestrator triage of T* round 2 (wo-20261004-factory-slice-b.verdict-02, reject).
+# Recorded by the Slice B worker on the orchestrator's instruction (2026-10-05).
+# Both findings are process-tagged and adjudicated by the orchestrator.
+# Dispositions:
+#   T-B2-1 accept, pinned lock-token rule for Open Decisions status cells: every bold
+#        span in a locked (or re-locked) row's status cell is an independent token,
+#        matched as a whole phrase, case-insensitively, on word boundaries; multiword
+#        spans are never split. Not tokens: purely numeric or unit-only spans (3, 70%,
+#        $10, 60 minutes); spans under 3 characters; single generic words (yes, no, on,
+#        off, all, none) and the leading status keyword (locked, re-locked). Links,
+#        dates, code spans and plain prose are ignored. Numeric locks are discovered by
+#        their OD id only. Tests copy real cells: factory D2 and D4, Smart Writer D2,
+#        durable-evals D4 and D6; plus a synthetic generic-span row and the "3 workers" /
+#        "use all of it" guards.
+#        Known limitation: an order that changes a numeric lock without naming its OD id
+#        is not discovered by this gate. A machine-readable lock-token source is a Wave 2
+#        post-mortem candidate, not built now
+#   T-B2-2 accept: eval files are read as the git blob at the PR head, never the
+#        checkout; a tracked symlink (mode 120000) blocks, inside or outside the repo;
+#        malformed YAML / JSON / JSONL (any bad line), wrong top-level shape, non-list
+#        `cases`, and entries that are not mappings with `id` all block
+#   T-B2-3 noted: strength, no action
+# Owned paths are unchanged from amend-01 and restated here; line scope is as stated in
+# amendment-01.yaml.
+schema_version: 1
+kind: amendment
+id: wo-20261004-factory-slice-b.amend-02
+created: 2026-10-05T04:45:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/packets/2026-10-04-factory-v2-slice-b.md
+  - specs/001-factory-v2/TEST_REVIEW_SLICE_B.md
+  - wo-20261004-factory-slice-b.verdict-02
+  - wo-20261004-factory-slice-b.amend-01
+supersedes: [owned_paths]
+values:
+  owned_paths:
+    - "scripts/factory/src/factory/gates/drift/**"
+    - "scripts/factory/src/factory/intent/**"
+    - "scripts/factory/src/factory/cli/intent.py"
+    - "scripts/factory/tests/unit/gates/drift/**"
+    - "scripts/factory/tests/contract/test_intent.py"
+    - "scripts/factory/gates.yaml"
+    - "specs/001-factory-v2/contracts/gates.md"
+    - "specs/001-factory-v2/acceptance.md"
+    - "specs/001-factory-v2/tasks.md"
+    - "specs/001-factory-v2/TEST_REVIEW_SLICE_B.md"
+    - "bus/orders/wo-20261004-factory-slice-b/**"
+    - "notes/packets/2026-10-04-factory-v2-slice-b.md"
+    - "notes/packets/2026-10-04-factory-v2-slice-b.handoff.md"

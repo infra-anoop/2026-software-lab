@@ -4,26 +4,27 @@
 |-------|-------|
 | Packet | `notes/packets/2026-10-04-factory-v2-slice-b.md` |
 | Branch | `wo/wo-20261004-factory-slice-b` (base `origin/main` `da0505d`) |
-| Status | **T\* round 1 applied; round-2 review requested** — still phase 1 (red tests). No implementation yet. |
+| Status | **T\* round 2 applied; round-3 confirmation requested** — still phase 1 (red tests). No implementation yet. |
 | Round 1 | `wo-20261004-factory-slice-b.verdict-01` (reject, merged from `review/wo-20261004-factory-slice-b` at `670f120`) → triage in `specs/001-factory-v2/TEST_REVIEW_SLICE_B.md` § Triage (round 1) + `bus/orders/wo-20261004-factory-slice-b/amendment-01.yaml` |
+| Round 2 | `wo-20261004-factory-slice-b.verdict-02` (reject, merged `--no-ff` from `review/wo-20261004-factory-slice-b-r2` at `5464528`) → triage in § Triage (round 2) + `bus/orders/wo-20261004-factory-slice-b/amendment-02.yaml` (owned paths unchanged) |
 | Tasks ticked | T039, T040, T061 (tests written). T041/T062 (T\* review) and T042–T049, T063 (impl) open |
 
 ## What changed
 
 ### Round 0 (`4e88515`) — 132 red tests
 
-| File | Tests (round 0 → round 1) | Gate / command |
+| File | Tests (round 0 → 1 → 2) | Gate / command |
 |------|------:|----------------|
 | `scripts/factory/tests/unit/gates/drift/helpers.py` | — | shared order/amendment builders, `assert_passes` / `assert_blocks` |
-| `scripts/factory/tests/unit/gates/drift/test_owned_paths.py` | 12 → 12 | `diff-within-owned-paths` |
-| `scripts/factory/tests/unit/gates/drift/test_test_seam.py` | 21 → 21 | `test-seam-ban` |
-| `scripts/factory/tests/unit/gates/drift/test_deferral_words.py` | 27 → 33 | `deferral-words-need-od` |
-| `scripts/factory/tests/unit/gates/drift/test_fidelity.py` | 26 → 32 | `order-fidelity-declared`, `lock.letter-tokens` |
-| `scripts/factory/tests/unit/gates/drift/test_decision_ids.py` | 6 → 10 | `decision-request-no-ids` |
-| `scripts/factory/tests/unit/gates/drift/test_catalog_linkage.py` | 14 → 34 | `catalog-test-linkage` |
-| `scripts/factory/tests/unit/gates/drift/test_red_first.py` | 12 → 12 | `red-first-proof` |
-| `scripts/factory/tests/contract/test_intent.py` | 14 → 18 | `factory check intent [--coverage [--require-target]]`, gate `factory-check-intent` |
-| **Total** | **132 → 172** | |
+| `scripts/factory/tests/unit/gates/drift/test_owned_paths.py` | 12 → 12 → 12 | `diff-within-owned-paths` |
+| `scripts/factory/tests/unit/gates/drift/test_test_seam.py` | 21 → 21 → 21 | `test-seam-ban` |
+| `scripts/factory/tests/unit/gates/drift/test_deferral_words.py` | 27 → 33 → 33 | `deferral-words-need-od` |
+| `scripts/factory/tests/unit/gates/drift/test_fidelity.py` | 26 → 32 → 61 | `order-fidelity-declared`, `lock.letter-tokens` |
+| `scripts/factory/tests/unit/gates/drift/test_decision_ids.py` | 6 → 10 → 10 | `decision-request-no-ids` |
+| `scripts/factory/tests/unit/gates/drift/test_catalog_linkage.py` | 14 → 34 → 51 | `catalog-test-linkage` |
+| `scripts/factory/tests/unit/gates/drift/test_red_first.py` | 12 → 12 → 12 | `red-first-proof` |
+| `scripts/factory/tests/contract/test_intent.py` | 14 → 18 → 18 | `factory check intent [--coverage [--require-target]]`, gate `factory-check-intent` |
+| **Total** | **132 → 172 → 218** | |
 
 ### Round 1 — T\* triage applied
 
@@ -52,6 +53,19 @@
 - **T-B7 (intent):** the repository presence smoke test compares against ids parsed from every discovered `specs/*/intent.yaml`. It requires at least 2 files, each contributing ids. No feature-002 ids are pinned.
 - **amend-01:** widens owned paths to `contracts/gates.md` (the catalog-linkage rule only), the `acceptance.md` header and schema evidence lines, the one sprint-close line in `tasks.md`, the Triage sections of `TEST_REVIEW_SLICE_B.md` and the slice's bus directory. Validated with `factory check schema`; a deliberately broken copy was rejected by file name.
 
+### Round 2 — T\* triage applied (orchestrator, process)
+
+- **T-B2-1 (fidelity, 29 new):** lock-token discovery from Open Decisions status cells, under the orchestrator's pinned rule (see the `test_fidelity.py` docstring and § Triage (round 2)).
+  - D1's status cell is replaced by real cells copied verbatim: factory D2 and D4, Smart Writer D2, durable-evals D4 and D6. A synthetic generic-span row is added.
+  - Nine touching goals block with no D1 entry and pass with one.
+  - Eleven goals that miss every token pass, including "3 workers", "use all of it", a split multiword span, code spans, links, dates and the status keyword.
+  - Known limitation recorded: a numeric lock changed without naming its OD id is not discovered. A machine-readable token source is a Wave 2 post-mortem candidate.
+- **T-B2-2 (catalog linkage, 17 new):** eval files fail closed.
+  - Head blob, not the checkout: a tracked file without the case blocks even when the checkout's copy has it.
+  - Tracked symlinks (mode 120000) block, with targets inside and outside the repo.
+  - 14 malformed or wrong-shape files block.
+- **amend-02:** records the triage. Owned paths are restated unchanged. Validated with `factory check schema`; a broken copy (`supersedes: [not_a_field]`) was rejected.
+
 No production code changed, and no frozen CP0 file was edited.
 
 ## Commands + results
@@ -60,12 +74,12 @@ Run from `scripts/factory`:
 
 | Command | Result |
 |---------|--------|
-| `nix develop ../.. -c uv run pytest -q` | **237 passed, 288 failed** (116 pre-existing red + 172 Slice B), 525 collected, **0 collection errors** |
-| `… uv run pytest tests/unit/gates/drift tests/contract/test_intent.py` | 172 failed: 156 `AssertionError: gate <id> is not implemented`, 16 CLI exit-code assertions (exit 3 today); 0 errors, 0 xfail |
-| `… uv run pytest -m "not contract and not seed"` (CI subset) | 224 passed, 154 failed (all 154 = Slice B drift unit tests), 147 deselected |
+| `nix develop ../.. -c uv run pytest -q` | **237 passed, 334 failed** (116 pre-existing red + 218 Slice B), 571 collected, **0 collection errors** |
+| `… uv run pytest tests/unit/gates/drift tests/contract/test_intent.py` | 218 failed: 202 `AssertionError: gate <id> is not implemented`, 16 CLI exit-code assertions (exit 3 today); 0 errors, 0 xfail. All 46 round-2 tests fail at "not implemented" |
+| `… uv run pytest -m "not contract and not seed"` (CI subset) | 224 passed, 200 failed (all 200 = Slice B drift unit tests), 147 deselected |
 | `… uv run ruff check .` | All checks passed |
 | `… uv run ruff format --check .` | 44 files already formatted |
-| `… uv run factory check schema --repo ../..` | schema ok (amendment-01 included) |
+| `… uv run factory check schema --repo ../..` | schema ok (amendment-02 included) |
 
 **Vacuity check.** I re-ran the throwaway constant stubs, which live outside the repo and have been removed:
 - An always-pass stub leaves failures in every Slice B file. Examples: catalog 23 of 34, deferral 18 of 33, fidelity 15 of 32, decision ids 6 of 10.
@@ -80,14 +94,14 @@ Run from `scripts/factory`:
 
 | Catalog row | CP0 seed (T014) | Slice B tests |
 |-------------|-----------------|---------------|
-| `seed.substitution_undeclared` | `seeds/test_seeds.py::test_seed_undeclared_substitution` | `test_fidelity.py::test_declared_*` (15) |
+| `seed.substitution_undeclared` | `seeds/test_seeds.py::test_seed_undeclared_substitution` | `test_fidelity.py::test_declared_*` (44) |
 | `seed.substitution_declared` | `test_seed_declared_lock_violated`, `test_seed_lock_*` | `test_fidelity.py::test_tokens_*`, `test_substitute_outside_added_code_passes` (17) |
 | `seed.hidden_deferral` | `test_seed_hidden_deferral` | `test_deferral_words.py` (33) |
 | `seed.not_red_first` | `test_seed_not_red_first` | `test_red_first.py` (12) |
 | `seed.test_seam` | `test_seed_test_seam` | `test_test_seam.py` (21) |
 | `seed.outside_owned_paths` | `test_seed_outside_owned_paths` | `test_owned_paths.py` (12) |
 | `seed.jargon_to_governor` | `test_seed_decision_request_*`, `test_seed_jargon_to_governor` | `test_decision_ids.py` (10) |
-| `seed.catalog_unlinked` | `test_seed_catalog_unlinked` | `test_catalog_linkage.py` (34) |
+| `seed.catalog_unlinked` | `test_seed_catalog_unlinked` | `test_catalog_linkage.py` (51) |
 | `trace.presence` | — | `test_intent.py::test_presence_*`, `test_intent_without_a_checks_key_is_unmapped`, `test_a_registry_or_catalog_mapping_alone_keeps_presence`, `test_north_star_counts_as_an_intent`, `test_flow_and_block_style_checks_are_both_read`, `test_gate_*` (12) |
 | `trace.effective_coverage` | — | `test_intent.py::test_coverage_*`, `test_planned_human_mapping_is_not_governor_judged`, `test_require_target_*` (6) |
 
@@ -100,7 +114,7 @@ Not in this slice's red set:
 
 | Red commit | Green commit |
 |------------|--------------|
-| `4e88515` (132 tests) + round-1 triage commit (40 tests) | pending (phase 2) |
+| `4e88515` (132 tests) + round-1 triage `21fc8e3` (40 tests) + round-2 triage commit (46 tests) | pending (phase 2) |
 
 ## Amendment requests
 
@@ -124,14 +138,19 @@ All are **non_blocking**. Nothing here needs a governor decision.
 
 **Accepted as written by the reviewer:** questions 1, 2, 5, 6, 10, 11, 12 and 14.
 
-**New test-shape choices a round-2 reviewer may debate:**
-1. **Goal discovery source.** D1's locked value is the bold value after "—" in its status cell. Matching is whole-word.
-2. **Modified requests.** A modified request is judged whole at head, not only its added lines.
-3. **Sprint pointers.** The OD id that serves a sprint pointer does not also satisfy the OD-id clause, so `→ sprint 03 (D1)` with D1 open blocks, while a bare `deferred (D1)` passes.
-4. **`--require-target` failures** carry `error.details.coverage`. How `--require-target` behaves without `--coverage` is not pinned.
-5. **Eval file types.** `.yml` counts as YAML. An unsupported extension (`.txt`) blocks.
-6. **Identity.** Whether a human-mapping status flip must come from a governor-verified PR (D4 identity) before it counts is not pinned. The plan already marks governor-only actions "unverified" until the App is live.
+**Settled in round 2:**
+- **Goal discovery source:** replaced by the orchestrator's lock-token rule (T-B2-1).
+- **Sprint pointers** and **backticks:** accepted by the reviewer.
+- **Modified requests**, **`--require-target` failures** and **`.yml` files:** not contested.
+- **Identity:** not contested. It stays unpinned.
+
+**New test-shape choices a round-3 reviewer may debate** (also listed in § Triage (round 2)):
+1. **Status keyword.** The leading bold `locked` / `re-locked` is the status, not a value, so it is on the stop list.
+2. **Currency.** `$10` counts as numeric or unit-only.
+3. **Locked rows.** A re-locked row is a locked row. Bold spans in waived or open rows are not pinned.
+4. **Symlinks.** An in-repo symlink target also blocks, because the rule is the tracked mode.
+5. **One bad entry.** A bad entry blocks the whole eval file, even when the requested case is valid.
 
 ## Next
 
-The orchestrator spawns the round-2 T\* review (T041/T062) on this branch head. After triage, phase 2 implements T042–T049 and T063 against these tests and turns the CP0 seeds green.
+The orchestrator spawns the round-3 T\* confirmation (T041/T062) on this branch head. After it accepts, phase 2 implements T042–T049 and T063 against these tests and turns the CP0 seeds green.
