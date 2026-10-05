@@ -1,0 +1,71 @@
+schema_version: 1
+kind: verdict
+id: wo-20261004-factory-slice-c.verdict-06
+created: 2026-10-05T16:39:25Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - bus/orders/wo-20261004-factory-slice-c/verdict-05.yaml
+  - bus/orders/wo-20261004-factory-slice-c/amendment-04.yaml
+  - specs/001-factory-v2/PLAN_DELTA.md
+decision: reject
+findings:
+  - id: P15
+    severity: nit
+    tag: arch
+    text: >-
+      P9 is confirmed: every required factory context is source-pinned to
+      GitHub Actions, the snapshot and drift gate cover the app id, and D8
+      removes status-write permission from factory-controlled non-CI identities.
+  - id: P16
+    severity: nit
+    tag: arch
+    text: >-
+      P12 is confirmed: exact run, repository and artifact-name provenance,
+      fail-closed multiplicity, fresh-runner cache isolation, T094 tests and
+      T097 implementation are all explicit.
+  - id: P17
+    severity: nit
+    tag: process
+    text: >-
+      D6 is confirmed: the recorded merge freeze, non-merging probe,
+      source-pinned activation, live verification and fail-closed reopening
+      sequence are proportionate for a one-off solo bootstrap.
+  - id: P18
+    severity: nit
+    tag: product
+    text: >-
+      D7 Wave 1 is confirmed: every red-first status is labelled self-reported
+      and FR-012 names the independent T-star re-run as the proof of record.
+  - id: P19
+    severity: blocker
+    tag: arch
+    text: >-
+      T104 executes hostile head code inside the job holding statuses:write;
+      move sealed execution and parent-owned capture to a separate job without
+      status-write permission, leaving the privileged publisher data-only.
+  - id: P20
+    severity: later
+    tag: arch
+    text: >-
+      Residual source attribution, App checks:write and fork-PR limitations are
+      acceptable as recorded because verification fails closed, source pinning
+      excludes the App, and this factory explicitly supports same-repository PRs.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: notes/packets/2026-10-05-factory-v2-d5-delta-pstar.md
+    sha: 18ab6fbeae8d48b62f4268aa32e8d0bdb6560138
+  - path: specs/001-factory-v2/PLAN_DELTA.md
+    sha: 18ab6fbeae8d48b62f4268aa32e8d0bdb6560138
+  - path: specs/001-factory-v2/PLAN_REVIEW.md
+    sha: 18ab6fbeae8d48b62f4268aa32e8d0bdb6560138
+  - path: specs/001-factory-v2/spec.md
+    sha: 18ab6fbeae8d48b62f4268aa32e8d0bdb6560138
+  - path: specs/001-factory-v2/plan.md
+    sha: 18ab6fbeae8d48b62f4268aa32e8d0bdb6560138
+  - path: specs/001-factory-v2/contracts/gates.md
+    sha: 18ab6fbeae8d48b62f4268aa32e8d0bdb6560138
+  - path: specs/001-factory-v2/tasks.md
+    sha: 18ab6fbeae8d48b62f4268aa32e8d0bdb6560138
