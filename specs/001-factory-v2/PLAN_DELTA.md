@@ -2,7 +2,7 @@
 
 Template: [`docs/agent-os/PLAN_DELTA_TEMPLATE.md`](../../docs/agent-os/PLAN_DELTA_TEMPLATE.md).
 
-**Gate:** Do not spawn implement/ops workers that depend on these locks until this checklist is complete (and `/speckit-analyze` recorded). Status: **steps 1–3 complete for D5**. Step 4 (delta P*) is **warranted and not yet run**. Phase 6a tests and rework wait for its triage. **D6**, opened by this reconcile, blocks only applying branch protection (T101) and Slice C's merge (T103).
+**Gate:** Do not spawn implement/ops workers that depend on these locks until this checklist is complete (and `/speckit-analyze` recorded). Status: **round 1 (D5) and round 2 (D6–D8, P* triage) steps 1–3 complete.** Step 4: the delta P* review ran (not approved; P9 and P12 blockers, P10 and P11 debates). It is triaged in § Round 2; **a narrow P* confirmation of round 2 comes next**. Phase 6a tests and rework wait for it. No Open Decision is open.
 
 ## Meta
 
@@ -10,16 +10,23 @@ Template: [`docs/agent-os/PLAN_DELTA_TEMPLATE.md`](../../docs/agent-os/PLAN_DELT
 |-------|-------|
 | Feature | `specs/001-factory-v2/` |
 | Date | 2026-10-05 (governor lock after the Slice C PR review, PR-C1); reconcile authored 2026-10-05 |
-| OD locks in this batch | **D5** |
-| New ODs opened | **D6** (`who: human`, `open`) |
-| Delta P* review | **warranted → to spawn** (appends to [`PLAN_REVIEW.md`](./PLAN_REVIEW.md)). D5 reopens the CI trust topology: which runtime holds the status-write credential, which code it runs, a new `workflow_run` trigger and a cross-workflow untrusted artifact. Plan Architecture review must exercise it, including SOTA alternatives (§G.1 step 4: "reopens topology") |
+| OD locks in this batch | **D5** (round 1); **D6**, **D7**, **D8** (round 2, after the delta P*) |
+| New ODs opened | D6 opened in round 1 and locked in round 2; D7, D8 created locked in round 2 |
+| Delta P* review | **run** — [`PLAN_REVIEW.md`](./PLAN_REVIEW.md) § Delta review — D5 (verdict-05: do not approve yet). Warranted because D5 reopens the CI trust topology: which runtime holds the status-write credential, which code it runs, a new `workflow_run` trigger and a cross-workflow untrusted artifact. Triaged in § Triage (delta P*). **Narrow P* confirmation** of round 2 next (P9, P12 contract text; D6 sequence; D7 Wave 1 wording and Wave 2 sandbox shape vs D5) |
 
 ## Classification
 
 | id | arch_impact | One-line lock |
 |----|-------------|----------------|
 | D5 | architecture-affecting | In CI, `main`'s gate code judges every PR and the head is only data; PR-head code never runs with status-write permission (its own tests run in a separate read-only job); gate changes take effect after merge; Slice C's own PR bootstraps via FR-037 verdict + governor approval; no `pull_request_target` with head checkout or execution. Letter fidelity |
-| D6 | (open) | When the required `factory/*` checks switch on relative to Slice C's bootstrap merge — see § D6 |
+| D6 | architecture-affecting | **Probe, then pin**: C merges on bootstrap review + governor approval; merges freeze; a non-merging probe PR obtains trusted `factory/*` statuses; branch protection requires every `factory/*` context with GitHub Actions pinned as expected source; the live rule is verified; then merges reopen. Letter (closes P11) |
+| D7 | architecture-affecting | Red-first strength: Wave 1 CI red-first is **self-reported**, said plainly in the status description and contracts; FR-012's "proven" is amended for Wave 1 so that the T* reviewer's re-run is the proof of record. Wave 2: a **sealed trusted run** (credential-free sandbox, `persist-credentials: false`, separate user or container, read-only head tree, parent-owned outcome recording). Letter (closes P10) |
+| D8 | architecture-affecting | The agents' GitHub App gets **no `statuses: write`**; only CI posts `factory/*` statuses. Letter (closes P* question 3) |
+
+Why D6–D8 are architecture-affecting:
+- **D6** changes the activation sequence of the trust root and the P1 exit (CP2).
+- **D7** amends a requirement's proof standard and adds a sandboxed execution stage to the trusted runtime in Wave 2.
+- **D8** changes an identity's permission scope (D4 custody).
 
 Why D5 is architecture-affecting: one CI workflow becomes two runtimes with different trust (an untrusted `pull_request` producer and a trusted `workflow_run` consumer); the status-write credential moves to a job that never checks out head code; a new untrusted artifact (the evidence bundle) crosses the boundary; `red-first-proof` splits into an executing half and a judging half; the registry that selects gates changes from "whatever the checkout has" to "`main`'s"; and bootstrap sequencing now interacts with branch protection (D6).
 
@@ -42,7 +49,9 @@ Letter interpretations recorded (for the delta P* review to check):
 - [x] `PR_REVIEW_SLICE_C.md` — § Triage (PR review)
 - [x] `bus/orders/wo-20261004-factory-slice-c/amendment-03.yaml` — owned paths widened to the files above
 
-## D6 — question for the governor (plain language)
+## D6 — question for the governor (plain language) — **resolved 2026-10-05**
+
+Locked as option A, refined by the delta P* (P11): "right after C merges" becomes merge freeze → non-merging probe PR → required and source-pinned → live rule verified → merges reopen. Option B was rejected because hand-posted passes destroy source provenance. The original question is kept below as history.
 
 **Context.** Slice C is the PR that adds the gates, so it is the one PR nothing trusted can check. You decided it merges on the independent bootstrap review plus your approval. The branch-protection setup is to happen before C merges, with no bypass for anyone, and will list every factory check by name. If those checks are required before C merges, nothing can mark them passed for C, and C cannot merge.
 
@@ -55,10 +64,10 @@ Letter interpretations recorded (for the delta P* review to check):
 
 | Gap | Task id |
 |-----|---------|
-| Bootstrap merge sequence against required `factory/*` checks with bypass off (D6) | T101 `[OD:D6]` → before T066 settings are applied; T103 |
-| Red-first outcomes come from a job that executes head tests; test code in the diff could tamper with the harness and forge its own outcomes (no credential reachable) | Delta P* to probe; T094 fixes the fail-closed bundle rules; plan § Major risks |
-| `factory/*` contexts can still be posted outside CI by the Codespace token or the agent App (T065 asks for statuses write); required checks name contexts, not posters | Delta P* to recommend whether T101 pins the `factory/*` checks to GitHub Actions as source (would then be a governor settings choice at T101) |
-| Rulesets "require workflows" availability on this personal-account repository unverified (research alternative) | Delta P* |
+| ~~Bootstrap merge sequence against required `factory/*` checks with bypass off (D6)~~ | **Closed round 2** — D6 locked (probe, then pin); T101 (snapshot + live rule without `factory/*`), T103 (freeze → probe → pin → verify → reopen) |
+| ~~Red-first outcomes come from a job that executes head tests; test code in the diff could forge its own outcomes~~ | **Closed round 2** — D7: Wave 1 self-reported, stated in the status, T* re-run is the proof of record (T094); Wave 2 sealed trusted run (T104) |
+| ~~`factory/*` contexts can still be posted outside CI by the Codespace token or the agent App; required checks name contexts, not posters~~ | **Closed round 2** — P9 source pinning (snapshot records the app id, the gate asserts it: T094/T097; live: T103) + D8 (T065) |
+| ~~Rulesets "require workflows" availability on this personal-account repository unverified~~ | **Closed round 2** — P13: research marks it unverified and not claimed |
 | Evidence-bundle model, its size-limit setting and any `GateContext` field are CP0 frozen interfaces (`api.py`, `config/`) | T097 by order amendment |
 | Red-first split edits Slice B's `gates/drift/red_first.py`; validators need a repo-root argument (`scripts/validate_secrets_schema.py` is Slice A's, `scripts/validate_deploy_env.py` lab-owned) | T097, by amendment after A and B are merged into C |
 | `factory-status-test` pass/fail oracle is not specified beyond "repo (unit)", I-M4 | T102 test-first + T* review |
@@ -66,7 +75,7 @@ Letter interpretations recorded (for the delta P* review to check):
 | CI latency: evidence run then trusted run, sequential, vs plan "full gate run < 5 min" | Measured at T103 (CP2) |
 | Fork PRs get no `pull_requests` in the `workflow_run` payload, so no `factory/*` statuses | Accepted: solo same-repository workflow; required checks fail closed |
 
-## `/speckit-analyze` result
+## `/speckit-analyze` result (round 1, superseded by § Round 2)
 
 | Field | Value |
 |-------|-------|
@@ -94,8 +103,64 @@ Letter interpretations recorded (for the delta P* review to check):
 
 Every `later` / `optional` / `deferred` / `TBD` / `future` / `stretch` on added `specs/001-factory-v2/**` lines is inside a code span, carries a D# id or a `→` pointer (checked with `git diff -U0 | rg` on 2026-10-05; 0 offenders after F1).
 
+## Round 2 — delta P* triage (2026-10-05)
+
+Input: [`PLAN_REVIEW.md`](./PLAN_REVIEW.md) § Delta review — D5 (verdict-05, "do not approve yet"); triage recorded in `PLAN_REVIEW.md` § Triage (delta P*).
+
+### Locks and agent decisions
+
+| Item | Kind | Decision | Closes |
+|------|------|----------|--------|
+| D6 | governor lock, architecture-affecting | Probe, then pin (sequence in the spec row, plan § CI topology Bootstrap, contracts/gates.md § Bootstrap, T101/T103, CP2) | P11, round-1 G1 |
+| D7 | governor lock, architecture-affecting | Red-first self-reported in Wave 1 (status prefix `self-reported:`, T* re-run is the proof of record, FR-012 amended); sealed trusted run in Wave 2 (T104, catalog `ci.redfirst_sealed`, check scheduling P2 row) | P10, round-1 H1 |
+| D8 | governor lock, architecture-affecting | Agents' App: no `statuses: write` (T065, plan § Governor identity); only CI posts `factory/*` | P* question 3 |
+| P9 | agent (Blocker adopted as suggested) | Every required `factory/*` context pinned to the GitHub Actions integration; snapshot records the app id per context; `branch-protection-require-pr` asserts it; no `statuses: write` for non-CI identities the factory controls. Catalog `ci.status_source_pinned` | P9, round-1 H2 |
+| P12 | agent (Blocker adopted as suggested) | Evidence downloaded only from the exact triggering `workflow_run.id`, same repository, exact name; zero or several matches rejected; fresh runner; no cache restore or save in the trusted workflow. Contract-tested in T094, built in T097 | P12 |
+| P13 | strength kept | Research: ruleset-required workflows unverified and not claimed for this personal repository; hosted App kept as the cleaner P3 alternative | P13 |
+| P14 | strength kept | D5 letter bans preserved verbatim; provenance, cache and source checks added beside them | P14 |
+
+### Artifacts amended (round 2)
+
+- [x] `spec.md` — D6 row locked; D7, D8 rows (locked, architecture-affecting, letter); FR-012 Wave 1 amendment; FR-022a (only CI posts, source pinned); FR-037 D6 sequence; Check scheduling P2 row (+ sealed red-first run, D7)
+- [x] `plan.md` — Approval round-2 note; Secret custody (D8, P9); CI topology table (status source, `self-reported:`); rules: Execution-derived evidence (D7 Wave 1 / Wave 2), Artifact provenance and clean privileged environment (P12), Status source (P9, D8), Bootstrap (D6 five steps), Banned (+ caches, artifact selection); Governor identity (App has no `statuses: write`); Major risks (red-first self-reported; sealed run vs D5; statuses outside CI closed; bootstrap freeze); Phased delivery P1 exit (D6 sequence, P12 tests) and P2 (sealed run); Constitution Check
+- [x] `data-model.md` — **no change** (the snapshot's per-context app id is a field of the ops snapshot file, specified in `contracts/gates.md`; no bus entity changes)
+- [x] `contracts/gates.md` — heading; trusted workflow row (fresh runner, no cache, posts as GitHub Actions, `self-reported:`); new § Red-first strength (D7), § Artifact provenance (P12), § Privileged environment (P12), § Status source (P9, D8); § Bootstrap (D6 steps); § Banned (+ cache, artifact); P1 registry `branch-protection-require-pr` scope (app id). `contracts/cli.md` § CI mode (`--evidence` exactly one bundle; `self-reported:`). `contracts/hooks.md` unchanged
+- [x] `research.md` — Red-first CI placement (D7 strength, rejected alternatives); Topology alternatives (rulesets unverified and not claimed; hosted App kept as the P3 migration option)
+- [x] `tasks.md` — header Open Decisions (D5–D8, none open); CP2 row; Phase 6a gate (narrow P* confirmation); T094 (+ provenance, cache, `self-reported:`, source pinning); T097 (+ same); T101 (live rule without `factory/*`; snapshot with pinned target); T103 (five-step D6 order); checkpoint; T065 (no `statuses: write`); T066 note; Dependencies; **T104** appended in Phase 13 (`[OD:D7]`, sealed run, test first)
+- [x] `acceptance.md` — rows `ci.status_source_pinned`, `ci.redfirst_sealed`; change-log row
+- [x] `FINISH_BAR.md` — Delta addendum round 2; inventory D6–D8; outcome (no open rows; next gate narrow P*)
+- [x] `PLAN_REVIEW.md` — § Triage (delta P*) appended; reviewer text untouched
+- [x] `bus/orders/wo-20261004-factory-slice-c/amendment-04.yaml` — owned paths + `PLAN_REVIEW.md` and the orchestrator's delta-review packet
+
+### Remaining gaps (round 2) → tasks
+
+| Gap | Task id |
+|-----|---------|
+| Wave 2 sealed run puts head execution on the runner that holds the status token; D5's "no head code with status-write permission" holds only if the sandbox truly cannot reach it | T104 tests (no token, no `ACTIONS_*`, no runner dirs, separate user or container); narrow P* to confirm the shape is compatible with D5 |
+| Source pinning assumes GitHub attributes `GITHUB_TOKEN` commit statuses to the GitHub Actions integration as their source | T103 step 4 verifies it live on the probe PR. If GitHub does not attribute them, the trusted job must post check runs instead (`checks: write`), which needs a delta amendment, and the freeze holds meanwhile |
+| The D6 merge freeze is procedural (orchestrator holds merges); nothing mechanical blocks a merge between C's merge and verification | T103 records start and end; post-mortem audits merge timestamps in the window |
+| The agents' App keeps `checks: write` (T065); it could create check runs named `factory/*` | Neutralized by P9 pinning (another source cannot satisfy the rule); asserted by `ci.status_source_pinned` |
+| Round-1 gaps still open: CP0 frozen interfaces (bundle model, size limit), cross-slice edits (red-first split, validator root argument), `factory-status-test` oracle, superseded T-C1 assertions, CI latency, fork PRs | Unchanged: T097, T097, T102, T094/T096, T103, accepted |
+
+### `/speckit-analyze` result (round 2)
+
+| Field | Value |
+|-------|-------|
+| Date run | 2026-10-05, over spec / plan / tasks (105 tasks, 28 done) + Open Decisions (D1–D8) + FINISH_BAR + contracts (gates, cli, hooks) + acceptance + research. `.specify/extensions.yml` absent (no hooks) |
+| Outcome | **pass with recorded gaps**: 0 critical (no open `who: human` row; D6 closed), 1 high disclosed and routed to the narrow P*, 4 medium (2 new, filed above; 2 carried from round 1), lows recorded. Coverage: FR-001..FR-037 + FR-005a / FR-011a / FR-022a (40) and SC-001..SC-013 (13) each map to ≥ 1 task (100%). FR-012 → T040/T042 + T094 (Wave 1) + T104 (Wave 2); FR-022a → T094, T097, T101, T103, T065. Deferral-word scan of every added `specs/**` line: 0 offenders (Wave 2 lines carry D7) |
+| Notes | No constitution MUST violated: tests precede implementation (T094–T096 before T097–T098; T104 test first); no implement before §G.1 step 4 confirmation; no rule/process path touched; every architecture-affecting lock reconciled in place |
+
+| ID | Category | Severity | Location(s) | Summary | Disposition |
+|----|----------|----------|-------------|---------|-------------|
+| H3 | Lock consistency / security | HIGH | spec D5 vs D7 (Wave 2); plan § Major risks; T104 | The Wave 2 sealed run executes head code inside the status-writing job; consistent with D5 only if no credential is reachable from the sandbox | **Disclosed** — D7 letter kept; T104 must prove it by test; narrow P* to confirm |
+| M5 | Ambiguity | MEDIUM | contracts/gates.md § Status source; T103 | Whether commit statuses (not check runs) carry the GitHub Actions source for pinning | **Filed** — verified live at T103 step 4; fallback is a delta amendment |
+| M6 | Underspecification | MEDIUM | T103 | The merge freeze is procedural | **Recorded** — T103 + post-mortem audit |
+| M1–M4 | carried | MEDIUM | round 1 | as round 1 (M4 schedule pressure grows with round 2) | Unchanged |
+| L4 | Inconsistency | LOW | tasks T065 | The App keeps `checks: write`, so same-named check runs are possible | **Recorded** — neutralized by P9 pinning |
+| L5 | Consistency | LOW | acceptance `seed.not_red_first` | The seed stays "PR blocked"; in Wave 1 that rests on self-reported outcomes | **Recorded** — gate-level seed unaffected; D7 states the strength |
+
 ## Forbidden (honored)
 
 - No new feature directory solely for OD fills
 - No stock `/speckit-plan` setup replacing `plan.md` (amended in place)
-- Human chat line: "Architecture delta reconcile done" (D5); D6 posed as a plain A/B choice
+- Human chat line: "Architecture delta reconcile done" (D5); D6 posed as a plain A/B choice; round 2: "Architecture delta reconcile done" (D6–D8)

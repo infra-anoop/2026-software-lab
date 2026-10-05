@@ -4,7 +4,7 @@
 
 **Tests (constitution §V):** `factory` is executable repo tooling, so tests are required. Every contract hook and every `how: auto` catalog row becomes a failing test before its implementation. `hybrid`/`human` rows get evidence tasks, not fake pytest.
 
-**Open Decisions:** D1 waived (P3 rows → sprint 03), D2 = 70%, D3 = GPT reviews, D4 = GitHub App during Wave 1, D5 = trusted-base CI (locked 2026-10-05, architecture-affecting → Phase 6a, [`PLAN_DELTA.md`](./PLAN_DELTA.md)). **D6 open** (`who: human`): when the required `factory/*` checks are switched on relative to Slice C's bootstrap merge — T101 `[OD:D6]` resolves it before T066 is applied. The other `[HITL]` tasks below are governor ops steps (account and settings work agents cannot do), not content decisions.
+**Open Decisions:** D1 waived (P3 rows → sprint 03), D2 = 70%, D3 = GPT reviews, D4 = GitHub App during Wave 1, D5 = trusted-base CI, D6 = probe, then pin (T101, T103), D7 = red-first self-reported in Wave 1 and a sealed trusted run in Wave 2 (T094, T104), D8 = agents' App has no `statuses: write` (T065). D5–D8 were all locked 2026-10-05, all architecture-affecting, and reconciled in Phase 6a ([`PLAN_DELTA.md`](./PLAN_DELTA.md)). None open. The `[HITL]` tasks below are governor ops steps (account and settings work agents cannot do), not content decisions.
 
 **Path shorthand used in prose only:** "the package" = `scripts/factory/src/factory/`; "tests" = `scripts/factory/tests/`. Task lines spell out full paths.
 
@@ -25,7 +25,7 @@ Wave 1 builds the gates that would otherwise govern it. So Wave 1 work runs on l
 |------------|------|-----|-------|
 | **CP0 — contracts frozen** | end of day 1 | day 1 | Phase 2 checkpoint green; interfaces in `scripts/factory/src/factory/api.py` change only via amendment |
 | **CP1 — slices green alone** | end of day 2 | day 4 | each slice's own contract/unit tests green; `factory gate run` over the seeds suite runs end to end |
-| **CP2 — live as required checks** | end of day 3 | day 5 | `factory-gates.yml` reports one `factory/<gate-id>` status per P1 gate on a real PR; one real order issued → claimed → PR → verdict, all derived on the board. **D5:** that PR is the first after Slice C's bootstrap merge, its statuses come from the trusted `workflow_run` job running `main`'s code, and a probe PR that edits a gate to always pass is still failed by `main`'s gate (T103) |
+| **CP2 — live as required checks** | end of day 3 | day 5 | `factory-gates.yml` reports one `factory/<gate-id>` status per P1 gate on a real PR; one real order issued → claimed → PR → verdict, all derived on the board. **D5/D6:** after Slice C's bootstrap merge, with merges frozen, a non-merging probe PR gets its statuses from the trusted `workflow_run` job running `main`'s code; its edit making a gate always pass is still failed by `main`'s gate. Every `factory/*` context then becomes required, pinned to GitHub Actions, and the live rule is verified before merges reopen (T103) |
 
 SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come from run events.
 
@@ -179,7 +179,7 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 
 **Source**: PR review [`PR_REVIEW_SLICE_C.md`](./PR_REVIEW_SLICE_C.md) (verdict-04, reject) and its § Triage; spec D5 (locked 2026-10-05, architecture-affecting) reconciled in [`PLAN_DELTA.md`](./PLAN_DELTA.md). Appended 2026-10-05; no earlier IDs renumbered.
 
-**Gate**: no test or implement work here starts until the delta P* review of the D5 amendment is triaged (constitution §G.1 step 4). Tests come first (§V); T096 T* triage comes before T097–T098.
+**Gate**: no test or implement work here starts until the delta P* review of the D5 amendment is triaged (constitution §G.1 step 4). It was triaged 2026-10-05 (`PLAN_REVIEW.md` § Triage (delta P*); locks D6–D8); a narrow P* confirmation of that round must pass first. Tests come first (§V); T096 T* triage comes before T097–T098.
 
 ### Tests (write first, must fail)
 
@@ -191,7 +191,11 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
   - **Validators:** a head whose copy of a validator script is replaced by `sys.exit(0)` and whose schema is invalid still fails.
   - **Evidence bundle:** red-first fails closed, naming the reason, on a bundle that is absent, malformed, for another `head_sha`, lists a test outside the diff's test files, omits a changed test file, or exceeds the size limit. A valid red→green bundle passes. PR number and order fields in a bundle are ignored.
   - **`factory gate evidence`:** writes the bundle, exits 0 with failing tests, and records no status call.
-  - Catalog `ci.trusted_base`.
+  - **Artifact provenance (P12):** the trusted workflow's download step names `run-id: github.event.workflow_run.id`, this repository and `name: factory-evidence`, with no `pattern:` and no `merge-multiple`, into a fresh directory outside the checkout. A run whose `workflow_run.repository` or `head_repository` is not this repository posts nothing and exits 0. `--evidence` with zero or with two bundle files fails red-first closed, naming the reason.
+  - **Cache isolation (P12):** the trusted workflow has no `actions/cache` step, `setup-uv` sets `enable-cache: false`, and no `setup-python` cache is used.
+  - **Red-first strength (D7, Wave 1):** every `red-first-proof` status description starts `self-reported:`, whether it passes or fails.
+  - **Status source (P9):** `branch-protection-require-pr` fails a snapshot in which any required `factory/*` context lacks the GitHub Actions app id as its expected source, or in which a `factory/*` context is missing. It passes a snapshot where every one is pinned. These tests go in `scripts/factory/tests/unit/gates/test_registry_checks.py`; existing branch-protection fixtures gain the app id.
+  - Catalog `ci.trusted_base`, `ci.status_source_pinned`.
 - [ ] T095 [P] [US4] PR-C2 red test `scripts/factory/tests/unit/hooks/test_hook_wrapper.py`: integration test running `.cursor/hooks/factory-hook.sh <name>` for each of the four hooks, in a repo with no `scripts/factory/.venv` and a `PATH` without `uv`:
   - With a stub `nix` on `PATH`, the wrapper calls `nix develop <repo root> -c uv run --project scripts/factory factory hook <name>` and relays its stdout.
   - With no `nix`, or a `nix` that exits non-zero without output, stdout is exactly that hook's quiet fail-open JSON, the exit code is 0 and the reason is on stderr. Never exit 127.
@@ -205,7 +209,10 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
   - Split red-first into an evidence producer and a bundle judge in `scripts/factory/src/factory/gates/drift/red_first.py`. That is Slice B's path, so it waits until B is merged into C and needs an order amendment.
   - Validators run `main`'s scripts against the exported head tree (`scripts/factory/src/factory/gates/repo/existing.py`); add a repo-root argument to `scripts/validate_secrets_schema.py` / `scripts/validate_deploy_env.py` if missing (order amendment).
   - The evidence-bundle model, its size limit in typed config and any `GateContext` field are CP0 frozen-interface changes (`api.py`, `config/`), made by amendment.
-  - Fill `ci.trusted_base` evidence.
+  - Artifact provenance and cache isolation per `contracts/gates.md` § Artifact provenance / § Privileged environment (P12).
+  - The `self-reported:` prefix on `red-first-proof` statuses (D7).
+  - `branch-protection-require-pr` asserts the GitHub Actions app id as expected source on every required `factory/*` context (`scripts/factory/src/factory/gates/repo/branch_protection.py`, P9).
+  - Fill `ci.trusted_base` and `ci.status_source_pinned` evidence.
 - [ ] T098 [US4] PR-C2: wrapper `.cursor/hooks/factory-hook.sh` per `contracts/hooks.md` § Invocation (Nix fallback; wrapper-level quiet fail-open)
 - [ ] T099 [POLICY] PR-C4: revert the `Status` line of `notes/packets/2026-10-04-factory-v2-slice-c.md` to its `main` text (no net diff on the packet vs `main`); progress stays in the append-only handoff and verdicts
 - [ ] T100 [US4] PR-C5: once Slices A and B are merged into `wo/wo-20261004-factory-slice-c`, `factory-tests` (now in `factory-pr-evidence.yml`) runs the full factory suite with no `-m` / `-k` / `--deselect` selector, and the CP1 bootstrap comment goes; T094's workflow test asserts no selector
@@ -213,22 +220,24 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 ### Cross-order dependencies for the C merge
 
 - [ ] T101 [HITL] [OD:D6] PR-C6 = T066, moved earlier. Between the Slice B merge and the Slice C merge, the governor walks through branch protection with the orchestrator:
-  - PR required, bypass off for everyone, code-owner review.
-  - Required checks name each P1 `factory/<gate-id>` context individually, plus `Factory tests` and the existing checks.
-  - The orchestrator commits the snapshot `deploy/github/branch-protection.json` on `main` before C merges, through its own small PR under the bootstrap rule or in C by amendment (orchestrator's choice).
-  - When the `factory/*` requirement is switched on relative to C's merge follows D6, which must be locked first. This task is a pre-merge dependency for C.
+  - **Live now:** PR required, bypass off for everyone, code-owner review, `Factory tests` and the existing checks required. The `factory/*` contexts are **not yet** required live; per D6 they are switched on in T103, after the probe.
+  - **Snapshot:** the orchestrator commits `deploy/github/branch-protection.json` on `main` before C merges, through its own small PR under the bootstrap rule or in C by amendment (orchestrator's choice). It records the target rule: each P1 `factory/<gate-id>` context listed individually, each with the GitHub Actions integration's app id (read from the live API) as expected source (P9), plus `Factory tests` and the existing checks.
+  - This task is a pre-merge dependency for C.
 - [ ] T102 PR-C3 as its own small order (`wo-<date>-factory-status-test`), after Slice A merges and before Slice C merges:
   - Test first `scripts/factory/tests/unit/gates/repo/test_status_test.py` (T* reviewed), then the entrypoint `factory.gates.repo.status_test:run` in `scripts/factory/src/factory/gates/repo/status_test.py`.
   - It judges the board derivation over the head's bus data with `main`'s code and executes no head code (D5).
   - It fills acceptance evidence for the I-M4 board row it serves and carries a bootstrap verdict (a pre-C PR).
   - Slice C's branch does not create that file.
-- [ ] T103 [HITL] [OD:D5] Slice C bootstrap merge, then the CP2 proof:
-  - C merges on a bootstrap verdict over the reworked head plus governor approval, in the sequence D6 sets.
-  - The first PR after that merge shows one `factory/<gate-id>` status per P1 gate from the trusted run.
-  - A probe PR (closed unmerged) that edits a gate to always pass is still failed by `main`'s gate.
-  - Record both on `ci.trusted_base`.
+- [ ] T103 [HITL] [OD:D5] [OD:D6] Slice C bootstrap merge, then the CP2 proof, in exactly this order (D6: probe, then pin):
+  1. C merges on a bootstrap verdict over the reworked head plus governor approval. **The orchestrator freezes all other merges from this moment.**
+  2. The orchestrator opens a **non-merging probe PR** whose head also edits one gate to always pass. The trusted run posts one `factory/<gate-id>` status per P1 gate as GitHub Actions, and the edited gate still fails under `main`'s code.
+  3. The governor switches on the required `factory/*` contexts, each pinned to GitHub Actions as expected source, matching the T101 snapshot.
+  4. The orchestrator reads the live rule back through the API and compares it with the snapshot. The probe PR shows every `factory/*` check required and satisfied only by the GitHub Actions source.
+  5. The probe PR closes unmerged; merges reopen.
 
-**Checkpoint (Phase 6a)**: delta P* triaged; T094–T095 red then T* triaged; T097–T100 green; T101 done with D6 locked; T102 merged; then T103.
+  Record the steps on `ci.trusted_base` and `ci.status_source_pinned`. If step 4 fails, the freeze holds until it passes.
+
+**Checkpoint (Phase 6a)**: delta P* triaged and confirmed; T094–T095 red then T* triaged; T097–T100 green; T101 done; T102 merged; then T103 in D6 order.
 
 ---
 
@@ -249,8 +258,8 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 
 ## Phase 8: Ops — governor steps for Wave 1 [HITL]
 
-- [ ] T065 [HITL] Governor creates the GitHub App (repo contents/PRs/checks/statuses read-write), installs it on this repo, stores `FACTORY_GITHUB_APP_ID` + `FACTORY_GITHUB_APP_PRIVATE_KEY` in Infisical (names from T037); orchestrator then flips `identity.mode = "verified"` in `factory.toml` — before Phase 9
-- [ ] T066 [HITL] Governor sets branch protection on `main`: **require a pull request before merging, with bypass off for everyone including admins** (I-P10), require each `factory/<gate-id>` P1 status + existing checks, require code-owner review; orchestrator snapshots settings to `deploy/github/branch-protection.json`, and gate `branch-protection-require-pr` (slice C, `scripts/factory/src/factory/gates/repo/branch_protection.py`, test first) checks the snapshot holds the expected settings (live drift check is P3 → sprint 03 per D1). **Amended 2026-10-05 (D5, PR-C6):** done as T101, between the Slice B and Slice C merges, as a pre-merge dependency for C. The required checks name each P1 `factory/<gate-id>` context individually plus `Factory tests`; when the `factory/*` requirement is switched on relative to C's merge follows D6
+- [ ] T065 [HITL] Governor creates the GitHub App (repo contents/PRs/checks read-write; **no `statuses: write`**, D8 2026-10-05: only CI posts `factory/*` statuses), installs it on this repo, stores `FACTORY_GITHUB_APP_ID` + `FACTORY_GITHUB_APP_PRIVATE_KEY` in Infisical (names from T037); orchestrator then flips `identity.mode = "verified"` in `factory.toml` — before Phase 9
+- [ ] T066 [HITL] Governor sets branch protection on `main`: **require a pull request before merging, with bypass off for everyone including admins** (I-P10), require each `factory/<gate-id>` P1 status + existing checks, require code-owner review; orchestrator snapshots settings to `deploy/github/branch-protection.json`, and gate `branch-protection-require-pr` (slice C, `scripts/factory/src/factory/gates/repo/branch_protection.py`, test first) checks the snapshot holds the expected settings (live drift check is P3 → sprint 03 per D1). **Amended 2026-10-05 (D5, PR-C6):** done as T101, between the Slice B and Slice C merges, as a pre-merge dependency for C. The required checks name each P1 `factory/<gate-id>` context individually, each pinned to GitHub Actions as expected source (P9), plus `Factory tests`. The `factory/*` requirement switches on after C's merge and the probe, per D6 (T103)
 - [ ] T067 [P] Add `.github/CODEOWNERS` naming `governor_login` on every `rule_paths` entry from `factory.toml`
 
 ---
@@ -318,6 +327,16 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 - [ ] T090 [P] Mutation gate `mutation-changed-lines` (mutmut 3, **70%** of mutants killed on changed lines — D2) in `scripts/factory/src/factory/gates/drift/mutation.py`, test first in `scripts/factory/tests/unit/gates/drift/test_mutation.py`; runs in the SWV2 Models lane CI job
 - [ ] T091 [P] Spec Kit hook bridge: `.specify/extensions.yml` `after_tasks` hook calling `factory check intent` and `deferral-words-need-od` so the base stays swappable
 - [ ] T092 Run every `quickstart.md` section on the live repo; record results in `specs/001-factory-v2/quickstart.md` § Results
+- [ ] T104 [OD:D7] Sealed trusted red-first run (Wave 2, P2, D7), test first:
+  - **Red tests** in `scripts/factory/tests/contract/test_red_first_sealed.py`, then T* review:
+    - the sandbox has no reachable credential: no persisted git credential, no job token or `ACTIONS_*` variable, no runner work or temp directory mounted;
+    - it runs as a separate user or container;
+    - the head tree is read-only: a head test that writes the tree, the harness or the outcome file fails to;
+    - outcomes come from the parent: a head test that prints or writes a fake "passed" record does not change the recorded outcome;
+    - a sandbox start failure fails red-first closed.
+  - **Implement:** the sealed runner in `main`'s harness inside the trusted job. `red-first-proof` judges from it and the `self-reported:` prefix goes. The evidence bundle stops feeding red-first.
+  - Amend `contracts/gates.md` § Red-first strength and plan § CI topology.
+  - Catalog `ci.redfirst_sealed`.
 - [ ] T093 [POLICY] Sprint post-mortem `bus/postmortems/2026-10-sprint-02.yaml` via `factory bus pr`: disposition every correction; review overrides per gate, reversed locks, rework; record `routing.zero` and `capture.budget` evidence (hybrid); scorecard vs `intent.yaml` targets; then `factory sprint close`
 
 ---
@@ -332,7 +351,7 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 - **T064** needs T055 (slice C runner) and T063 (slice B coverage). It runs after both, in slice C's lane.
 - **T059** needs T021 (slice A `GitHubPort` REST adapter) for commit statuses. Until it merges, slice C codes against `FakeGitHub`.
 - **Phase 8**: T067 can run any time after CP0. T065 is needed before T036's verified mode goes live. T066 runs as T101 (D5 amendment below).
-- **Phase 6a (D5, 2026-10-05)**: delta P* triage → T094–T095 → T096 → T097–T099. T100 after A and B are merged into C. T101 needs D6 locked and the B merge, and must finish before the C merge. T102 needs the A merge and must merge before C. C's merge (T103) needs T097–T102. Merge order: A → B → T101 + T102 → C.
+- **Phase 6a (D5–D8, 2026-10-05)**: delta P* triage (done) → narrow P* confirmation → T094–T095 → T096 → T097–T099. T100 after A and B are merged into C. T101 needs the B merge and must finish before the C merge. T102 needs the A merge and must merge before C. C's merge (T103 step 1) needs T097–T102. Merge order: A → B → T101 + T102 → C → merge freeze → probe → pin → verify → merges reopen (D6). T065's App gets no `statuses: write` (D8). T104 (Wave 2) follows T097.
 - **Phase 9** after CP2 and T065–T066. **No Wave 2 order is issued until T070 is complete.**
 - **Phases 10–13** (Wave 2) share the 3-worker cap with SWV2 lanes; US6, US7, US8 are mutually independent except T089 follows T088.
 
