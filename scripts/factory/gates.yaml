@@ -181,6 +181,53 @@ gates:
     priority: P1
     scope: repo
     entrypoint: factory.gates.repo.status_test:run
+  - id: branch-protection-require-pr
+    class: governor-only
+    category: irreversible
+    intents: [I-P10]
+    ci_job: factory-gates
+    priority: P1
+    scope: repo
+    entrypoint: factory.gates.repo.branch_protection:run
+
+  # --- P1: Cursor hooks (slice C; contracts/hooks.md) -----------------------------------
+  # Advisory editor mirrors, never run in CI: `hook_twin_of` names the authoritative gate.
+  - id: spawn-guard
+    class: drift
+    category: drift
+    intents: [I-X4]
+    ci_job: factory-gates
+    hook_twin_of: spawn-concurrency-cap
+    priority: P1
+    scope: pr
+    entrypoint: factory.hooks.spawn_guard:handle
+  - id: shell-guard
+    class: drift
+    category: drift
+    intents: [I-P10]
+    ci_job: factory-gates
+    hook_twin_of: branch-protection-require-pr
+    priority: P1
+    scope: changed_lines
+    entrypoint: factory.hooks.shell_guard:handle
+  - id: owned-path-warn
+    class: drift
+    category: drift
+    intents: [I-B8]
+    ci_job: factory-gates
+    hook_twin_of: diff-within-owned-paths
+    priority: P1
+    scope: changed_lines
+    entrypoint: factory.hooks.owned_path:handle
+  - id: decision-in-chat
+    class: drift
+    category: drift
+    intents: [I-B3]
+    ci_job: factory-gates
+    hook_twin_of: decision-request-no-ids
+    priority: P1
+    scope: changed_lines
+    entrypoint: factory.hooks.decision_chat:handle
 
   # --- P1: existing lab checks (wrapped by slice C, T059) -----------------------------
   - id: validate-secrets-schema
