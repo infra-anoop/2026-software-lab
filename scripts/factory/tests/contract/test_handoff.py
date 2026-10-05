@@ -51,10 +51,14 @@ def test_handoff_refuses_while_a_registered_gate_fails(
         extra_files={"deploy/railway/demo.toml": "[deploy]\n"},
     )
     repo.checkout(f"wo/{order_id}")
+    repo.write_message(message("handoff", order_id=order_id))
+    repo.commit("handoff")
     result = factory_cli("handoff", order_id, repo=repo.path)
     assert result.exit_code == exit_codes.REFUSED, (
         f"expected exit 2, got {result.exit_code}\n{result.stdout}\n{result.stderr}"
     )
+    output = result.stdout + result.stderr
+    assert "diff-within-owned-paths" in output, f"the refusal must name the failing gate:\n{output}"
 
 
 def test_handoff_requires_deviations_key(repo: RepoBuilder, factory_cli: FactoryCli) -> None:

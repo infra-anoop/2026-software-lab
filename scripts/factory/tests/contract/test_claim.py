@@ -143,3 +143,38 @@ def test_claim_refuses_already_claimed(repo: RepoBuilder, factory_cli: FactoryCl
     repo.add_event(taken, message("claim", order_id=taken))
     result = factory_cli("claim", taken, "--actor-model", "claude-opus-5.5", repo=repo.path)
     assert result.exit_code == exit_codes.REFUSED
+
+
+def _hold_three(repo: RepoBuilder, prefix: str) -> list[str]:
+    held: list[str] = []
+    for n in range(3):
+        active = _issue(repo, f"{prefix}-{n}")
+        repo.add_event(active, message("claim", order_id=active))
+        held.append(active)
+    return held
+
+
+def test_closed_unmerged_pr_frees_capacity(repo: RepoBuilder, factory_cli: FactoryCli) -> None:
+    held = _hold_three(repo, "pr-held")
+    abandoned = repo.make_pr(f"wo/{held[0]}")
+    repo.github.close_pr(abandoned.number)
+    waiting = _issue(repo, "after-closed-pr")
+    result = factory_cli("claim", waiting, "--actor-model", "claude-opus-5.5", repo=repo.path)
+    assert result.exit_code == exit_codes.OK, (
+        "a PR closed without merging releases its order (data-model § Lifecycle), so its"
+        f" slot is free: exit {result.exit_code}\n{result.stdout}\n{result.stderr}"
+    )
+    claim_files = repo.git("ls-tree", "-r", "--name-only", f"origin/wo/{waiting}")
+    assert f"bus/orders/{waiting}/claim.yaml" in claim_files
+
+
+def test_open_pr_still_holds_a_slot(repo: RepoBuilder, factory_cli: FactoryCli) -> None:
+    held = _hold_three(repo, "pr-open")
+    repo.make_pr(f"wo/{held[0]}")
+    waiting = _issue(repo, "behind-open-pr")
+    before = repo.head_sha(f"origin/wo/{waiting}")
+    result = factory_cli("claim", waiting, "--actor-model", "claude-opus-5.5", repo=repo.path)
+    assert result.exit_code == exit_codes.REFUSED, (
+        f"an order in review is active: exit {result.exit_code}\n{result.stdout}\n{result.stderr}"
+    )
+    assert repo.head_sha(f"origin/wo/{waiting}") == before, "refused claim must push nothing"

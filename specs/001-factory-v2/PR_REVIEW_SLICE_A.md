@@ -53,3 +53,33 @@ The accepted tests are untouched and Slice A's test set is green, but three bloc
 | `ruff check .` | Passed. |
 | No ambient env reads | Only `factory/config/settings.py` uses `os.environ`; none uses `os.getenv` outside config. |
 | Push safety scan | No force push and no push to `main`; PR-A2 covers index/worktree mutation. |
+
+## Triage (PR review)
+
+Orchestrator decisions on `wo-20261004-factory-slice-a.verdict-05`, recorded verbatim by the Slice A worker (2026-10-05). The chosen behaviours, the disclosed fidelity delta, and the open item are in `bus/orders/wo-20261004-factory-slice-a/amendment-04.yaml`.
+
+- **PR-A1 (App identity not wired): DEFER within Wave 1, not dropped.**
+  - Add task `T036b` to `specs/001-factory-v2/tasks.md`, right after T036, and leave T036 checked.
+  - T036b text: wire the App installation token into the git credential helper and the REST client, including how the installation id is obtained (config amendment if needed). Use a recorded-response end-to-end test proving the token is never logged, persisted or put in exceptions. It MUST land before T065 flips `identity.mode = verified`.
+  - Add a Phase 8 dependency note to the same effect. amendment-04 widens owned paths to `specs/001-factory-v2/tasks.md` for this edit only.
+  - Rationale: the App does not exist yet (T065 is HITL), and D4's letter is 'set up during Wave 1'. That is still met.
+- **PR-A2 (git plumbing touches caller's worktree): FIX.** Plumbing must be ref-only:
+  - never run `git merge` or checkout, and never touch the caller's index or worktree, including when the order branch is checked out;
+  - on push rejection, leave local refs unchanged.
+  - If the branch is checked out, do not move it. Report or skip as appropriate, and document the chosen behaviour in amendment-04.
+- **PR-A3 (packet edited outside owned paths): FIX.** Revert `notes/packets/2026-10-04-factory-v2-slice-a.md` to its origin/main content. Completion evidence lives in the handoff and verdicts only.
+- **PR-A4 (closed-unmerged PR keeps a slot): FIX to spec letter.** A closed-unmerged PR is `released` and frees capacity. Admission uses the same lifecycle derivation, including PR reality, that the board uses. There is no new write path.
+- **PR-A5 (Wave 1 exit): FIX to SC-013 letter.** `wave1_exit` requires every P1 check implemented and passing, is scoped to the Wave 1 cohort, and `--sprint` actually scopes it. Later orders must not erase a computed exit. (→ `bus/orders/wo-20261004-factory-slice-a/amendment-04.yaml`)
+- **PR-A6 (vacuous handoff-gate test): FIX the test.** The fixture commits a valid handoff and the test asserts the named gate failure.
+
+### Phase 1 record (tests first)
+
+| Finding | Tests (new unless noted) | State before the fix |
+|---------|--------------------------|----------------------|
+| PR-A2 | `tests/contract/test_git_safety.py::test_claim_leaves_a_dirty_index_and_worktree_untouched`, `::test_event_commands_leave_a_checked_out_order_branch_where_it_was[claim\|release]`, `::test_handoff_push_rejection_leaves_local_refs_and_worktree_unchanged` | red: `git merge --ff-only` adds the event to the caller's index/worktree and moves the checked-out branch; handoff moves it before a push that is then rejected |
+| PR-A3 | — (packet reverted to origin/main) | — |
+| PR-A4 | `tests/contract/test_claim.py::test_closed_unmerged_pr_frees_capacity`; guard `::test_open_pr_still_holds_a_slot` | red: cap reached with the closed-PR order counted; guard green |
+| PR-A5 | `tests/unit/test_scorecard.py::test_scorecard_wave1_not_exited_until_every_order_has_run_record_and_acceptance[no-run-record\|no-verdict\|latest-verdict-reject]`, `::test_scorecard_wave1_exit_survives_later_orders`, `::test_scorecard_sprint_scopes_wave1`; guard `::test_scorecard_cli_wave1_exit_after_rework_accepted` | red: exit set from landings alone; a post-retro order erases it; `--sprint` is echoed, not applied; guard green |
+| PR-A6 | `tests/contract/test_handoff.py::test_handoff_refuses_while_a_registered_gate_fails` (changed: fixture commits a valid handoff; asserts exit 2 naming `diff-within-owned-paths`) | red until Slice B lands the gate: handoff now reaches the gate step and reports it not enforced |
+
+Also found while writing the tests: `git push --porcelain` reports a non-fast-forward rejection on stdout, but `orders/git.py::push` checks only stderr for rejection markers. So a lost race exits 4 (external) instead of 2 (refused). The rejection test pins exit 2, and the accepted race test already allows either code.

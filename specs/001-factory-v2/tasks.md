@@ -114,6 +114,7 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 - [x] T034 [US2] `order new` / `order issue` / `claim` / `release` / `handoff` / `pr open` / `verdict` / `bus pr` in `scripts/factory/src/factory/cli/orders.py` with logic in `scripts/factory/src/factory/orders/` (git plumbing via subprocess in `scripts/factory/src/factory/orders/git.py`; no business logic in the CLI module — I-A1)
 - [x] T035 [US2] Scorecard `scripts/factory/src/factory/metrics/scorecard.py` + `factory scorecard` in `scripts/factory/src/factory/cli/board.py`
 - [x] T036 [US2] Identity adapter `scripts/factory/src/factory/identity/adapter.py` (implements `IdentityPort`; mode from config: `recorded` until the App exists, then `verified`) and App token minting + repo-local git credential helper `scripts/factory/src/factory/identity/app_token.py` (1-hour installation tokens)
+- [ ] T036b [US2] Wire the App installation token into the git credential helper and the REST client (`scripts/factory/src/factory/identity/app_token.py`, `scripts/factory/src/factory/github/rest.py`, callers in `scripts/factory/src/factory/orders/`), including how the installation id is obtained (config amendment if needed); a recorded-response end-to-end test proves the token is never logged, persisted, or put in exceptions. MUST land before T065 flips `identity.mode = "verified"`
 - [x] T037 [US2] Secret names: add a `tooling:` section to `deploy/secrets/schema.yaml` with `factory` → Codespace target, names `FACTORY_GITHUB_APP_ID` and `FACTORY_GITHUB_APP_PRIVATE_KEY` (no values), and teach `scripts/validate_secrets_schema.py` + `scripts/test_validate_secrets_schema.py` to accept the section
 - [x] T038 [US2] Update `acceptance.md` evidence for every row tested in T026–T032
 
@@ -275,7 +276,7 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
   - **Slice C**: Phase 6 (US4)
 - **T064** needs T055 (slice C runner) and T063 (slice B coverage). It runs after both, in slice C's lane.
 - **T059** needs T021 (slice A `GitHubPort` REST adapter) for commit statuses. Until it merges, slice C codes against `FakeGitHub`.
-- **Phase 8**: T067 can run any time after CP0. T065 is needed before T036's verified mode goes live. T066 is needed after T059 lands.
+- **Phase 8**: T067 can run any time after CP0. T065 is needed before T036's verified mode goes live. T036b (App token wired into git + REST) MUST land before T065 flips `identity.mode = "verified"`. T066 is needed after T059 lands.
 - **Phase 9** after CP2 and T065–T066. **No Wave 2 order is issued until T070 is complete.**
 - **Phases 10–13** (Wave 2) share the 3-worker cap with SWV2 lanes; US6, US7, US8 are mutually independent except T089 follows T088.
 
