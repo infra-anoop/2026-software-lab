@@ -4,7 +4,7 @@ Non-negotiable principles for every feature and agent run in this monorepo.
 Spec Kit phases (`/speckit-*`) and `AGENTS.md` must respect this document.
 Product-unique choices belong in feature specs — **not** by reinventing process.
 
-**Version**: 1.9.0 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-09-20
+**Version**: 1.10.0 | **Ratified**: 2026-09-12 | **Last Amended**: 2026-10-05
 
 ## Core Principles
 
@@ -251,6 +251,34 @@ Longer unattended runs are worthless if agents **silently dilute** locks. Throug
 6. **Waive is explicit.** Human may accept a substitute for this slice/version; agents record `fidelity waived → <substitute> (date)` — same seriousness as `waived` on an OD. “Keep going” is not a waive.
 
 **Anti-patterns (defects):** rewriting “Vercel v0” → “v0-class in-repo” in a spawn packet without A/B; greening tests with fabricated metadata that meets shape but not the lock’s “not thinner” / consistency bar without recording T* locks; treating `deferred` as skip (§G `waived` rules still apply).
+
+### J. Review loop budget (ship over polish — NON-NEGOTIABLE)
+
+Independent review exists to stop real harm, not to converge on perfection. An unbounded find-fix loop shrinks the solution space to zero as surely as an impossible test.
+
+**Round budget** (per artifact under review: one test set, one plan delta, one PR):
+
+| Round | Blocker bar |
+|-------|-------------|
+| 1–2 | Normal: Blocker / Debate / Later / Nit per the brief |
+| 3 | **Harm bar.** A finding may block only with a concrete harm statement: security or credential exposure, data loss, behavior that breaks a locked shall (letter), or a broken `main`. Everything else is recorded **Later** automatically |
+| after 3 | Orchestrator MUST choose: accept with recorded Later items, cut scope, or pose a plain A/B to the governor. A 4th round needs the governor’s explicit yes |
+
+Rounds count per artifact; a rework of the same tests or PR after rejection is the next round, not round 1.
+
+**Root cause first.**
+
+1. Every Blocker names its **root-cause class** (one line) in addition to the symptom.
+2. The fix addresses the class once — shared harness, contract wording, or design — with **at most one** regression test per class. Adding a test per symptom without a root-cause fix is a defect.
+3. Robustness of test machinery (timeouts, flake-proofing, helper meta-tests) is fixed in the shared harness; from round 3 it is **Later** unless it can make CI pass falsely or hang `main`.
+4. When findings cluster across slices (shared contract gaps), the orchestrator fixes the contract or integrates the slices earlier rather than patching each slice.
+
+**Practical middle ground.**
+
+1. Reviewers state, for each Blocker: consequence (what breaks, for whom), likelihood, and the **smallest** sufficient fix.
+2. **Accept with recorded Later items** is the expected verdict once no harm-bar finding remains.
+3. Orchestrator triage rule: fix real harm now; record the rest as Later with an owner. Accepting every finding by default is a defect.
+4. Later items are reviewed at the sprint retro, not silently dropped.
 
 ## Stack constraints
 

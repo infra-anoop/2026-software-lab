@@ -1,0 +1,108 @@
+# Orchestrator triage of T* round 6 (verdict-07, review/wo-20261004-factory-slice-a-r6 @ 68738f4).
+# Recorded by the Slice A worker on the orchestrator's instruction (2026-10-05).
+# Orchestrator-adjudicated (process). Still Phase 1: tests only, no fix code.
+#
+# Orchestrator decision (summarised):
+#   Triage (orchestrator, process): FIX T-A6-1. Keep the barrier ordering and advertisement
+#   assertions (T-A6-2) and the PR-A2 coverage (T-A6-3) unchanged.
+#   ThreadPoolExecutor.__exit__ waits on its futures, so after a result timeout a stuck claimer
+#   still hangs the test. Run claimers as processes the test holds handles to; on any barrier,
+#   arrival or result timeout kill every child, by process group so git and receive-pack die
+#   too; then fail with a clear message. Add a meta-test for the helper: a claimer that never
+#   arrives or never exits makes the helper raise within its bound, with no hang and no
+#   leftover processes.
+#
+# Design (tests/contract/push_barrier.py):
+#   - No executor. `PushBarrier.spawn(fn, *args)` forks; the child calls setpgid(0, 0) (the
+#     parent sets it too, closing the race), runs fn, pickles its return value or traceback to
+#     `result-<n>.pickle`, and always leaves via os._exit. A fork, not Popen of a fresh
+#     interpreter, so held commands keep the test's in-process state: the PR-A8 pinned
+#     DEPS.clock and the factory_cli FakeGitHub. Child stdout still reaches the pytest report.
+#   - Bounded waits only: wait_arrived(timeout=30 s) and result(command, timeout) poll
+#     waitpid(WNOHANG). On either timeout, or a command ending before its push arrives, every
+#     held command's process group is SIGKILLed and reaped, then AssertionError names the cause
+#     ("... did not exit within 60s; killed every held command").
+#   - Cleanup is self-verifying and bounded: kill() repeats killpg until the child is reaped and
+#     /proc shows no live (non-zombie) member of its group, failing after KILL_SECONDS = 10.
+#     PushBarrier.__exit__ always runs kill_all, then touches every go-<n>.
+#   - Worst case per held command: its wait bound plus 10 s of cleanup; never unbounded.
+#
+# Call sites changed only from `with ThreadPoolExecutor(...) as pool, barrier:` / pool.submit /
+#   future.result(timeout) to `with barrier:` / barrier.spawn / barrier.result(timeout). Every
+#   release, read and assertion is in the same order as at d8f2c47.
+#   test_claim.py::_held_race (PR-A7, PR-A8)
+#   test_git_safety.py::_claim_while_held (diverged during-push)
+#   test_git_safety.py::test_handoff_push_rejection_leaves_local_refs_and_worktree_unchanged
+#
+# Meta-test (new, green today): tests/contract/test_push_barrier.py
+#   test_a_claimer_that_never_arrives_fails_within_the_bound: the claimer waits on a `sleep 600`
+#     child; wait_arrived(timeout=1) raises; the claimer is reaped, its child is dead, and the
+#     group is empty, within 1 s + KILL_SECONDS.
+#   test_a_claimer_held_at_origin_that_never_exits_fails_within_the_bound: a real git push
+#     arrives at the wrapper and is never released; the group holds git and the wrapper;
+#     result(timeout=1) raises; every one of those processes is dead and the group is empty.
+#   test_leaving_the_block_kills_a_command_that_is_still_running: the T-A6-1 shape; leaving
+#     the `with` block with a running command kills it, without waiting for it.
+#   test_a_command_returns_its_value_or_reports_its_exception.
+#   Skipped only where /proc is absent (the lab runs Linux).
+#
+# Evidence: sabotaging PR-A7 (claimer 2 never released, RACE_TIMEOUT = 3) failed in 3.4 s
+#   with "command 2 did not exit within 3s; killed every held command" and left no git or
+#   receive-pack process; the sabotage was reverted.
+#
+# Out of scope (no change): test_claim.py::test_claim_fast_forward_exactly_one_of_two_concurrent_wins
+#   (accepted earlier, no barrier) still uses ThreadPoolExecutor with untimed result().
+#
+# owned_paths: amend-07's list plus scripts/factory/tests/contract/test_push_barrier.py (the
+#   helper meta-test). Restated whole. Line scopes unchanged.
+schema_version: 1
+kind: amendment
+id: wo-20261004-factory-slice-a.amend-08
+created: 2026-10-05T15:20:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/packets/2026-10-04-factory-v2-slice-a.md
+  - specs/001-factory-v2/TEST_REVIEW_SLICE_A.md
+  - wo-20261004-factory-slice-a.verdict-07
+  - wo-20261004-factory-slice-a.amend-07
+supersedes: [owned_paths]
+values:
+  owned_paths:
+    - "scripts/factory/src/factory/lifecycle/**"
+    - "scripts/factory/src/factory/board/**"
+    - "scripts/factory/src/factory/metrics/**"
+    - "scripts/factory/src/factory/github/**"
+    - "scripts/factory/src/factory/identity/**"
+    - "scripts/factory/src/factory/orders/**"
+    - "scripts/factory/src/factory/cli/board.py"
+    - "scripts/factory/src/factory/cli/orders.py"
+    - "scripts/factory/tests/contract/test_status.py"
+    - "scripts/factory/tests/contract/test_orders.py"
+    - "scripts/factory/tests/contract/test_claim.py"
+    - "scripts/factory/tests/contract/test_handoff.py"
+    - "scripts/factory/tests/contract/test_pr_and_verdict.py"
+    - "scripts/factory/tests/contract/test_bus_pr.py"
+    - "scripts/factory/tests/contract/test_git_safety.py"
+    - "scripts/factory/tests/contract/push_barrier.py"
+    - "scripts/factory/tests/contract/test_push_barrier.py"
+    - "scripts/factory/tests/unit/test_lifecycle.py"
+    - "scripts/factory/tests/unit/test_github_adapter.py"
+    - "scripts/factory/tests/unit/test_no_bookkeeping.py"
+    - "scripts/factory/tests/unit/test_scorecard.py"
+    - "scripts/factory/tests/unit/test_identity.py"
+    - "scripts/factory/tests/fixtures/github_recorded/**"
+    - "scripts/factory/pyproject.toml"
+    - "scripts/factory/uv.lock"
+    - "deploy/secrets/schema.yaml"
+    - "scripts/validate_secrets_schema.py"
+    - "scripts/test_validate_secrets_schema.py"
+    - "specs/001-factory-v2/acceptance.md"
+    - "specs/001-factory-v2/tasks.md"
+    - "specs/001-factory-v2/research.md"
+    - "specs/001-factory-v2/plan.md"
+    - "specs/001-factory-v2/TEST_REVIEW_SLICE_A.md"
+    - "specs/001-factory-v2/PR_REVIEW_SLICE_A.md"
+    - "bus/orders/wo-20261004-factory-slice-a/**"
+    - "notes/packets/2026-10-04-factory-v2-slice-a.handoff.md"

@@ -257,3 +257,7 @@ docker-compose.override.yml
 .DS_Store
 Thumbs.db
 .history/
+
+# Codespace-local agent homes (worktrees, Cursor state)
+.worktree-home/
+.cursor-local-home/

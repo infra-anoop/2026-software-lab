@@ -1,0 +1,79 @@
+schema_version: 1
+kind: verdict
+id: wo-20261004-factory-slice-a.verdict-06
+created: 2026-10-05T06:45:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - wo-20261004-factory-slice-a.verdict-05
+  - wo-20261004-factory-slice-a.amend-04
+  - wo-20261004-factory-slice-a.amend-05
+  - wo-20261004-factory-slice-a.amend-06
+decision: reject
+findings:
+  - id: T-A5-1
+    severity: blocker
+    tag: process
+    text: >-
+      The PR-A7 and PR-A8 tests do not deterministically force both claimers past
+      their fetch before either push lands. They rely on ThreadPoolExecutor
+      scheduling plus one- and three-second receivepack sleeps. On a loaded
+      two-core runner the second task can fetch after the first push and refuse as
+      already claimed, making both tests pass without exercising the porcelain
+      rejected or up-to-date outcomes; PR-A7 can also invert its asserted winner.
+      Synchronize the two clients at the pre-push seam and explicitly order the
+      receivepack advertisements instead of using elapsed sleeps.
+  - id: T-A5-2
+    severity: blocker
+    tag: process
+    text: >-
+      The PR-A2 safety suite does not pin the whole amended behavior. Successful
+      checked-out-branch cases cover claim and release only, so handoff or verdict
+      may still move the checkout. No case covers a branch checked out in another
+      linked worktree, successful compare-and-swap advancement of a non-checked-out
+      local branch, or leaving a divergent local branch alone. The handoff rejection
+      fixture moves origin before command start, so an implementation that refuses
+      during an initial fetch can pass without proving that a rejection at push
+      leaves refs, index, and worktree unchanged. Add executable cases for those
+      paths and force the remote move after the command has built its event.
+  - id: T-A5-3
+    severity: nit
+    tag: process
+    text: >-
+      The accepted-test amendments are justified and do not weaken their original
+      assertions: origin/wo is the authoritative pushed ref, a lost claim race is
+      exit 2, the handoff fixture now reaches its named gate, and the scorecard
+      exercises the CLI with P1 status evidence. sys.modules stubs are a legitimate
+      test seam for sibling-owned gate entrypoints because production still performs
+      ordinary import resolution and the scorecard must not execute gates. The
+      retro-on-main cohort boundary and refs-based sprint membership are coherent,
+      explicit, and jointly satisfiable.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: specs/001-factory-v2/PR_REVIEW_SLICE_A.md
+    sha: a83fb28befb464155607846db4cbbe600aaa724f
+  - path: bus/orders/wo-20261004-factory-slice-a/amendment-04.yaml
+    sha: a83fb28befb464155607846db4cbbe600aaa724f
+  - path: bus/orders/wo-20261004-factory-slice-a/amendment-05.yaml
+    sha: a83fb28befb464155607846db4cbbe600aaa724f
+  - path: bus/orders/wo-20261004-factory-slice-a/amendment-06.yaml
+    sha: a83fb28befb464155607846db4cbbe600aaa724f
+  - path: scripts/factory/tests/contract/test_claim.py
+    sha: a83fb28befb464155607846db4cbbe600aaa724f
+  - path: scripts/factory/tests/contract/test_git_safety.py
+    sha: a83fb28befb464155607846db4cbbe600aaa724f
+  - path: scripts/factory/tests/contract/test_handoff.py
+    sha: a83fb28befb464155607846db4cbbe600aaa724f
+  - path: scripts/factory/tests/contract/test_pr_and_verdict.py
+    sha: a83fb28befb464155607846db4cbbe600aaa724f
+  - path: scripts/factory/tests/unit/test_scorecard.py
+    sha: a83fb28befb464155607846db4cbbe600aaa724f
+bootstrap: true
+manual_equivalents:
+  - "full suite expected red: 95 failed, 342 passed; 78 baseline failures plus 17 PR-fix reds; no collection errors or xfails"
+  - "PR-A7 and PR-A8 tests each failed for the intended current-code outcome in 8 of 8 repetitions, but their orchestration is not deterministic"
+  - "ruff check and ruff format check passed"
+  - "factory check schema passed before verdict-06 and will be rerun with verdict-06 present"
+  - "test diff changes no scripts/factory/src production source; bus changes through a83fb28 are append-only"

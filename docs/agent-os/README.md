@@ -113,6 +113,7 @@ Unlocked product numbers and vault seeds are **run killers** for multi-hour agen
 
 | Version | Note |
 |---------|------|
+| 1.10.0 | §J Review loop budget: harm bar from round 3, governor yes for a 4th round; root-cause class per Blocker, at most one regression test per class; accept-with-Later as default once no harm remains |
 | 1.9.0 | §I Locked-intent fidelity: disclose-or-stop; letter vs intent; packet Fidelity table; no silent substitutes |
 | 1.8.0 | §G.2 Finish-bar lock batch before first implement; `FINISH_BAR.md`; analyze CRITICAL for open ODs / finish deferrals |
 | 1.7.0 | §G.1 Architecture delta reconcile after architecture-affecting Open Decision locks; `PLAN_DELTA.md`; analyze before dependent implement |

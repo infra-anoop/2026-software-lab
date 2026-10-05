@@ -1,0 +1,114 @@
+schema_version: 1
+kind: verdict
+id: wo-20261004-factory-slice-a.verdict-05
+created: 2026-10-05T04:25:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - wo-20261004-factory-slice-a.verdict-04
+  - https://github.com/infra-anoop/2026-software-lab/pull/20
+decision: reject
+findings:
+  - id: PR-A1
+    severity: blocker
+    tag: product
+    text: >-
+      The GitHub App JWT and credential-response functions have no production caller:
+      REST still uses GITHUB_TOKEN, no installation id is obtained, and git is never
+      given an installation token. The locked separate-agent identity is not usable.
+  - id: PR-A2
+    severity: blocker
+    tag: process
+    text: >-
+      advance_local_branch runs git merge --ff-only when the order branch is checked
+      out, touching the caller's index and worktree; handoff does this before push, so a
+      rejected push can leave an unpushed local commit checked out.
+  - id: PR-A3
+    severity: blocker
+    tag: process
+    text: >-
+      The PR rewrites the packet Status and DoD checkboxes even though the packet is not
+      in the original or amended owned paths. Revert this out-of-scope bookkeeping edit.
+  - id: PR-A4
+    severity: later
+    tag: product
+    text: >-
+      Claim admission keeps a closed-unmerged PR active until an explicit release,
+      contrary to the approved lifecycle where closed-unmerged is released and excluded
+      from capacity.
+  - id: PR-A5
+    severity: later
+    tag: product
+    text: >-
+      Wave 1 exit is derived only from every visible order landing on main; it does not
+      require all P1 checks passing and is not scoped to the Wave 1 cohort or sprint.
+  - id: PR-A6
+    severity: later
+    tag: process
+    text: >-
+      The registered-gate handoff refusal test passes before gate execution because its
+      fixture never commits a handoff. Fix it in a test-only follow-up through T*.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: notes/packets/2026-10-04-factory-v2-slice-a.md
+    sha: ea6a554d19f494bda7710303ca323fd1df052d03
+  - path: notes/packets/2026-10-04-factory-v2-slice-a.handoff.md
+    sha: ea6a554d19f494bda7710303ca323fd1df052d03
+  - path: bus/orders/wo-20261004-factory-slice-a/amendment-01.yaml
+    sha: ea6a554d19f494bda7710303ca323fd1df052d03
+  - path: bus/orders/wo-20261004-factory-slice-a/amendment-02.yaml
+    sha: ea6a554d19f494bda7710303ca323fd1df052d03
+  - path: bus/orders/wo-20261004-factory-slice-a/amendment-03.yaml
+    sha: ea6a554d19f494bda7710303ca323fd1df052d03
+  - path: bus/orders/wo-20261004-factory-slice-a/verdict-04.yaml
+    sha: ea6a554d19f494bda7710303ca323fd1df052d03
+  - path: specs/001-factory-v2/spec.md
+    sha: ea6a554d19f494bda7710303ca323fd1df052d03
+  - path: specs/001-factory-v2/plan.md
+    sha: ea6a554d19f494bda7710303ca323fd1df052d03
+  - path: specs/001-factory-v2/data-model.md
+    sha: ea6a554d19f494bda7710303ca323fd1df052d03
+  - path: specs/001-factory-v2/research.md
+    sha: ea6a554d19f494bda7710303ca323fd1df052d03
+  - path: specs/001-factory-v2/tasks.md
+    sha: ea6a554d19f494bda7710303ca323fd1df052d03
+  - path: specs/001-factory-v2/acceptance.md
+    sha: ea6a554d19f494bda7710303ca323fd1df052d03
+  - path: specs/001-factory-v2/TEST_REVIEW_SLICE_A.md
+    sha: ea6a554d19f494bda7710303ca323fd1df052d03
+  - path: specs/001-factory-v2/contracts/cli.md
+    sha: ea6a554d19f494bda7710303ca323fd1df052d03
+  - path: specs/001-factory-v2/contracts/messages.md
+    sha: ea6a554d19f494bda7710303ca323fd1df052d03
+  - path: specs/001-factory-v2/contracts/gates.md
+    sha: ea6a554d19f494bda7710303ca323fd1df052d03
+  - path: specs/001-factory-v2/contracts/hooks.md
+    sha: ea6a554d19f494bda7710303ca323fd1df052d03
+  - path: scripts/factory/src/factory/orders/git.py
+    sha: ea6a554d19f494bda7710303ca323fd1df052d03
+  - path: scripts/factory/src/factory/orders/lease.py
+    sha: ea6a554d19f494bda7710303ca323fd1df052d03
+  - path: scripts/factory/src/factory/orders/review.py
+    sha: ea6a554d19f494bda7710303ca323fd1df052d03
+  - path: scripts/factory/src/factory/lifecycle/derive.py
+    sha: ea6a554d19f494bda7710303ca323fd1df052d03
+  - path: scripts/factory/src/factory/board/render.py
+    sha: ea6a554d19f494bda7710303ca323fd1df052d03
+  - path: scripts/factory/src/factory/metrics/scorecard.py
+    sha: ea6a554d19f494bda7710303ca323fd1df052d03
+  - path: scripts/factory/src/factory/github/rest.py
+    sha: ea6a554d19f494bda7710303ca323fd1df052d03
+  - path: scripts/factory/src/factory/identity/app_token.py
+    sha: ea6a554d19f494bda7710303ca323fd1df052d03
+  - path: deploy/secrets/schema.yaml
+    sha: ea6a554d19f494bda7710303ca323fd1df052d03
+bootstrap: true
+manual_equivalents:
+  - "accepted tests unchanged: git diff 7d2467a HEAD -- scripts/factory/tests was empty"
+  - "owned paths and frozen CP0 files inspected manually against packet plus amendments"
+  - "full tests: 341 passed and 78 expected-red failures; 26 contract plus 52 seed"
+  - "non-contract/non-seed tests: 263 passed and 156 deselected"
+  - "ruff check passed; diff check passed; no getenv outside config"
+  - "git plumbing manually audited for main/force pushes, races, index and worktree effects"
