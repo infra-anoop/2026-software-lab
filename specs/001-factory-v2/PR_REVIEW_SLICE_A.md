@@ -120,3 +120,74 @@ Rule for phase 2: a claim or release push whose remote ref was already at our co
 | Finding | Test | State before the fix |
 |---------|------|----------------------|
 | PR-A8 | new `tests/contract/test_claim.py::test_identical_same_second_claims_have_one_winner` (clock, commit dates and actor pinned; receivepack delays make the second push find origin already at its commit) | red: `[0, 0]`, both claimers report the same SHA |
+
+## Round 2
+
+Reviewed head: `e2f6816b836189b0af4ba0c694fc3036280132d7`
+
+### Verdict
+
+**Accept with recorded Later items.**
+
+There are no Round 2 Blockers. PR-A2 through PR-A8 are fixed at their root
+classes, with the accepted remediation tests unchanged since `ccb0b1a`. PR-A1
+is not wired end to end yet, but it is now an explicit pre-activation dependency:
+T036b must land before T065 can switch identity to verified mode. That sequencing
+prevents the unintegrated App path from being presented as live authority.
+
+### Finding resolution
+
+| Finding | Judgment | Root-cause resolution / regression check |
+|---------|----------|------------------------------------------|
+| PR-A1 | **Later — sequenced, not root-fixed yet** | The disconnected identity path remains. T036b now names the complete integration (installation id, App token, git credential path, REST path, and non-disclosure test) and is a mandatory predecessor of T065's verified-mode switch. Recorded below as Later, not silently accepted as complete. |
+| PR-A2 | **Fixed at root** | Shared git plumbing is ref-only: no merge/checkout/reset/index/worktree write. Origin is updated first; a local branch moves only by compare-and-swap after success, and never while checked out in any worktree. Divergence and rejected pushes leave it alone. Handoff and verdict use the authoritative remote tip when the checked-out branch lags. |
+| PR-A3 | **Fixed at root** | The packet exactly matches `origin/main`; status and completion stay in the append-only handoff/verdict records. |
+| PR-A4 | **Fixed at root** | Claim admission now uses the same `derive_order` lifecycle as the board. A closed-unmerged PR derives `released` and frees capacity; open, accepted, and rejected PRs still hold a slot. |
+| PR-A5 | **Fixed at root** | Wave 1 exit requires every cohort order landed with a run and latest accepted verdict, every P1 entrypoint resolvable, and every `factory/<gate>` status successful on the exit commit. The retro landing closes the cohort, and `--sprint` scopes order-derived metrics. |
+| PR-A6 | **Fixed at the test root** | The fixture now commits a valid handoff and reaches `diff-within-owned-paths`; its single red is the disclosed Slice B dependency, not the old pre-gate false positive. |
+| PR-A7 | **Fixed at root** | Push classification reads the porcelain status line on stdout. `!` is a lease refusal (exit 2), while transport failures remain external (exit 4). |
+| PR-A8 | **Fixed at root** | First-writer pushes treat porcelain `=` / up-to-date as a lost race. The shared behavior covers issue, claim, release, new run-complete, verdict, and bus-PR creation; idempotent non-first-writer pushes opt out explicitly. |
+
+### Blockers
+
+None.
+
+### Later
+
+1. **PR-A1 — App identity production integration (product).** Owner: Slice A /
+   orchestrator before T065. Complete T036b and its recorded-response custody
+   test before verified mode can be enabled.
+2. **T-A7-3 — suite-wide synchronous timeout policy (process).** Existing
+   in-process CLI calls and frozen fixture subprocesses are not uniformly
+   timeout-bounded. The new race/barrier harness itself is bounded and
+   self-cleaning; handle the broader policy when CP0 fixtures are amended.
+
+### Safety and regression review
+
+- The ref-only implementation contains no merge, checkout, switch, reset,
+  read-tree, stash, force push, or push-to-main path.
+- Push rejection updates neither the caller's local branch nor its checkout.
+  Successful local advancement is compare-and-swap and occurs only after origin
+  accepts the event.
+- Closed-PR capacity reads through the existing GitHub port and writes no
+  synthetic release.
+- P1 scorecard checks resolve entrypoints but never execute gates; status
+  evidence is read through the same latest-per-context GitHub port as lifecycle.
+- The FR-037 order, claim, and handoff validate. The disclosed
+  `size_minutes: 1`, catalog gate-id behavior, Slice B-dependent PR-A6 red, and
+  six handoff-fixture integration reds are accepted cross-slice facts, not new
+  findings.
+
+### Verification record
+
+| Check | Result |
+|-------|--------|
+| Worktree setup discovery | Checked repository root and worktree; no `.cursor/worktrees.json`, so setup was skipped. |
+| Locked sync | PASS — 29 locked packages installed under Nix. |
+| Accepted remediation tests | PASS — `git diff ccb0b1a HEAD -- scripts/factory/tests` is empty. |
+| Full `pytest -q` | Expected cross-slice red — **368 passed, 79 failed** in 61.28 s: 26 contract, 52 Slice B seeds, and the one PR-A6 integration test. |
+| CI selector | PASS — **277 passed, 170 deselected** in 22.72 s. |
+| `ruff check` / `ruff format --check` | PASS — all checks passed; 70 files formatted. |
+| `factory check schema --repo ../..` | PASS before verdict-09 — `schema ok`. |
+| Packet restoration | PASS — packet is byte-identical to `origin/main`. |
+| Frozen CP0 files | PASS — no changes to the frozen source/model/fixture paths. |
