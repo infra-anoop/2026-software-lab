@@ -39,6 +39,35 @@ Amendments only, each reviewed by the T* reviewer (gpt-5.6-sol). The last column
 
 New tests added by the same amendments: `test_git_safety.py` (amend-04, completed by amend-07); `test_claim.py` PR-A4, PR-A7 and PR-A8 cases (amend-04/05/06, rebuilt on the receive-pack barrier by amend-07/08); `test_scorecard.py` SC-013 cases (amend-05); `push_barrier.py` and `test_push_barrier.py` (amend-07/08).
 
+## FR-037 bootstrap messages
+
+Orchestrator decision 2026-10-05, for all slices, in the shape Slice B used (`wo-20261004-factory-slice-b` amend-06). The commit at the branch tip, right after this one, adds `bus/orders/wo-20261004-factory-slice-a/{order,claim,handoff}.yaml`. Those kinds have fixed ids (`<order-id>`, `.claim`, `.handoff`), so they take no message numbers. Amendments 01–09 and verdicts 01–08 are unchanged.
+
+- **Order.** Rebuilt from the packet: goal, tasks (T017–T038 except T033), stop conditions, and owned paths with the braces expanded. Amendments 01–09 supersede `owned_paths`; amend-09 holds the current set. `actor_verified: false`, `depends_on_decisions: []`, `worker_runtime: local_subagent`. Intents are the catalog rows this slice evidences (I-M4, I-M2, I-X4, I-X3, I-P3, I-G2, I-B5, I-G1, I-G3, I-M3) plus the ones its tasks cite (I-A4 for T021, I-A1 for T034).
+- **`checks`** (gate ids only, one per packet line, same mapping as Slice B because the DoD and Fidelity template is identical): `red-first-proof` (Red first), `catalog-test-linkage` (acceptance evidence), `diff-within-owned-paths` (owned and forbidden paths; this slice's checkboxes only), `pr-links-order` (commits on the packet branch), `order-fidelity-declared` and `lock.letter-tokens` (§ Fidelity), `verdict.reviewer-family-differs` and `verdict.inputs-isolated` (bootstrap verdict input). The pytest, ruff and type-hint line has no registered gate. Every other registered P1 gate (`validate-secrets-schema`, `uv-sync-locked`, the bus gates and so on) still judges the PR as a required check.
+- **`locks`.** These are the packet's § Fidelity rows, all at letter fidelity. Each token is literal text on a changed code line:
+  - cap at claim: `concurrency cap` (the refusal in `orders/lease.py`; the value 3 lives in frozen config);
+  - git lease authority: `non-fast-forward` and `update-ref` (`orders/git.py`);
+  - `D4` App identity: `FACTORY_GITHUB_APP_ID` and `FACTORY_GITHUB_APP_PRIVATE_KEY` (`deploy/secrets/schema.yaml`);
+  - httpx REST with no gh CLI: `httpx`, with registered substitutes `gh api` and `gh pr`.
+
+  The "Governor locks required" table is context, as in Slice B.
+- **Claim.** `claimed_at` 2026-10-04T15:43:22Z, the first worker commit `350c15c` ("slice A: packet in_progress").
+- **Handoff.** One-time message pointing at this file. Later progress goes here only.
+
+**Known bootstrap distortions** (accepted by the orchestrator, as for Slice B):
+- **Order size.** `size_minutes` is `1`, the schema minimum. The true size is about 6.8 h wall-clock (claim `350c15c` 2026-10-04T15:43:22Z to the pre-PR head `ea6a554` 2026-10-04T22:29:07Z), plus the PR #20 rework on 2026-10-05. That figure is in the order's `refs`.
+- **Scorecard dates.** The scorecard dates the order's issue from the commit that adds `order.yaml` (2026-10-05), not the packet date (`9bb5525`, 2026-10-04T00:09:03Z). The orchestrator corrects Wave 1's start by hand in the retro.
+
+**Checked before commit** on an unreferenced probe commit holding the three messages, in a scratch clone whose `origin` held it (the real `origin/wo/*` refs were not used):
+- `factory check schema` reports `schema ok`.
+- `factory status` puts Slice A **In flight, `in_review` PR #20**, with the board at 3 of 3 active. The latest verdict (`verdict-08`, accept) has no green required `factory/<gate>` statuses on the PR head yet, so it stays in review.
+- Slice B's drift gates were overlaid from `origin/wo/wo-20261004-factory-slice-b` for one run and then removed, with `order_id` set to this order and base `origin/main`. Results:
+  - `order-fidelity-declared` passes (no locked decision touched);
+  - `lock.letter-tokens` passes (4 letter locks honored);
+  - `diff-within-owned-paths` passes;
+  - `catalog-test-linkage` fails: each of the 8 gate ids "has no row in any acceptance.md". This is the `checks`-kinds defect that Slice B's amend-06 decision 2 fixes in Slice B phase 2 (a gate id is not a catalog miss). Slice A's lifecycle side is T105. It is not a data problem in this order.
+
 ## What changed (T021–T025, T034–T038)
 
 Code under `scripts/factory/src/factory/`. All of it is new except the two CLI modules, which replace stubs.
@@ -125,7 +154,7 @@ Every P0 contract and envelope test for a Slice A command passes, except the Sli
 
 | Class | Question |
 |-------|----------|
-| non_blocking (now evidenced; decide before Slice B merges) | `handoff` runs every importable local P1 gate. With Slice B's `gates/drift/` overlaid on this branch (scratch run, not committed), PR-A6 and the P0 refusal pass, but **six accepted exit-0 handoff tests go red**: `test_handoff.py::test_handoff_writes_run_complete_event`, `::test_handoff_blocker_governor_exits_2_and_waits_on_board`, P0 `test_cli_contract.py::test_handoff_exit_0` and `test_json_envelope[handoff-handoff]`, and `test_git_safety.py::test_handoff_and_verdict_leave_a_checked_out_order_branch_where_it_was[handoff]` / `::test_handoff_push_rejection_leaves_local_refs_and_worktree_unchanged`. Refusals: `order-fidelity-declared` (fixture lacks `specs/001-factory-v2/spec.md`), `lock.letter-tokens` (D2 `70%`), `catalog-test-linkage` (order check `diff-within-owned-paths` has no acceptance row). Running only the order's `checks` would break the P0 refusal test, which uses `checks: []`. Needs an orchestrator call: which gates handoff runs locally, or frozen fixtures that satisfy them (CP0 amendment) |
+| ~~non_blocking~~ **decided 2026-10-05 (orchestrator, process): B, realistic fixtures. Owner: Slice B.** Handoff keeps running every registered local gate, as the spec says. The frozen fixtures change instead, to model a realistic order: fidelity declared, no lock-token removals, catalog linkage satisfied. Slice B amends them through T* when it merges main after Slice A lands. Slice A changes nothing for this | `handoff` runs every importable local P1 gate. With Slice B's `gates/drift/` overlaid on this branch (scratch run, not committed), PR-A6 and the P0 refusal pass, but **six accepted exit-0 handoff tests go red**: `test_handoff.py::test_handoff_writes_run_complete_event`, `::test_handoff_blocker_governor_exits_2_and_waits_on_board`, P0 `test_cli_contract.py::test_handoff_exit_0` and `test_json_envelope[handoff-handoff]`, and `test_git_safety.py::test_handoff_and_verdict_leave_a_checked_out_order_branch_where_it_was[handoff]` / `::test_handoff_push_rejection_leaves_local_refs_and_worktree_unchanged`. Refusals: `order-fidelity-declared` (fixture lacks `specs/001-factory-v2/spec.md`), `lock.letter-tokens` (D2 `70%`), `catalog-test-linkage` (order check `diff-within-owned-paths` has no acceptance row). Running only the order's `checks` would break the P0 refusal test, which uses `checks: []`. Options were: which gates handoff runs locally (A), or frozen fixtures that satisfy them (B, CP0 amendment) |
 | ~~non_blocking~~ | ~~T* follow-up for deviation 2~~: done (amendment-04, PR-A6) |
 | ~~non_blocking~~ | ~~Should a PR closed unmerged also free a claim slot?~~ Yes: PR-A4, implemented |
 | later (T-A7-3) | Suite-wide timeout policy for synchronous fixture/CLI calls, when CP0 fixtures are next amended |
@@ -140,7 +169,7 @@ No `blocker_governor` questions.
 | `diff-within-owned-paths` | `git diff --name-only origin/main...HEAD`: Slice A src dirs, `cli/board.py`, `cli/orders.py`, the Slice A tests + `github_recorded/**`, `pyproject.toml`, `uv.lock`, the secrets schema + validator + test, `acceptance.md`, `tasks.md`, `research.md`, `plan.md`, `TEST_REVIEW_SLICE_A.md`, this order's bus dir, the packet + this handoff. No frozen CP0 file, no other slice's path | pass |
 | `test-seam-ban` | `rg 'PYTEST\|pytest\|TESTING\|FakeGitHub\|is_test'` over the new src: no matches. Tests substitute adapters only through `DEPS` / `httpx.Client` | pass |
 | `bus.no-handwritten-status` / `bus.schema` | Written events are built through `parse_message` (forbidden keys rejected); `test_status` walks every bus YAML on every fixture branch | pass |
-| `order-fidelity-declared` / `lock.letter-tokens` | No order touches a named lock in this slice's own work. `order new` refuses a touched lock without `--lock` (T026) | n/a / tested |
+| `order-fidelity-declared` / `lock.letter-tokens` | Real gates (Slice B overlay, one run) against the FR-037 bootstrap order: 0 touched locks; 4 letter locks honored. `order new` refuses a touched lock without `--lock` (T026) | pass |
 | `decision-request-no-ids` | Refusals shown to the governor carry the decision prompt only; tests assert no `T0xx` / `FR-0xx` | pass |
 | `deferral-words-need-od` | No "later/TODO/defer" introduced in spec, plan, or tasks text | pass |
 
@@ -156,4 +185,4 @@ T017–T032 went red at `7dc2359`. Four T* rounds by gpt-5.6-sol (openai) follow
 
 ## Stop
 
-The orchestrator opens the PR and spawns the bootstrap verdict. This worker did not open a PR.
+The orchestrator opened PR #20 and spawns the PR re-review. This worker does not edit the PR description.
