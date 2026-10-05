@@ -116,3 +116,11 @@ Environment facts that constrain choices (verified 2026-10-03): the `gh` CLI is 
 
 - **Decision:** Typer (on Click).
 - **Alternatives considered:** argparse (stdlib, no dependency, verbose); Cyclopts (modern, smaller community).
+
+### GitHub App JWT signing (D4-A)
+
+- **Decision (2026-10-04, Slice A amend-02):** sign the RS256 App JWT with **PyJWT** (`pyjwt[crypto] >=2.9,<3`, which pulls `cryptography`) inside `factory.identity.app_token`; the installation-token exchange stays on the thin httpx adapter.
+- **Rationale:** the standard, maintained Python JWT library; a few lines of code; RS256 via `cryptography`; no runtime binary dependency; keeps the GitHub surface the factory's own small REST adapter.
+- **Alternatives considered:**
+  - **`openssl` CLI** (shell out to sign): no Python dependency, but adds a runtime binary dependency and hand-rolled JWT encoding. Kept only as the test oracle that verifies signatures independently.
+  - **githubkit** (non-sibling, full GitHub SDK with built-in App auth): replaces the thin httpx adapter with a much larger surface for one feature.

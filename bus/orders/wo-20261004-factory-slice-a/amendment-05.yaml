@@ -1,0 +1,127 @@
+# Orchestrator decisions on the Phase 1 open items from amend-04 (PR #20 review triage, round 2).
+# Recorded by the Slice A worker on the orchestrator's instruction (2026-10-05).
+# Orchestrator-adjudicated (process / spec letter); no governor lock needed. Still Phase 1: tests only.
+#
+# Orchestrator decisions (verbatim):
+#   1. **Push-race defect (porcelain `[rejected]` on stdout): FIX later in phase 2.** Now, tighten
+#      the accepted race test so a lost race must exit 2 (lease conflict), not 4. Add this as a
+#      finding `PR-A7` (should-fix, process; found by implementer) in amendment-05.
+#   2. **Accepted tests reading the local checked-out `wo/<id>`: AMEND.**
+#      - Change `test_handoff_writes_run_complete_event` and
+#        `test_verdict_commits_valid_different_family_verdict` to read the new commit from
+#        `origin/wo/<id>`, the pushed ref. Change only the read path, not the assertions.
+#      - Ref-only plumbing, with no move of a checked-out branch, stands.
+#   3. **SC-013 'every P1 check implemented and passing': keep to the LETTER and do NOT waive.**
+#      Wave 1 exit requires all three of the following:
+#      - (a) every Wave 1 order has a run record and has been accepted and landed, as you have it;
+#      - (b) every `priority: P1` row in `gates.yaml` is implemented, meaning its entrypoint
+#        resolves;
+#      - (c) the `main` commit at the exit point has a `success` `factory/<id>` commit status for
+#        every P1 gate. Read this through the same recorded-REST GitHub port the lifecycle uses.
+#      - Amend the accepted exit fixture/test to include those statuses, and add negative cases:
+#        one P1 status missing or failing means no exit, and one P1 entrypoint unresolvable means
+#        no exit.
+#      - Remove the 'fidelity gap' disclosure from amendment-04 by superseding it in amendment-05.
+#   4. **Wave 1 boundary = `bus/postmortems/wave1-retro.yaml` landing on main; sprint membership =
+#      `refs` include `notes/sprints/<S>.md`: ACCEPTED provisionally.** The T* reviewer will judge
+#      both. Make sure they are spelled out in the test docstrings.
+#   5. **Severity mismatch:** in amendment-05, state that PR-A4/A5/A6 are should-fix. Do not edit
+#      verdict-05; it is immutable.
+#
+# New finding:
+#   PR-A7 | should-fix | process | found by implementer (Slice A worker) | orders/git.py::push
+#     A push that git rejects client-side ("[rejected] (fetch first)" / non-fast-forward) prints
+#     that status on `--porcelain` stdout; stderr carries only "failed to push some refs", which
+#     matches no rejection marker, so a lost lease race exits 4 (external) instead of 2 (refused).
+#     A rejection at the remote's ref lock is already classified correctly (exit 2).
+#     Tests: test_claim.py::test_claim_fast_forward_exactly_one_of_two_concurrent_wins (amended:
+#     the loser must exit 2; nondeterministic, since the loser usually refuses at "already
+#     claimed"), test_claim.py::test_lost_claim_race_at_the_push_is_refused (new, deterministic:
+#     per-clone receivepack delays force the client-side rejection; red [0, 4] today), and
+#     test_git_safety.py::test_handoff_push_rejection_leaves_local_refs_and_worktree_unchanged.
+#
+# Severity (decision 5): PR-A4, PR-A5 and PR-A6 are should-fix. verdict-05 says `later` and stays
+#   as written (immutable); this amendment is the operative severity.
+#
+# Supersedes in amend-04 (comment text, not order fields):
+#   - "Chosen behaviour, PR-A5", bullet "Exit" and the whole "Fidelity delta, disclosed, not
+#     waived" bullet. No fidelity gap remains: SC-013 is held to the letter. Exit rule now:
+#       wave1_exit = date of the main commit of the last Wave 1 landing (first-parent), only when
+#       (a) every Wave 1 order in scope has a run_complete, a latest verdict of accept, and has
+#           landed on main;
+#       (b) every `priority: P1` gate in the factory's gates.yaml resolves:
+#           importlib.import_module(module) and getattr(function) succeed (resolution only; the
+#           scorecard never runs a gate);
+#       (c) GitHubPort.list_commit_statuses(<that main commit>) has state `success` for
+#           `factory/<gate-id>` of every P1 gate. Missing, pending, failure or error means no
+#           exit; an override does not stand in for `success`. Statuses on any other commit don't
+#           count. Without a GitHub port (c) cannot be confirmed, so wave1_exit is null.
+#       Otherwise wave1_exit, wave1_working_days and wave1_within_timebox are null.
+#       `factory scorecard` reads (c) through DEPS.github, the same port `factory status` uses.
+#     Tests: test_scorecard.py::test_scorecard_wave1_exit_when_every_order_merged (accepted,
+#     amended: statuses on the exit commit, P1 entrypoints resolvable, read via the CLI), and
+#     ::test_scorecard_wave1_not_exited_unless_every_p1_gate_implemented_and_green[status-missing|
+#     status-failure|status-on-other-commit|unresolvable] (new). Resolvability is set in the test
+#     environment by the `p1_implemented` fixture (stub modules in sys.modules); slices B and C
+#     own the real gate modules.
+#   - "Open item for the orchestrator": resolved by decision 2. The two accepted tests now read
+#     origin/wo/<id> after `git fetch`; assertions unchanged.
+#   Wave 1 cohort (retro boundary) and sprint scope from amend-04 stand, provisionally (decision 4).
+#
+# Noted for orchestrator triage (no disposition; no test added):
+#   Two claims built in the same second with the same actor model produce byte-identical claim
+#   commits. The second push is then a no-op that git reports as success, so both claimers exit 0
+#   ("claimed <same sha>"), which breaks one-winner claim atomicity. Seen while building the PR-A7
+#   test, which now uses two different models to avoid it.
+#
+# owned_paths unchanged from amend-04 (restated because amendments supersede whole fields).
+# Line scopes unchanged from amend-04.
+schema_version: 1
+kind: amendment
+id: wo-20261004-factory-slice-a.amend-05
+created: 2026-10-05T05:55:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/packets/2026-10-04-factory-v2-slice-a.md
+  - specs/001-factory-v2/PR_REVIEW_SLICE_A.md
+  - wo-20261004-factory-slice-a.verdict-05
+  - wo-20261004-factory-slice-a.amend-04
+supersedes: [owned_paths]
+values:
+  owned_paths:
+    - "scripts/factory/src/factory/lifecycle/**"
+    - "scripts/factory/src/factory/board/**"
+    - "scripts/factory/src/factory/metrics/**"
+    - "scripts/factory/src/factory/github/**"
+    - "scripts/factory/src/factory/identity/**"
+    - "scripts/factory/src/factory/orders/**"
+    - "scripts/factory/src/factory/cli/board.py"
+    - "scripts/factory/src/factory/cli/orders.py"
+    - "scripts/factory/tests/contract/test_status.py"
+    - "scripts/factory/tests/contract/test_orders.py"
+    - "scripts/factory/tests/contract/test_claim.py"
+    - "scripts/factory/tests/contract/test_handoff.py"
+    - "scripts/factory/tests/contract/test_pr_and_verdict.py"
+    - "scripts/factory/tests/contract/test_bus_pr.py"
+    - "scripts/factory/tests/contract/test_git_safety.py"
+    - "scripts/factory/tests/unit/test_lifecycle.py"
+    - "scripts/factory/tests/unit/test_github_adapter.py"
+    - "scripts/factory/tests/unit/test_no_bookkeeping.py"
+    - "scripts/factory/tests/unit/test_scorecard.py"
+    - "scripts/factory/tests/unit/test_identity.py"
+    - "scripts/factory/tests/fixtures/github_recorded/**"
+    - "scripts/factory/pyproject.toml"
+    - "scripts/factory/uv.lock"
+    - "deploy/secrets/schema.yaml"
+    - "scripts/validate_secrets_schema.py"
+    - "scripts/test_validate_secrets_schema.py"
+    - "specs/001-factory-v2/acceptance.md"
+    - "specs/001-factory-v2/tasks.md"
+    - "specs/001-factory-v2/research.md"
+    - "specs/001-factory-v2/plan.md"
+    - "specs/001-factory-v2/TEST_REVIEW_SLICE_A.md"
+    - "specs/001-factory-v2/PR_REVIEW_SLICE_A.md"
+    - "bus/orders/wo-20261004-factory-slice-a/**"
+    - "notes/packets/2026-10-04-factory-v2-slice-a.handoff.md"

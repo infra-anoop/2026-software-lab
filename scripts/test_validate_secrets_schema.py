@@ -140,6 +140,60 @@ def test_required_flag_must_match_settings() -> None:
     assert any("OPENAI_API_KEY" in e and "required: true" in e for e in errors)
 
 
+def _with_tooling(**factory: object) -> dict:
+    schema = _base_schema()
+    schema["tooling"] = {
+        "factory": {
+            "target": "codespace",
+            "secrets": [
+                _minimal_secret("FACTORY_GITHUB_APP_ID"),
+                _minimal_secret("FACTORY_GITHUB_APP_PRIVATE_KEY"),
+            ],
+            **factory,
+        }
+    }
+    return schema
+
+
+def _errors(schema: dict) -> list[str]:
+    return vss.validate_schema(
+        schema,
+        enabled_app_ids=["demo-app"],
+        catalogs={"demo-app": (("OPENAI_API_KEY",), ("OPENAI_API_KEY", "LOGFIRE_TOKEN"))},
+        railway_envs_by_app={"demo-app": {"production"}},
+    )
+
+
+def test_tooling_section_ok() -> None:
+    assert _errors(_with_tooling()) == []
+
+
+def test_tooling_unknown_target_fails() -> None:
+    errors = _errors(_with_tooling(target="railway"))
+    assert any("tooling.factory.target" in e for e in errors)
+
+
+def test_tooling_name_not_read_by_tool_fails() -> None:
+    schema = _with_tooling()
+    schema["tooling"]["factory"]["secrets"].append(_minimal_secret("FACTORY_TYPO"))
+    assert any("FACTORY_TYPO" in e for e in _errors(schema))
+
+
+def test_tooling_unknown_tool_fails() -> None:
+    schema = _with_tooling()
+    schema["tooling"]["mystery"] = schema["tooling"]["factory"]
+    assert any("tooling.mystery" in e for e in _errors(schema))
+
+
+def test_repo_schema_declares_factory_app_names() -> None:
+    import yaml
+
+    raw = yaml.safe_load(vss.SCHEMA_PATH.read_text(encoding="utf-8"))
+    names = {s["name"] for s in raw["tooling"]["factory"]["secrets"]}
+    assert raw["tooling"]["factory"]["target"] == "codespace"
+    assert names == {"FACTORY_GITHUB_APP_ID", "FACTORY_GITHUB_APP_PRIVATE_KEY"}
+
+
 def test_copy_isolation() -> None:
     """sanity: mutating a copy does not break base fixture shape."""
     a = _base_schema()
