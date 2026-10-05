@@ -50,6 +50,15 @@ Every red fails by assertion (`let the violation through`, `blocked a clean chan
 
 The seam test now imports inside the test body, so this PR does not trip either bug. See `PR_REVIEW_SLICE_B.md` § Triage. Triaged by the orchestrator as one root cause (§J). There is one parametrized regression test, `tests/unit/gates/drift/test_red_first_base_errors.py`, with 2 red cases; the fix is T106. The T\* review is held for round 4, after the Slice A merge and the fixture amendment.
 
+### Slice A merge + realistic fixtures (amendment-07)
+
+- **Merge.** Merged `origin/main` (`d573721`). Only `acceptance.md` conflicted; each slice's row evidence was kept.
+- **Fixtures.** `tests/fixtures/repo_builder.py`: fixture repos start with the demo feature's spec and tasks, and `order()` issues a realistic demo-feature order (T001, gate-id `checks`, no locks).
+- **Slice A results.**
+  - Of the six handoff tests red after the merge, `test_handoff_exit_0` and its JSON case now pass.
+  - Four (two in `test_handoff.py`, two in `test_git_safety.py`) stay red only on `catalog-test-linkage` judging gate ids in `checks`: the pending phase-2 `checks`-kinds code. A local probe of that fix turned them green.
+- **Cross-slice check.** No conflicts. See `PR_REVIEW_SLICE_B.md` § Triage.
+
 ## Implementation (phase 2)
 
 **Accepted tests are unchanged since accept.** `git diff a68b95d HEAD -- scripts/factory/tests` is empty. No frozen CP0 file (`api.py`, `bus/`, `config/`, `cli/app.py`, `cli/exit_codes.py`, `gates/registry.py`, `tests/fixtures/`) changed. `gates.yaml` needed no edits: all nine Slice B entrypoints were pre-registered and now import.

@@ -265,3 +265,34 @@ The packet's "Governor locks required" table (cap, horizon, reviewer family, ide
 - **W7:** `from app import money`, where the PR adds `app/money.py`.
 
 Each case asserts that the gate passes the valid PR, then checks the raw `collect_facts` record for each test. Both are red now by assertion: W6 because `test_clamp_caps_high` is "not collected on base", W7 because the import reads "base broken". The fix is task T106 in phase 2. The T\* review is one final round 4, covering phase 1, amendment-06, the `checks`-kinds tests, this test and the fixture amendment that follows the Slice A merge.
+
+### Slice A merge and realistic fixtures (2026-10-05, `amendment-07.yaml`)
+
+**Merge.** `origin/main` (Slice A, `d573721`) was merged with a normal merge commit. The only conflict was in `acceptance.md`, where the two sides edited different rows. Slice A's evidence was kept for `board.matches_reality`, `bus.no_handwritten_status` and `seed.substitution_undeclared`. Slice B's was kept for `seed.substitution_declared`, `seed.hidden_deferral` and `seed.not_red_first`. `uv.lock` came from main only and `uv lock --locked` passes.
+
+**Six Slice A handoff tests went red** once Slice B's gates were registered:
+- `test_handoff_writes_run_complete_event`;
+- `test_handoff_blocker_governor_exits_2_and_waits_on_board`;
+- `test_handoff_exit_0` and its JSON case;
+- two `test_git_safety.py` handoff cases.
+
+The failing gates were the three expected:
+- **`order-fidelity-declared`:** feature `001-factory-v2` is absent from the fixture repo, and the git-safety repos have no spec at all.
+- **`lock.letter-tokens`:** D2 `70%` is not honored.
+- **`catalog-test-linkage`:** `seed.not_red_first` and gate ids in `checks`.
+
+**Decision B, applied to `tests/fixtures/repo_builder.py`.**
+- The fixture repo's initial commit carries the demo feature's spec and tasks.
+- `order()` issues a realistic demo-feature order: task T001, gate-id `checks`, no locks, because T001 touches no locked decision.
+- No Slice A assertion changed, and handoff still runs every gate.
+- The sample message `messages/order.yaml` is unchanged; it is the schema exhibit whose letter lock the CP0 schema tests edit.
+
+**After the fixture fix:**
+- `test_handoff_exit_0` and its JSON case pass.
+- Four tests stay red only on `catalog-test-linkage` treating registered gate ids in `checks` as catalog misses: the two git-safety cases (default `checks`) and the two `test_handoff.py` tests (`checks=["diff-within-owned-paths"]`). That is the pending phase-2 `checks`-kinds fix pinned by `test_catalog_check_kinds.py`.
+- A local probe of that fix, not committed, turned all four green.
+
+**Cross-slice check.** No Slice A assertion conflicts with Slice B's phase-1, amendment-06 or T106 tests:
+- Slice A's lifecycle and status tests put only gate ids in `checks`, which agrees with amendment-06 and T105.
+- Slice A changed no Slice B surface (`config`, `api.py`, gate registry, `gates.yaml`, `gates/drift`).
+- In `tests/fixtures/`, Slice A only added recorded GitHub responses.

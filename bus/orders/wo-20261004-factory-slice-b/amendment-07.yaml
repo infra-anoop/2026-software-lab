@@ -1,0 +1,62 @@
+# Orchestrator decision B (2026-10-05, after Slice A merged to main as d573721, PR #20):
+# realistic CP0 fixtures. Recorded by the Slice B worker on the orchestrator's instruction.
+#
+# With Slice B's gates registered, six accepted Slice A handoff tests went red. Cause: the
+# fixture orders they issue are not realistic for the fixture repo, not Slice A logic.
+#   - order-fidelity-declared: the sample order's feature `001-factory-v2` is absent from
+#     every fixture repo, and repos that never call add_demo_feature have no spec at all.
+#   - lock.letter-tokens: every fixture order declared letter lock D2 = "70%", which no
+#     fixture work touches or honors.
+#   - catalog-test-linkage: `checks` carried the real repo's catalog row `seed.not_red_first`.
+#
+# CP0 frozen-fixture amendment, orchestrator-approved:
+# scripts/factory/tests/fixtures/repo_builder.py
+#   1. RepoBuilder's init commit also writes specs/demo-feature/{spec.md,tasks.md} (the
+#      DEMO_SPEC / DEMO_TASKS text add_demo_feature writes), so every fixture repo has the
+#      feature its orders name. add_demo_feature is unchanged and still adds the catalog and
+#      the app files.
+#   2. order() issues a realistic demo-feature order: feature demo-feature, task T001,
+#      owned paths apps/demo/app/calc.py + apps/demo/tests/**, intents [I-D1], gate-id checks
+#      [red-first-proof, diff-within-owned-paths], locks [] (T001 touches no locked
+#      decision). Caller overrides still win; no helper signature changes.
+# The sample message tests/fixtures/messages/order.yaml is unchanged: it is the schema
+# exhibit, and accepted CP0 schema tests edit its letter lock.
+# No Slice A assertion changed; handoff still runs every registered gate.
+# The demo catalog row `demo.adds` stays `planned`: Slice B's accepted catalog tests pin it.
+# Fixture orders name no catalog row, so they have none to link.
+#
+# owned_paths restated from amend-06 (amendments supersede whole fields), plus:
+#   scripts/factory/tests/fixtures/repo_builder.py -> only items 1-2 above
+# Line scope: specs/001-factory-v2/acceptance.md also covers the merge resolution of rows
+# edited on both sides (each slice's evidence kept).
+schema_version: 1
+kind: amendment
+id: wo-20261004-factory-slice-b.amend-07
+created: 2026-10-05T22:40:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - wo-20261004-factory-slice-b.amend-06
+  - specs/001-factory-v2/PR_REVIEW_SLICE_B.md
+  - notes/packets/2026-10-04-factory-v2-slice-b.handoff.md
+supersedes: [owned_paths]
+values:
+  owned_paths:
+    - "scripts/factory/src/factory/gates/drift/**"
+    - "scripts/factory/src/factory/intent/**"
+    - "scripts/factory/src/factory/cli/intent.py"
+    - "scripts/factory/src/factory/config/settings.py"
+    - "scripts/factory/tests/unit/gates/drift/**"
+    - "scripts/factory/tests/contract/test_intent.py"
+    - "scripts/factory/tests/fixtures/repo_builder.py"
+    - "scripts/factory/gates.yaml"
+    - "specs/001-factory-v2/spec.md"
+    - "specs/001-factory-v2/contracts/cli.md"
+    - "specs/001-factory-v2/contracts/gates.md"
+    - "specs/001-factory-v2/acceptance.md"
+    - "specs/001-factory-v2/tasks.md"
+    - "specs/001-factory-v2/TEST_REVIEW_SLICE_B.md"
+    - "specs/001-factory-v2/PR_REVIEW_SLICE_B.md"
+    - "bus/orders/wo-20261004-factory-slice-b/**"
+    - "notes/packets/2026-10-04-factory-v2-slice-b.handoff.md"
