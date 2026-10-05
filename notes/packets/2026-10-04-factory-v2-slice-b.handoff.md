@@ -12,6 +12,19 @@
 | Pre-PR | `amendment-04.yaml` records the packet revert to `origin/main` (the packet leaves owned paths) and the orchestrator-authorized one-word edit to reviewer text at `TEST_REVIEW_SLICE_B.md` line 80 |
 | Tasks ticked | T039, T040, T041, T042–T048, T061, T062, T063. **T049 stays open** (two `seed.*` rows remain `planned`; see § Catalog evidence) |
 
+## PR review rework, phase 1 (verdict-04, reject)
+
+PR #22 review merged `--no-ff` at `55dfa3f` (`review/wo-20261004-factory-slice-b-pr` `d2a5eb9`). Triage: `amendment-05.yaml` and `PR_REVIEW_SLICE_B.md` § Triage (PR review). Red tests only; accepted tests are unchanged (`git diff a68b95d HEAD` lists only the two new files under `scripts/factory/tests`).
+
+| Finding | New tests | Red / green |
+|---------|-----------|-------------|
+| PR-B1 | `tests/unit/gates/drift/test_deferral_pointer_targets.py` | 9 red (directory ×5, symlink ×3, gitlink), 5 green controls |
+| PR-B4 | `tests/unit/gates/drift/test_red_first_child_env.py` | 13 red (12 leaked variables + env-access scan), 3 green |
+| PR-B3 evidence shape | none: Slice C's contract does not pin it (§ Triage, items 1–6) | — |
+| PR-B2 | none: investigation + proposal in § Triage | — |
+
+Every red fails by assertion (`let the violation through`, `blocked a clean change … does not pass on head`, `environment access outside factory.config`). Phase 2 waits on the T\* review and on R1 (config owned path) / R2 (pinned bundle model).
+
 ## Implementation (phase 2)
 
 **Accepted tests are unchanged since accept.** `git diff a68b95d HEAD -- scripts/factory/tests` is empty. No frozen CP0 file (`api.py`, `bus/`, `config/`, `cli/app.py`, `cli/exit_codes.py`, `gates/registry.py`, `tests/fixtures/`) changed. `gates.yaml` needed no edits: all nine Slice B entrypoints were pre-registered and now import.

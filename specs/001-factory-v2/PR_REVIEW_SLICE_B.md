@@ -131,3 +131,94 @@ line under T081.
 | `factory check schema --repo ../..` | PASS — `schema ok` before verdict-04. |
 | Scope / frozen files | PASS — 37/37 paths amendment-owned; frozen CP0 files untouched; `gates.yaml` unchanged. |
 | Cross-slice merge simulation | A+B clean; C after A+B conflicts in `acceptance.md` and `tasks.md`. |
+
+## Triage (PR review)
+
+Orchestrator triage of `wo-20261004-factory-slice-b.verdict-04` (reject), recorded by the Slice B worker on 2026-10-05 together with `bus/orders/wo-20261004-factory-slice-b/amendment-05.yaml`. Context: governor lock **D5** (trusted-base CI). Its design is on Slice C's branch (`plan.md` § CI topology and trust boundary, `contracts/gates.md` § Evidence bundle, `PLAN_DELTA.md`). Phase 1 adds red tests only. No accepted test changes.
+
+| Finding | Disposition | Phase 1 tests |
+|---------|-------------|---------------|
+| PR-B1 | **Fix.** A `→` pointer counts only for a regular file blob at head (mode `100644` / `100755`) or a named phase. A tracked directory, a tracked symlink (whatever it points at) and a gitlink do not count, consistent with eval evidence | `tests/unit/gates/drift/test_deferral_pointer_targets.py`: 9 red, 5 green controls |
+| PR-B2 | **Investigate and propose** (Slices A, B and C). No order file is added yet | None. Proposal below |
+| PR-B3 | **Fix within D5.** `red_first` becomes the evidence producer for the read-only job. It is not activated in any status-writing workflow. The trusted-side validator is Slice C's (T094–T097) | None. The bundle shape is not pinned (below) |
+| PR-B4 | **Fix.** The child environment comes from an explicit minimal allowlist at the typed config boundary. Credentials, `GITHUB_*` / Actions tokens, unlisted names and ambient `PYTEST_*` / `PYTHON*` controls never reach the child. Slice B code holds no environment access | `tests/unit/gates/drift/test_red_first_child_env.py`: 13 red, 3 green |
+
+### PR-B1 tests
+
+- **Red (9).** A pointer to a tracked directory blocks in five forms: root-relative, trailing slash, the feature directory, a Markdown link, and file-relative (`../demo-feature`). A pointer to a tracked symlink blocks in three cases: to a tracked file, to a tracked directory, and to a file outside the repo. A pointer to a gitlink (`160000`) blocks. Each fixture asserts the tree mode it builds.
+- **Green controls (5).** A regular file passes when cited root-relative, as a Markdown link, or file-relative. An executable file (`100755`) passes, and so does the named phase `→ plan`.
+
+### PR-B4 tests
+
+- **Approach.** The fixture's new test is red on base by assertion (buggy `clamp`). On head it also asserts that no variable in its environment carries a canary value. If a canary leaks, the test fails on head and the gate blocks. The gate test sets one canary in the caller's environment and expects a pass.
+- **Red (12).** Each of these reaches the child today: `GITHUB_TOKEN`, `GH_TOKEN`, `GITHUB_PAT`, `ACTIONS_RUNTIME_TOKEN`, `ACTIONS_ID_TOKEN_REQUEST_TOKEN`, `ACTIONS_ID_TOKEN_REQUEST_URL`, `FACTORY_GITHUB_APP_PRIVATE_KEY`, `INFISICAL_TOKEN`, `PYTHONPATH`, `PYTHONSTARTUP`, `PYTHONWARNINGS`, and `LAB_SERVICE_API_KEY`. The last is a name no list knows, so only an allowlist excludes it.
+- **Red (1).** A text scan of `factory/gates/drift`, `factory/intent` and `cli/intent.py` finds environment access, including inside the child bootstrap source (`red_first.py` lines 42–43).
+- **Green (3).** The no-canary control passes, and so do `PYTEST_ADDOPTS` and `PYTEST_PLUGINS`. Both are stripped today by the child-side deletion that PR-B4 removes, so they guard the rewrite.
+
+### Evidence-producer shape: not pinned, so no tests
+
+Slice C's `contracts/gates.md` § Evidence bundle pins only this: a Pydantic-modelled JSON document with at least `schema_version`, `base_sha` and `head_sha`, plus, for red-first, each node id with its base and head outcome "and the base error class the red-first rule needs". It also fixes the trusted side's fail-closed reasons. `PLAN_DELTA.md` (M1, L1) places the model, its size limit and any `GateContext` field in T097 as a CP0 frozen-interface amendment. Before producer tests can be written, these need pinning:
+
+1. **Per-test record.** Its key names and outcome vocabulary: call `passed` / `failed` / `skipped`, setup error, not collected, parametrized cases.
+2. **Base error class.** Is it a class the producer assigns, or the raw facts (missing module and symbol names from the collection error)? Deciding "a name the PR adds" needs the diff, and every producer output is forgeable anyway. So the trusted judge should derive the class from raw facts plus git data (recommended).
+3. **Run-level failures.** How a base or head run that did not complete is represented (crash, timeout, pytest abort).
+4. **Unparseable test files.** How a head test file that does not parse is represented. The gate blocks on this today.
+5. **Container.** The `schema_version` value, the file name inside the artifact directory, the model's module, and the size-limit setting name.
+6. **Owner.** T097 (Slice C) says it splits `red_first.py` into producer and judge after A and B merge into C. This triage gives the producer to Slice B. One owner is needed, and the model has to be pinned before either side writes tests.
+
+### PR-B2 investigation
+
+Method: a throwaway worktree of this branch at `55dfa3f`. It ran Slice B's gates (this package) and Slice C's PR gates (C's package at `62e449d`) with `order_id = wo-20261004-factory-slice-b`, PR 22, and base `origin/main`. Messages were built through the frozen bus models.
+
+| Gate | No order (today) | + order | + order, claim, handoff |
+|------|------------------|---------|--------------------------|
+| `pr-links-order` (C) | block | pass | pass |
+| `order-blocked-on-open-human-od` (C) | block | pass (`depends_on_decisions: []`) | pass |
+| `spawn-concurrency-cap` (C) | block: no claim | block: no claim | pass |
+| `verdict.reviewer-family-differs` (C) | block: no handoff | block: no handoff | pass (openai vs anthropic) |
+| `verdict.inputs-isolated`, `bus.immutable` (C) | pass | pass | pass |
+| `order-fidelity-declared`, `lock.letter-tokens` (B) | block | pass (no lock touched) | pass |
+| `diff-within-owned-paths` (B) | block | block: `PR_REVIEW_SLICE_B.md` is outside amend-04 (amend-05 adds it) | same |
+| `catalog-test-linkage` (B) | block | block: gate-id `checks` have no catalog row (W1) | same. With catalog-row `checks`, only `seed.substitution_undeclared` blocks (evidence `planned`, T049) |
+
+Findings:
+
+- **No gate needs the order in the branch's first commit.** `pr-links-order`, Slice C's `order-blocked-on-open-human-od` / verdict gates and Slice B's `effective_order` read the bus at head. Slice A's lifecycle (`load_order`) reads the order at the branch tip. `spawn-concurrency-cap` replays `claimed_at` timestamps, not commit order. Only the writer, `factory order issue`, makes the order the first commit.
+- **An order alone is not enough.** The cap gate needs a `Claim`, and the verdict-family gate needs a bus `Handoff`. None of the three bootstrap branches carries either.
+- **Side effects of adding the order now:**
+  - Slice A's scorecard takes `issued_at` from the commit that added `order.yaml`. A reconstructed order would move the Wave 1 start to its commit date (W3).
+  - `size_minutes` must be at most the 60-minute horizon, so the true slice size is not representable (W4).
+  - Spec Open Decisions (D1–D6) are not bus decisions, and `main`'s bus has none. Any `depends_on_decisions` entry therefore blocks as "unknown decision", so the order must list none.
+
+### PR-B2 proposal (for the orchestrator, all three slices)
+
+Minimal mechanism: per bootstrap branch, add three immutable bus messages in one commit at the branch tip. All are ordinary, schema-valid messages, so no frozen interface changes.
+
+1. **`order.yaml`.** Reconstructed from the packet's Goal, Owned paths, Tasks, Stop conditions and locks, with `actor: orchestrator`, `actor_verified: false`, `size_minutes: 60` and `depends_on_decisions: []`. `refs` holds the packet path and `FR-037`, and a header comment says "FR-037 bootstrap; reconstructed <date>; true size exceeds the horizon". The amendments already on the branch then apply on top, as they do now.
+2. **`claim.yaml`.** `claimed_at` is the first worker commit on the branch (for Slice B, `236ab09`, 2026-10-04T19:14:28Z), with the same bootstrap comment.
+3. **`handoff.yaml`.** A run-complete summary pointing at the handoff Markdown, `author_model` = the implementer model.
+
+Decisions it needs:
+
+- **`checks`: gate ids or catalog row ids?** See W1.
+- **Wave 1 start date.** Either accept the scorecard shift as disclosed, or have the retro use the packet date. Backdating commits is not proposed.
+
+Red tests the mechanism needs (owners in brackets):
+
+- [B] Order gates with a bootstrap order added at the tip, not as the first commit, and amendments that precede it in history. Fidelity, letter tokens, ownership and catalog linkage judge the effective order, not `order_id=None`.
+- [C] `pr-links-order`, `spawn-concurrency-cap` and the verdict gates pass with order, claim and handoff added in one tip commit, and still fail closed when any one of the three is missing.
+- [A] Lifecycle and board derive a state for a branch whose order, claim and amendments were all added after its verdicts. Scorecard behaviour for that order is pinned either way the Wave 1 start decision goes.
+- [all] `factory check schema` accepts the three messages, and `bus.immutable` stays green because the commit only adds files.
+
+### Worker-found items (not in verdict-04; for orchestrator triage)
+
+- **W1: `checks` semantics diverge across slices.** `data-model.md` says `checks` holds "gate ids or catalog row ids". Slice B's `catalog-test-linkage` blocks every `checks` id without a catalog row, gate ids included. Slice A's lifecycle requires a `factory/<id>` status for every `checks` id, catalog row ids included. Proposal: each consumer judges only its own kind. Registered gate ids need statuses (A) and catalog row ids need evidence (B), and an id that is neither is refused when the order is issued. The accepted test `test_blocks_when_the_orders_catalog_row_is_deleted` uses a catalog id and still holds. This would be a new Slice B fix plus a test.
+- **W2: ownership.** `PR_REVIEW_SLICE_B.md` arrived through the review merge and is outside amend-04. Amend-05 adds it with Triage-section line scope. The real-order-id run caught this; the `order_id=None` run hid it.
+- **W3: scorecard date.** Covered under PR-B2.
+- **W4: horizon.** Covered under PR-B2.
+- **W5: the allowlist is defence in depth, not the boundary.** A child can still read `/proc/<parent pid>/environ` and the runner's files. The D5 boundary is the read-only job: no secrets, and no status write. The read-only job holds `ACTIONS_RUNTIME_TOKEN` for the artifact upload, so head code can rewrite the bundle. That is already disclosed in `PLAN_DELTA.md` (H1).
+
+### Phase 2 requests
+
+- **R1.** Owned paths for an additive child-environment builder in `factory/config/settings.py` (+ `__init__.py` export). This is CP0-frozen, and the env read has to sit there (I-A3).
+- **R2.** A pinned evidence-bundle model (items 1–6 above) and one owner before producer tests are written.
