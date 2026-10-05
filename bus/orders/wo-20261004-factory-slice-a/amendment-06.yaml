@@ -1,0 +1,81 @@
+# Orchestrator decision on the identical same-second claim (noted, untriaged, in amend-05).
+# Recorded by the Slice A worker on the orchestrator's instruction (2026-10-05).
+# Orchestrator-adjudicated (process; spec letter of one-winner claims). Still Phase 1: tests only.
+#
+# Orchestrator decision (verbatim):
+#   Good catch on the identical same-second claim. Decision (orchestrator, process, spec letter of
+#   one-winner claims): FIX it as **PR-A8** (blocker, process, found by implementer). Do not
+#   change the frozen bus schema.
+#
+#   Rule for phase 2: a claim or release push whose remote ref was already at our commit counts
+#   as a LOST race. Porcelain `=` / `[up to date]` means the push did nothing for us, so it must
+#   exit 2 (lease conflict), not 0. The same applies to any event push that must be
+#   first-writer.
+#
+# New finding:
+#   PR-A8 | blocker | process | found by implementer (Slice A worker) | orders/git.py::push,
+#   orders/lease.py
+#     Two claims built in the same second by the same actor model on the same tip are
+#     byte-identical commits. The second push finds origin already at that commit; git reports
+#     `=` / `[up to date]` and exits 0, so both claimers exit 0 and both believe they hold the
+#     lease.
+#     Test: tests/contract/test_claim.py::test_identical_same_second_claims_have_one_winner (new,
+#     deterministic: DEPS.clock, GIT_AUTHOR_DATE / GIT_COMMITTER_DATE and actor pinned;
+#     receivepack delays of 1 s then 3 s). Expects exactly one exit 0, exactly one exit 2, and
+#     one claim commit on origin/wo/<id>. Red today: [0, 0].
+#   The bus schema is unchanged (no nonce field). The fix is in push-outcome handling only.
+#
+# Supersedes in amend-05 (comment text): the "Noted for orchestrator triage (no disposition; no
+#   test added)" paragraph; that observation is now PR-A8.
+#
+# owned_paths unchanged from amend-05 (restated because amendments supersede whole fields).
+# Line scopes unchanged from amend-04.
+schema_version: 1
+kind: amendment
+id: wo-20261004-factory-slice-a.amend-06
+created: 2026-10-05T06:30:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/packets/2026-10-04-factory-v2-slice-a.md
+  - specs/001-factory-v2/PR_REVIEW_SLICE_A.md
+  - wo-20261004-factory-slice-a.verdict-05
+  - wo-20261004-factory-slice-a.amend-05
+supersedes: [owned_paths]
+values:
+  owned_paths:
+    - "scripts/factory/src/factory/lifecycle/**"
+    - "scripts/factory/src/factory/board/**"
+    - "scripts/factory/src/factory/metrics/**"
+    - "scripts/factory/src/factory/github/**"
+    - "scripts/factory/src/factory/identity/**"
+    - "scripts/factory/src/factory/orders/**"
+    - "scripts/factory/src/factory/cli/board.py"
+    - "scripts/factory/src/factory/cli/orders.py"
+    - "scripts/factory/tests/contract/test_status.py"
+    - "scripts/factory/tests/contract/test_orders.py"
+    - "scripts/factory/tests/contract/test_claim.py"
+    - "scripts/factory/tests/contract/test_handoff.py"
+    - "scripts/factory/tests/contract/test_pr_and_verdict.py"
+    - "scripts/factory/tests/contract/test_bus_pr.py"
+    - "scripts/factory/tests/contract/test_git_safety.py"
+    - "scripts/factory/tests/unit/test_lifecycle.py"
+    - "scripts/factory/tests/unit/test_github_adapter.py"
+    - "scripts/factory/tests/unit/test_no_bookkeeping.py"
+    - "scripts/factory/tests/unit/test_scorecard.py"
+    - "scripts/factory/tests/unit/test_identity.py"
+    - "scripts/factory/tests/fixtures/github_recorded/**"
+    - "scripts/factory/pyproject.toml"
+    - "scripts/factory/uv.lock"
+    - "deploy/secrets/schema.yaml"
+    - "scripts/validate_secrets_schema.py"
+    - "scripts/test_validate_secrets_schema.py"
+    - "specs/001-factory-v2/acceptance.md"
+    - "specs/001-factory-v2/tasks.md"
+    - "specs/001-factory-v2/research.md"
+    - "specs/001-factory-v2/plan.md"
+    - "specs/001-factory-v2/TEST_REVIEW_SLICE_A.md"
+    - "specs/001-factory-v2/PR_REVIEW_SLICE_A.md"
+    - "bus/orders/wo-20261004-factory-slice-a/**"
+    - "notes/packets/2026-10-04-factory-v2-slice-a.handoff.md"

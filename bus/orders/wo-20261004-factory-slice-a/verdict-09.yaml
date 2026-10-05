@@ -1,0 +1,86 @@
+schema_version: 1
+kind: verdict
+id: wo-20261004-factory-slice-a.verdict-09
+created: 2026-10-05T21:38:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - wo-20261004-factory-slice-a.verdict-08
+  - wo-20261004-factory-slice-a.amend-09
+  - https://github.com/infra-anoop/2026-software-lab/pull/20
+decision: accept
+findings:
+  - id: PR-A1-R2
+    severity: later
+    tag: product
+    text: >-
+      The App identity path is still not wired into production git and REST
+      calls. T036b now names the complete integration and is a mandatory
+      predecessor of T065 switching identity to verified mode, so the gap cannot
+      be presented as live authority. Complete T036b before that activation.
+  - id: PR-A9
+    severity: later
+    tag: process
+    text: >-
+      Synchronous in-process CLI calls and frozen fixture subprocesses are not
+      uniformly timeout-bounded. The new race and receive-pack harness is
+      bounded, killable and self-cleaning; set a suite-wide timeout policy when
+      CP0 fixtures are amended.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: specs/001-factory-v2/PR_REVIEW_SLICE_A.md
+    sha: e2f6816b836189b0af4ba0c694fc3036280132d7
+  - path: notes/packets/2026-10-04-factory-v2-slice-a.handoff.md
+    sha: e2f6816b836189b0af4ba0c694fc3036280132d7
+  - path: bus/orders/wo-20261004-factory-slice-a/order.yaml
+    sha: e2f6816b836189b0af4ba0c694fc3036280132d7
+  - path: bus/orders/wo-20261004-factory-slice-a/claim.yaml
+    sha: e2f6816b836189b0af4ba0c694fc3036280132d7
+  - path: bus/orders/wo-20261004-factory-slice-a/handoff.yaml
+    sha: e2f6816b836189b0af4ba0c694fc3036280132d7
+  - path: bus/orders/wo-20261004-factory-slice-a/amendment-04.yaml
+    sha: e2f6816b836189b0af4ba0c694fc3036280132d7
+  - path: bus/orders/wo-20261004-factory-slice-a/amendment-05.yaml
+    sha: e2f6816b836189b0af4ba0c694fc3036280132d7
+  - path: bus/orders/wo-20261004-factory-slice-a/amendment-06.yaml
+    sha: e2f6816b836189b0af4ba0c694fc3036280132d7
+  - path: bus/orders/wo-20261004-factory-slice-a/amendment-07.yaml
+    sha: e2f6816b836189b0af4ba0c694fc3036280132d7
+  - path: bus/orders/wo-20261004-factory-slice-a/amendment-08.yaml
+    sha: e2f6816b836189b0af4ba0c694fc3036280132d7
+  - path: bus/orders/wo-20261004-factory-slice-a/amendment-09.yaml
+    sha: e2f6816b836189b0af4ba0c694fc3036280132d7
+  - path: bus/orders/wo-20261004-factory-slice-a/verdict-05.yaml
+    sha: e2f6816b836189b0af4ba0c694fc3036280132d7
+  - path: bus/orders/wo-20261004-factory-slice-a/verdict-06.yaml
+    sha: e2f6816b836189b0af4ba0c694fc3036280132d7
+  - path: bus/orders/wo-20261004-factory-slice-a/verdict-07.yaml
+    sha: e2f6816b836189b0af4ba0c694fc3036280132d7
+  - path: bus/orders/wo-20261004-factory-slice-a/verdict-08.yaml
+    sha: e2f6816b836189b0af4ba0c694fc3036280132d7
+  - path: scripts/factory/src/factory/orders/git.py
+    sha: e2f6816b836189b0af4ba0c694fc3036280132d7
+  - path: scripts/factory/src/factory/orders/lease.py
+    sha: e2f6816b836189b0af4ba0c694fc3036280132d7
+  - path: scripts/factory/src/factory/orders/review.py
+    sha: e2f6816b836189b0af4ba0c694fc3036280132d7
+  - path: scripts/factory/src/factory/metrics/scorecard.py
+    sha: e2f6816b836189b0af4ba0c694fc3036280132d7
+  - path: scripts/factory/src/factory/cli/orders.py
+    sha: e2f6816b836189b0af4ba0c694fc3036280132d7
+  - path: scripts/factory/src/factory/cli/board.py
+    sha: e2f6816b836189b0af4ba0c694fc3036280132d7
+bootstrap: true
+manual_equivalents:
+  - "round 2 policy: normal blocker bar applied; no blocker remained"
+  - "accepted remediation tests unchanged: git diff ccb0b1a HEAD -- scripts/factory/tests was empty"
+  - "full suite: 368 passed and 79 expected cross-slice failures"
+  - "CI selector: 277 passed and 170 deselected"
+  - "PR-A2: ref-only plumbing, checked-out worktrees, CAS advancement, divergence and rejection paths reviewed"
+  - "PR-A4: claim capacity uses the board lifecycle and closed-unmerged PRs derive released"
+  - "PR-A5: cohort, sprint, run, verdict, landing, P1 resolution and exit-commit statuses reviewed"
+  - "PR-A6: the test reaches its named Slice B gate; its one red is the disclosed dependency"
+  - "PR-A7 and PR-A8: porcelain rejected and up-to-date outcomes share the first-writer push fix"
+  - "ruff check, ruff format check and factory check schema passed"

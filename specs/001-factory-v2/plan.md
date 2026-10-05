@@ -114,7 +114,7 @@ Until the App is live, the board marks governor-only actions **unverified**, and
 
 **Language/Version**: Python 3.12
 
-**Primary Dependencies**: Pydantic v2, Typer, httpx (GitHub REST), PyYAML, pytest; CI tools: Semgrep CE, import-linter, mutmut 3 (P2)
+**Primary Dependencies**: Pydantic v2, Typer, httpx (GitHub REST), PyYAML, PyJWT[crypto] (GitHub App JWT), pytest; CI tools: Semgrep CE, import-linter, mutmut 3 (P2)
 
 **Storage**: git files (`bus/`); no database
 

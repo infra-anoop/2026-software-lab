@@ -1,0 +1,83 @@
+schema_version: 1
+kind: verdict
+id: wo-20261004-factory-slice-a.verdict-02
+created: 2026-10-04T17:32:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - wo-20261004-factory-slice-a.verdict-01
+  - wo-20261004-factory-slice-a.amend-01
+decision: reject
+findings:
+  - id: T-A2-1
+    severity: blocker
+    tag: process
+    text: >-
+      The lifecycle test makes every observed check run required, while the frozen
+      contract requires only required checks to be green or overridden. Identify
+      required check-run names from a contract/config source, or do not block on
+      unrelated advisory, skipped, or pending runs.
+  - id: T-A2-2
+    severity: debate
+    tag: process
+    text: >-
+      The board test requires a sparse overrides-per-gate map. A conforming dense
+      map with zero counts for other gates would fail; assert the required count
+      without forbidding additional valid gate counts.
+  - id: T-A2-3
+    severity: nit
+    tag: process
+    text: >-
+      Verdict 01 is substantively faithful, but its header says verbatim even
+      though the finding prose is condensed. Use faithfully summarized for future
+      transcriptions.
+  - id: T-A2-4
+    severity: nit
+    tag: process
+    text: >-
+      Strength: the other round-one findings are resolved by executable assertions
+      at the intended seams, with no frozen CP0 interface edits.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: specs/001-factory-v2/TEST_REVIEW_SLICE_A.md
+    sha: 7a320aadb93be1c4445ef8c8a72e4e5b419d9bef
+  - path: notes/packets/2026-10-04-factory-v2-slice-a.handoff.md
+    sha: 7a320aadb93be1c4445ef8c8a72e4e5b419d9bef
+  - path: bus/orders/wo-20261004-factory-slice-a/verdict-01.yaml
+    sha: 7a320aadb93be1c4445ef8c8a72e4e5b419d9bef
+  - path: bus/orders/wo-20261004-factory-slice-a/amendment-01.yaml
+    sha: 7a320aadb93be1c4445ef8c8a72e4e5b419d9bef
+  - path: specs/001-factory-v2/spec.md
+    sha: 7a320aadb93be1c4445ef8c8a72e4e5b419d9bef
+  - path: specs/001-factory-v2/data-model.md
+    sha: 7a320aadb93be1c4445ef8c8a72e4e5b419d9bef
+  - path: specs/001-factory-v2/contracts/cli.md
+    sha: 7a320aadb93be1c4445ef8c8a72e4e5b419d9bef
+  - path: specs/001-factory-v2/contracts/gates.md
+    sha: 7a320aadb93be1c4445ef8c8a72e4e5b419d9bef
+  - path: scripts/factory/tests/contract/test_status.py
+    sha: 7a320aadb93be1c4445ef8c8a72e4e5b419d9bef
+  - path: scripts/factory/tests/contract/test_orders.py
+    sha: 7a320aadb93be1c4445ef8c8a72e4e5b419d9bef
+  - path: scripts/factory/tests/contract/test_claim.py
+    sha: 7a320aadb93be1c4445ef8c8a72e4e5b419d9bef
+  - path: scripts/factory/tests/contract/test_pr_and_verdict.py
+    sha: 7a320aadb93be1c4445ef8c8a72e4e5b419d9bef
+  - path: scripts/factory/tests/unit/test_lifecycle.py
+    sha: 7a320aadb93be1c4445ef8c8a72e4e5b419d9bef
+  - path: scripts/factory/tests/unit/test_github_adapter.py
+    sha: 7a320aadb93be1c4445ef8c8a72e4e5b419d9bef
+  - path: scripts/factory/tests/unit/test_identity.py
+    sha: 7a320aadb93be1c4445ef8c8a72e4e5b419d9bef
+  - path: scripts/factory/tests/unit/test_scorecard.py
+    sha: 7a320aadb93be1c4445ef8c8a72e4e5b419d9bef
+bootstrap: true
+manual_equivalents:
+  - "red-first-proof: Slice A 11-file run produced 65 failed, 0 passed, with no collection errors or xfails"
+  - "full suite expected red: 181 failed, 237 passed, with no collection errors or xfails"
+  - "ruff check and ruff format check passed"
+  - "diff-within-owned-paths: round-2 reviewer writes only the amended review and verdict-02 in amendment-01-owned paths"
+  - "frozen CP0 check: no edits to api.py, factory bus/config, cli app/exit codes, or gates registry"
+  - "GitHub App oracle: OpenSSL 3.3.3 is present under nix develop and verifies signature bytes independently of implementation signing"

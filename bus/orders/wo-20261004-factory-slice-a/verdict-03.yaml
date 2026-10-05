@@ -1,0 +1,72 @@
+schema_version: 1
+kind: verdict
+id: wo-20261004-factory-slice-a.verdict-03
+created: 2026-10-04T18:09:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - wo-20261004-factory-slice-a.verdict-02
+  - wo-20261004-factory-slice-a.amend-02
+decision: reject
+findings:
+  - id: T-A3-1
+    severity: blocker
+    tag: process
+    text: >-
+      The narrowed required-check rule correctly ignores unrelated runs but
+      permits an order with checks=[] to become accepted on a verdict alone.
+      Add a test and policy that refuses empty checks or keeps such an order
+      non-accepted, without changing the frozen CP0 model interface.
+  - id: T-A3-2
+    severity: debate
+    tag: process
+    text: >-
+      The CP2 follow-up is not explicit in T066, and the standalone Later
+      heading does not carry its T066 pointer on the same line under the
+      feature's deferral rule. Name lifecycle ingestion and failed/pending
+      required-run tests in an actionable task.
+  - id: T-A3-3
+    severity: nit
+    tag: process
+    text: >-
+      Strength: dense override counts are now exact for the fixture, and
+      amendment 02 faithfully records the pyjwt[crypto] choice, rejected
+      OpenSSL CLI and githubkit alternatives, and narrow owned-path widening.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: specs/001-factory-v2/TEST_REVIEW_SLICE_A.md
+    sha: d79fbb67f7880cda59d919aefb9a65ced2011495
+  - path: bus/orders/wo-20261004-factory-slice-a/verdict-02.yaml
+    sha: d79fbb67f7880cda59d919aefb9a65ced2011495
+  - path: bus/orders/wo-20261004-factory-slice-a/amendment-02.yaml
+    sha: d79fbb67f7880cda59d919aefb9a65ced2011495
+  - path: specs/001-factory-v2/spec.md
+    sha: d79fbb67f7880cda59d919aefb9a65ced2011495
+  - path: specs/001-factory-v2/data-model.md
+    sha: d79fbb67f7880cda59d919aefb9a65ced2011495
+  - path: specs/001-factory-v2/tasks.md
+    sha: d79fbb67f7880cda59d919aefb9a65ced2011495
+  - path: specs/001-factory-v2/plan.md
+    sha: d79fbb67f7880cda59d919aefb9a65ced2011495
+  - path: specs/001-factory-v2/research.md
+    sha: d79fbb67f7880cda59d919aefb9a65ced2011495
+  - path: scripts/factory/tests/unit/test_lifecycle.py
+    sha: d79fbb67f7880cda59d919aefb9a65ced2011495
+  - path: scripts/factory/tests/contract/test_status.py
+    sha: d79fbb67f7880cda59d919aefb9a65ced2011495
+  - path: scripts/factory/src/factory/bus/models.py
+    sha: d79fbb67f7880cda59d919aefb9a65ced2011495
+  - path: scripts/factory/pyproject.toml
+    sha: d79fbb67f7880cda59d919aefb9a65ced2011495
+  - path: scripts/factory/uv.lock
+    sha: d79fbb67f7880cda59d919aefb9a65ced2011495
+bootstrap: true
+manual_equivalents:
+  - "red-first-proof: Slice A 11-file run produced 64 failed, 0 passed, with no collection errors or xfails"
+  - "full suite expected red: 180 failed, 237 passed, with no collection errors or xfails"
+  - "ruff check and ruff format check passed"
+  - "factory check schema passed"
+  - "diff-within-owned-paths: round-3 reviewer writes only the review section and verdict-03 in amendment-02-owned paths"
+  - "frozen CP0 check: no frozen interface edits"

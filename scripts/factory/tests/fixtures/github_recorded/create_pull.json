@@ -1,0 +1,14 @@
+{
+  "number": 8,
+  "head": {
+    "ref": "wo/wo-20261007-new-pr",
+    "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "base": { "ref": "main" },
+  "title": "wo-20261007-new-pr",
+  "body": "Order: wo-20261007-new-pr\nIntents: I-G2",
+  "state": "open",
+  "merged_at": null,
+  "user": { "login": "factory-app[bot]" },
+  "html_url": "https://github.test/fixture/demo/pull/8"
+}

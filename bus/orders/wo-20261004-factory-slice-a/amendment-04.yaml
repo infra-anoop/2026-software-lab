@@ -1,0 +1,145 @@
+# Orchestrator triage of the PR #20 code review (wo-20261004-factory-slice-a.verdict-05, reject;
+# specs/001-factory-v2/PR_REVIEW_SLICE_A.md, reviewed head ea6a554).
+# Recorded by the Slice A worker on the orchestrator's instruction (2026-10-05).
+#
+# Orchestrator decisions (verbatim):
+#   - **PR-A1 (App identity not wired): DEFER within Wave 1, not dropped.**
+#     - Add task `T036b` to `specs/001-factory-v2/tasks.md`, right after T036, and leave T036 checked.
+#     - T036b text: wire the App installation token into the git credential helper and the REST
+#       client, including how the installation id is obtained (config amendment if needed). Use a
+#       recorded-response end-to-end test proving the token is never logged, persisted or put in
+#       exceptions. It MUST land before T065 flips `identity.mode = verified`.
+#     - Add a Phase 8 dependency note to the same effect. amendment-04 widens owned paths to
+#       `specs/001-factory-v2/tasks.md` for this edit only.
+#     - Rationale: the App does not exist yet (T065 is HITL), and D4's letter is 'set up during
+#       Wave 1'. That is still met.
+#   - **PR-A2 (git plumbing touches caller's worktree): FIX.** Plumbing must be ref-only:
+#     - never run `git merge` or checkout, and never touch the caller's index or worktree,
+#       including when the order branch is checked out;
+#     - on push rejection, leave local refs unchanged.
+#     - If the branch is checked out, do not move it. Report or skip as appropriate, and document
+#       the chosen behaviour in amendment-04.
+#   - **PR-A3 (packet edited outside owned paths): FIX.** Revert
+#     `notes/packets/2026-10-04-factory-v2-slice-a.md` to its origin/main content. Completion
+#     evidence lives in the handoff and verdicts only.
+#   - **PR-A4 (closed-unmerged PR keeps a slot): FIX to spec letter.** A closed-unmerged PR is
+#     `released` and frees capacity. Admission uses the same lifecycle derivation, including PR
+#     reality, that the board uses. There is no new write path.
+#   - **PR-A5 (Wave 1 exit): FIX to SC-013 letter.** `wave1_exit` requires every P1 check
+#     implemented and passing, is scoped to the Wave 1 cohort, and `--sprint` actually scopes it.
+#     Later orders must not erase a computed exit.
+#   - **PR-A6 (vacuous handoff-gate test): FIX the test.** The fixture commits a valid handoff and
+#     the test asserts the named gate failure.
+#
+# Chosen behaviour, PR-A2 (pinned by tests/contract/test_git_safety.py):
+#   - Event commits (order issue, claim, release, handoff run-complete, verdict) are built with
+#     hash-object/mktree/commit-tree and pushed to origin. No command runs `git merge`,
+#     `checkout`, `switch`, `reset`, `read-tree` or `stash`; the caller's HEAD, index and worktree
+#     are never written.
+#   - After a successful push: when local `wo/<order-id>` is checked out (in this or any linked
+#     worktree), it is NOT moved; the command still exits 0 and prints that origin is ahead and
+#     how to pick the event up: `git pull --ff-only`. When it is not checked out anywhere, it is
+#     fast-forwarded with compare-and-swap `git update-ref refs/heads/wo/<id> <new> <old>`; a local
+#     branch that is not an ancestor of the new commit is left alone and reported the same way.
+#   - Local refs move only after origin accepted the push. On a rejected or failed push no
+#     local ref changes. A non-fast-forward rejection exits 2 (refused: "origin moved; pull and
+#     retry"); an unreachable remote exits 4. Rejection is read from `git push --porcelain`
+#     stdout (`!` status lines / `[rejected]`), not only stderr. Today a rejection reports only
+#     "failed to push some refs" on stderr, so it is misread as exit 4.
+# Chosen behaviour, PR-A4 (tests/contract/test_claim.py): claim admission counts an order as
+#   active only when the board's lifecycle derivation (git + PR reality via GitHubPort) gives
+#   claimed, in_review, accepted or rejected; a released order (release event OR PR closed
+#   unmerged) and a merged order (on main OR PR merged) hold no slot. Stale claims still hold one.
+#   Read-only: no release event is written for a closed PR.
+# Chosen behaviour, PR-A5 (tests/unit/test_scorecard.py):
+#   - Sprint scope: `factory scorecard --sprint S` (and compute_scorecard(..., sprint=S)) keeps
+#     only orders whose effective `refs` include `notes/sprints/S.md`; `orders` and every wave1_*
+#     field are computed over that set. No --sprint = every order.
+#   - Wave 1 cohort: orders in scope issued before `bus/postmortems/wave1-retro.yaml` (T069) first
+#     landed on main; while no retro has landed, every order in scope. Orders issued after the retro
+#     are Wave 2 (T070: no Wave 2 order is issued before the retro is dispositioned), so they
+#     neither erase nor move the exit.
+#   - Exit: the last cohort landing on main, once every cohort order has a run record
+#     (run_complete), a latest verdict of accept, and has landed; otherwise null (working days and
+#     within-timebox null too). Start = first cohort issue commit.
+#   - Fidelity delta, disclosed, not waived: SC-013 says "every P1 check implemented and passing".
+#     Git alone holds no per-gate pass record, and the accepted wave1 exit test
+#     (test_scorecard_wave1_exit_when_every_order_merged, unchanged) has none either.
+#     So the tests require per-order acceptance plus landing on protected main (T066: every
+#     factory/<gate> P1 status required) as the P1 evidence. Requiring per-gate results (the
+#     T068/T069 retro) needs an orchestrator decision and a T*-routed amendment of the accepted
+#     test.
+# Chosen behaviour, PR-A6: the fixture commits a valid handoff; the test expects exit 2 and the
+#   gate id `diff-within-owned-paths` in the refusal. It stays red until Slice B lands that gate.
+#
+# Open item for the orchestrator (process; resolve before PR-A2 implement):
+#   Two accepted tests read the event commit from the local, checked-out `wo/<id>` branch, so the
+#   PR-A2 "do not move it" rule turns them red:
+#     tests/contract/test_handoff.py::test_handoff_writes_run_complete_event
+#       (local `wo/<id>` tree or worktree file)
+#     tests/contract/test_pr_and_verdict.py::test_verdict_commits_valid_different_family_verdict
+#       (`rev-list <head>..wo/<id>`, `show wo/<id>:<verdict>`)
+#   Recommended: a T*-routed amendment pointing those reads at `origin/wo/<id>`, which is where
+#   the event is authoritative. The alternative, moving a checked-out branch, would rewrite the
+#   caller's index/worktree and contradicts the decision.
+#
+# owned_paths restated from amend-03 (amendments supersede whole fields), plus:
+#   scripts/factory/tests/contract/test_git_safety.py   (new PR-A2 contract tests)
+#   specs/001-factory-v2/PR_REVIEW_SLICE_A.md            -> worker: only the `## Triage (PR review)`
+#                                                           section; review text arrives via
+#                                                           review-branch merges
+# Line scope, since owned_paths are globs:
+#   specs/001-factory-v2/tasks.md                 -> this slice's checkboxes, the T066a line, and
+#                                                    (this amendment) the T036b line + its Phase 8
+#                                                    dependency note only
+#   notes/packets/2026-10-04-factory-v2-slice-a.md -> not owned; reverted to origin/main (PR-A3)
+#   other line scopes unchanged from amend-03
+schema_version: 1
+kind: amendment
+id: wo-20261004-factory-slice-a.amend-04
+created: 2026-10-05T05:20:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/packets/2026-10-04-factory-v2-slice-a.md
+  - specs/001-factory-v2/PR_REVIEW_SLICE_A.md
+  - wo-20261004-factory-slice-a.verdict-05
+  - wo-20261004-factory-slice-a.amend-03
+supersedes: [owned_paths]
+values:
+  owned_paths:
+    - "scripts/factory/src/factory/lifecycle/**"
+    - "scripts/factory/src/factory/board/**"
+    - "scripts/factory/src/factory/metrics/**"
+    - "scripts/factory/src/factory/github/**"
+    - "scripts/factory/src/factory/identity/**"
+    - "scripts/factory/src/factory/orders/**"
+    - "scripts/factory/src/factory/cli/board.py"
+    - "scripts/factory/src/factory/cli/orders.py"
+    - "scripts/factory/tests/contract/test_status.py"
+    - "scripts/factory/tests/contract/test_orders.py"
+    - "scripts/factory/tests/contract/test_claim.py"
+    - "scripts/factory/tests/contract/test_handoff.py"
+    - "scripts/factory/tests/contract/test_pr_and_verdict.py"
+    - "scripts/factory/tests/contract/test_bus_pr.py"
+    - "scripts/factory/tests/contract/test_git_safety.py"
+    - "scripts/factory/tests/unit/test_lifecycle.py"
+    - "scripts/factory/tests/unit/test_github_adapter.py"
+    - "scripts/factory/tests/unit/test_no_bookkeeping.py"
+    - "scripts/factory/tests/unit/test_scorecard.py"
+    - "scripts/factory/tests/unit/test_identity.py"
+    - "scripts/factory/tests/fixtures/github_recorded/**"
+    - "scripts/factory/pyproject.toml"
+    - "scripts/factory/uv.lock"
+    - "deploy/secrets/schema.yaml"
+    - "scripts/validate_secrets_schema.py"
+    - "scripts/test_validate_secrets_schema.py"
+    - "specs/001-factory-v2/acceptance.md"
+    - "specs/001-factory-v2/tasks.md"
+    - "specs/001-factory-v2/research.md"
+    - "specs/001-factory-v2/plan.md"
+    - "specs/001-factory-v2/TEST_REVIEW_SLICE_A.md"
+    - "specs/001-factory-v2/PR_REVIEW_SLICE_A.md"
+    - "bus/orders/wo-20261004-factory-slice-a/**"
+    - "notes/packets/2026-10-04-factory-v2-slice-a.handoff.md"
