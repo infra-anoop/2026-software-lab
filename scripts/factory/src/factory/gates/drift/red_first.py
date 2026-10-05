@@ -32,6 +32,7 @@ from factory.gates.drift._git import Change, FileChange, GitError, list_paths
 GATE = "red-first-proof"
 TEST_DIRS = frozenset({"tests", "test"})
 TIMEOUT_SECONDS = 900
+PYTEST_ABORTED = frozenset({2, 3, 4})  # interrupted, internal error, usage error
 MISSING_MODULE_RE = re.compile(r"No module named '([\w.]+)'")
 MISSING_NAME_RE = re.compile(r"cannot import name '(\w+)' from '([\w.]+)'")
 # Runs in the child interpreter: `python -c BOOTSTRAP <results.json> <pytest args...>`.
@@ -158,9 +159,8 @@ class Run:
 
 
 def materialize(repo: Path, sha: str, root: str, dest: Path) -> Path:
+    """Extract the whole tree at `sha` (tests may read repo files outside their project)."""
     args = ["git", "-C", str(repo), "archive", "--format=tar", sha]
-    if root:
-        args.append(root)
     result = subprocess.run(args, check=False, capture_output=True)
     if result.returncode != 0:
         raise GitError(result.stderr.decode(errors="replace").strip())
@@ -205,6 +205,9 @@ def run_pytest(project: Path, node_ids: list[str], out: Path) -> Run:
         tail = (result.stdout + result.stderr).strip().splitlines()[-5:]
         return Run({}, [], crashed=" / ".join(tail) or f"pytest exited {result.returncode}")
     data = json.loads(out.read_text(encoding="utf-8"))
+    if result.returncode in PYTEST_ABORTED and not data["tests"] and not data["collect_errors"]:
+        tail = (result.stdout + result.stderr).strip().splitlines()[-5:]
+        return Run({}, [], crashed=" / ".join(tail) or f"pytest exited {result.returncode}")
     outcomes: dict[str, Outcome] = {}
     for node_id, entry in data["tests"].items():
         outcome = outcomes.setdefault(node_id, Outcome())
