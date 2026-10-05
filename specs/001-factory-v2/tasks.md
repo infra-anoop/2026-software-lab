@@ -4,7 +4,7 @@
 
 **Tests (constitution §V):** `factory` is executable repo tooling, so tests are required. Every contract hook and every `how: auto` catalog row becomes a failing test before its implementation. `hybrid`/`human` rows get evidence tasks, not fake pytest.
 
-**Open Decisions:** none open. D1 waived (P3 rows → sprint 03), D2 = 70%, D3 = GPT reviews, D4 = GitHub App during Wave 1. The `[HITL]` tasks below are governor ops steps (account and settings work agents cannot do), not content decisions.
+**Open Decisions:** D1 waived (P3 rows → sprint 03), D2 = 70%, D3 = GPT reviews, D4 = GitHub App during Wave 1, D5 = trusted-base CI (locked 2026-10-05, architecture-affecting → Phase 6a, [`PLAN_DELTA.md`](./PLAN_DELTA.md)). **D6 open** (`who: human`): when the required `factory/*` checks are switched on relative to Slice C's bootstrap merge — T101 `[OD:D6]` resolves it before T066 is applied. The other `[HITL]` tasks below are governor ops steps (account and settings work agents cannot do), not content decisions.
 
 **Path shorthand used in prose only:** "the package" = `scripts/factory/src/factory/`; "tests" = `scripts/factory/tests/`. Task lines spell out full paths.
 
@@ -25,7 +25,7 @@ Wave 1 builds the gates that would otherwise govern it. So Wave 1 work runs on l
 |------------|------|-----|-------|
 | **CP0 — contracts frozen** | end of day 1 | day 1 | Phase 2 checkpoint green; interfaces in `scripts/factory/src/factory/api.py` change only via amendment |
 | **CP1 — slices green alone** | end of day 2 | day 4 | each slice's own contract/unit tests green; `factory gate run` over the seeds suite runs end to end |
-| **CP2 — live as required checks** | end of day 3 | day 5 | `factory-gates.yml` reports one `factory/<gate-id>` status per P1 gate on a real PR; one real order issued → claimed → PR → verdict, all derived on the board |
+| **CP2 — live as required checks** | end of day 3 | day 5 | `factory-gates.yml` reports one `factory/<gate-id>` status per P1 gate on a real PR; one real order issued → claimed → PR → verdict, all derived on the board. **D5:** that PR is the first after Slice C's bootstrap merge, its statuses come from the trusted `workflow_run` job running `main`'s code, and a probe PR that edits a gate to always pass is still failed by `main`'s gate (T103) |
 
 SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come from run events.
 
@@ -168,10 +168,67 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 - [x] T056 [P] [US4] PR/repo gates in `scripts/factory/src/factory/gates/pr/` (`bus_immutable.py`, `no_status.py`, `links_order.py`, `open_od.py`, `concurrency_cap.py`, `verdict.py`, `override_msg.py`) and `scripts/factory/src/factory/gates/repo/` (`fail_mode.py`, `hook_twin.py`)
 - [x] T057 [P] [US4] Hooks: entrypoints `scripts/factory/src/factory/hooks/` + lightweight console script `factory-hook = "factory.hooks.entry:main"` (`scripts/factory/pyproject.toml` + `uv.lock`; no Typer app, no other slices' modules) + slow-path `factory hook <name>` in `scripts/factory/src/factory/cli/gates.py`; wrapper `.cursor/hooks/factory-hook.sh` (venv `factory-hook`, else `uv run --project scripts/factory factory hook <name>`); `.cursor/hooks.json` registering `spawn-guard` (subagentStart, log-only), `shell-guard` (beforeShellExecution), `owned-path-warn` (postToolUse, anchored `Write|Delete` matcher, `additional_context`), `decision-in-chat` (stop, `followup_message`) — format per `/home/vscode/.cursor/skills-cursor/create-hook/SKILL.md` and the Cursor hooks docs; amendments `wo-20261004-factory-slice-c.amend-01`, `.amend-02`
 - [x] T058 [US4] `factory override` and `factory gate run` in `scripts/factory/src/factory/cli/gates.py`; `factory check hooks|registry|immutability` in `scripts/factory/src/factory/cli/checks.py`
-- [x] T059 [US4] Make `.github/workflows/factory-gates.yml` authoritative: run `factory gate run --pr`, post one commit status `factory/<gate-id>` per gate via `GitHubPort`, publish the board in the job summary; register existing `validate-secrets-schema` (governor-only, secrets), `validate-deploy-env`, `uv-sync-locked` in `scripts/factory/gates.yaml`
+- [x] T059 [US4] Make `.github/workflows/factory-gates.yml` authoritative: run `factory gate run --pr`, post one commit status `factory/<gate-id>` per gate via `GitHubPort`, publish the board in the job summary; register existing `validate-secrets-schema` (governor-only, secrets), `validate-deploy-env`, `uv-sync-locked` in `scripts/factory/gates.yaml` — workflow topology superseded by T097 (D5; PR review PR-C1)
 - [x] T060 [US4] Update `acceptance.md` evidence for override/gate rows
 
 **Checkpoint (part of CP1/CP2)**: required statuses appear on a real PR.
+
+---
+
+## Phase 6a: Slice C PR-review remediation + trusted-base CI (D5, P1) · Slice C
+
+**Source**: PR review [`PR_REVIEW_SLICE_C.md`](./PR_REVIEW_SLICE_C.md) (verdict-04, reject) and its § Triage; spec D5 (locked 2026-10-05, architecture-affecting) reconciled in [`PLAN_DELTA.md`](./PLAN_DELTA.md). Appended 2026-10-05; no earlier IDs renumbered.
+
+**Gate**: no test or implement work here starts until the delta P* review of the D5 amendment is triaged (constitution §G.1 step 4). Tests come first (§V); T096 T* triage comes before T097–T098.
+
+### Tests (write first, must fail)
+
+- [ ] T094 [P] [US4] [OD:D5] PR-C1 red tests. New `scripts/factory/tests/contract/test_ci_trust_boundary.py`, which replaces the three T-C1 workflow assertions in `scripts/factory/tests/contract/test_gate_run.py` (`test_workflow_gate_run_on_the_pr_is_not_allowed_to_fail`, `test_workflow_can_post_commit_statuses`, `test_workflow_publishes_the_board_in_the_job_summary`); accepted tests change only through this task and T096. Assertions, per `contracts/gates.md` § CI topology and trust boundary and `contracts/cli.md` § CI mode:
+  - **Untrusted workflow:** `factory-pr-evidence.yml` runs on `pull_request` with workflow-level permissions exactly `contents: read`, references no `secrets.*`, and posts no status.
+  - **Trusted workflow:** `factory-gates.yml` runs on `workflow_run` of "Factory PR evidence" `completed` and is the only job with `statuses: write`. Its checkout has no `ref:` and `persist-credentials: false`. The head is fetched by SHA only. No step runs `uv`/`python`/`pytest`/a script against a head path. `${{ }}` inside `run:` is limited to the allowed set, delivered via `env:`.
+  - **Repo-wide:** no `pull_request_target` with a head checkout or execution; no `pull_request` job holds `statuses: write` or secrets.
+  - **Gate run (fixture repos + `FakeGitHub`):** the registry comes from the installed package. A head that rewires a gate's entrypoint, deletes a row, or edits a gate module to always pass is still judged by the installed gate, and the head registry is still validated as data (T-C2). With `--expect-head`, a mismatch posts nothing and exits 0. Statuses go only to the expected head.
+  - **Validators:** a head whose copy of a validator script is replaced by `sys.exit(0)` and whose schema is invalid still fails.
+  - **Evidence bundle:** red-first fails closed, naming the reason, on a bundle that is absent, malformed, for another `head_sha`, lists a test outside the diff's test files, omits a changed test file, or exceeds the size limit. A valid red→green bundle passes. PR number and order fields in a bundle are ignored.
+  - **`factory gate evidence`:** writes the bundle, exits 0 with failing tests, and records no status call.
+  - Catalog `ci.trusted_base`.
+- [ ] T095 [P] [US4] PR-C2 red test `scripts/factory/tests/unit/hooks/test_hook_wrapper.py`: integration test running `.cursor/hooks/factory-hook.sh <name>` for each of the four hooks, in a repo with no `scripts/factory/.venv` and a `PATH` without `uv`:
+  - With a stub `nix` on `PATH`, the wrapper calls `nix develop <repo root> -c uv run --project scripts/factory factory hook <name>` and relays its stdout.
+  - With no `nix`, or a `nix` that exits non-zero without output, stdout is exactly that hook's quiet fail-open JSON, the exit code is 0 and the reason is on stderr. Never exit 127.
+- [ ] T096 [US4] Spawn T* review for T094–T095 (packet `notes/packets/<date>-factory-v2-slice-c-rework-test-review-t.md`) after the delta P* review is triaged; triage into `TEST_REVIEW_SLICE_C.md` before T097
+
+### Implementation
+
+- [ ] T097 [US4] [OD:D5] PR-C1 rework per `contracts/gates.md` § CI topology and trust boundary:
+  - Split `.github/workflows/factory-gates.yml` into the untrusted `.github/workflows/factory-pr-evidence.yml` and the trusted `workflow_run` `factory-gates.yml`.
+  - Add `factory gate run --expect-head --evidence` and `factory gate evidence` in `scripts/factory/src/factory/cli/gates.py` + `scripts/factory/src/factory/gates/runner.py`.
+  - Split red-first into an evidence producer and a bundle judge in `scripts/factory/src/factory/gates/drift/red_first.py`. That is Slice B's path, so it waits until B is merged into C and needs an order amendment.
+  - Validators run `main`'s scripts against the exported head tree (`scripts/factory/src/factory/gates/repo/existing.py`); add a repo-root argument to `scripts/validate_secrets_schema.py` / `scripts/validate_deploy_env.py` if missing (order amendment).
+  - The evidence-bundle model, its size limit in typed config and any `GateContext` field are CP0 frozen-interface changes (`api.py`, `config/`), made by amendment.
+  - Fill `ci.trusted_base` evidence.
+- [ ] T098 [US4] PR-C2: wrapper `.cursor/hooks/factory-hook.sh` per `contracts/hooks.md` § Invocation (Nix fallback; wrapper-level quiet fail-open)
+- [ ] T099 [POLICY] PR-C4: revert the `Status` line of `notes/packets/2026-10-04-factory-v2-slice-c.md` to its `main` text (no net diff on the packet vs `main`); progress stays in the append-only handoff and verdicts
+- [ ] T100 [US4] PR-C5: once Slices A and B are merged into `wo/wo-20261004-factory-slice-c`, `factory-tests` (now in `factory-pr-evidence.yml`) runs the full factory suite with no `-m` / `-k` / `--deselect` selector, and the CP1 bootstrap comment goes; T094's workflow test asserts no selector
+
+### Cross-order dependencies for the C merge
+
+- [ ] T101 [HITL] [OD:D6] PR-C6 = T066, moved earlier. Between the Slice B merge and the Slice C merge, the governor walks through branch protection with the orchestrator:
+  - PR required, bypass off for everyone, code-owner review.
+  - Required checks name each P1 `factory/<gate-id>` context individually, plus `Factory tests` and the existing checks.
+  - The orchestrator commits the snapshot `deploy/github/branch-protection.json` on `main` before C merges, through its own small PR under the bootstrap rule or in C by amendment (orchestrator's choice).
+  - When the `factory/*` requirement is switched on relative to C's merge follows D6, which must be locked first. This task is a pre-merge dependency for C.
+- [ ] T102 PR-C3 as its own small order (`wo-<date>-factory-status-test`), after Slice A merges and before Slice C merges:
+  - Test first `scripts/factory/tests/unit/gates/repo/test_status_test.py` (T* reviewed), then the entrypoint `factory.gates.repo.status_test:run` in `scripts/factory/src/factory/gates/repo/status_test.py`.
+  - It judges the board derivation over the head's bus data with `main`'s code and executes no head code (D5).
+  - It fills acceptance evidence for the I-M4 board row it serves and carries a bootstrap verdict (a pre-C PR).
+  - Slice C's branch does not create that file.
+- [ ] T103 [HITL] [OD:D5] Slice C bootstrap merge, then the CP2 proof:
+  - C merges on a bootstrap verdict over the reworked head plus governor approval, in the sequence D6 sets.
+  - The first PR after that merge shows one `factory/<gate-id>` status per P1 gate from the trusted run.
+  - A probe PR (closed unmerged) that edits a gate to always pass is still failed by `main`'s gate.
+  - Record both on `ci.trusted_base`.
+
+**Checkpoint (Phase 6a)**: delta P* triaged; T094–T095 red then T* triaged; T097–T100 green; T101 done with D6 locked; T102 merged; then T103.
 
 ---
 
@@ -193,7 +250,7 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 ## Phase 8: Ops — governor steps for Wave 1 [HITL]
 
 - [ ] T065 [HITL] Governor creates the GitHub App (repo contents/PRs/checks/statuses read-write), installs it on this repo, stores `FACTORY_GITHUB_APP_ID` + `FACTORY_GITHUB_APP_PRIVATE_KEY` in Infisical (names from T037); orchestrator then flips `identity.mode = "verified"` in `factory.toml` — before Phase 9
-- [ ] T066 [HITL] Governor sets branch protection on `main`: **require a pull request before merging, with bypass off for everyone including admins** (I-P10), require each `factory/<gate-id>` P1 status + existing checks, require code-owner review; orchestrator snapshots settings to `deploy/github/branch-protection.json`, and gate `branch-protection-require-pr` (slice C, `scripts/factory/src/factory/gates/repo/branch_protection.py`, test first) checks the snapshot holds the expected settings (live drift check is P3 → sprint 03 per D1)
+- [ ] T066 [HITL] Governor sets branch protection on `main`: **require a pull request before merging, with bypass off for everyone including admins** (I-P10), require each `factory/<gate-id>` P1 status + existing checks, require code-owner review; orchestrator snapshots settings to `deploy/github/branch-protection.json`, and gate `branch-protection-require-pr` (slice C, `scripts/factory/src/factory/gates/repo/branch_protection.py`, test first) checks the snapshot holds the expected settings (live drift check is P3 → sprint 03 per D1). **Amended 2026-10-05 (D5, PR-C6):** done as T101, between the Slice B and Slice C merges, as a pre-merge dependency for C. The required checks name each P1 `factory/<gate-id>` context individually plus `Factory tests`; when the `factory/*` requirement is switched on relative to C's merge follows D6
 - [ ] T067 [P] Add `.github/CODEOWNERS` naming `governor_login` on every `rule_paths` entry from `factory.toml`
 
 ---
@@ -274,7 +331,8 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
   - **Slice C**: Phase 6 (US4)
 - **T064** needs T055 (slice C runner) and T063 (slice B coverage). It runs after both, in slice C's lane.
 - **T059** needs T021 (slice A `GitHubPort` REST adapter) for commit statuses. Until it merges, slice C codes against `FakeGitHub`.
-- **Phase 8**: T067 can run any time after CP0. T065 is needed before T036's verified mode goes live. T066 is needed after T059 lands.
+- **Phase 8**: T067 can run any time after CP0. T065 is needed before T036's verified mode goes live. T066 runs as T101 (D5 amendment below).
+- **Phase 6a (D5, 2026-10-05)**: delta P* triage → T094–T095 → T096 → T097–T099. T100 after A and B are merged into C. T101 needs D6 locked and the B merge, and must finish before the C merge. T102 needs the A merge and must merge before C. C's merge (T103) needs T097–T102. Merge order: A → B → T101 + T102 → C.
 - **Phase 9** after CP2 and T065–T066. **No Wave 2 order is issued until T070 is complete.**
 - **Phases 10–13** (Wave 2) share the 3-worker cap with SWV2 lanes; US6, US7, US8 are mutually independent except T089 follows T088.
 
@@ -285,7 +343,7 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 | Orchestrator (P0) | `scripts/factory/{pyproject.toml,uv.lock,gates.yaml,schemas/}`, `scripts/factory/src/factory/{api.py,bus/,config/,cli/app.py,cli/exit_codes.py,cli/checks.py,gates/registry.py}`, `scripts/factory/tests/{fixtures/,seeds/test_seeds.py,contract/test_cli_contract.py,unit/test_bus_models.py}`, `factory.toml`, `bus/`, workflows (T003–T004) |
 | Slice A | `scripts/factory/src/factory/{lifecycle,board,metrics,github,identity,orders}/`, `cli/{board,orders}.py`, matching tests, `deploy/secrets/schema.yaml`, `scripts/validate_secrets_schema.py`, `scripts/test_validate_secrets_schema.py` |
 | Slice B | `scripts/factory/src/factory/{gates/drift,intent}/`, `cli/intent.py`, matching tests, `gates.yaml` entries for its gates (amendment to orchestrator-owned file — append-only rows) |
-| Slice C | `scripts/factory/src/factory/{gates/runner.py,gates/overrides.py,gates/pr,gates/repo,gates/retro.py,hooks}/`, `cli/gates.py`, matching tests, `.cursor/hooks.json`, `.github/workflows/factory-gates.yml` (after T004) |
+| Slice C | `scripts/factory/src/factory/{gates/runner.py,gates/overrides.py,gates/pr,gates/repo,gates/retro.py,hooks}/`, `cli/gates.py`, matching tests, `.cursor/hooks.json`, `.github/workflows/factory-gates.yml` (after T004); Phase 6a adds `.github/workflows/factory-pr-evidence.yml`, `scripts/factory/tests/contract/test_ci_trust_boundary.py`, and, by amendment once A/B are merged, `gates/drift/red_first.py` and the validator root argument (not `gates/repo/status_test.py`, which belongs to T102's order) |
 
 `scripts/factory/gates.yaml` is shared: slices only **append** their own rows; the orchestrator resolves conflicts at merge.
 

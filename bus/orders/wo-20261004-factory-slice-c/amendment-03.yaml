@@ -1,0 +1,93 @@
+# Orchestrator triage of the Slice C PR review (wo-20261004-factory-slice-c.verdict-04, reject)
+# and the constitution §G.1 reconcile of governor lock D5. Recorded by the Slice C worker on the
+# orchestrator's instruction (2026-10-05). Spec / plan / contract edits only: no tests, no code.
+# Dispositions (full table: specs/001-factory-v2/PR_REVIEW_SLICE_C.md § Triage (PR review)):
+#   PR-C1 product Blocker, LOCKED by governor 2026-10-05 as spec D5 (architecture-affecting,
+#        letter): trusted base, separation, gate changes effective after merge, Slice C bootstrap,
+#        no pull_request_target with head checkout/execution. Reconciled in PLAN_DELTA.md;
+#        delta P* review warranted. D6 (bootstrap sequence vs branch protection) opened, open
+#   PR-C2 accept: Nix-env fallback when neither .venv nor ambient uv exists; wrapper-level quiet
+#        fail-open JSON; integration test with both absent (T095, T098)
+#   PR-C3 accept: factory-status-test as its own small order after A merges, before C (T102)
+#   PR-C4 accept: revert the packet Status line (T099)
+#   PR-C5 accept: full suite, no selector, once A and B are merged into C (T100)
+#   PR-C6 accept: T066 walkthrough + snapshot between the B and C merges, pre-merge dependency
+#        for C, factory/* contexts named individually; activation timing = D6 (T101)
+# owned_paths are globs, so line scope is stated here. Additions over amend-02:
+#   specs/001-factory-v2/plan.md                  -> D5 amendment: Approval note, Summary (3), UI
+#                                                    clients, Boundaries, Topology & runtime custody,
+#                                                    § CI topology and trust boundary, Data &
+#                                                    persistence, Major risks, Phased delivery P1/P1b,
+#                                                    Constitution Check, Project Structure
+#   specs/001-factory-v2/contracts/gates.md       -> header line, § CI topology and trust boundary,
+#                                                    Override resolution note
+#   specs/001-factory-v2/contracts/cli.md         -> § CI mode (appended after the table)
+#   specs/001-factory-v2/PLAN_DELTA.md            -> new file (§G.1 record)
+#   specs/001-factory-v2/FINISH_BAR.md            -> Delta addendum section only
+#   specs/001-factory-v2/PR_REVIEW_SLICE_C.md     -> worker: § Triage (PR review) only; reviewer
+#                                                    sections arrive via review-branch merges
+# Widened line scope on already-owned paths:
+#   specs/001-factory-v2/spec.md                  -> FR-008 (amend-02), plus FR-022a, the FR-037
+#                                                    bootstrap sentence, and Open Decision rows D5, D6
+#   specs/001-factory-v2/research.md              -> "Editor hooks (FR-022)" block (amend-02), plus
+#                                                    § Topology & runtime custody and the red-first
+#                                                    CI-placement sentence
+#   specs/001-factory-v2/tasks.md                 -> this slice's checkboxes and T057 (amend-01), plus
+#                                                    header Open Decisions, CP2 proof, T059 note, T066
+#                                                    amendment, Phase 6a (T094-T103), Dependencies,
+#                                                    Slice C owned-paths row
+#   specs/001-factory-v2/acceptance.md            -> amend-02 scope, plus row ci.trusted_base and one
+#                                                    2026-10-05 change-log row
+#   specs/001-factory-v2/contracts/hooks.md       -> Invocation paragraph (PR-C2 bootstrap)
+# Code and test paths for the Phase 6a rework (factory-pr-evidence.yml, test_ci_trust_boundary.py,
+# test_hook_wrapper.py, gates/drift/red_first.py, validator root argument, CP0 interface changes)
+# are not widened here: they arrive by a later amendment after the delta P* review is triaged.
+schema_version: 1
+kind: amendment
+id: wo-20261004-factory-slice-c.amend-03
+created: 2026-10-05T14:55:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/packets/2026-10-04-factory-v2-slice-c.md
+  - specs/001-factory-v2/PR_REVIEW_SLICE_C.md
+  - specs/001-factory-v2/PLAN_DELTA.md
+  - specs/001-factory-v2/spec.md
+  - wo-20261004-factory-slice-c.verdict-04
+  - wo-20261004-factory-slice-c.amend-02
+supersedes: [owned_paths]
+values:
+  owned_paths:
+    - "scripts/factory/src/factory/gates/runner.py"
+    - "scripts/factory/src/factory/gates/overrides.py"
+    - "scripts/factory/src/factory/gates/retro.py"
+    - "scripts/factory/src/factory/gates/pr/**"
+    - "scripts/factory/src/factory/gates/repo/**"
+    - "scripts/factory/src/factory/hooks/**"
+    - "scripts/factory/src/factory/cli/gates.py"
+    - "scripts/factory/src/factory/cli/checks.py"
+    - "scripts/factory/tests/contract/test_gate_run.py"
+    - "scripts/factory/tests/unit/gates/test_registry_checks.py"
+    - "scripts/factory/tests/unit/gates/pr/**"
+    - "scripts/factory/tests/unit/hooks/**"
+    - "scripts/factory/gates.yaml"
+    - "scripts/factory/pyproject.toml"
+    - "scripts/factory/uv.lock"
+    - ".cursor/hooks.json"
+    - ".cursor/hooks/factory-hook.sh"
+    - ".github/workflows/factory-gates.yml"
+    - "specs/001-factory-v2/contracts/hooks.md"
+    - "specs/001-factory-v2/contracts/gates.md"
+    - "specs/001-factory-v2/contracts/cli.md"
+    - "specs/001-factory-v2/acceptance.md"
+    - "specs/001-factory-v2/tasks.md"
+    - "specs/001-factory-v2/spec.md"
+    - "specs/001-factory-v2/plan.md"
+    - "specs/001-factory-v2/research.md"
+    - "specs/001-factory-v2/PLAN_DELTA.md"
+    - "specs/001-factory-v2/FINISH_BAR.md"
+    - "specs/001-factory-v2/PR_REVIEW_SLICE_C.md"
+    - "specs/001-factory-v2/TEST_REVIEW_SLICE_C.md"
+    - "bus/orders/wo-20261004-factory-slice-c/**"
+    - "notes/packets/2026-10-04-factory-v2-slice-c.handoff.md"

@@ -111,3 +111,20 @@ edited outside the effective owned paths.
 | `factory check schema --repo ../..` | Passed before verdict-04 was added. |
 | Hook probes | Ops runtime-tag command, tag push, review-branch push, and review-branch commit allowed; main push denied; spawn always allowed and logged. |
 | Cross-slice merge simulation | A↔C, B↔C, and A↔B each conflict only in `acceptance.md`; other inspected paths auto-merge. |
+
+## Triage (PR review)
+
+Recorded 2026-10-05 by the Slice C worker on the orchestrator's instruction, against verdict-04 (reject). Product-tagged findings were adjudicated by the governor; process-tagged findings by the orchestrator under constitution §F. Architecture effects are reconciled in [`PLAN_DELTA.md`](./PLAN_DELTA.md) (§G.1); owned paths for this triage are in `bus/orders/wo-20261004-factory-slice-c/amendment-03.yaml`.
+
+| ID | Disposition | Adjudicator | Resolution | Task |
+|----|-------------|-------------|------------|------|
+| PR-C1 | accept — **governor lock D5** (architecture-affecting, letter) | governor 2026-10-05 | Trusted base: `main`'s gate code judges every PR in CI and the head is only data (diff, files, bus messages, tests). PR-head code never runs with status-write permission; the PR's own tests run in a separate read-only job that cannot post `factory/*` statuses. A PR that changes the gates is judged by `main`'s current gates, and its gates take effect after merge. Slice C's own PR bootstraps through the FR-037 bootstrap verdict plus governor approval. `pull_request_target` combined with head checkout or execution is banned. Shape: untrusted `factory-pr-evidence.yml` (`pull_request`, `contents: read`) + trusted `factory-gates.yml` (`workflow_run`, `main`'s code, `statuses: write`); red-first execution evidence crosses as an untrusted, validated bundle (plan § CI topology and trust boundary; `contracts/gates.md`). Spec FR-022a; catalog `ci.trusted_base`. The bootstrap sequence against branch protection is opened as **D6** (governor) | T094 (red) → T096 (T*) → T097; T103 |
+| PR-C2 | accept | orchestrator (process) | When neither the venv nor an ambient `uv` exists, the wrapper runs the fallback in the repository's Nix environment (`nix develop <repo root> -c uv run --project scripts/factory factory hook <name>`). If bootstrap fails, the wrapper prints the hook's quiet fail-open JSON, exits 0 and never exits 127. Integration test with both `.venv` and ambient `uv` absent. `contracts/hooks.md` § Invocation and `research.md` § Editor hooks amended | T095 (red) → T096 → T098 |
+| PR-C3 | accept — separate small order | orchestrator (product finding; placement is sequencing, not product content) | `factory-status-test` keeps its P1 row. Its entrypoint `factory.gates.repo.status_test:run` is built test-first as its own small order after Slice A merges and before Slice C merges; it judges with `main`'s code over head data (D5) and carries a bootstrap verdict. Slice C does not create that file | T102 |
+| PR-C4 | accept | orchestrator (process) | Revert the packet `Status` line to its `main` text; progress stays in the append-only handoff and verdicts | T099 |
+| PR-C5 | accept | orchestrator (process) | Once Slices A and B are merged into C, `factory-tests` (now in the read-only workflow) runs the full suite with no selector, and the CP1 bootstrap comment goes | T100 |
+| PR-C6 | accept — pre-merge dependency | orchestrator (process); activation timing → governor **D6** | T066 (branch-protection walkthrough + snapshot) runs between the Slice B merge and the Slice C merge, as a dependency of C's merge. The required checks name each P1 `factory/<gate-id>` context individually plus `Factory tests`. When the `factory/*` requirement switches on relative to C's merge is D6 (open) | T101 `[OD:D6]` |
+
+**Merge order:** A → B → (T101 + T102) → C, with C's merge (T103) after the delta P* review, the T* review of T094–T095, T097–T100 green and D6 locked.
+
+**Next:** spawn the delta P* review of the D5 amendment (`PLAN_REVIEW_PROMPT.md` + `STACK_POSTURE.md`), then red tests T094–T095 and T* (T096). No implementation in this triage run.
