@@ -198,3 +198,72 @@ Test-shape choices a round-3 reviewer may debate (none changes a frozen CP0 inte
 - **Locked rows.** A re-locked row is a locked row. Bold spans in waived or open rows are not pinned.
 - **Symlinks.** An in-repo target also blocks, because the rule is the tracked mode, not where the link points.
 - **One bad entry.** A bad entry blocks the whole file, even when the requested case is a valid entry.
+
+## Round 3
+
+Reviewed `wo/wo-20261004-factory-slice-b` at `d36172e805c80c7740ac6fa1feee895efe513063`.
+
+### Verdict
+
+**Verdict: accept — implementation may proceed against these tests.**
+
+T-B2-1 and T-B2-2 are resolved as triaged. The lock-token matrix uses the real
+factory D2/D4, Smart Writer D2 and durable-evals D4/D6 status cells, exercises
+each material phrase as an independent case-insensitive whole-phrase token, and
+guards numeric/unit-only, short, generic, status-keyword, code, link, date,
+plain-prose and split-phrase false positives. The catalog-linkage matrix proves
+head-blob custody, rejects tracked symlinks by mode whether their target is
+inside or outside the repository, and fails closed on all 14 malformed or
+wrong-shape layouts.
+
+The positive and negative expectations are jointly satisfiable: a parser can
+select locked/re-locked rows, extract qualifying bold spans after the status
+marker, compare them to the order goal on case-insensitive phrase boundaries,
+and separately discover numeric locks by OD id; catalog linkage can inspect the
+head tree mode, read only a regular-file blob, parse the extension-specific
+layout strictly, and require every entry to be a mapping with `id`. No case
+requires incompatible output for the same effective input.
+
+### Findings
+
+None.
+
+### Round-2 finding resolution
+
+| Finding | Judgment | Evidence |
+|---------|----------|----------|
+| T-B2-1 | **Resolved** | 29 added cases cover the five real status-cell shapes plus the synthetic exclusion row; touching goals block without D1 and pass with D1 declared, while the negative matrix protects phrase boundaries and exclusions. |
+| T-B2-2 | **Resolved** | 17 added cases prove head-blob reads, both symlink directions, and 14 malformed/wrong-shape failures, including one bad entry beside a valid requested case. |
+
+### Test-shape judgments
+
+1. **Accept — status keyword.** Leading `locked` / `re-locked` describes row
+   state rather than lock value; excluding it prevents generic “locked rows”
+   prose from touching every decision.
+2. **Accept — currency.** `$10` is a numeric amount and is consistently handled
+   with the other numeric/unit-only values through OD-id discovery.
+3. **Accept — locked rows.** Re-locked rows carry an active lock; waived and open
+   rows do not. Restricting token extraction to locked/re-locked status avoids
+   declaring superseded or undecided content as letter locks.
+4. **Accept — symlinks.** Blocking mode `120000` independent of target location
+   gives one auditable head-tree rule and prevents checkout-dependent behavior.
+5. **Accept — malformed entry.** One invalid entry makes the declared eval file
+   fail closed; silently skipping it would permit ambiguous partial evidence.
+
+### Verification record
+
+| Check | Result |
+|-------|--------|
+| Reviewed head | `d36172e805c80c7740ac6fa1feee895efe513063` |
+| Locked sync | PASS — 25 locked packages installed under Nix |
+| Slice B focused suite | Expected RED — **218 failed** in 120.31 s; assertion failures only, no collection errors or xfails |
+| Full suite | Expected RED — **334 failed / 237 passed** in 150.47 s; the 237 passing baseline is unchanged |
+| CI selector | Expected RED — **224 passed / 200 failed**, 147 deselected; all 200 failures are Slice B drift tests |
+| Red-first imports | PASS — tests import existing public factory/fixture modules; no module-level import of a missing implementation module |
+| Satisfiability | PASS — no contradictory expectations found in the round-2 additions or inherited suite |
+| Production source | PASS — no changes under `scripts/factory/src`, `apps`, `modules`, `deploy`, or `db` from base `da0505d` |
+| Owned paths | PASS — round-2 diff is within amendment-02's restated paths; no frozen CP0 source changed |
+| Bus append-only | PASS — amendments and verdicts are added records; no prior bus record was rewritten |
+| `ruff check` / `ruff format --check` | PASS — all checks passed; 44 files formatted |
+| `factory check schema --repo ../..` | PASS — `schema ok` |
+| Worktree setup | No `.cursor/worktrees.json` in repository root or worktree; setup skipped after both checks |
