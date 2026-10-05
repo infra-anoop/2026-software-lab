@@ -333,3 +333,49 @@ Recorded by the Slice A worker on the orchestrator's instruction (2026-10-05). D
 | T-A5-2 / PR-A2 | `test_git_safety.py::test_handoff_push_rejection_leaves_local_refs_and_worktree_unchanged` (rewritten on the barrier) | red: branch moved |
 
 Divergence follows amendment-04's letter: origin takes the event (exit 0), and the divergent local branch is left alone and reported. Repetitions: 12/12 identical outcomes.
+
+## Round 6 (PR-fix tests)
+
+### Verdict
+
+**Verdict: reject — T-A5-2 is resolved, but T-A5-1 remains open on bounded execution.**
+
+The receive-pack barrier removes the round-5 scheduling race: both pushes are held after
+event construction, release order is explicit, and the recorded advertisement proves PR-A7
+reaches `fetch first` while PR-A8 reaches the identical-commit/up-to-date path. The PR-A2
+suite now covers handoff, verdict, linked worktrees, successful non-checked-out CAS,
+pre-existing and during-push divergence, and rejection after event construction. However,
+the stated timeout does not bound the enclosing executor shutdown, so a command that hangs
+after release can still hang pytest indefinitely.
+
+### Findings
+
+| ID | Severity | Tag | Locus | Finding | Suggested resolution |
+|----|----------|-----|-------|---------|----------------------|
+| T-A6-1 | Blocker | process | `test_claim.py::_held_race`; `test_git_safety.py::_claim_while_held`; `::test_handoff_push_rejection_leaves_local_refs_and_worktree_unchanged` | Each `Future.result(timeout=...)` sits inside `with ThreadPoolExecutor(...)`. If a factory command hangs after its barrier is released, the timeout raises, then `ThreadPoolExecutor.__exit__` calls `shutdown(wait=True)` and waits without a bound for that same running future. The wrapper and arrival poll are bounded, but the test process is not; the “every wait is bounded” requirement is therefore not met. | Run held commands in a killable process/subprocess and terminate it at the deadline, or add an equivalent hard test-wide timeout that demonstrably interrupts executor shutdown. Keep the current barrier ordering and advertisement assertions. |
+| T-A6-2 | Nit | process | `push_barrier.py`; PR-A7 / PR-A8 | Strength: there is no residual scheduling race in the intended push outcome. Both clients reach the wrapper before either receives an advertisement; claimer 1 exits before claimer 2 is released; the loser-object and advertised-ref assertions distinguish `fetch first` from up-to-date. Twelve fresh repetitions were identical. | Preserve this orchestration while fixing T-A6-1. |
+| T-A6-3 | Nit | process | `test_git_safety.py`; PR-A2 | Strength: every new red case fails at the asserted PR-A2 seam against current code. Handoff/verdict and linked-worktree cases observe branch movement; both divergence cases observe the missing pull instruction while preserving the divergent ref; rejection observes local branch movement after the barrier proves origin moved only at push. The non-checked-out CAS guard passes as intended. | No change. |
+
+### Round-five resolution check
+
+- **T-A5-1:** partially resolved. Deterministic path selection is resolved; bounded execution is
+  not, because executor context shutdown can wait forever after a future timeout.
+- **T-A5-2:** resolved. Coverage is complete for the behaviors requested in round 5.
+- **Joint satisfiability:** yes. Ref-only event commits, compare-and-swap local advancement,
+  checked-out/diverged branch preservation, exit-2 push-race classification, and a killable
+  bounded test harness can all hold together.
+- **Red-first honesty:** yes. Full collection succeeds; failures are assertions, there are no
+  xfails, and no test imports a missing implementation module at module scope.
+
+### Verification record
+
+| Check | Result |
+|-------|--------|
+| Reviewed head | `d8f2c471b178444b1815d99255374ea4326d11c7` |
+| Full `uv run pytest -q` | Expected RED: **100 failed, 343 passed**; 443 collected; no collection errors or xfails. |
+| PR-A7 / PR-A8 repetitions | **12/12 identical**: existing atomic-race guard passed; PR-A7 failed `[0, 4]` versus `[0, 2]`; PR-A8 failed `[0, 0]` versus `[0, 2]`. |
+| Focused PR-A2 / race run | **11 failed, 1 passed**. The successful non-checked-out CAS case is the intended green guard; all red cases failed at their stated current-code seam. |
+| `factory check schema` | PASS — `schema ok` before verdict-07. |
+| Production-source diff | PASS — `git diff ea6a554..d8f2c47 -- scripts/factory/src` is empty. |
+| Bus append-only | PASS through reviewed head — all six records since `ea6a554` are additions; none is modified or deleted. |
+| Worktree setup | Checked repository root and worktree; no `.cursor/worktrees.json`, so setup was skipped. `nix develop ../.. -c uv sync --locked` passed. |
