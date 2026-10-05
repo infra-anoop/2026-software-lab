@@ -25,6 +25,31 @@ PR #22 review merged `--no-ff` at `55dfa3f` (`review/wo-20261004-factory-slice-b
 
 Every red fails by assertion (`let the violation through`, `blocked a clean change … does not pass on head`, `environment access outside factory.config`). Phase 2 waits on the T\* review and on R1 (config owned path) / R2 (pinned bundle model).
 
+### Orchestrator decisions (amendment-06) — still phase 1
+
+| Decision | New tests / data | Red / green |
+|----------|------------------|-------------|
+| `checks` kinds (W1) | `tests/unit/gates/drift/test_catalog_check_kinds.py` | 4 red, 1 green guard (an unknown id still blocks) |
+| Raw-facts seam (PR-B3, bundle is Slice C's) | `tests/unit/gates/drift/test_red_first_facts.py` (`collect_facts(ctx)`) | 2 red (`collect_facts` missing) |
+| PR-B2 bootstrap messages | `bus/orders/wo-20261004-factory-slice-b/{order,claim,handoff}.yaml` in one tip commit | data; `factory check schema` ok |
+| R1 config access | amend-06 owned path `factory/config/settings.py` (phase 2) | — |
+| Slice A follow-up | `tasks.md` T105 | — |
+
+**Known bootstrap distortions** (FR-037, accepted by the orchestrator):
+- **Order size.** `size_minutes` is `1`, the schema minimum. The true size is about 19.5 h wall-clock (claim `236ab09` 2026-10-04T19:14:28Z to pre-PR head `68eb20c` 2026-10-05T14:43:22Z) plus the PR-review rework. That figure is stated in the order's `refs`.
+- **Scorecard dates.** Slice A's scorecard takes the order's issue time from the commit that adds `order.yaml` (2026-10-05), not the packet date (`9bb5525`, 2026-10-04T00:09:03Z). The orchestrator corrects Wave 1's start by hand in the retro.
+- **Handoff.** `handoff.yaml` is a one-time bus message (`<order-id>.handoff`). Later progress goes in this Markdown file only.
+
+`checks` (gate ids, from the packet DoD): `red-first-proof`, `catalog-test-linkage`, `diff-within-owned-paths`, `pr-links-order`, `order-fidelity-declared`, `lock.letter-tokens`, `verdict.reviewer-family-differs`, `verdict.inputs-isolated`. The DoD-to-gate mapping is in `PR_REVIEW_SLICE_B.md` § Triage (PR review).
+
+`locks`: the packet's § Fidelity table (red-first rule, deferral-words rule, decision-request id rule), letter fidelity, with literal tokens from Slice B's code. The "Governor locks required" table is context, not this slice's code. A first local draft declared the reviewer-family and identity decisions, and `lock.letter-tokens` blocked it before push.
+
+**W6 and W7 (for triage), both found by running the gates on this branch.**
+- **W6.** A test file's collection error on base interrupts the whole base run, so sibling tests read "not collected on base". In the first run about 150 accepted Slice B tests were hit.
+- **W7.** `from <package> import <module the PR adds>` reads as "base broken", not red.
+
+The seam test now imports inside the test body, so this PR does not trip either bug. See `PR_REVIEW_SLICE_B.md` § Triage. No tests for W6 or W7 yet; they wait on triage.
+
 ## Implementation (phase 2)
 
 **Accepted tests are unchanged since accept.** `git diff a68b95d HEAD -- scripts/factory/tests` is empty. No frozen CP0 file (`api.py`, `bus/`, `config/`, `cli/app.py`, `cli/exit_codes.py`, `gates/registry.py`, `tests/fixtures/`) changed. `gates.yaml` needed no edits: all nine Slice B entrypoints were pre-registered and now import.

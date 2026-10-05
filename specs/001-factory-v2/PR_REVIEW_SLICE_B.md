@@ -222,3 +222,40 @@ Red tests the mechanism needs (owners in brackets):
 
 - **R1.** Owned paths for an additive child-environment builder in `factory/config/settings.py` (+ `__init__.py` export). This is CP0-frozen, and the env read has to sit there (I-A3).
 - **R2.** A pinned evidence-bundle model (items 1–6 above) and one owner before producer tests are written.
+
+### Orchestrator decisions on this triage (2026-10-05, `amendment-06.yaml`)
+
+| # | Decision | Applied in phase 1 |
+|---|----------|--------------------|
+| 1 | **PR-B2 accepted as proposed, Slice B only.** The branch tip gets a commit with three schema-valid messages: an order, a claim and a handoff. The order is an FR-037 bootstrap: `actor_verified: false`, `depends_on_decisions: []`, and `checks` lists gate ids only, reconstructed from the packet DoD. The claim's `claimed_at` is the first worker commit. The handoff points at the handoff doc. The scorecard's Wave 1 start distortion is accepted and corrected by hand in the retro. The messages need no tests | `bus/orders/wo-20261004-factory-slice-b/{order,claim,handoff}.yaml`. `checks` and `size_minutes` are below |
+| 2 | **`checks` kinds.** `catalog-test-linkage` judges only catalog-row ids. A registered gate id is not a catalog miss, and an id that is neither still blocks. The Slice A side is follow-up task T105 | `tests/unit/gates/drift/test_catalog_check_kinds.py`: 4 red, 1 green guard. T105 added to `tasks.md` |
+| 3 | **R1 approved.** An additive CP0 frozen-interface amendment to `factory/config/settings.py` adds a child-environment allowlist builder, the only place that reads the environment, with no signature changes. The `/proc` and upload-token residuals stay as disclosed in Slice C's `PLAN_DELTA.md` | Owned path added in amend-06 for phase 2 |
+| 4 | **Evidence bundle: Slice C owns it (T097).** `red_first` only returns raw per-test facts as a plain value: node id, base and head outcome, raw error text. No bundle-shape tests | Minimal seam test `tests/unit/gates/drift/test_red_first_facts.py` (`collect_facts(ctx)`): 2 red |
+
+**Order `checks` (gate ids, one per DoD or packet line):**
+
+| Gate | Packet line it enforces |
+|------|-------------------------|
+| `red-first-proof` | DoD "Red first" |
+| `catalog-test-linkage` | DoD "`acceptance.md` evidence filled (real test ids)" |
+| `diff-within-owned-paths` | DoD "checkboxes for this slice's tasks only"; § Owned / Forbidden paths |
+| `pr-links-order` | DoD "Commits on the packet branch only" |
+| `order-fidelity-declared`, `lock.letter-tokens` | § Fidelity (constitution §I, required) |
+| `verdict.reviewer-family-differs`, `verdict.inputs-isolated` | DoD "Handoff … (bootstrap verdict input, FR-037)" |
+
+Two DoD items have no registered gate: "pytest green / ruff / type hints / no `os.getenv`" (the `Factory tests` job check and ruff) and the CP0 seeds suite. Every other registered P1 gate still judges this PR as a required check; it is just not part of this order's acceptance.
+
+**`size_minutes`.** The schema has free-text `refs`, so the order's `refs` states the true size: about 19.5 h wall-clock from the claim (`236ab09`) to the pre-PR head (`68eb20c`), plus the rework. `size_minutes` is `1`, the schema minimum.
+
+**`locks`.** The order's `locks` are the packet's § Fidelity table, all at letter fidelity, each with the literal tokens Slice B's code carries:
+- red-first rule: `base broken`;
+- deferral-words rule: the six words;
+- decision-request id rule: the five id patterns.
+
+The packet's "Governor locks required" table (cap, horizon, reviewer family, identity) is context this slice does not implement. A first draft declared the reviewer-family and identity decisions as letter locks, and `lock.letter-tokens` rightly blocked: no Slice B code line carries the reviewer-family value. That draft was replaced before push.
+
+### Worker-found item W6 (for orchestrator triage)
+
+- **W6: one import-red file hides every other test in the run.** On base, `red_first` runs all of a project's judged node ids in one pytest call. When a new test file is red because it imports a module the PR adds, its collection error interrupts the whole run before any test executes. A sibling assertion-red test then reads "not collected on base", and the gate blocks a valid PR. A probe on the current gate put `tests/test_clamp.py` (assertion-red) and `tests/test_money.py` (imports the added `app.money`) in one PR. Result: `test_clamp_caps_high: base broken, not red: not collected on base`. The accepted tests cover each case only on its own. Proposed fix: a red test with both files in one PR expecting a pass, and phase 2 runs by file (or deselects within files) so that one file's collection error cannot suppress another's tests. The `collect_facts` seam tests use one file per case so they do not depend on this fix.
+- **W6 at full scale.** The first gate run on this PR with the real order (head `dacf2c0`, not pushed) put a module-level `from factory.gates.drift import red_first` in `test_red_first_facts.py`. Its base collection error interrupted the base run, and about 150 accepted, previously red Slice B tests read "base broken, not red: not collected on base". The seam test now imports inside the test body, the way every accepted test reaches gates through `factory.api`. The gate defect stands.
+- **W7: a module the PR adds, imported from its package, reads as base broken.** On base, `from factory.gates.drift import red_first` fails with `ImportError: cannot import name 'red_first' from 'factory.gates.drift'`. `red_first` is a module the PR adds (`src/factory/gates/drift/red_first.py`), so by the red-first rule this is red. The gate classifies it as "base broken", because its added-name check does not treat a submodule as a name the package adds. Proposed fix: a red test for that import form expecting a pass, and phase 2 counts a submodule the PR adds under a package as an added name.
