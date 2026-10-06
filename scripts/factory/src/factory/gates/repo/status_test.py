@@ -1,9 +1,11 @@
 """Gate `factory-status-test` (T102, PR-C3; I-M4; catalog `board.matches_reality`).
 
 `main`'s lifecycle derivation runs over the head's bus alone, with no GitHub data, and
-every order folder on the head bus must be on the derived board exactly once. The head
-is only data (D5): bus files are read as git objects at `head_sha`; nothing from the
-head is imported, run or checked out.
+every order folder on the head bus must be on the derived board exactly once. Per the
+T-ST3 lock (governor, option B), a malformed or unreadable head bus file blocks, and so
+does a governor wait the board reports with no decision request on the head bus. The
+head is only data (D5): bus files are read as git objects at `head_sha`; nothing from
+the head is imported, run or checked out.
 """
 
 from __future__ import annotations
@@ -17,6 +19,7 @@ from factory.api import (
     CommitStatusValue,
     GateContext,
     GateResult,
+    OrderState,
     PullRequest,
     PullRequestReview,
 )
@@ -114,6 +117,15 @@ def judge(ctx: GateContext) -> list[str]:
         for order_id in sorted(counts)
         if order_id not in folders
     ]
+    requests, locks = view.requests(), view.locks()
+    problems += [
+        f"order {item.order_id} waits on the governor for decision {decision_id}, which has no"
+        " decision request on the head bus"
+        for item in snapshot.orders
+        if OrderState.BLOCKED_ON_GOVERNOR in item.overlays and item.order_id in view.orders
+        for decision_id in view.orders[item.order_id].order.depends_on_decisions
+        if decision_id not in locks and decision_id not in requests
+    ]
     return problems
 
 
@@ -132,4 +144,7 @@ def run(ctx: GateContext) -> GateResult:
         )
     if problems:
         return failed(problems)
-    return passed("every order folder on the head bus is on main's derived board")
+    return passed(
+        "every order folder on the head bus is on main's derived board, and every governor"
+        " wait has a recorded decision request"
+    )
