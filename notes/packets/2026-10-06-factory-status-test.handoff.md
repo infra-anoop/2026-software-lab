@@ -1,6 +1,6 @@
 # Handoff — `wo-20261006-factory-status-test` (T102, PR-C3)
 
-**Phase:** 1 of 2: red tests only (constitution §V). No implementation. Next: spawn the T* review of the test file, then implement `factory.gates.repo.status_test:run` and fill the I-M4 `board.matches_reality` evidence in `acceptance.md`.
+**Phase:** 1 of 2: red tests only (constitution §V). No implementation. T* round 1 rejected the tests (`verdict-01`); its Blockers are fixed (see § T* round 1). Next: the T* round 2 review and the governor's T-ST3 choice, then implement `factory.gates.repo.status_test:run` and fill the I-M4 `board.matches_reality` evidence in `acceptance.md`.
 
 **Branch:** `wo/wo-20261006-factory-status-test` from `origin/main` `2a591f9` (Slices A and B merged). No PR opened.
 
@@ -25,12 +25,13 @@ Two "inconsistent" cases are a choice the reviewer should confirm. Both pass `bu
 | `test_passes_on_a_valid_head_bus` | ready, in-flight, released, and waiting-on-a-recorded-decision orders pass |
 | `test_judges_the_head_commit_not_the_checkout` | broken untracked bus files in the working tree are ignored |
 | `test_blocks_order_events_the_board_would_drop` | claim + handoff with no order blocks, naming the order |
-| `test_blocks_a_governor_wait_with_no_recorded_decision` | missing decision request blocks, naming order and decision |
-| `test_executes_no_head_code` | head ships a pass-always gate and marker-writing modules: still blocks, no marker, no checkout, no worktree, no write |
+| `test_blocks_when_main_derivation_omits_a_head_order` | (round 1, T-ST1) `main`'s `derive_from_view` wrapped to drop a valid order: the gate blocks naming it and must have called the derivation |
+| `test_blocks_a_governor_wait_with_no_recorded_decision` | missing decision request blocks, naming order and decision (T-ST3 open) |
+| `test_executes_no_head_code` | head ships a pass-always gate, marker-writing conftests and `sitecustomize`, and (round 1, T-ST2) a marker-writing copy of the `factory` package: still blocks, no marker, no checkout, no worktree, no write |
 | `test_fails_closed_on_a_malformed_bus_file[invalid-yaml, schema-invalid]` | an unparseable or schema-invalid head file blocks, naming the path |
 | `test_fails_closed_when_the_head_commit_is_unreadable` | an unknown head sha blocks, naming it |
 
-**Red:** 8 of 8 fail on the assertion `factory.gates.repo.status_test:run is not implemented`. No collection errors (the entrypoint is imported inside the tests). `ruff check` and `ruff format --check` pass. A throwaway script confirmed the fixture data: the valid, orphan-event and missing-decision buses pass `validate_bus`, and both malformed files fail it and are dropped from a tolerant snapshot.
+**Red (round 1 head):** 9 of 9 fail on the assertion. **Red (original phase 1):** 8 of 8 failed on the assertion `factory.gates.repo.status_test:run is not implemented`. No collection errors (the entrypoint is imported inside the tests). `ruff check` and `ruff format --check` pass. A throwaway script confirmed the fixture data: the valid, orphan-event and missing-decision buses pass `validate_bus`, and both malformed files fail it and are dropped from a tolerant snapshot.
 
 ## Deviations (bootstrap, disclosed)
 
@@ -43,3 +44,23 @@ Two "inconsistent" cases are a choice the reviewer should confirm. Both pass `bu
 
 - `factory/gates/repo/` has no `__init__.py` on `main`; Slice C adds it and `_git.py` (`passed`/`failed`/`outcome`). This order owns only `status_test.py`, so it either imports as a namespace package until C merges or reuses `factory.gates.drift._common`. Slice C's `__init__.py` then merges cleanly.
 - The derivation needs a view built from one commit: `main`'s `BusView` and `derive_order` with an offline `GitHubPort` (no PRs, no statuses).
+
+## T* round 1 (`verdict-01`, reject; triage in `amendment-01`)
+
+The orchestrator triaged round 1 under constitution §J: fix each root cause once, with at most one test per class.
+
+- **T-ST1, accepted (Blocker): the oracle was not pinned.** A scanner that never derived the board could pass. The new `test_blocks_when_main_derivation_omits_a_head_order` wraps `factory.lifecycle.derive.derive_from_view`, and any alias of it in the gate module, so that `main`'s derived snapshot drops one valid order. The gate must block, naming that order, and must have called the derivation. This pins `derive_from_view` over a `BusView` built from the head as the derivation entrypoint.
+- **T-ST2, accepted (Blocker): the D5 sentinel missed head imports of the `factory` package.** The existing `test_executes_no_head_code` now also ships marker-writing head copies of 18 `factory` modules: the package root, `api`, the `bus` loader, models and schema, `config.settings`, `orders.git`, `lifecycle` (`view`, `derive`), `board` (`render`), `gates`, and the shared drift helpers. It keeps the single marker assertion; no parallel test was added.
+- **T-ST3, open (Debate, product, `who: human`).** Should this gate also block malformed bus files, which `bus.schema` already does, and decision waits with no recorded request, which replaces `main`'s visible placeholder? Neither the orchestrator nor the worker adjudicated it. `test_fails_closed_on_a_malformed_bus_file` and `test_blocks_a_governor_wait_with_no_recorded_decision` stay unchanged until the governor chooses.
+- **T-ST4, noted:** strength; the controls are kept.
+- **T-ST5, accepted (Later).** Manual equivalent for the omitted self-gate, below.
+
+### Bootstrap manual equivalent for `factory-status-test` (T-ST5)
+
+`factory-status-test` is not in this order's `checks`, because `main`'s code judges this PR (D5) and has no entrypoint for the gate until merge. Before the bootstrap verdict, the gate's evidence is reproduced by hand at the PR head:
+
+1. `cd scripts/factory && uv run pytest tests/unit/gates/repo/test_status_test.py`: every case green.
+2. The implemented gate runs over this repository's own head bus: a `GateContext` for the PR head, with `run(ctx)` called from this branch's code. The result passes, and its messages are recorded in this handoff.
+3. The reviewer reruns steps 1 and 2 and lists them under `manual_equivalents` in the bootstrap verdict.
+
+Step 2 runs this branch's gate code, not `main`'s. That is the D5 bootstrap exception this order already carries: the governor approves the merge, and the gate judges later PRs from `main` once merged.
