@@ -1,0 +1,45 @@
+schema_version: 1
+kind: verdict
+id: wo-20261006-factory-status-test.verdict-05
+created: 2026-10-06T10:24:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - specs/001-factory-v2/PR_REVIEW_STATUS_TEST.md
+  - wo-20261006-factory-status-test.verdict-04
+  - wo-20261006-factory-status-test.amend-04
+  - https://github.com/infra-anoop/2026-software-lab/pull/25
+decision: accept
+findings:
+  - id: PR-ST-L1
+    severity: later
+    tag: process
+    text: >-
+      Retain the round-1 Later with its recorded Slice C owner: shared git object
+      reads have no subprocess timeout and bus blobs have no size/resource bound
+      before UTF-8 and YAML parsing. The catch-all correctly fixes per-gate
+      fail-closed behavior; resource bounds belong once in the shared loader and
+      trusted job.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: scripts/factory/src/factory/gates/repo/status_test.py
+    sha: e8599940b7e317e765f949a03fdfafc8d21e7c07
+  - path: scripts/factory/tests/unit/gates/repo/test_status_test.py
+    sha: e8599940b7e317e765f949a03fdfafc8d21e7c07
+  - path: bus/orders/wo-20261006-factory-status-test/amendment-04.yaml
+    sha: e8599940b7e317e765f949a03fdfafc8d21e7c07
+  - path: notes/packets/2026-10-06-factory-status-test.handoff.md
+    sha: e8599940b7e317e765f949a03fdfafc8d21e7c07
+  - path: bus/orders/wo-20261006-factory-status-test/handoff.yaml
+    sha: e8599940b7e317e765f949a03fdfafc8d21e7c07
+bootstrap: true
+manual_equivalents:
+  - "PR-ST1: one outer Exception boundary always returns a failed GateResult and has no success path"
+  - "specific BusError and GitError handling remains ahead of the catch-all; exception text is not echoed"
+  - "invalid-UTF-8 regression passed; focused file was 9 passed and one parked T-ST3 red"
+  - "full suite: 691 passed, 24 expected disclosed failures (23 CLI; one parked T-ST3)"
+  - "quality: ruff check, ruff format --check, and git diff --check passed"
+  - "manual factory-status-test over the merged round-2 head passed"
+  - "PR-ST-L1: amendment-04 records Slice C ownership for shared resource hardening"
