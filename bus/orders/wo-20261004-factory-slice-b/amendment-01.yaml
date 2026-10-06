@@ -1,0 +1,71 @@
+# Orchestrator triage of T* round 1 (wo-20261004-factory-slice-b.verdict-01, reject).
+# Recorded by the Slice B worker on the orchestrator's instruction (2026-10-04).
+# Process findings (T-B1..T-B3, T-B7, T-B8) are agent-adjudicated with the reviewer's
+# suggested resolutions. Product Debates T-B4..T-B6 were locked by the governor on
+# 2026-10-04, letter fidelity.
+# Dispositions:
+#   T-B1 accept: goal-only lock discovery. A goal naming D1 or its locked value (Railway)
+#        as a whole word blocks without a D1 Lock entry and passes with one; near-miss
+#        goals (`trailways`, `D10`) do not touch D1
+#   T-B2 accept: a request the change modifies is judged whole, at head (prompt and
+#        option label cases plus a clean modification); untouched legacy requests stay exempt
+#   T-B3 accept: `→ sprint 03 (D1)` passes only with D1 waived; open or locked D1, a
+#        sprint pointer with no OD, and a nonexistent phase (`→ backlog`, `→ someday`)
+#        block; `→ plan` and file pointers unchanged
+#   T-B4 governor lock (option A): `factory check intent --coverage` stays report-only
+#        (exit 0); `--coverage --require-target` exits 1 below 90% and 0 at or above it
+#        (tests at 17/19, 9/10, 19/20). The sprint-close caller is wired by
+#        `sprint-close-requires-postmortem` (P2, Wave 2): one line under T081 in tasks.md
+#   T-B5 governor lock: evidence `eval:<repo-relative path>#<case-id>` counts only if the
+#        file exists at the PR head in git and holds a case with `id == <case-id>`;
+#        YAML/JSON (top-level list or `cases:` list of mappings with `id`) or JSONL
+#        (one object per line with `id`); no `#`, an absolute path, or `..` is malformed.
+#        pytest node ids unchanged. contracts/gates.md gains the catalog-linkage rule
+#        detail; acceptance.md evidence lines (lifecycle sentence + `evidence` field row)
+#   T-B6 governor lock: `kind: human` counts toward coverage only with `status: exists`
+#        (the governor has judged it); `planned` never counts. The status flips in the PR
+#        that records the governor's judgment
+#   T-B7 accept: the repository presence smoke compares against ids parsed from the
+#        discovered specs/*/intent.yaml files (no feature-002 ids pinned)
+#   T-B8 noted: strength; constant-answer controls and assertion-first imports kept
+#   Worker question 9 (reviewer: accept with minor edit): Markdown backticks around
+#        evidence are ignored; guards for node ids and eval references
+# owned_paths are globs, so line scope is stated here and in the packet:
+#   scripts/factory/gates.yaml                     -> only this slice's rows
+#   specs/001-factory-v2/contracts/gates.md        -> only the catalog-linkage rule detail (T-B5)
+#   specs/001-factory-v2/acceptance.md             -> this slice's evidence cells; header/schema
+#                                                     evidence lines (T-B5)
+#   specs/001-factory-v2/tasks.md                  -> this slice's checkboxes; the one
+#                                                     sprint-close line under T081 (T-B4)
+#   specs/001-factory-v2/TEST_REVIEW_SLICE_B.md    -> worker: only the Triage sections;
+#                                                     reviewer round sections arrive via review-branch merges
+#   bus/orders/wo-20261004-factory-slice-b/**      -> verdicts (reviewer) and amendments (orchestrator)
+#   notes/packets/2026-10-04-factory-v2-slice-b*   -> packet Status line and the handoff
+schema_version: 1
+kind: amendment
+id: wo-20261004-factory-slice-b.amend-01
+created: 2026-10-04T21:30:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/packets/2026-10-04-factory-v2-slice-b.md
+  - specs/001-factory-v2/TEST_REVIEW_SLICE_B.md
+  - specs/001-factory-v2/contracts/gates.md
+  - wo-20261004-factory-slice-b.verdict-01
+supersedes: [owned_paths]
+values:
+  owned_paths:
+    - "scripts/factory/src/factory/gates/drift/**"
+    - "scripts/factory/src/factory/intent/**"
+    - "scripts/factory/src/factory/cli/intent.py"
+    - "scripts/factory/tests/unit/gates/drift/**"
+    - "scripts/factory/tests/contract/test_intent.py"
+    - "scripts/factory/gates.yaml"
+    - "specs/001-factory-v2/contracts/gates.md"
+    - "specs/001-factory-v2/acceptance.md"
+    - "specs/001-factory-v2/tasks.md"
+    - "specs/001-factory-v2/TEST_REVIEW_SLICE_B.md"
+    - "bus/orders/wo-20261004-factory-slice-b/**"
+    - "notes/packets/2026-10-04-factory-v2-slice-b.md"
+    - "notes/packets/2026-10-04-factory-v2-slice-b.handoff.md"

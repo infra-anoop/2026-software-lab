@@ -124,9 +124,21 @@ def message(
     return data
 
 
+DEMO_ORDER: dict[str, Any] = {
+    "feature": "demo-feature",
+    "goal": "Add the demo calculator's add function, test first.",
+    "intents": ["I-D1"],
+    "owned_paths": ["apps/demo/app/calc.py", "apps/demo/tests/**"],
+    "checks": ["red-first-proof", "diff-within-owned-paths"],
+    "locks": [],
+    "tasks": ["T001"],
+}
+
+
 def order(order_id: str, **overrides: Any) -> dict[str, Any]:
-    """A valid order message (sample order re-addressed to `order_id`)."""
-    return message("order", order_id=order_id, **overrides)
+    """A valid order for a fixture repo's demo feature (sample order re-addressed to
+    `order_id`). Task T001 touches no locked decision, so the order declares no lock."""
+    return message("order", order_id=order_id, **{**DEMO_ORDER, **overrides})
 
 
 class BaseHeadPair(NamedTuple):
@@ -189,6 +201,9 @@ class RepoBuilder:
             ),
         )
         self.write("README.md", "# fixture repo\n")
+        # The sample order's feature: every fixture repo has the spec its orders name.
+        self.write("specs/demo-feature/spec.md", DEMO_SPEC)
+        self.write("specs/demo-feature/tasks.md", DEMO_TASKS)
         self.commit("init")
         self.push("main")
 

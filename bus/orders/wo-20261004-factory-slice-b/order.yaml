@@ -1,0 +1,59 @@
+# FR-037 bootstrap order, reconstructed 2026-10-05 from notes/packets/2026-10-04-factory-v2-slice-b.md
+# (packet issued in 9bb5525, 2026-10-04T00:09:03Z) on the orchestrator's decision in amendment-06.
+# Wave 1 slices were issued as packets before `factory order issue` existed, so this order is
+# added at the branch tip, after the amendments and verdicts it governs.
+# Known bootstrap distortions (disclosed in the handoff):
+#   - size_minutes holds the schema minimum (1); the true size is in `refs`.
+#   - the scorecard dates this order's issue from this commit, not the packet date.
+# `locks` are the packet's Fidelity table (constitution §I). Its "Governor locks required"
+# table (cap, horizon, reviewer family, identity) is context this slice does not implement.
+schema_version: 1
+kind: order
+id: wo-20261004-factory-slice-b
+created: 2026-10-05T16:55:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/packets/2026-10-04-factory-v2-slice-b.md
+  - "FR-037 bootstrap: reconstructed from the packet (issued 2026-10-04T00:09:03Z, 9bb5525)"
+  - "FR-037 bootstrap: true size is multi-hour, about 19.5 h wall-clock from the claim (236ab09, 2026-10-04T19:14:28Z) to the pre-PR head (68eb20c, 2026-10-05T14:43:22Z), plus PR-review rework; size_minutes holds the schema minimum"
+feature: 001-factory-v2
+goal: Implement drift gates + intent traceability against the frozen P0 contracts, test first, so CP1 (each slice green on its own) is reached by working day 2 (max day 4).
+intents: [I-N1, I-P4, I-B7, I-P2, I-A8, I-B8, I-B6, I-B5, I-B3]
+owned_paths:
+  - "scripts/factory/src/factory/gates/drift/**"
+  - "scripts/factory/src/factory/intent/**"
+  - "scripts/factory/src/factory/cli/intent.py"
+  - "scripts/factory/tests/unit/gates/drift/**"
+  - "scripts/factory/tests/contract/test_intent.py"
+  - "scripts/factory/gates.yaml"
+  - "specs/001-factory-v2/acceptance.md"
+  - "specs/001-factory-v2/tasks.md"
+checks:
+  - red-first-proof
+  - catalog-test-linkage
+  - diff-within-owned-paths
+  - pr-links-order
+  - order-fidelity-declared
+  - lock.letter-tokens
+  - verdict.reviewer-family-differs
+  - verdict.inputs-isolated
+locks:
+  - id: red-first-rule
+    letter_tokens: ["base broken"]
+    fidelity: letter
+  - id: deferral-words-rule
+    letter_tokens: [later, optional, deferred, TBD, future, stretch]
+    fidelity: letter
+  - id: decision-request-id-regexes
+    letter_tokens: ['\b[TFRPD]\d+\b', 'FR-\d+', 'SC-\d+', 'US\d+', "§"]
+    fidelity: letter
+size_minutes: 1
+stop_conditions:
+  - A frozen interface is insufficient
+  - Any edit needed outside Owned paths
+  - A test cannot be made red by a real assertion
+depends_on_decisions: []
+tasks: [T039, T040, T042, T043, T044, T045, T046, T047, T048, T049, T061, T063]
+worker_runtime: local_subagent

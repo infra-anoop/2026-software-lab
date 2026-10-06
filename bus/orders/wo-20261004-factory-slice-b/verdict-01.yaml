@@ -1,0 +1,115 @@
+schema_version: 1
+kind: verdict
+id: wo-20261004-factory-slice-b.verdict-01
+created: 2026-10-04T21:05:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - notes/packets/2026-10-04-factory-v2-slice-b.md
+  - specs/001-factory-v2/TEST_REVIEW_SLICE_B.md
+decision: reject
+findings:
+  - id: T-B1
+    severity: blocker
+    tag: process
+    text: >-
+      Named-lock declaration tests cover tasks and owned paths but not an order
+      goal, so goal-only lock discovery can be omitted while the suite passes.
+  - id: T-B2
+    severity: blocker
+    tag: process
+    text: >-
+      Decision-request lint tests do not cover an existing clean request modified
+      to add an id or jargon, allowing an added-files-only scanner to pass.
+  - id: T-B3
+    severity: blocker
+    tag: process
+    text: >-
+      Deferral tests pin the plan phase only and do not exercise the frozen waived
+      sprint-phase pointer rule or reject arbitrary phase pointers.
+  - id: T-B4
+    severity: debate
+    tag: product
+    text: >-
+      Effective coverage reports 37.5 percent with exit zero and no executable
+      boundary enforces the catalog's 90 percent requirement at sprint close.
+  - id: T-B5
+    severity: debate
+    tag: product
+    text: >-
+      Catalog evidence permits eval ids, but no accepted eval-id syntax or
+      authoritative existence source is defined or tested.
+  - id: T-B6
+    severity: debate
+    tag: product
+    text: >-
+      Tests do not decide whether a planned human mapping or only an existing
+      governor judgment counts toward effective coverage.
+  - id: T-B7
+    severity: nit
+    tag: process
+    text: >-
+      The repository presence smoke hardcodes intent ids from another feature,
+      coupling Slice B to unrelated product vocabulary.
+  - id: T-B8
+    severity: nit
+    tag: process
+    text: >-
+      Strength: all 132 tests are honestly red, both constant-answer probes fail,
+      locked fidelity matrices are substantial, and frozen CP0 files are unchanged.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: notes/packets/2026-10-04-factory-v2-slice-b.md
+    sha: 7ec3c233feca1fa9eb21782abda5ef3784599086
+  - path: notes/packets/2026-10-04-factory-v2-slice-b.handoff.md
+    sha: 7ec3c233feca1fa9eb21782abda5ef3784599086
+  - path: specs/001-factory-v2/spec.md
+    sha: 7ec3c233feca1fa9eb21782abda5ef3784599086
+  - path: specs/001-factory-v2/plan.md
+    sha: 7ec3c233feca1fa9eb21782abda5ef3784599086
+  - path: specs/001-factory-v2/data-model.md
+    sha: 7ec3c233feca1fa9eb21782abda5ef3784599086
+  - path: specs/001-factory-v2/acceptance.md
+    sha: 7ec3c233feca1fa9eb21782abda5ef3784599086
+  - path: specs/001-factory-v2/tasks.md
+    sha: 7ec3c233feca1fa9eb21782abda5ef3784599086
+  - path: specs/001-factory-v2/intent.yaml
+    sha: 7ec3c233feca1fa9eb21782abda5ef3784599086
+  - path: specs/001-factory-v2/contracts/gates.md
+    sha: 7ec3c233feca1fa9eb21782abda5ef3784599086
+  - path: specs/001-factory-v2/contracts/messages.md
+    sha: 7ec3c233feca1fa9eb21782abda5ef3784599086
+  - path: specs/001-factory-v2/TEST_REVIEW.md
+    sha: 7ec3c233feca1fa9eb21782abda5ef3784599086
+  - path: scripts/factory/tests/unit/gates/drift/test_fidelity.py
+    sha: 7ec3c233feca1fa9eb21782abda5ef3784599086
+  - path: scripts/factory/tests/unit/gates/drift/test_decision_ids.py
+    sha: 7ec3c233feca1fa9eb21782abda5ef3784599086
+  - path: scripts/factory/tests/unit/gates/drift/test_deferral_words.py
+    sha: 7ec3c233feca1fa9eb21782abda5ef3784599086
+  - path: scripts/factory/tests/unit/gates/drift/test_catalog_linkage.py
+    sha: 7ec3c233feca1fa9eb21782abda5ef3784599086
+  - path: scripts/factory/tests/unit/gates/drift/test_red_first.py
+    sha: 7ec3c233feca1fa9eb21782abda5ef3784599086
+  - path: scripts/factory/tests/unit/gates/drift/test_test_seam.py
+    sha: 7ec3c233feca1fa9eb21782abda5ef3784599086
+  - path: scripts/factory/tests/unit/gates/drift/test_owned_paths.py
+    sha: 7ec3c233feca1fa9eb21782abda5ef3784599086
+  - path: scripts/factory/tests/contract/test_intent.py
+    sha: 7ec3c233feca1fa9eb21782abda5ef3784599086
+  - path: scripts/factory/tests/seeds/test_seeds.py
+    sha: 7ec3c233feca1fa9eb21782abda5ef3784599086
+bootstrap: true
+manual_equivalents:
+  - "red-first-proof: focused Slice B suite reproduced 132 assertion failures; full suite reproduced 248 failed and 237 passed with no collection errors or xfails"
+  - "diff-within-owned-paths: reviewed changed paths against packet ownership; no frozen CP0 file changed before review output"
+  - "test-seam-ban: Slice B adds tests and review artifacts only; no production-source test branch was added"
+  - "order-fidelity-declared and lock.letter-tokens: reviewed per-file removal, numeric direction, no-renames, substitutes, comments, and guards; goal-only discovery gap recorded as T-B1"
+  - "deferral-words-need-od: exact vocabulary, scope, code-span exemption, OD and file pointers reviewed; waived sprint-phase gap recorded as T-B3"
+  - "decision-request-no-ids: exact id regexes, accepted jargon list, case handling, labels, and near misses reviewed; modified-request gap recorded as T-B2"
+  - "catalog-test-linkage: changed-row and implementing-order behavior reviewed; eval-id decision gap recorded as T-B5"
+  - "factory-check-intent: presence and latest passing registered gate semantics reviewed; sprint-close threshold and human-mapping questions recorded as T-B4 and T-B6"
+  - "constant-answer probes: always-allow left 66 failures and always-block left 90 failures in the drift suite"
+  - "uv-sync-locked and Ruff: locked sync passed and ruff check reported all checks passed"

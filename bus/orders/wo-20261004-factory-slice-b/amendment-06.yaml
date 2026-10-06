@@ -1,0 +1,71 @@
+# Orchestrator decisions on the Slice B PR-review triage (amend-05 investigation), 2026-10-05.
+# Recorded by the Slice B worker on the orchestrator's instruction. Process / arch, within
+# D5 / D7. The worker stays in phase 1 (tests + data) until the T* review accepts.
+#
+#   1. PR-B2 bootstrap messages: ACCEPTED as proposed, for Slice B only (the orchestrator
+#      routes A and C). One commit at this branch's tip adds three schema-valid messages:
+#        order.yaml   - FR-037 bootstrap, actor_verified false, depends_on_decisions [].
+#                       `checks` holds GATE IDS ONLY: the registered gates this slice's PR
+#                       must pass, reconstructed from the packet DoD. No catalog row ids.
+#                       `size_minutes`: the true multi-hour size goes in a free-text / refs
+#                       field and the field holds the minimum compliant value; with no such
+#                       field, 60 and a disclosed misstatement.
+#        claim.yaml   - `claimed_at` = the first worker commit on the branch.
+#        handoff.yaml - points at notes/packets/2026-10-04-factory-v2-slice-b.handoff.md.
+#      Known distortion, accepted: the scorecard dates Wave 1's start from these commits; the
+#      orchestrator corrects it by hand in the retro using the packet dates. No new tests for
+#      the messages: they are data, validated by `factory check schema` and the real gate run.
+#   2. `checks` semantics: each consumer judges only its own kind.
+#        catalog-test-linkage judges only ids that are catalog rows; a registered gate id is
+#        not a catalog miss; an id that is neither a registered gate nor a catalog row blocks.
+#        Red test now (tests/unit/gates/drift/test_catalog_check_kinds.py), fix in phase 2.
+#      Slice A side (lifecycle treats a catalog row id as satisfied by the
+#      `factory/catalog-test-linkage` status) is follow-up task T105 in tasks.md. Wave 1
+#      orders carry gate ids only, so Slice A is unaffected now.
+#   3. PR-B4 config access: APPROVED. CP0 frozen-interface amendment to
+#      scripts/factory/src/factory/config/settings.py: additive (a child-environment
+#      allowlist builder, the only place that environment is read), no signature changes,
+#      orchestrator-approved. The /proc and upload-token notes stay as already-disclosed
+#      residuals in Slice C's PLAN_DELTA.md; not fixed here.
+#   4. Evidence bundle: Slice C owns it (T097): model, serialization, workflow and trusted
+#      judge. Slice B's red_first only exposes RAW per-test facts as a plain return value
+#      (node id, base and head outcome, raw error text). No bundle-shape tests. Minimal seam
+#      test: tests/unit/gates/drift/test_red_first_facts.py (`collect_facts(ctx)`).
+#
+# owned_paths restated from amend-05 (amendments supersede whole fields), plus:
+#   scripts/factory/src/factory/config/settings.py -> only the additive child-environment
+#                                                     builder (decision 3); phase 2
+# Line scope, since owned_paths are globs:
+#   specs/001-factory-v2/tasks.md -> as amend-01 / amend-03, plus (this amendment) the T105 line
+#   other line scopes unchanged from amend-05
+schema_version: 1
+kind: amendment
+id: wo-20261004-factory-slice-b.amend-06
+created: 2026-10-05T16:50:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/packets/2026-10-04-factory-v2-slice-b.md
+  - specs/001-factory-v2/PR_REVIEW_SLICE_B.md
+  - wo-20261004-factory-slice-b.verdict-04
+  - wo-20261004-factory-slice-b.amend-05
+supersedes: [owned_paths]
+values:
+  owned_paths:
+    - "scripts/factory/src/factory/gates/drift/**"
+    - "scripts/factory/src/factory/intent/**"
+    - "scripts/factory/src/factory/cli/intent.py"
+    - "scripts/factory/src/factory/config/settings.py"
+    - "scripts/factory/tests/unit/gates/drift/**"
+    - "scripts/factory/tests/contract/test_intent.py"
+    - "scripts/factory/gates.yaml"
+    - "specs/001-factory-v2/spec.md"
+    - "specs/001-factory-v2/contracts/cli.md"
+    - "specs/001-factory-v2/contracts/gates.md"
+    - "specs/001-factory-v2/acceptance.md"
+    - "specs/001-factory-v2/tasks.md"
+    - "specs/001-factory-v2/TEST_REVIEW_SLICE_B.md"
+    - "specs/001-factory-v2/PR_REVIEW_SLICE_B.md"
+    - "bus/orders/wo-20261004-factory-slice-b/**"
+    - "notes/packets/2026-10-04-factory-v2-slice-b.handoff.md"

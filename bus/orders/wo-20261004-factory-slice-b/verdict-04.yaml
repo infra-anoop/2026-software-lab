@@ -1,0 +1,101 @@
+schema_version: 1
+kind: verdict
+id: wo-20261004-factory-slice-b.verdict-04
+created: 2026-10-05T14:58:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - wo-20261004-factory-slice-b.verdict-03
+  - wo-20261004-factory-slice-b.amend-04
+  - https://github.com/infra-anoop/2026-software-lab/pull/22
+decision: reject
+findings:
+  - id: PR-B1
+    severity: blocker
+    tag: process
+    text: >-
+      Deferral artifact pointers accept any git tree entry, so a tracked
+      directory such as scripts satisfies the contract that requires an
+      existing file or named phase. This is a fail-open FR-015 bypass.
+  - id: PR-B2
+    severity: blocker
+    tag: process
+    text: >-
+      The bootstrap gate run passes order_id=None, but PR 22's wo branch causes
+      the real Slice C runner to derive wo-20261004-factory-slice-b. Because no
+      WorkOrder exists at head, the order gates, catalog linkage and PR linkage
+      fail closed; the handoff's vacuous pass is not a real-PR equivalent.
+  - id: PR-B3
+    severity: blocker
+    tag: product
+    text: >-
+      red-first-proof executes PR-head pytest code with the caller's inherited
+      environment. It cannot run in the current Slice C status-writing job under
+      D5: head code must execute only in a no-secret read-only evidence job, and
+      main-pinned trusted code must validate evidence and publish statuses.
+  - id: PR-B4
+    severity: later
+    tag: process
+    text: >-
+      The red-first child bootstrap iterates os.environ outside factory.config
+      to remove PYTEST variables while inheriting every other environment value.
+      Move child environment construction to the typed boundary and pass a
+      minimal explicit allowlist.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: notes/packets/2026-10-04-factory-v2-slice-b.md
+    sha: 68eb20c742e605fc135d61c80402f0ff0e9cb738
+  - path: notes/packets/2026-10-04-factory-v2-slice-b.handoff.md
+    sha: 68eb20c742e605fc135d61c80402f0ff0e9cb738
+  - path: bus/orders/wo-20261004-factory-slice-b/amendment-01.yaml
+    sha: 68eb20c742e605fc135d61c80402f0ff0e9cb738
+  - path: bus/orders/wo-20261004-factory-slice-b/amendment-02.yaml
+    sha: 68eb20c742e605fc135d61c80402f0ff0e9cb738
+  - path: bus/orders/wo-20261004-factory-slice-b/amendment-03.yaml
+    sha: 68eb20c742e605fc135d61c80402f0ff0e9cb738
+  - path: bus/orders/wo-20261004-factory-slice-b/amendment-04.yaml
+    sha: 68eb20c742e605fc135d61c80402f0ff0e9cb738
+  - path: bus/orders/wo-20261004-factory-slice-b/verdict-03.yaml
+    sha: 68eb20c742e605fc135d61c80402f0ff0e9cb738
+  - path: specs/001-factory-v2/spec.md
+    sha: 68eb20c742e605fc135d61c80402f0ff0e9cb738
+  - path: specs/001-factory-v2/plan.md
+    sha: 68eb20c742e605fc135d61c80402f0ff0e9cb738
+  - path: specs/001-factory-v2/contracts/gates.md
+    sha: 68eb20c742e605fc135d61c80402f0ff0e9cb738
+  - path: specs/001-factory-v2/contracts/cli.md
+    sha: 68eb20c742e605fc135d61c80402f0ff0e9cb738
+  - path: specs/001-factory-v2/acceptance.md
+    sha: 68eb20c742e605fc135d61c80402f0ff0e9cb738
+  - path: specs/001-factory-v2/intent.yaml
+    sha: 68eb20c742e605fc135d61c80402f0ff0e9cb738
+  - path: specs/001-factory-v2/TEST_REVIEW_SLICE_B.md
+    sha: 68eb20c742e605fc135d61c80402f0ff0e9cb738
+  - path: scripts/factory/src/factory/gates/drift/deferral_words.py
+    sha: 68eb20c742e605fc135d61c80402f0ff0e9cb738
+  - path: scripts/factory/src/factory/gates/drift/fidelity.py
+    sha: 68eb20c742e605fc135d61c80402f0ff0e9cb738
+  - path: scripts/factory/src/factory/gates/drift/catalog_linkage.py
+    sha: 68eb20c742e605fc135d61c80402f0ff0e9cb738
+  - path: scripts/factory/src/factory/gates/drift/red_first.py
+    sha: 68eb20c742e605fc135d61c80402f0ff0e9cb738
+  - path: scripts/factory/src/factory/gates/drift/owned_paths.py
+    sha: 68eb20c742e605fc135d61c80402f0ff0e9cb738
+  - path: scripts/factory/src/factory/intent/coverage.py
+    sha: 68eb20c742e605fc135d61c80402f0ff0e9cb738
+  - path: scripts/factory/src/factory/cli/intent.py
+    sha: 68eb20c742e605fc135d61c80402f0ff0e9cb738
+bootstrap: true
+manual_equivalents:
+  - "accepted tests unchanged: git diff a68b95d HEAD -- scripts/factory/tests was empty"
+  - "full tests: 509 passed and 62 failed; all 62 are isolated-branch A, C or US7/Wave 2 contract commands"
+  - "CI selector: 424 passed and 147 deselected"
+  - "direct Slice B run: all nine gates pass with order_id absent; red-first judged 130 tests and intent presence mapped 81"
+  - "realistic order context: order fidelity, letter tokens, catalog linkage and ownership all fail closed because the branch carries no WorkOrder"
+  - "scope: all 37 pre-review paths match amendment-04; frozen CP0 files are untouched and gates.yaml is unchanged"
+  - "spec locks: human exists-only, report-only coverage, require-target below 90 percent, and eval path-plus-case syntax are faithful"
+  - "security: subprocess argument arrays and temporary cleanup pass; D5 execution/publishing split is not implemented"
+  - "ruff check, ruff format check and factory check schema passed"
+  - "cross-slice merge: A plus B is clean; C after A plus B conflicts in acceptance.md and tasks.md"

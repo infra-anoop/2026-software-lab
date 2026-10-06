@@ -19,7 +19,8 @@ Invocation: `uv run --project scripts/factory factory <command>`. All commands a
 | `factory override <order-id> --gate G --reason R` | Write override message | empty reason; governor-only gate by non-governor actor | FR-020/021 |
 | `factory correction new …` | Write correction; `--links-to` records the repeat link and emits a rule/check proposal order | — | FR-029 |
 | `factory gate run [--gate G] [--pr N \| --base B --head H]` | Run registered gates; prints per-intent results | — | FR-012..024 |
-| `factory check schema \| intent \| hooks \| registry \| immutability` | Repo-level validations | — | FR-001/002/022/023 |
+| `factory check schema \| hooks \| registry \| immutability` | Repo-level validations | — | FR-001/002/022 |
+| `factory check intent [--coverage [--require-target]]` | Presence: exit 1 naming each intent with no mapping (own `checks`, a `gates.yaml` row, or an `acceptance.md` row). `--coverage` also reports effective coverage (`share`, `covered`, `uncovered`) and stays report-only (exit 0 at any share). `--require-target` (sprint-close mode, needs `--coverage`) exits 1 below 90% and 0 at or above it (governor 2026-10-04) | — | FR-023, SC-005 |
 | `factory scorecard [--sprint S]` | Compute scorecard from run records, verdicts, corrections, overrides | — | FR-035, SC-009 |
 | `factory sprint close --sprint S` | Refuse unless post-mortem exists and dispositions every correction | missing post-mortem / undispositioned correction | FR-030 |
 | `factory hook <name>` | Hook entrypoint (stdin JSON → stdout JSON per Cursor hooks) | per hook | FR-022 |

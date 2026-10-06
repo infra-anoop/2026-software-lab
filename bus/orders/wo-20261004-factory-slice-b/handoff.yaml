@@ -1,0 +1,29 @@
+# FR-037 bootstrap handoff, recorded 2026-10-05 (amendment-06). The full handoff, with commands,
+# results, red-first pairs and the phase-1 PR-review rework, is the Markdown file in refs.
+schema_version: 1
+kind: handoff
+id: wo-20261004-factory-slice-b.handoff
+created: 2026-10-05T16:55:00Z
+actor: worker
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/packets/2026-10-04-factory-v2-slice-b.handoff.md
+  - "FR-037 bootstrap"
+summary: |
+  Slice B: drift gates (red-first, test-seam, owned paths, deferral words, fidelity + lock
+  tokens, decision-request ids, catalog linkage) and intent traceability (presence gate,
+  effective coverage, `factory check intent`). PR #22 review (verdict-04) is in phase 1:
+  red tests for PR-B1, PR-B4, `checks` kinds and the raw-facts seam. Full detail in
+  notes/packets/2026-10-04-factory-v2-slice-b.handoff.md.
+deviations:
+  - what: red-first runs tests in a child interpreter (`uv run --locked` per project)
+    why: tests must run under the project's own locked environment, apart from the caller
+    conservative_choice: today the child drops inherited PYTEST_* only; PR-B4 replaces that with a config-built allowlist (amend-06, phase 2)
+  - what: contracts/cli.md gives `factory check intent` its own row
+    why: the governor lock on `--require-target` needed a row of its own
+    conservative_choice: no other command's text changed
+  - what: bootstrap order size_minutes is 1, not the true multi-hour size
+    why: the schema caps size_minutes at the 60-minute horizon; the slice predates orders
+    conservative_choice: true size stated in the order's refs; scorecard dates corrected in the retro
+author_model: claude-opus-5.5

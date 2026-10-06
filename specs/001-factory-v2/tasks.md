@@ -90,6 +90,9 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 
 **Checkpoint**: `factory status` shows real orders; T017–T020 green.
 
+- [ ] T105 [US1] Slice A follow-up to the Slice B PR review (`checks` kinds, orchestrator 2026-10-05, `bus/orders/wo-20261004-factory-slice-b/amendment-06.yaml`): in `scripts/factory/src/factory/lifecycle/derive.py`, a registered gate id in an order's `checks` needs its own green `factory/<gate-id>` status (or a counted override). A catalog row id is satisfied by the `factory/catalog-test-linkage` status, which judges catalog rows. Test first in `scripts/factory/tests/unit/test_lifecycle.py`. Wave 1 orders carry gate ids only, so this must land before the first order whose `checks` names a catalog row
+- [x] T106 [US3] Slice B fix (W6 + W7, one root cause, orchestrator 2026-10-05, §J): `red-first-proof` attributes base-side collection and import errors to their own tests. A sibling file failing import on base must not leave other tests "not collected", and `from pkg import mod` for a module the PR adds is red, not "base broken". The regression test is `scripts/factory/tests/unit/gates/drift/test_red_first_base_errors.py` (2 cases, red); the fix is in `scripts/factory/src/factory/gates/drift/red_first.py`
+
 ---
 
 ## Phase 4: User Story 2 — Hand off and trust the result (P1) · Slice A (+ C for PR gates)
@@ -130,19 +133,19 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 
 ### Tests (write first, must fail)
 
-- [ ] T039 [P] [US3] Unit tests per gate in `scripts/factory/tests/unit/gates/drift/` (one file per gate below), each with a passing and a violating `base_head_pair` fixture; seeds in T014 are the SC-002 subset
-- [ ] T040 [P] [US3] Red-first edge cases `scripts/factory/tests/unit/gates/drift/test_red_first.py` (rule verbatim from `research.md` § Red-first): new test passing on base → fail; assertion failure on base → pass; import error for a symbol the PR adds → counts as red; import error for an unrelated broken module → reported "base broken", not red; PR with no new/changed tests → pass
-- [ ] T041 [US3] Spawn T* review for T039–T040 (packet `notes/packets/<date>-factory-v2-slice-b-test-review-t.md`); triage before T042
+- [x] T039 [P] [US3] Unit tests per gate in `scripts/factory/tests/unit/gates/drift/` (one file per gate below), each with a passing and a violating `base_head_pair` fixture; seeds in T014 are the SC-002 subset
+- [x] T040 [P] [US3] Red-first edge cases `scripts/factory/tests/unit/gates/drift/test_red_first.py` (rule verbatim from `research.md` § Red-first): new test passing on base → fail; assertion failure on base → pass; import error for a symbol the PR adds → counts as red; import error for an unrelated broken module → reported "base broken", not red; PR with no new/changed tests → pass
+- [x] T041 [US3] Spawn T* review for T039–T040 (packet `notes/packets/<date>-factory-v2-slice-b-test-review-t.md`); triage before T042
 
 ### Implementation (one module each under `scripts/factory/src/factory/gates/drift/`; each registered in `scripts/factory/gates.yaml`)
 
-- [ ] T042 [P] [US3] `red_first.py` — gate `red-first-proof`: collect node ids head vs base; run new/changed tests on base code with head tests overlaid, then on head
-- [ ] T043 [P] [US3] `test_seam.py` — gate `test-seam-ban`: changed app lines under `app_roots` matching test-only branching (`PYTEST_CURRENT_TEST`, `"pytest" in sys.modules`, `TESTING`/`IS_TEST` flags, fake-key sniffing such as `startswith("sk-test")`)
-- [ ] T044 [P] [US3] `owned_paths.py` — gate `diff-within-owned-paths`: every changed path matches the effective order's `owned_paths` or `bus/orders/<order-id>/**`
-- [ ] T045 [P] [US3] `deferral_words.py` — gate `deferral-words-need-od`: rule verbatim from `contracts/gates.md` § Deferral-words rule (the listed words in `specs/**` and `notes/sprints/**` need an existing `D\d+`, a `→ <artifact>` pointer, or `[governor-judged]` on the same line/row; words inside backtick code spans are exempt)
-- [ ] T046 [P] [US3] `fidelity.py` — gates `order-fidelity-declared` (every named lock the order's owned paths or goal touch has a Lock entry) + `lock.letter-tokens` (for `fidelity: letter`, the PR diff contains each `letter_tokens` entry and does not introduce a registered substitute; seed `declared_lock_violated`)
-- [ ] T047 [P] [US3] `decision_ids.py` — gate `decision-request-no-ids`: regexes verbatim from `contracts/messages.md` (`\b[TFRPD]\d+\b`, `FR-\d+`, `SC-\d+`, `US\d+`, `§`) plus a jargon list in `factory.toml` applied to `prompt` and `options[].label`
-- [ ] T048 [P] [US3] `catalog_linkage.py` — gate `catalog-test-linkage`: every `how: auto` row in any `acceptance.md` has `evidence`; rows whose id appears in the PR's order `checks` must name an existing pytest node id or eval id (not `planned`) before merge (FR-018)
+- [x] T042 [P] [US3] `red_first.py` — gate `red-first-proof`: collect node ids head vs base; run new/changed tests on base code with head tests overlaid, then on head
+- [x] T043 [P] [US3] `test_seam.py` — gate `test-seam-ban`: changed app lines under `app_roots` matching test-only branching (`PYTEST_CURRENT_TEST`, `"pytest" in sys.modules`, `TESTING`/`IS_TEST` flags, fake-key sniffing such as `startswith("sk-test")`)
+- [x] T044 [P] [US3] `owned_paths.py` — gate `diff-within-owned-paths`: every changed path matches the effective order's `owned_paths` or `bus/orders/<order-id>/**`
+- [x] T045 [P] [US3] `deferral_words.py` — gate `deferral-words-need-od`: rule verbatim from `contracts/gates.md` § Deferral-words rule (the listed words in `specs/**` and `notes/sprints/**` need an existing `D\d+`, a `→ <artifact>` pointer, or `[governor-judged]` on the same line/row; words inside backtick code spans are exempt)
+- [x] T046 [P] [US3] `fidelity.py` — gates `order-fidelity-declared` (every named lock the order's owned paths or goal touch has a Lock entry) + `lock.letter-tokens` (for `fidelity: letter`, the PR diff contains each `letter_tokens` entry and does not introduce a registered substitute; seed `declared_lock_violated`)
+- [x] T047 [P] [US3] `decision_ids.py` — gate `decision-request-no-ids`: regexes verbatim from `contracts/messages.md` (`\b[TFRPD]\d+\b`, `FR-\d+`, `SC-\d+`, `US\d+`, `§`) plus a jargon list in `factory.toml` applied to `prompt` and `options[].label`
+- [x] T048 [P] [US3] `catalog_linkage.py` — gate `catalog-test-linkage`: every `how: auto` row in any `acceptance.md` has `evidence`; rows whose id appears in the PR's order `checks` must name an existing pytest node id or eval id (not `planned`) before merge (FR-018)
 - [ ] T049 [US3] Update `acceptance.md` evidence for all `seed.*` rows
 
 **Checkpoint (part of CP1)**: seeds suite 100% green (all blocked).
@@ -182,9 +185,9 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 
 **Independent test**: drop all mappings from one intent in a fixture → `factory check intent` exits 1; mark a mapped check planned-only → coverage drops.
 
-- [ ] T061 [P] [US5] Contract test `scripts/factory/tests/contract/test_intent.py` — presence over `specs/*/intent.yaml` + `scripts/factory/gates.yaml` + every `acceptance.md`; `--coverage` = share of intents backed by an implemented (registered, entrypoint importable), passing, non-human check or an explicit governor-judged mapping — catalogs `trace.presence`, `trace.effective_coverage`
-- [ ] T062 [US5] Spawn T* review for T061 (may share the slice-B packet from T041 if written together)
-- [ ] T063 [US5] `scripts/factory/src/factory/intent/coverage.py` + `factory check intent [--coverage]` in `scripts/factory/src/factory/cli/intent.py`; register `factory-check-intent`
+- [x] T061 [P] [US5] Contract test `scripts/factory/tests/contract/test_intent.py` — presence over `specs/*/intent.yaml` + `scripts/factory/gates.yaml` + every `acceptance.md`; `--coverage` = share of intents backed by an implemented (registered, entrypoint importable), passing, non-human check or an explicit governor-judged mapping — catalogs `trace.presence`, `trace.effective_coverage`
+- [x] T062 [US5] Spawn T* review for T061 (may share the slice-B packet from T041 if written together)
+- [x] T063 [US5] `scripts/factory/src/factory/intent/coverage.py` + `factory check intent [--coverage]` in `scripts/factory/src/factory/cli/intent.py`; register `factory-check-intent`
 - [ ] T064 [US5] Per-intent PR results: runner groups `GateResult` by intent ids in the job summary (`scripts/factory/src/factory/gates/runner.py` report section — coordinate: slice C owns the file; slice B supplies `intent.coverage.group_by_intent()`) — catalog `handoff.per_intent_results`
 
 **Checkpoint CP2**: all P1 gates live as required checks after T065–T066; one real order run end to end.
@@ -238,6 +241,7 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 - [ ] T079 [P] [US7] Unit test `scripts/factory/tests/unit/gates/test_codeowners_gate.py` — gate `codeowners-governor-on-rule-paths` (governor-only): rule-path changes need an approving review from `governor_login` (verified identity)
 - [ ] T080 [US7] Spawn T* review for T078–T079
 - [ ] T081 [US7] `scripts/factory/src/factory/mining/` (corrections, proposals, post-mortem) + `factory correction new`, `factory sprint close` in `scripts/factory/src/factory/cli/mining.py`
+  - `sprint-close-requires-postmortem`: `factory sprint close` must call `factory check intent --coverage --require-target` and must not close when it exits non-zero (SC-005b ≥ 90%; governor 2026-10-04)
 - [ ] T082 [US7] Gate `scripts/factory/src/factory/gates/pr/codeowners.py` + registry entry (class governor-only, category governor_decision)
 - [ ] T083 [US7] Evidence: `mining.correction_recorded` (hybrid) — every governor correction this sprint has a `bus/corrections/` record; checked at post-mortem
 
