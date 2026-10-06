@@ -1,8 +1,8 @@
 # Handoff — `wo-20261006-factory-status-test` (T102, PR-C3)
 
-**Phase:** 2 of 2: implemented (see § Implementation). T* rounds 1 and 2 rejected and round 3 accepted (`verdict-03`); the tests are frozen. Waiting on the governor's T-ST3 choice and on a P0 order record (§ Manual equivalent).
+**Phase:** 2 of 2: implemented (see § Implementation). T* rounds 1 and 2 rejected and round 3 accepted (`verdict-03`); the tests are frozen. PR review round 2 accepted (`verdict-05`). The governor locked T-ST3 as option B (`amendment-05`, § T-ST3 governor lock); every focused test is green.
 
-**Branch:** `wo/wo-20261006-factory-status-test` from `origin/main` `2a591f9` (Slices A and B merged). No PR opened.
+**Branch:** `wo/wo-20261006-factory-status-test` from `origin/main` `2a591f9` (Slices A and B merged). PR [#25](https://github.com/infra-anoop/2026-software-lab/pull/25).
 
 ## Proposed oracle (for T* review)
 
@@ -26,7 +26,7 @@ Two "inconsistent" cases are a choice the reviewer should confirm. Both pass `bu
 | `test_judges_the_head_commit_not_the_checkout` | broken untracked bus files in the working tree are ignored |
 | `test_blocks_order_events_the_board_would_drop` | claim + handoff with no order blocks, naming the order |
 | `test_blocks_when_main_derivation_omits_a_head_order` | (T-ST1, reworked for T-ST6) `main`'s per-record `derive_order` is wrapped to rename a valid order's lifecycle: the gate blocks naming that order and must have called `derive_order` |
-| `test_blocks_a_governor_wait_with_no_recorded_decision` | missing decision request blocks, naming order and decision (T-ST3 open) |
+| `test_blocks_a_governor_wait_with_no_recorded_decision` | missing decision request blocks, naming order and decision (T-ST3 rule 2, locked) |
 | `test_executes_no_head_code` | head ships a pass-always gate, marker-writing conftests and `sitecustomize`, and (round 1, T-ST2) a marker-writing copy of the `factory` package: still blocks, no marker, no checkout, no worktree, no write |
 | `test_fails_closed_on_a_malformed_bus_file[invalid-yaml, schema-invalid]` | an unparseable or schema-invalid head file blocks, naming the path |
 | `test_fails_closed_when_the_head_commit_is_unreadable` | an unknown head sha blocks, naming it |
@@ -156,3 +156,24 @@ P0's first verdict was a reject, so unscoped rework loops rise by one. Wave 1 st
 - Full suite: **691 passed, 24 failed**. The 24 are the same as before: 1 parked T-ST3 test, and 23 CLI commands not implemented on `main` (Slice C, T069, T081).
 - `ruff check`, `ruff format --check` and `factory check schema` pass.
 - Manual gate run over this repo's head (`c4b038f`, base `2a591f9`): **passes**.
+
+## T-ST3 governor lock (`amendment-05`)
+
+The governor's decision, verbatim:
+
+> **T-ST3 = option B, block both (governor, 2026-10-06 09:16 PT).**
+> 1. A malformed or unreadable head bus file blocks. This already works through `main`'s strict loader, so keep it.
+> 2. An order waiting on the governor with no recorded decision request on the bus blocks, naming the order and the decision.
+
+- `amendment-05` records the lock and supersedes the order's `goal` to state both rules. Owned paths and stop conditions are unchanged.
+- `TEST_REVIEW_STATUS_TEST.md` § Triage marks T-ST3 closed.
+- `handoff.yaml` drops its governor question, which this lock answers.
+- **Rule 1:** no code change. `main`'s strict loader raises `BusError` and the gate fails closed (§ Implementation, step 6).
+- **Rule 2:** `status_test.py` now checks every board entry with the `blocked_on_governor` overlay. Each of its order's `depends_on_decisions` that is neither locked nor requested on the head bus blocks, with the message "order `<id>` waits on the governor for decision `<decision>`, which has no decision request on the head bus". An order that is blocked only by a handoff question has no decision id and is not affected.
+- The tests are frozen; none was added or changed.
+
+**Results at `7025864`:**
+- Focused file: **10 passed**.
+- Full suite: **692 passed, 23 failed**. All 23 are CLI commands not implemented on `main` (Slice C, T069, T081), the same list as in § Implementation.
+- `ruff check`, `ruff format --check` and `factory check schema` pass.
+- Manual gate run over this repo's head (`7025864`, base `2a591f9`): **passes**, with the message "every order folder on the head bus is on main's derived board, and every governor wait has a recorded decision request".

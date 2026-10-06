@@ -13,19 +13,22 @@ refs:
 summary: |
   T102 (PR-C3): factory-status-test gate implemented over main's lifecycle derivation of
   the head bus (D5: head read as git data only). Tests T*-accepted in round 3 (verdict-03).
-  Focused suite 9 passed, 1 red (T-ST3 decision wait, parked on the governor); the
-  malformed-file T-ST3 test passes because main's loader is strict. Full suite 691 passed,
-  24 failed (1 parked, 23 unimplemented CLI commands owned by Slice C, T069, T081), after the PR-ST1 fail-closed fix. The
-  P0 order folder had no order; amendment-03 adds its FR-037 reconstruction and the gate
-  now passes over this repo's head.
+  T-ST3 locked by the governor (amendment-05), verbatim: "T-ST3 = option B, block both
+  (governor, 2026-10-06 09:16 PT). 1. A malformed or unreadable head bus file blocks. This
+  already works through `main`'s strict loader, so keep it. 2. An order waiting on the
+  governor with no recorded decision request on the bus blocks, naming the order and the
+  decision." Rule 1 needs no code (main's loader is strict); rule 2 is implemented.
+  Focused suite 10 passed. Full suite 692 passed, 23 failed (unimplemented CLI commands
+  owned by Slice C, T069, T081). The P0 order folder had no order; amendment-03 adds its
+  FR-037 reconstruction and the gate passes over this repo's head.
   Full detail in notes/packets/2026-10-06-factory-status-test.handoff.md.
 checks_run:
   - gate_or_test: scripts/factory/tests/unit/gates/repo/test_status_test.py
-    result: 9 passed, 1 failed (test_blocks_a_governor_wait_with_no_recorded_decision, T-ST3 parked)
+    result: 10 passed
   - gate_or_test: uv run pytest (scripts/factory)
-    result: 691 passed, 24 failed (1 T-ST3 parked; 23 CLI not implemented on main, Slice C / T069 / T081)
+    result: 692 passed, 23 failed (CLI not implemented on main, Slice C / T069 / T081)
   - gate_or_test: factory-status-test over this repo's head bus (manual equivalent, T-ST5)
-    result: passes at c4b038f (blocked at 35776f9 before amendment-03 added the P0 bootstrap order)
+    result: passes at 7025864 (blocked at 35776f9 before amendment-03 added the P0 bootstrap order)
   - gate_or_test: ruff check + ruff format --check
     result: passed
   - gate_or_test: factory check schema
@@ -42,11 +45,5 @@ deviations:
     conservative_choice: >-
       the PR carries a bootstrap verdict; the manual equivalent (focused tests green, the
       gate run over this repo's head bus, both rerun by the reviewer) is in the handoff note
-open_questions:
-  - question: >-
-      Should the board check also refuse a change when any work file is unreadable (the
-      schema check already refuses it), and when a piece of work waits on a decision that
-      was never written down (today the board shows a placeholder)? Option A: only check
-      that every piece of work appears on the board. Option B: also refuse both cases.
-    class: blocker_governor
+open_questions: []
 author_model: claude-opus-5.5
