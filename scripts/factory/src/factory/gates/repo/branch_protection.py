@@ -2,9 +2,9 @@
 
 `deploy/github/branch-protection.json` is the GitHub REST "get a repository ruleset" body
 for the ruleset protecting `main` (governor 2026-10-06: a repository ruleset, not classic
-branch protection). At head it must be an active branch ruleset targeting
-`refs/heads/main`, with no bypass actors and the rules `pull_request`,
-`required_status_checks`, `non_fast_forward` and `deletion`. The required checks hold a
+branch protection). At head it must be an active branch ruleset that applies to `main`
+(`refs/heads/main`, `~DEFAULT_BRANCH` or `~ALL`, and not excluded), with no bypass actors
+and the rules `pull_request`, `required_status_checks`, `non_fast_forward` and `deletion`. The required checks hold a
 `factory/<gate-id>` context for every P1 CI gate in the head registry, and every entry is
 pinned to the GitHub Actions app (`integration_id` equal to typed config
 `github.actions_app_id`), so no other identity can satisfy it (P9).
@@ -26,6 +26,10 @@ from factory.gates.repo.fail_mode import head_registry
 GATE_ID = "branch-protection-require-pr"
 SNAPSHOT_FILE = "deploy/github/branch-protection.json"
 MAIN_REF = "refs/heads/main"
+# Ruleset ref patterns that select `main`: `main` is this repository's default branch, and
+# the live ruleset uses `~DEFAULT_BRANCH`.
+INCLUDES_MAIN = {MAIN_REF, "~DEFAULT_BRANCH", "~ALL"}
+EXCLUDES_MAIN = {MAIN_REF, "~DEFAULT_BRANCH"}
 BRANCH_RULES = {
     "non_fast_forward": "force pushes to main are not blocked",
     "deletion": "deleting main is not blocked",
@@ -47,9 +51,9 @@ def _rules(body: dict[str, Any]) -> dict[str, dict[str, Any]]:
 
 def _targets_main(body: dict[str, Any]) -> bool:
     ref_name = _mapping(_mapping(body.get("conditions")).get("ref_name"))
-    include = ref_name.get("include") or []
-    exclude = ref_name.get("exclude") or []
-    return MAIN_REF in include and MAIN_REF not in exclude
+    include = set(ref_name.get("include") or [])
+    exclude = set(ref_name.get("exclude") or [])
+    return bool(include & INCLUDES_MAIN) and not exclude & EXCLUDES_MAIN
 
 
 def _required_contexts(parameters: dict[str, Any]) -> dict[str, set[object]]:

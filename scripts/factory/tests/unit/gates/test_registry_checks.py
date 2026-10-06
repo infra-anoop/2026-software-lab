@@ -14,7 +14,8 @@ a hook row).
 Branch protection (I-P10, T066/T101): `deploy/github/branch-protection.json` is the GitHub
 REST "get a repository ruleset" body for the ruleset protecting `main` (governor
 2026-10-06: a repository ruleset, not classic branch protection). It must be an active
-branch ruleset targeting `refs/heads/main` with an empty bypass list and the rules
+branch ruleset applying to `main` (`~DEFAULT_BRANCH`, as live, or `refs/heads/main`) with
+an empty bypass list and the rules
 `pull_request`, `required_status_checks`, `non_fast_forward` and `deletion`. The required
 checks hold a `factory/<gate-id>` context for every P1 CI gate in the registry, and every
 entry has `integration_id` equal to typed config `github.actions_app_id`, the GitHub
@@ -277,7 +278,7 @@ def pinned(contexts: list[str], integration_id: int | None = None) -> dict[str, 
     return {
         "type": "required_status_checks",
         "parameters": {
-            "strict_required_status_checks_policy": True,
+            "strict_required_status_checks_policy": False,
             "do_not_enforce_on_create": False,
             "required_status_checks": [{"context": c, "integration_id": source} for c in contexts],
         },
@@ -290,19 +291,21 @@ def pull_request_rule(*, code_owner_review: bool = False) -> dict[str, Any]:
         "parameters": {
             "required_approving_review_count": 0,
             "dismiss_stale_reviews_on_push": False,
+            "required_reviewers": [],
             "require_code_owner_review": code_owner_review,
             "require_last_push_approval": False,
             "required_review_thread_resolution": False,
+            "require_extra_approval_for_unattributed_changes": False,
         },
     }
 
 
 def snapshot(**changes: Any) -> dict[str, Any]:
     body: dict[str, Any] = {
-        "name": "main",
+        "name": "main-protection",
         "target": "branch",
         "enforcement": "active",
-        "conditions": {"ref_name": {"include": ["refs/heads/main"], "exclude": []}},
+        "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": []}},
         "bypass_actors": [],
         "rules": [
             {"type": "deletion"},
@@ -401,6 +404,10 @@ def test_branch_protection_blocks_without_branch_rule(repo: RepoBuilder, rule_ty
             "main excluded",
             {"conditions": {"ref_name": {"include": ["~ALL"], "exclude": ["refs/heads/main"]}}},
         ),
+        (
+            "default branch excluded",
+            {"conditions": {"ref_name": {"include": ["~ALL"], "exclude": ["~DEFAULT_BRANCH"]}}},
+        ),
         ("no conditions", {"conditions": None}),
         ("tag ruleset", {"target": "tag"}),
         ("evaluate only", {"enforcement": "evaluate"}),
@@ -411,6 +418,15 @@ def test_branch_protection_blocks_ruleset_not_enforced_on_main(
     repo: RepoBuilder, label: str, changes: dict[str, Any]
 ) -> None:
     assert_blocks("branch-protection-require-pr", protection_ctx(repo, snapshot(**changes)))
+
+
+@pytest.mark.parametrize("include", ["refs/heads/main", "~DEFAULT_BRANCH", "~ALL"])
+def test_branch_protection_passes_when_ruleset_includes_main(
+    repo: RepoBuilder, include: str
+) -> None:
+    """`main` is this repo's default branch, so `~DEFAULT_BRANCH` (the live form) targets it."""
+    body = snapshot(conditions={"ref_name": {"include": [include], "exclude": []}})
+    assert_passes("branch-protection-require-pr", protection_ctx(repo, body))
 
 
 def verified_repo(tmp_path: Path) -> RepoBuilder:
