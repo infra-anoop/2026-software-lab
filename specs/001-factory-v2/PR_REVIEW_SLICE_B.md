@@ -296,3 +296,25 @@ The failing gates were the three expected:
 - Slice A's lifecycle and status tests put only gate ids in `checks`, which agrees with amendment-06 and T105.
 - Slice A changed no Slice B surface (`config`, `api.py`, gate registry, `gates.yaml`, `gates/drift`).
 - In `tests/fixtures/`, Slice A only added recorded GitHub responses.
+
+### Orchestrator triage of round-4 T\* (verdict-05, 2026-10-06, `amendment-08.yaml`)
+
+The round-4 verdict is a reject on one harm Blocker, T-B4-1: when an id is both a gate id and a catalog row id, the gate id hides the unlinked row, so `catalog-test-linkage` passes falsely. The orchestrator's triage, verbatim:
+
+> **My triage (constitution §J, after round 3; the same policy I applied to Slice C).**
+> - **Fix now; there is NO fifth T\* round.** The root-cause class is that `checks` classification resolves an id to a gate before checking the catalog. The fix: classify catalog rows FIRST, so an id that is a catalog row is always judged for linkage, even if it is also a gate id.
+> - Add exactly ONE regression test for the collision. It is red now and goes in `test_catalog_check_kinds.py`.
+> - Verification of this fix moves to the PR code re-review, which I'll scope to it explicitly.
+>
+> **Then phase 2: implement against the accepted tests (TDD; tests frozen apart from the one regression test).**
+> - PR-B1: directory, symlink and submodule pointers.
+> - PR-B4: the child-env allowlist through the approved CP0 `settings.py` builder.
+> - The `checks`-kinds fix (T105), including catalog-first.
+> - The `red_first.collect_facts` raw-facts seam.
+> - T106 (W6/W7): per-file base collection and attribution of submodule imports a PR adds.
+>
+> Slice A's four remaining handoff tests should go green. Don't touch Slice C's files, GitHub settings or branch protection.
+
+**The regression test** is `test_catalog_check_kinds.py::test_a_catalog_row_sharing_a_gate_id_is_still_judged`. A catalog row named `red-first-proof`, a registered gate id, has evidence `planned`. The order's `checks` lists it beside the gate-only id `pr-links-order` and the linked row `demo.adds`. The gate must block, judging the shared row as planned, and must name neither `pr-links-order` nor `demo.adds`.
+- **Red before the fix:** the gate also reports `pr-links-order` as a catalog miss.
+- **A gate-first fix stays red:** it drops the shared row and passes.
