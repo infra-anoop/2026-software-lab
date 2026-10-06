@@ -76,3 +76,42 @@ derivation, and D5 hostile-head isolation. The parked missing-decision test is n
 | Manual gate equivalent at PR head | Pass — `factory-status-test: every order folder on the head bus is on main's derived board` |
 | Unexpected-exception probe | Fail-closed defect reproduced — invalid UTF-8 in a tracked head bus YAML blob escapes as `UnicodeDecodeError` |
 
+## Round 2
+
+### Verdict
+
+**Accept with Later.**
+
+PR-ST1 is resolved at the root. The single outer exception boundary now converts every
+ordinary unexpected exception from object loading or derivation into a failed
+`GateResult`; the existing specific `BusError` and `GitError` messages remain ahead of
+it. Because this handler has no success path, it cannot hide an error by making the gate
+pass. It also avoids echoing exception text and reports only the exception type, head sha,
+and an optional structured `path`.
+
+The one regression exercises the original class with a real invalid-UTF-8 git blob and
+passes. Normal valid-head behavior still passes, the eight other implemented focused
+cases remain green, and the only focused red is the parked T-ST3 product decision.
+
+### Blockers
+
+None.
+
+### Later
+
+| ID | Owner / review point | Finding |
+|----|----------------------|---------|
+| PR-ST-L1 | Slice C / trusted-job resource hardening | Retain the round-1 Later: shared git reads still have no subprocess timeout and bus blobs have no size/resource bound. `amendment-04` records the owner and correctly keeps this out of the per-gate fix. |
+
+### Verification
+
+| Check | Result |
+|-------|--------|
+| Focused status-test file | Expected partial red — **9 passed, 1 failed**; only parked T-ST3 failed |
+| PR-ST1 regression alone | Pass |
+| Full `uv run pytest` | Expected partial red — **691 passed, 24 failed** in 141.92 s; same disclosed 23 CLI reds plus parked T-ST3 |
+| `uv run ruff check .` | Pass |
+| `uv run ruff format --check .` | Pass — 99 files already formatted |
+| `git diff --check aa14cb7..HEAD` | Pass |
+| Manual gate equivalent at merged round-2 head | Pass — every order folder is on `main`'s derived board |
+
