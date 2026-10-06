@@ -255,3 +255,12 @@ Replacement worker; the previous session hung after `5c925a1` (merge of `main` @
 - **Lint / schema:** `ruff check` and `ruff format --check` (135 files) pass, and `factory check schema` reports `schema ok`.
 - **Snapshot vs live ruleset 24554609:** the live body equals `deploy/github/branch-protection.json` once server metadata is removed, except for the 25 `factory/*` `required_status_checks` entries (`integration_id` 15368). Those exist only in the snapshot, as the T103 step 3 target.
 - **Not done:** PR #21 is still a draft. GitHub settings and rulesets are untouched.
+
+## Integration (post T102 merge), 2026-10-06
+
+- **Merge:** `origin/main` @ `916fc64` (PR #25, T102) merged into the branch as `6fff41a`. The only conflict was the `acceptance.md` checks table: kept C's `branch.no_direct_main` evidence and main's extended `board.matches_reality` evidence. `gates/repo/__init__.py` and `gates.yaml` merged cleanly. T102 is ticked in `tasks.md`.
+- **Full suite:** 1046 passed, 7 failed. All 7 are `test_cli_contract.py` reds for unbuilt tasks: T069 (`retro`, 2 tests) and T081 (`correction new`, `sprint close`, 5 tests). The two T102 `check registry` reds are green. Nothing failed because of the integration.
+- **`factory gate run --base origin/main --head <wo/wo-20261004-factory-slice-c at head>`** (order linked): 21 passed, 1 overridden, 3 failed.
+  - Overridden: `deferral-words-need-od`, by `override-01.yaml` (orchestrator, PR #21).
+  - `validate-secrets-schema`, `validate-deploy-env`: the known one-time bootstrap failure (`main`'s copies predate `--repo-root`).
+  - **`lock.letter-tokens` (new; needs an orchestrator decision):** "D3: no changed code line honors 'GPT (OpenAI)'" and "D4: no changed code line honors 'agents get their own GitHub App identity, set up during Wave 1'". Earlier runs used a detached HEAD, so no order was linked and the gate passed trivially. The order's letter tokens are prose that Slice C code does not contain. This is not integration breakage, so it is left as found.
