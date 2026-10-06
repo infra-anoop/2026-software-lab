@@ -318,3 +318,84 @@ The round-4 verdict is a reject on one harm Blocker, T-B4-1: when an id is both 
 **The regression test** is `test_catalog_check_kinds.py::test_a_catalog_row_sharing_a_gate_id_is_still_judged`. A catalog row named `red-first-proof`, a registered gate id, has evidence `planned`. The order's `checks` lists it beside the gate-only id `pr-links-order` and the linked row `demo.adds`. The gate must block, judging the shared row as planned, and must name neither `pr-links-order` nor `demo.adds`.
 - **Red before the fix:** the gate also reports `pr-links-order` as a catalog miss.
 - **A gate-first fix stays red:** it drops the shared row and passes.
+
+## Round 2
+
+Reviewed head: `0c013e4a8cb9691c0694e4db6a28fe9530ea37ce`
+
+### Verdict
+
+**Accept.**
+
+The four round-1 findings are fixed at their root within Slice B's approved boundary.
+The round-4 T* collision fix classifies catalog rows before registered gates, and its
+single regression test cannot pass on the old gate-first behavior. T106 isolates base
+collection per test file and recognizes an added package submodule; `collect_facts`
+returns the same per-node outcomes and raw errors that the gate judges. The realistic
+CP0 fixture now passes all accepted Slice A handoff and git-safety tests without
+changing their assertions.
+
+### Blockers
+
+None.
+
+### Later
+
+None.
+
+### Round-1 disposition
+
+- **PR-B1 fixed.** Deferral pointers now accept only git tree modes `100644` and
+  `100755`. Tracked directories, trailing-slash and file-relative directories,
+  symlinks (including links to regular files), and gitlinks block; regular and
+  executable files plus the named `plan` phase pass.
+- **PR-B2 fixed.** The branch now carries schema-valid immutable order, claim, and
+  handoff messages for `wo-20261004-factory-slice-b`. Order-context gates no longer
+  receive the vacuous `order_id=None` context. The disclosed `size_minutes: 1`
+  bootstrap distortion is unchanged.
+- **PR-B3 fixed for this slice.** `red_first` is the untrusted evidence producer and
+  exposes raw `NodeFacts`; it does not publish statuses or define Slice C's evidence
+  bundle. Child pytest receives an explicit allowlist. The trusted-base judge and
+  no-secret/read-only workflow remain Slice C's recorded T097 boundary, so this PR
+  does not activate the unsafe round-1 topology.
+- **PR-B4 fixed.** Environment construction is centralized in
+  `factory.config.settings.child_environment`; the drift and intent surfaces contain
+  no environment access. Credentials, GitHub/Actions values, unknown application
+  secrets, and ambient Python/pytest controls are excluded from child processes.
+
+### Explicit T* round-4 check
+
+`catalog_linkage.run` records every matching catalog row in `found` and judges its
+evidence before subtracting registered gate ids from the still-unclassified checks.
+Therefore an id shared by the gate registry and catalog cannot be hidden as a gate.
+`test_a_catalog_row_sharing_a_gate_id_is_still_judged` requires a blocking result that
+names the shared row and its `planned` evidence while naming neither the gate-only id
+nor the linked catalog row. The pre-fix behavior and a gate-first implementation both
+fail that assertion.
+
+### Red-first and fixture judgment
+
+- Registered gate ids are ignored only after all catalog rows are classified; unknown
+  ids still block. This is the Slice B half of T105.
+- Base and head pytest collection runs once per changed test file. A collection error
+  in one file cannot suppress a sibling assertion-red file.
+- `Judge.adds_name` treats `from pkg import mod` as red when the PR adds
+  `pkg/mod.py`. Non-added import errors remain base-broken.
+- `collect_facts` carries repo-relative node id, base/head outcome, and raw base/head
+  errors without red/base-broken classifications.
+- Slice A's accepted `test_handoff.py` and `test_git_safety.py` are unchanged from
+  `origin/main`. Their realistic fixture amendments supply a matching feature,
+  task, owned paths, gate-id checks, and no irrelevant lock. All focused tests pass.
+
+### Verification record
+
+- Locked sync: PASS — `nix develop ../.. -c uv sync --locked`.
+- Full suite: expected non-slice RED — **682 passed, 23 failed** in 162.30 s. Every
+  failure is one of the disclosed Slice C / Wave 2 unimplemented commands.
+- CI selector: PASS — **517 passed, 188 deselected** in 114.23 s.
+- Focused round-2 regressions plus Slice A handoff/git-safety: PASS —
+  **54 passed** in 40.98 s.
+- Ruff: PASS — `ruff check .`.
+- Accepted Slice A assertions: PASS — no diff in `test_handoff.py` or
+  `test_git_safety.py`; only `tests/fixtures/repo_builder.py` changed.
+- Review scope: PASS — no application code or tests were edited by this review.
