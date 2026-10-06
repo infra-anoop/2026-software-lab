@@ -1,0 +1,74 @@
+schema_version: 1
+kind: verdict
+id: wo-20261006-factory-status-test.verdict-01
+created: 2026-10-06T07:52:11Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - specs/001-factory-v2/TEST_REVIEW_STATUS_TEST.md
+  - notes/packets/2026-10-06-factory-status-test.handoff.md
+decision: reject
+findings:
+  - id: T-ST1
+    severity: blocker
+    tag: process
+    text: >-
+      Root cause: oracle not observed. A direct bus consistency scanner can pass
+      all eight tests without invoking main's lifecycle/board derivation, so CI
+      can falsely certify I-M4. Add one sabotaged-derivation regression that
+      omits a known order and must block.
+  - id: T-ST2
+    severity: blocker
+    tag: process
+    text: >-
+      Root cause: incomplete trust-boundary sentinel. The hostile-head test does
+      not poison the head package root or factory.bus.store, so a plausible head
+      import can execute while the suite passes. Poison those paths in the
+      existing single marker test.
+  - id: T-ST3
+    severity: debate
+    tag: product
+    text: >-
+      Parse every bus file and require a recorded request for every decision wait
+      are not shalls in I-M4, T102, or board.matches_reality; the former duplicates
+      bus.schema and the latter replaces main's deliberate placeholder behavior.
+  - id: T-ST4
+    severity: nit
+    tag: process
+    text: >-
+      Strength: all eight cases are honestly red, negative cases defeat an
+      always-pass gate, malformed data is not hidden by the tolerant snapshot,
+      and fixtures have no network or clock race.
+  - id: T-ST5
+    severity: later
+    tag: process
+    text: >-
+      The disclosed fifth owned path, 50-minute estimate, D5 order lock, and
+      omitted bootstrap self-gate are internally consistent; record the manual
+      equivalent for the omitted gate in the implementation handoff.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: scripts/factory/tests/unit/gates/repo/test_status_test.py
+    sha: 5f14b7bfe69219cf86b74b590cc07e2676863898
+  - path: bus/orders/wo-20261006-factory-status-test/order.yaml
+    sha: 5f14b7bfe69219cf86b74b590cc07e2676863898
+  - path: notes/packets/2026-10-06-factory-status-test.handoff.md
+    sha: 5f14b7bfe69219cf86b74b590cc07e2676863898
+  - path: specs/001-factory-v2/intent.yaml
+    sha: 5f14b7bfe69219cf86b74b590cc07e2676863898
+  - path: specs/001-factory-v2/acceptance.md
+    sha: 5f14b7bfe69219cf86b74b590cc07e2676863898
+  - path: specs/001-factory-v2/tasks.md
+    sha: bdc86362867a0a8cb4da81a71ff059da0ab823e9
+  - path: specs/001-factory-v2/PR_REVIEW_SLICE_C.md
+    sha: bdc86362867a0a8cb4da81a71ff059da0ab823e9
+  - path: specs/001-factory-v2/contracts/gates.md
+    sha: bdc86362867a0a8cb4da81a71ff059da0ab823e9
+bootstrap: true
+manual_equivalents:
+  - "red-first: focused suite reproduced 8 assertion failures at the missing entrypoint with no collection errors"
+  - "D5: hostile head gate/lifecycle/render/conftest/sitecustomize fixture reviewed; uncovered package import path recorded as T-ST2"
+  - "constant-answer probe: always-pass behavior is rejected by the four blocking scenarios"
+  - "order data: fifth owned path, 50-minute estimate, D5 token, and omitted bootstrap self-gate reviewed against main's gates"
