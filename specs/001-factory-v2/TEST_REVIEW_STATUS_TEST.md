@@ -95,3 +95,29 @@ the governor and was not reviewed this round.
   check pass. The fixtures remain local and deterministic.
 - **T-ST3:** Out of scope by orchestrator instruction; no disposition.
 - **Later items:** None.
+
+## Round 3 (harm bar)
+
+### Verdict
+
+**Approve tests as-is.** T-ST6 is resolved: sabotaging `derive_order` exercises both
+reasonable designs, because `derive_from_view` calls that same per-record function while
+a gate may also call it directly. The changed lifecycle id must affect the gate's verdict,
+so merely calling derivation while trusting a parallel scanner cannot pass. The D5
+hostile-head coverage from round 2 remains intact, and no test can now pass falsely on
+the reviewed locks.
+
+### Harm-bar findings
+
+No Blocker meets constitution §J's round-3 harm bar. No Later item was found.
+
+T-ST3 remains parked for the governor and out of scope; this approval does not adjudicate
+the malformed-bus or missing-decision product rules.
+
+### Verification
+
+- Focused suite: **9 failed**, all at the intentionally missing gate entrypoint; no
+  collection error.
+- Ruff check and format check: pass.
+- Delta inspection: only the oracle sabotage moved from `derive_from_view` to
+  `derive_order`; the remaining tests are unchanged.
