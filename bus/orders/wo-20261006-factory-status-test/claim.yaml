@@ -1,0 +1,13 @@
+# FR-037 bootstrap claim, written by the worker as the commit after the order. The order was
+# dispatched with its worktree already created, so claimed_at is the dispatch time.
+schema_version: 1
+kind: claim
+id: wo-20261006-factory-status-test.claim
+created: 2026-10-06T07:50:00Z
+actor: worker
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - "FR-037 bootstrap: claimed_at = dispatch of the worktree wo/wo-20261006-factory-status-test"
+claimed_at: 2026-10-06T07:35:00Z
+worker_runtime: local_subagent
