@@ -1,0 +1,68 @@
+# T* review — `factory-status-test` (round 1)
+
+## A. Executive verdict
+
+**Do not implement against these tests yet.** Round 1 uses the normal Blocker /
+Debate / Later / Nit bar. The tests are honestly red and reject an always-passing gate,
+but they can go green without using the board derivation that T102 explicitly names.
+Their D5 probe also leaves a plausible head-package import path unpoisoned, while two
+proposed blocking rules are product content not established by I-M4 or its catalog row.
+
+## B. Findings table
+
+| ID | Severity | Lens | Locus | Finding | Suggested resolution |
+|----|----------|------|-------|---------|----------------------|
+| T-ST1 | Blocker | Wrong-thing test | `test_blocks_order_events_the_board_would_drop`; T102 | **Root-cause class: oracle not observed.** The tests assert hand-picked consistency symptoms, but never make the result of `main`'s lifecycle/board derivation observable. A bespoke scanner that parses the bus, rejects orphan events and missing decision requests, and never calls the derivation passes all eight tests. **Consequence:** CI can certify I-M4 while the gate is disconnected from the board used by the governor. **Likelihood:** high; direct scanning is the shortest implementation suggested by these cases. | Smallest fix: add one sabotage test that replaces `main`'s derivation result with a snapshot omitting a known valid order and requires the gate to block. This one regression proves the gate compares head order folders with the installed derivation rather than reimplementing selected rules. |
+| T-ST2 | Blocker | Lock fidelity / D5 | `test_executes_no_head_code` | **Root-cause class: incomplete trust-boundary sentinel.** The fixture poisons the gate, lifecycle, renderer, conftests and `sitecustomize`, but not the head's `factory` package root or `factory.bus.store`. An implementation can export the head tree and import its bus loader while still blocking the orphan and leaving the marker absent. **Consequence:** PR-controlled Python executes in the trusted judge, violating the D5 letter lock for every contributor and invalidating status authority. **Likelihood:** medium; reusing the head's loader is a plausible shortcut. | Smallest fix: poison the head package root and `factory/bus/store.py` in the existing D5 test; keep the single marker assertion. |
+| T-ST3 | Debate | Scope | proposed pass/fail oracle; I-M4; `board.matches_reality` | **product:** “every head bus file parses” is already the `bus.schema` gate and is not stated by I-M4, T102, or `board.matches_reality`. “Every governor wait has a recorded decision request” changes `main`'s deliberate placeholder behavior and is likewise not an approved shall. The one-entry-per-order rule is supported by “for every order” plus T102's board-derivation wording; the other two rules are invented product policy. | Human choice: narrow this gate to comparing order folders with `main`'s derived board, or explicitly lock the two additional blocking rules in the contract/catalog. Do not derive new product shalls from the test handoff. |
+| T-ST4 | Nit | Red-first honesty | focused test file | Strength: all eight cases fail at the missing entrypoint, negative cases defeat an always-pass gate, malformed data is not hidden by the tolerant `bus_snapshot`, and the tests use only local fixture git repositories with no network or clock race. | Keep these controls after resolving T-ST1–T-ST3. |
+| T-ST5 | Later | Order data | order and handoff artifacts | No defect found in the disclosed order metadata: the fifth owned path makes the handoff note owned; 50 minutes is within the 60-minute horizon; omitting `factory-status-test` from `checks` is necessary under D5 bootstrap; and `lock.letter-tokens` judges declared order locks even though D5 is absent from `main`'s spec. The phrase already appears in changed Python source. | At implementation handoff, record the bootstrap manual equivalent for the omitted self-gate; no test edit is needed now. |
+
+## C. Adversarial positions
+
+1. **Position: these tests would go green while a spec lock fails.** A gate can read
+   every blob itself, reject parse errors, orphan events and unresolved decision ids,
+   and return the expected messages without ever invoking `main`'s lifecycle derivation.
+   It can also import `factory.bus.store` from an exported head tree because that module
+   is not poisoned. The suite then goes green while both T102's derivation requirement
+   and D5 fail. **What would have to be true for the suite to be right anyway:** direct
+   validation would have to be accepted as equivalent to board derivation, and importing
+   unpoisoned head Python would have to be excluded by implementation review rather than
+   the contract tests.
+
+2. **Position: these tests over-constrain implementation / test the wrong layer.**
+   Requiring every bus blob to parse duplicates `bus.schema`; requiring a decision
+   request rejects the placeholder behavior intentionally implemented by `BusView`.
+   Neither is in I-M4's “one board answers” statement or the catalog shall that board
+   state equals derived state. These checks can block unrelated malformed bus content
+   or an intentionally visible missing-decision placeholder even when order membership
+   matches the board. **What would have to be true for the suite to be right anyway:**
+   the governor must explicitly adopt both conditions as part of this gate's product
+   contract.
+
+## D. Catalog / contract coverage map
+
+| Catalog id or contract hook | Test file / name | Can fail today? | Gap |
+|-----------------------------|------------------|-----------------|-----|
+| T102: use `main`'s board derivation over head bus | `test_blocks_order_events_the_board_would_drop` | no | A direct consistency scanner passes; derivation output is never made observable. |
+| D5: head is only data | `test_executes_no_head_code` | partly | Selected modules are poisoned, but head package/bus imports remain executable. |
+| I-M4 / `board.matches_reality`: every order represented | valid-bus and orphan-event cases | yes | Positive and dropped-event symptoms are covered; T-ST1 prevents claiming the named oracle. |
+| Fail closed on unreadable head | `test_fails_closed_when_the_head_commit_is_unreadable` | yes | None. |
+| Proposed parse-all rule | malformed YAML/schema-invalid parametrization | yes | Product basis absent; duplicates `bus.schema`. |
+| Proposed recorded-decision rule | `test_blocks_a_governor_wait_with_no_recorded_decision` | yes | Product basis absent; contradicts accepted placeholder behavior unless newly locked. |
+
+## E. Edit list
+
+- `scripts/factory/tests/unit/gates/repo/test_status_test.py`: add one sabotaged-derivation
+  case proving a missing derived entry blocks.
+- `scripts/factory/tests/unit/gates/repo/test_status_test.py`: poison the head package root
+  and `factory/bus/store.py` in the existing D5 test.
+- `scripts/factory/tests/unit/gates/repo/test_status_test.py`: remove parse-all and
+  missing-decision blocking cases unless the governor locks those product rules.
+
+## F. Questions for the human
+
+1. Should this gate only prove that every head order folder appears in `main`'s derived
+   board, or should it also duplicate `bus.schema` by rejecting every malformed bus file?
+2. Should an order waiting on an unrecorded decision block, replacing the board's current
+   visible placeholder behavior?
