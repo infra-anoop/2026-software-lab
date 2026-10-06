@@ -111,3 +111,34 @@ Nothing from the head is imported, run or checked out (D5).
    This is a true finding on `main`'s bus, not a gate defect. The P0 contracts order predates orders. Its folder on `main` holds `amendment-01..03` and `verdict-01..04` but no `order.yaml`. Slices A and B got FR-037 reconstructed orders; P0 did not. So today's board drops P0's record. The other three order folders (Slice A, Slice B, this order) derive cleanly.
 
 **Needed before this gate can be green on `main`:** an FR-037 bootstrap `bus/orders/wo-20261003-factory-p0/order.yaml`, reconstructed from `notes/packets/2026-10-03-factory-v2-p0-contracts.md` as for Slices A and B. It lies outside this order's owned paths (a stop condition), so it is not written here. The orchestrator decides whether to add it in this PR by amendment or in a separate bus change.
+
+## P0 bootstrap order (`amendment-03`, orchestrator decision 2026-10-06)
+
+`amendment-03` adds `bus/orders/wo-20261003-factory-p0/order.yaml`, that file only, to the owned paths. The order is an FR-037 reconstruction from `notes/packets/2026-10-03-factory-v2-p0-contracts.md`, in Slice A/B shape:
+- `actor_verified: false`, `depends_on_decisions: []`.
+- `size_minutes: 1`, with the true size in `refs`: about 6.5 h from `acc6721` to the accepting `verdict-04` (`d69d137`), then CI follow-ups to the PR #9 merge (`8cd8cb7`).
+- Owned paths are the packet's as they stood before `amend-01`.
+- Tasks T001–T015.
+- Intents: I-A3 (the one T001–T015 cite) and I-M2 (the packet's no-status-fields lock).
+- Locks come from the packet's Fidelity table, each with tokens P0's code carries: `pydantic`/`typer`/`httpx`/`pyyaml`, `scripts/factory`, `extra="forbid"`, `concurrency_cap = 3` / `autonomy_horizon_minutes = 60`.
+- `checks` are gate ids only: the packet's manual-equivalent gates (red-first, owned paths, test seam) plus the two verdict gates.
+
+**No claim or handoff was added.** With `main` simulated at this head, `main`'s `derive_snapshot` shows P0 as `merged`, which needs only `order.yaml` on `main`. The scorecard's run-record requirement is discussed below.
+
+**Sprint membership is unchanged.** Like Slices A and B, `refs` name only the packet, not `notes/sprints/2026-10-sprint-02.md`.
+
+**Gate over this repo's head (`de32177`, base `2a591f9`): passes.** The message is "every order folder on the head bus is on main's derived board".
+
+**Scorecard** (`compute_scorecard`, no GitHub, so `wave1_exit` cannot be confirmed in either run):
+
+| View | orders | runs | first-pass acceptance | rework loops | wave1_start | wave1_exit |
+|------|--------|------|-----------------------|--------------|-------------|------------|
+| unscoped, before (`main` = `origin/main`) | 4 | 0 | 0.0 | 4 | 2026-10-05T17:00:32Z | null |
+| unscoped, after merge (`main` simulated at `de32177`) | 5 | 0 | 0.0 | 5 | 2026-10-05T17:00:32Z | null |
+| `--sprint 2026-10-sprint-02`, before and after | 0 | 0 | null | 0 | null | null |
+
+P0's first verdict was a reject, so unscoped rework loops rise by one. Wave 1 start is unchanged, because P0's issue is dated from this reconstruction commit, which is later than the start.
+
+**Wave 1 exit implication.** No retro has landed, so in the unscoped view P0 joins the Wave 1 cohort. The exit then also needs a P0 run record (`run_complete`), as it already needs one for every other cohort order. No order has one today. The sprint-scoped view is untouched, since no order cites the sprint file.
+
+**Full suite after the change:** 690 passed, 24 failed. These are the same 24 as in § Implementation: the parked T-ST3 test, and 23 CLI commands not implemented on `main` (Slice C, T069, T081). Ruff and `factory check schema` pass.
