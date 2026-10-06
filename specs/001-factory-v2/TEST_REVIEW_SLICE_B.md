@@ -267,3 +267,88 @@ None.
 | `ruff check` / `ruff format --check` | PASS — all checks passed; 44 files formatted |
 | `factory check schema --repo ../..` | PASS — `schema ok` |
 | Worktree setup | No `.cursor/worktrees.json` in repository root or worktree; setup skipped after both checks |
+
+## Round 4 (final, harm bar)
+
+Reviewed `wo/wo-20261004-factory-slice-b` at
+`cd8ec5f3edb55faea130ab3324d4057aee467fc3`. This fourth round was explicitly
+authorized by the governor under constitution §J.
+
+### Verdict
+
+**Verdict: reject.**
+
+PR-B1, PR-B4, the raw-facts seam, W6/W7, and the realistic CP0 fixture amendment
+are adequately pinned. One harm-bar gap remains in the `checks`-kinds tests: a
+registered gate id can also be a catalog-row id, and the tests permit an
+implementation to classify by registry membership first and skip that catalog row.
+That lets `catalog-test-linkage` pass falsely while required auto evidence is still
+`planned` or missing.
+
+### Blocker
+
+**T-B4-1 — identifier-kind classification precedence**
+
+- **Root-cause class:** overlapping identifier namespaces are tested only as disjoint
+  sets.
+- **Concrete harm:** an order check whose id names both a registered gate and an
+  unlinked catalog row can be discarded as “a gate id.” The required
+  `catalog-test-linkage` status then passes falsely, breaking the locked catalog
+  evidence shall.
+- **Consequence:** an order can hand off or merge while an auto acceptance row named
+  in its checks has no resolving test/eval evidence.
+- **Likelihood:** low for today's naming conventions, but credible: `WorkOrder.checks`
+  is an unconstrained `list[str]`, no schema rule makes gate and catalog ids disjoint,
+  and filtering registered ids before scanning catalog rows is a straightforward
+  implementation that greens all five current tests.
+- **Smallest sufficient fix:** classify catalog membership first. Add one regression
+  case to `test_catalog_check_kinds.py` in which a catalog row uses a registered gate
+  id and has `planned` evidence; require the gate to block naming that row. No other
+  test is needed for this class.
+
+### Later
+
+None.
+
+### Other harm-bar judgments
+
+- **Red-first child environment:** the canary matrix includes GitHub/Actions,
+  application and unknown secret names plus Python/pytest controls; the functional
+  assertions catch inherited environments even if the lexical environment-access
+  check is bypassed. No credential-exposure gap remains in the tested allowlist
+  boundary. The separately disclosed `/proc` and artifact-token risks belong to the
+  no-secret Slice C job boundary.
+- **Deferral pointers:** directory, trailing-slash, file-relative, Markdown,
+  symlink-to-file, symlink-to-directory, outside-repo symlink and gitlink cases all
+  assert their git modes. A checkout-path or generic `ls-tree` existence
+  implementation cannot green them.
+- **Red-first raw facts and base errors:** the seam requires per-node base/head
+  outcomes and raw base error text. The single parametrized W6/W7 regression requires
+  a sibling assertion failure to survive an import-red file and attributes
+  `from app import money` to its own test. No non-red acceptance or cross-file
+  suppression path remains in these cases.
+- **Hang/flake:** the focused set completed with the expected **30 red / 9 green** in
+  19.45 seconds, with assertion failures rather than collection errors. Fixture git
+  state is isolated, symlink targets are local temporaries, and red-first subprocesses
+  retain a finite timeout. No main-hanging or material flake path was found.
+
+### Fixture amendment judgment
+
+Amendment-07 fixes the Slice A handoff fixtures for the right reason. Against the
+accepted Slice A assertions, the two clean handoff paths pass and the other four fail
+only because current `catalog-test-linkage` treats the fixture's registered gate ids
+as missing catalog rows. The failures name `red-first-proof` and/or
+`diff-within-owned-paths`; no Slice A assertion changed. The fixture now supplies the
+feature spec/tasks every order names, uses T001 and matching owned paths, declares no
+irrelevant D2 lock, and keeps gate ids rather than substituting catalog evidence.
+
+### Verification record
+
+- Worktree setup discovery checked both required paths; neither had
+  `.cursor/worktrees.json`. Locked `uv sync` passed.
+- Focused final-round set: **30 failed / 9 passed**, exactly the documented red/green
+  split.
+- Slice A fixture probe: **2 passed / 4 failed**; all four failures were the pending
+  `checks`-kinds behavior.
+- Slice A handoff and git-safety test files are unchanged from merged main; only
+  `tests/fixtures/repo_builder.py` changed for amendment-07.
