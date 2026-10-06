@@ -59,6 +59,24 @@ The seam test now imports inside the test body, so this PR does not trip either 
   - Four (two in `test_handoff.py`, two in `test_git_safety.py`) stay red only on `catalog-test-linkage` judging gate ids in `checks`: the pending phase-2 `checks`-kinds code. A local probe of that fix turned them green.
 - **Cross-slice check.** No conflicts. See `PR_REVIEW_SLICE_B.md` § Triage.
 
+### Round-4 T\* (verdict-05) and PR-review phase 2 (amendment-08)
+
+- **Merge.** Merged `origin/review/wo-20261004-factory-slice-b-r4` (`db7716f`) with `--no-ff`.
+- **T-B4-1 regression.** `test_catalog_check_kinds.py::test_a_catalog_row_sharing_a_gate_id_is_still_judged` was committed red, by assertion, before any fix (`4e9f9b0`). It is the only test added or changed in this round; every other accepted test is frozen.
+
+Phase-2 code:
+
+| Item | Change |
+|------|--------|
+| `checks` kinds, catalog first | `catalog_linkage.py`: rows in `checks` are judged first; only the leftover ids are checked against the installed gate registry; an id that is neither blocks |
+| PR-B1 | `deferral_words.py`: a pointer counts only as a regular file blob at head (`100644`/`100755`) or a phase |
+| PR-B4 | `config/settings.py`: additive `CHILD_ENV_ALLOWLIST` + `child_environment()` (CP0 amendment, amend-06). `red_first.py` passes it as the child's whole environment; the child bootstrap no longer touches the environment |
+| Raw-facts seam | `red_first.collect_facts(ctx)` returns `NodeFacts` (node id, pytest outcome per side, raw error text); the gate's verdict is judged from the same collected runs |
+| T106 (W6/W7) | `red_first.py`: one pytest run per test file per side, and `from pkg import mod` counts as red when the PR adds `pkg/mod.py` |
+
+- **Not done here: T105's lifecycle half.** The lifecycle change in Slice A's `lifecycle/derive.py`, where a catalog row id is satisfied by the `factory/catalog-test-linkage` status, is outside Slice B's owned paths. Wave 1 orders carry gate ids only.
+- **Doc changes.** `contracts/gates.md` gained one sentence each for the pointer-target and `checks`-kinds rules.
+
 ## Implementation (phase 2)
 
 **Accepted tests are unchanged since accept.** `git diff a68b95d HEAD -- scripts/factory/tests` is empty. No frozen CP0 file (`api.py`, `bus/`, `config/`, `cli/app.py`, `cli/exit_codes.py`, `gates/registry.py`, `tests/fixtures/`) changed. `gates.yaml` needed no edits: all nine Slice B entrypoints were pre-registered and now import.

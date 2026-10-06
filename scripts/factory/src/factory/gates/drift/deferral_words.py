@@ -5,7 +5,8 @@ Rule verbatim from contracts/gates.md § Deferral-words rule: in `specs/**` and
 on the same line or table row, one of: an Open Decision id that exists (`D\\d+`), a
 pointer `→ <artifact>` to an existing file or phase (`→ plan`, `→ sprint 03` with a
 waived OD), or `[governor-judged]`. Words inside backtick code spans are exempt.
-Only added lines are judged.
+Only added lines are judged. A pointer's file must be a regular file blob at head
+(`100644`/`100755`); a directory, symlink or gitlink does not count (amendment-05).
 
 A sprint pointer is served by the OD ids on its line, which must include a waived
 decision; those ids do not also satisfy the OD-id clause (T-B3).
@@ -19,7 +20,7 @@ from functools import cached_property
 
 from factory.api import GateContext, GateResult
 from factory.gates.drift._common import verdict
-from factory.gates.drift._git import Change, tree_entry
+from factory.gates.drift._git import REGULAR_FILE_MODES, Change, tree_entry
 from factory.gates.drift._specs import OpenDecision, open_decisions
 
 GATE = "deferral-words-need-od"
@@ -64,12 +65,15 @@ class Scope:
                     return open_decisions(spec or "")
         return self.all_decisions
 
-    def exists_at_head(self, target: str, source: str) -> bool:
+    def regular_file_at_head(self, target: str, source: str) -> bool:
+        """A regular file blob (100644/100755) at head; directories, symlinks and gitlinks
+        do not count (PR-B1)."""
         for candidate in (target, posixpath.join(posixpath.dirname(source), target)):
             normal = posixpath.normpath(candidate)
             if normal.startswith("../") or normal.startswith("/"):
                 continue
-            if tree_entry(self.change.repo, self.change.head, normal) is not None:
+            entry = tree_entry(self.change.repo, self.change.head, normal)
+            if entry is not None and entry[0] in REGULAR_FILE_MODES:
                 return True
         return False
 
@@ -80,7 +84,7 @@ def pointer_ok(line: str, path: str, scope: Scope) -> bool:
         target = target.strip("`").rstrip(".,;:!?)")
         if target.lower() in PHASES:
             return True
-        if target and scope.exists_at_head(target, path):
+        if target and scope.regular_file_at_head(target, path):
             return True
     return False
 

@@ -2,8 +2,11 @@
 
 Rows of any `acceptance.md` that the change adds or edits, plus the rows named in the
 effective order's `checks`, are judged at head: a `how: auto` row needs `evidence`, and
-an order-check row needs existing evidence (not `planned`). Evidence is a pytest node
-id `<path>::<test>` or an eval case `eval:<path>#<case-id>` (governor 2026-10-04).
+an order-check row needs existing evidence (not `planned`). A `checks` id that is no
+catalog row but is a registered gate (the installed registry) is that gate's to judge;
+an id that is neither blocks (amendment-06; catalog rows first, amendment-08).
+Evidence is a pytest node id `<path>::<test>` or an eval case `eval:<path>#<case-id>`
+(governor 2026-10-04).
 
 Eval files are read as the git blob at head. A tracked symlink, an unsupported type,
 malformed YAML/JSON/JSONL, a wrong shape, or any entry that is not a mapping with `id`
@@ -23,6 +26,7 @@ from factory.api import GateContext, GateResult
 from factory.gates.drift._common import OrderMissing, effective_order, failed, verdict
 from factory.gates.drift._git import REGULAR_FILE_MODES, SYMLINK_MODE, Change, blob_text, tree_entry
 from factory.gates.drift._specs import TableRow, tables
+from factory.gates.registry import load_registry
 
 GATE = "catalog-test-linkage"
 CATALOG_NAME = "acceptance.md"
@@ -181,6 +185,12 @@ def run(ctx: GateContext) -> GateResult:
                 check_evidence(change, evidence)
             except EvidenceError as exc:
                 problems.append(f"{path}: row {row_id} evidence does not resolve: {exc}")
-    for missing in sorted(checks - found):
-        problems.append(f"order check {missing} has no row in any {CATALOG_NAME} at head")
+    # Catalog rows are classified first: an id that is a row was judged above even when it
+    # is also a registered gate id. Only the remaining ids may be satisfied as gates.
+    gate_ids = set(load_registry().ids())
+    for missing in sorted(checks - found - gate_ids):
+        problems.append(
+            f"order check {missing} is neither a registered gate nor a row in any"
+            f" {CATALOG_NAME} at head"
+        )
     return verdict(GATE, problems, "judged catalog rows are linked")

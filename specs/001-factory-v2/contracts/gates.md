@@ -38,6 +38,10 @@ A gate that fails looks for `bus/orders/<order-id>/override-NN.yaml` with `gate:
 
 **Deferral-words rule detail:** in `specs/**` and `notes/sprints/**`, the words *later, optional, deferred, TBD, future, stretch* need, on the same line or table row, one of: an Open Decision id that exists (`D\d+`), a pointer `→ <artifact>` to an existing file or phase (`→ plan`, `→ sprint 03` with a waived OD), or `[governor-judged]`. Spec-review tables ("Later → plan") satisfy it by pointer. Words inside backtick code spans (enum values, quoted rule text) are exempt.
 
+**Deferral pointer targets (Slice B PR review, amendment-05):** a pointer's artifact counts only when it is a regular file blob at head (mode `100644` or `100755`) or a named phase. A tracked directory, symlink or gitlink does not count.
+
+**Order `checks` kinds (amendment-06, amendment-08):** `catalog-test-linkage` classifies catalog rows first. An id that is a catalog row is always judged for linkage, even when it is also a registered gate id. An id that is no catalog row but is a registered gate belongs to that gate. An id that is neither blocks.
+
 **Catalog-linkage rule detail:** every `how: auto` row in an `acceptance.md` carries `evidence`. A row whose id is in the PR's effective order `checks` must name existing evidence, not `planned` (FR-018). Rows the PR adds or edits and the order's rows are judged; untouched rows are not. Evidence is judged at the PR head in git, and Markdown backticks around the value are ignored. Two forms are accepted (governor 2026-10-04):
 
 - **pytest node id** `<repo-relative path>::<test name>`: the file exists at head and defines that test.

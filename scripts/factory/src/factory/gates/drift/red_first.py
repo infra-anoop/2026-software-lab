@@ -9,7 +9,14 @@ new or changed tests passes.
 The base and head trees are materialized from `git archive` into a temporary
 directory outside the repository; tests run there in a subprocess with a small result
 plugin, under the project's own interpreter (`uv run` when the project root has a
-`pyproject.toml`, else this interpreter).
+`pyproject.toml`, else this interpreter). Each test file runs on its own, per side, so
+one file's collection error cannot hide another file's tests (T106). The child gets
+only `factory.config.child_environment()`: an explicit allowlist, never the caller's
+environment (PR-B4).
+
+`collect_facts(ctx)` returns the raw per-test facts the verdict is judged from (node
+id, pytest outcome per side, raw error text) without classifying them; the evidence
+bundle built from them is Slice C's (T097).
 """
 
 from __future__ import annotations
@@ -26,6 +33,7 @@ from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 
 from factory.api import GateContext, GateResult
+from factory.config.settings import child_environment
 from factory.gates.drift._common import passed, verdict
 from factory.gates.drift._git import Change, FileChange, GitError, list_paths
 
@@ -36,11 +44,8 @@ PYTEST_ABORTED = frozenset({2, 3, 4})  # interrupted, internal error, usage erro
 MISSING_MODULE_RE = re.compile(r"No module named '([\w.]+)'")
 MISSING_NAME_RE = re.compile(r"cannot import name '(\w+)' from '([\w.]+)'")
 # Runs in the child interpreter: `python -c BOOTSTRAP <results.json> <pytest args...>`.
-# The child drops inherited `PYTEST_*` variables so the outer run cannot leak options.
 BOOTSTRAP = """\
-import json, os, sys
-for key in [k for k in os.environ if k.startswith("PYTEST_")]:
-    del os.environ[key]
+import json, sys
 sys.dont_write_bytecode = True
 import pytest
 
@@ -194,6 +199,7 @@ def run_pytest(project: Path, node_ids: list[str], out: Path) -> Run:
         result = subprocess.run(
             command,
             cwd=project,
+            env=child_environment(),
             check=False,
             capture_output=True,
             text=True,
@@ -249,13 +255,18 @@ class Judge:
                 return True
         return False
 
+    def adds_name(self, name: str, module: str) -> bool:
+        """`from module import name`: a symbol the PR adds to `module`, or a submodule
+        `module.name` the PR adds (W7)."""
+        return self.adds_symbol(name, module) or self.adds_module(f"{module}.{name}")
+
     def error_is_red(self, text: str) -> bool:
         modules = MISSING_MODULE_RE.findall(text)
         symbols = MISSING_NAME_RE.findall(text)
         if not modules and not symbols:
             return False
         return all(self.adds_module(m) for m in modules) and all(
-            self.adds_symbol(s, m) for s, m in symbols
+            self.adds_name(s, m) for s, m in symbols
         )
 
 
@@ -288,33 +299,90 @@ def judged_tests(
 
 def run(ctx: GateContext) -> GateResult:
     change = Change.of(ctx)
-    test_files = [c for c in change.files if c.status != "D" and is_test_file(c.path)]
-    judged, problems = judged_tests(change, test_files)
+    judged, problems = judged_tests(change, test_files_of(change))
     if not judged and not problems:
         return passed(GATE, "no new or changed tests")
-    head_paths = set(list_paths(change.repo, change.head))
-    by_root: dict[str, dict[str, list[str]]] = {}
-    for path, names in judged.items():
-        by_root.setdefault(project_root(path, head_paths), {})[path] = names
     judge = Judge(change)
-    support = [c for c in change.files if is_test_support(c.path)]
-    with tempfile.TemporaryDirectory(prefix="factory-red-first-") as tmp:
-        work = Path(tmp)
-        for index, (root, files) in enumerate(sorted(by_root.items())):
-            problems += judge_root(change, judge, root, files, support, work / str(index))
+    for node in collect_nodes(change, judged):
+        base_problem = base_verdict(node.base, node.file_id, node.node_id, judge)
+        if base_problem:
+            problems.append(f"{node.label}: {base_problem}")
+        head_problem = head_verdict(node.head, node.file_id, node.node_id)
+        if head_problem:
+            problems.append(f"{node.label}: {head_problem}")
     return verdict(
         GATE, problems, f"{sum(map(len, judged.values()))} new/changed test(s) red first"
     )
 
 
-def judge_root(
+@dataclass(frozen=True)
+class NodeFacts:
+    """Raw facts for one new or changed test; nothing here is a judgment."""
+
+    node_id: str
+    base_outcome: str | None
+    head_outcome: str | None
+    base_error: str | None
+    head_error: str | None
+
+
+def collect_facts(ctx: GateContext) -> list[NodeFacts]:
+    """Per-test facts for the change's new or changed tests (the Slice C evidence seam).
+
+    Outcomes are pytest's (`passed`, `failed`, `skipped`), `error` when the test's file
+    or setup errors, or None when the test was not reported. Unparseable test files
+    contribute no facts.
+    """
+    change = Change.of(ctx)
+    judged, _problems = judged_tests(change, test_files_of(change))
+    return [
+        NodeFacts(
+            node_id=node.label,
+            base_outcome=raw_outcome(node.base, node.file_id, node.node_id),
+            head_outcome=raw_outcome(node.head, node.file_id, node.node_id),
+            base_error=raw_error(node.base, node.file_id),
+            head_error=raw_error(node.head, node.file_id),
+        )
+        for node in collect_nodes(change, judged)
+    ]
+
+
+def test_files_of(change: Change) -> list[FileChange]:
+    return [c for c in change.files if c.status != "D" and is_test_file(c.path)]
+
+
+@dataclass(frozen=True)
+class Node:
+    label: str
+    file_id: str
+    node_id: str
+    base: Run
+    head: Run
+
+
+def collect_nodes(change: Change, judged: dict[str, list[str]]) -> list[Node]:
+    if not judged:
+        return []
+    head_paths = set(list_paths(change.repo, change.head))
+    by_root: dict[str, dict[str, list[str]]] = {}
+    for path, names in judged.items():
+        by_root.setdefault(project_root(path, head_paths), {})[path] = names
+    support = [c for c in change.files if is_test_support(c.path)]
+    nodes: list[Node] = []
+    with tempfile.TemporaryDirectory(prefix="factory-red-first-") as tmp:
+        work = Path(tmp)
+        for index, (root, files) in enumerate(sorted(by_root.items())):
+            nodes += root_nodes(change, root, files, support, work / str(index))
+    return nodes
+
+
+def root_nodes(
     change: Change,
-    judge: Judge,
     root: str,
     files: dict[str, list[str]],
     support: list[FileChange],
     work: Path,
-) -> list[str]:
+) -> list[Node]:
     base_dir = materialize(change.repo, change.merge_base, root, work / "base")
     head_dir = materialize(change.repo, change.head, root, work / "head")
     prefix = f"{root}/" if root else ""
@@ -327,24 +395,32 @@ def judge_root(
             continue
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(change.head_text(item.path) or "", encoding="utf-8")
-    nodes = {
-        path: [f"{path[len(prefix) :]}::{name}" for name in names] for path, names in files.items()
-    }
-    every = [node for ids in nodes.values() for node in ids]
-    base_run = run_pytest(base_dir, every, work / "base-results.json")
-    head_run = run_pytest(head_dir, every, work / "head-results.json")
-    problems: list[str] = []
-    for path, node_ids in nodes.items():
+    nodes: list[Node] = []
+    for index, (path, names) in enumerate(sorted(files.items())):
         file_id = path[len(prefix) :]
-        for node_id in node_ids:
-            label = f"{prefix}{node_id}"
-            base_problem = base_verdict(base_run, file_id, node_id, judge)
-            if base_problem:
-                problems.append(f"{label}: {base_problem}")
-            head_problem = head_verdict(head_run, file_id, node_id)
-            if head_problem:
-                problems.append(f"{label}: {head_problem}")
-    return problems
+        node_ids = [f"{file_id}::{name}" for name in names]
+        base_run = run_pytest(base_dir, node_ids, work / f"base-{index}.json")
+        head_run = run_pytest(head_dir, node_ids, work / f"head-{index}.json")
+        nodes += [
+            Node(f"{prefix}{node_id}", file_id, node_id, base_run, head_run) for node_id in node_ids
+        ]
+    return nodes
+
+
+def raw_error(run: Run, file_id: str) -> str | None:
+    return run.crashed or run.collect_error(file_id)
+
+
+def raw_outcome(run: Run, file_id: str, node_id: str) -> str | None:
+    if run.crashed or run.collect_error(file_id) is not None:
+        return "error"
+    outcome = run.outcome(node_id)
+    if outcome.setup_failed:
+        return "error"
+    for state in ("failed", "skipped", "passed"):
+        if state in outcome.calls:
+            return state
+    return None
 
 
 def base_verdict(run: Run, file_id: str, node_id: str, judge: Judge) -> str | None:
