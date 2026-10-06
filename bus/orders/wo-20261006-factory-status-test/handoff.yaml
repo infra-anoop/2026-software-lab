@@ -13,19 +13,19 @@ refs:
 summary: |
   T102 (PR-C3): factory-status-test gate implemented over main's lifecycle derivation of
   the head bus (D5: head read as git data only). Tests T*-accepted in round 3 (verdict-03).
-  Focused suite 8 passed, 1 red (T-ST3 decision wait, parked on the governor); the
-  malformed-file T-ST3 test passes because main's loader is strict. Full suite 690 passed,
-  24 failed (1 parked, 23 unimplemented CLI commands owned by Slice C, T069, T081). The
+  Focused suite 9 passed, 1 red (T-ST3 decision wait, parked on the governor); the
+  malformed-file T-ST3 test passes because main's loader is strict. Full suite 691 passed,
+  24 failed (1 parked, 23 unimplemented CLI commands owned by Slice C, T069, T081), after the PR-ST1 fail-closed fix. The
   P0 order folder had no order; amendment-03 adds its FR-037 reconstruction and the gate
   now passes over this repo's head.
   Full detail in notes/packets/2026-10-06-factory-status-test.handoff.md.
 checks_run:
   - gate_or_test: scripts/factory/tests/unit/gates/repo/test_status_test.py
-    result: 8 passed, 1 failed (test_blocks_a_governor_wait_with_no_recorded_decision, T-ST3 parked)
+    result: 9 passed, 1 failed (test_blocks_a_governor_wait_with_no_recorded_decision, T-ST3 parked)
   - gate_or_test: uv run pytest (scripts/factory)
-    result: 690 passed, 24 failed (1 T-ST3 parked; 23 CLI not implemented on main, Slice C / T069 / T081)
+    result: 691 passed, 24 failed (1 T-ST3 parked; 23 CLI not implemented on main, Slice C / T069 / T081)
   - gate_or_test: factory-status-test over this repo's head bus (manual equivalent, T-ST5)
-    result: passes at de32177 after amendment-03 adds the P0 bootstrap order (blocked at 35776f9)
+    result: passes at c4b038f (blocked at 35776f9 before amendment-03 added the P0 bootstrap order)
   - gate_or_test: ruff check + ruff format --check
     result: passed
   - gate_or_test: factory check schema
