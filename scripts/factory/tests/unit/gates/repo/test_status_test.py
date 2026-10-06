@@ -6,6 +6,10 @@ derivation over that data alone (no GitHub data). It passes when every file pars
 order directory on the head bus yields one board entry, and every governor wait the board
 reports points at a recorded decision request. Anything else blocks, naming the gate.
 
+The board is `main`'s `factory.lifecycle.derive.derive_from_view` over a `BusView` built
+from the head: the gate compares that derived snapshot with the head's order folders, so
+a scanner that never derives cannot pass (T* round 1, T-ST1).
+
 Trust boundary (D5): the head is only data. The gate never imports, runs or checks out
 head code, and never trusts `ctx.bus_snapshot` to be complete (the runner loads it
 tolerantly and skips files that do not parse).
@@ -14,11 +18,12 @@ tolerantly and skips files that do not parse).
 from __future__ import annotations
 
 import importlib
+from types import ModuleType
 from typing import Any
 
 import pytest
 
-from factory.api import GateContext, GateResult
+from factory.api import GateContext, GateResult, LifecycleSnapshot
 from factory.bus.models import Message
 from factory.bus.store import BusError, list_bus_paths, load_file
 from tests.fixtures.repo_builder import BaseHeadPair, RepoBuilder, message, order, yaml_text
@@ -36,14 +41,18 @@ def oid(slug: str) -> str:
 READY, WORKING, DONE, WAITING = oid("ready"), oid("working"), oid("done"), oid("waiting")
 
 
-def judge(ctx: GateContext) -> GateResult:
-    """Run the entrypoint; a gate that raises has not failed closed."""
+def load_gate() -> ModuleType:
     try:
-        module: Any = importlib.import_module(MODULE)
+        module: ModuleType | None = importlib.import_module(MODULE)
     except ImportError as exc:
         module, reason = None, str(exc)
     assert module is not None, f"{MODULE}:run is not implemented: {reason}"
-    run = getattr(module, "run", None)
+    return module
+
+
+def judge(ctx: GateContext) -> GateResult:
+    """Run the entrypoint; a gate that raises has not failed closed."""
+    run = getattr(load_gate(), "run", None)
     assert callable(run), f"{MODULE} must export run(ctx)"
     try:
         result = run(ctx)
@@ -144,6 +153,33 @@ def test_blocks_order_events_the_board_would_drop(repo: RepoBuilder) -> None:
     assert_blocks(ctx, lost)
 
 
+def test_blocks_when_main_derivation_omits_a_head_order(
+    repo: RepoBuilder, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The verdict comes from `main`'s derivation: if it drops a valid order, the gate blocks.
+
+    A scanner that reads the head bus without deriving the board passes the valid bus here.
+    """
+    derive = importlib.import_module("factory.lifecycle.derive")
+    original = derive.derive_from_view
+    calls: list[str] = []
+
+    def without_working(*args: Any, **kwargs: Any) -> LifecycleSnapshot:
+        snapshot: LifecycleSnapshot = original(*args, **kwargs)
+        calls.append("derive_from_view")
+        kept = [item for item in snapshot.orders if item.order_id != WORKING]
+        return snapshot.model_copy(update={"orders": kept})
+
+    ctx, _ = head_ctx(repo, valid_bus())
+    gate = load_gate()
+    monkeypatch.setattr(derive, "derive_from_view", without_working)
+    for name, value in vars(gate).items():
+        if value is original:
+            monkeypatch.setattr(gate, name, without_working)
+    assert_blocks(ctx, WORKING)
+    assert calls, "the gate never called main's factory.lifecycle.derive.derive_from_view"
+
+
 def test_blocks_a_governor_wait_with_no_recorded_decision(repo: RepoBuilder) -> None:
     """The board would show a placeholder instead of the question the governor must answer."""
     bus = valid_bus()
@@ -152,18 +188,44 @@ def test_blocks_a_governor_wait_with_no_recorded_decision(repo: RepoBuilder) -> 
     assert_blocks(ctx, WAITING, DECISION)
 
 
+HEAD_PACKAGE_MODULES = (
+    "__init__.py",
+    "api.py",
+    "bus/__init__.py",
+    "bus/models.py",
+    "bus/store.py",
+    "bus/schema.py",
+    "config/__init__.py",
+    "config/settings.py",
+    "orders/__init__.py",
+    "orders/git.py",
+    "lifecycle/__init__.py",
+    "lifecycle/view.py",
+    "lifecycle/derive.py",
+    "board/__init__.py",
+    "board/render.py",
+    "gates/__init__.py",
+    "gates/drift/_common.py",
+    "gates/drift/_git.py",
+)
+
+
 def test_executes_no_head_code(repo: RepoBuilder) -> None:
-    """Head ships a pass-always gate and hostile modules; `main`'s code still judges its bus."""
+    """Head ships a pass-always gate and a hostile `factory` package; `main`'s code judges.
+
+    Every module the gate could plausibly import (package root, bus loader and models,
+    config, lifecycle, board, shared gate helpers) writes the marker when imported.
+    """
     marker = repo.root / "head-code-ran"
     hostile = f"import pathlib\npathlib.Path({str(marker)!r}).write_text(__name__)\n"
     lost = oid("no-order")
+    package = {f"scripts/factory/src/factory/{name}": hostile for name in HEAD_PACKAGE_MODULES}
     head = {
         **valid_bus(),
         **dict([event_yaml(lost, "claim")]),
+        **package,
         "scripts/factory/src/factory/gates/repo/status_test.py": hostile
         + "\n\ndef run(ctx):\n    return None\n",
-        "scripts/factory/src/factory/lifecycle/derive.py": hostile,
-        "scripts/factory/src/factory/board/render.py": hostile,
         "scripts/factory/tests/conftest.py": hostile,
         "conftest.py": hostile,
         "sitecustomize.py": hostile,
