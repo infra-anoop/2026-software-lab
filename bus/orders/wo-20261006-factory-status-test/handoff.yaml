@@ -13,8 +13,8 @@ refs:
 summary: |
   T102 (PR-C3) phase 1: red tests for the factory-status-test gate in
   scripts/factory/tests/unit/gates/repo/test_status_test.py. T* round 1 (verdict-01)
-  rejected; triage in amendment-01. Fixed: the oracle is pinned to main's
-  derive_from_view (one new test), and the D5 test poisons the head factory package.
+  and round 2 rejected; triage in amendments 01-02. Fixed: the oracle is pinned to main's
+  derive_order (round 2, T-ST6), and the D5 test poisons the head factory package.
   9 of 9 red on "not implemented". T-ST3 (product) waits on the governor. No
   implementation. Full detail in notes/packets/2026-10-06-factory-status-test.handoff.md.
 checks_run:
