@@ -6,9 +6,9 @@ derivation over that data alone (no GitHub data). It passes when every file pars
 order directory on the head bus yields one board entry, and every governor wait the board
 reports points at a recorded decision request. Anything else blocks, naming the gate.
 
-The board is `main`'s `factory.lifecycle.derive.derive_from_view` over a `BusView` built
-from the head: the gate compares that derived snapshot with the head's order folders, so
-a scanner that never derives cannot pass (T* round 1, T-ST1).
+The board is `main`'s lifecycle derivation (`factory.lifecycle.derive.derive_order` per
+record, directly or through `derive_from_view`) over a `BusView` built from the head; the
+gate compares it with the head's order folders, so a scanner cannot pass (T-ST1, T-ST6).
 
 Trust boundary (D5): the head is only data. The gate never imports, runs or checks out
 head code, and never trusts `ctx.bus_snapshot` to be complete (the runner loads it
@@ -23,7 +23,7 @@ from typing import Any
 
 import pytest
 
-from factory.api import GateContext, GateResult, LifecycleSnapshot
+from factory.api import GateContext, GateResult, OrderLifecycle
 from factory.bus.models import Message
 from factory.bus.store import BusError, list_bus_paths, load_file
 from tests.fixtures.repo_builder import BaseHeadPair, RepoBuilder, message, order, yaml_text
@@ -156,28 +156,30 @@ def test_blocks_order_events_the_board_would_drop(repo: RepoBuilder) -> None:
 def test_blocks_when_main_derivation_omits_a_head_order(
     repo: RepoBuilder, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The verdict comes from `main`'s derivation: if it drops a valid order, the gate blocks.
+    """The verdict comes from `main`'s derivation: if it loses a valid order, the gate blocks.
 
-    A scanner that reads the head bus without deriving the board passes the valid bus here.
+    `derive_order` is the per-record step that `derive_from_view` also calls, so the gate
+    may derive either way. A scanner that never derives passes the valid bus here.
     """
     derive = importlib.import_module("factory.lifecycle.derive")
-    original = derive.derive_from_view
+    original = derive.derive_order
     calls: list[str] = []
 
-    def without_working(*args: Any, **kwargs: Any) -> LifecycleSnapshot:
-        snapshot: LifecycleSnapshot = original(*args, **kwargs)
-        calls.append("derive_from_view")
-        kept = [item for item in snapshot.orders if item.order_id != WORKING]
-        return snapshot.model_copy(update={"orders": kept})
+    def losing_working(*args: Any, **kwargs: Any) -> OrderLifecycle:
+        item: OrderLifecycle = original(*args, **kwargs)
+        calls.append(item.order_id)
+        if item.order_id != WORKING:
+            return item
+        return item.model_copy(update={"order_id": oid("not-on-the-bus")})
 
     ctx, _ = head_ctx(repo, valid_bus())
     gate = load_gate()
-    monkeypatch.setattr(derive, "derive_from_view", without_working)
+    monkeypatch.setattr(derive, "derive_order", losing_working)
     for name, value in vars(gate).items():
         if value is original:
-            monkeypatch.setattr(gate, name, without_working)
+            monkeypatch.setattr(gate, name, losing_working)
     assert_blocks(ctx, WORKING)
-    assert calls, "the gate never called main's factory.lifecycle.derive.derive_from_view"
+    assert calls, "the gate never called main's factory.lifecycle.derive.derive_order"
 
 
 def test_blocks_a_governor_wait_with_no_recorded_decision(repo: RepoBuilder) -> None:

@@ -1,0 +1,35 @@
+# Orchestrator triage of T* round 2 (wo-20261006-factory-status-test.verdict-02, reject).
+# Recorded by the worker on the orchestrator's instruction (2026-10-06), constitution §J.
+# Dispositions:
+#   T-ST6 accept (Blocker, process), with the reviewer's smallest fix. Root cause: an
+#         implementation symbol stood in for the contract behaviour. The one test
+#         test_blocks_when_main_derivation_omits_a_head_order now wraps and spies on main's
+#         per-record factory.lifecycle.derive.derive_order (and any alias of it in the gate
+#         module) instead of derive_from_view. main's derive_from_view calls derive_order
+#         through the module, so both derivation paths go through the wrapper. The wrapper
+#         renames the WORKING lifecycle; the gate must block naming WORKING and must have
+#         called derive_order. No other test changed; no test added.
+#   T-ST2 resolved (round 2).
+#   T-ST3 still OPEN (Debate, product, who: human); not reviewed in round 2.
+# owned_paths are unchanged (amendment-01). This amendment restates the same
+# stop_conditions with one addition, so the record carries the field it supersedes.
+schema_version: 1
+kind: amendment
+id: wo-20261006-factory-status-test.amend-02
+created: 2026-10-06T08:30:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - specs/001-factory-v2/TEST_REVIEW_STATUS_TEST.md
+  - wo-20261006-factory-status-test.verdict-02
+  - wo-20261006-factory-status-test.amend-01
+  - notes/packets/2026-10-06-factory-status-test.handoff.md
+supersedes: [stop_conditions]
+values:
+  stop_conditions:
+    - Any edit needed outside Owned paths
+    - A frozen interface (factory.api, bus models, lifecycle) is insufficient for the gate
+    - A test cannot be made red by a real assertion
+    - The gate would need to execute head code
+    - The gate cannot reach main's derive_order for every head order
