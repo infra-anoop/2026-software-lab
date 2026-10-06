@@ -26,11 +26,9 @@ test the bundle wrongly lists or omits.
 
 from __future__ import annotations
 
-import importlib
 import json
 import re
 import shlex
-import sys
 import types
 from collections.abc import Callable, Iterator
 from pathlib import Path
@@ -42,6 +40,7 @@ import yaml
 from factory.api import PullRequest
 from factory.cli import exit_codes
 from factory.cli.common import DEPS
+from factory.gates.drift import red_first
 from factory.gates.registry import REGISTRY_PATH, load_registry
 from tests.fixtures.cli_runner import CliResult, FactoryCli
 from tests.fixtures.fake_github import FakeGitHub
@@ -1317,26 +1316,10 @@ def test_validators_run_mains_script_against_the_head_tree(
 # `factory gate evidence` (the untrusted producer)
 # =========================================================================================
 
-RED_FIRST_MODULE = "factory.gates.drift.red_first"
-
 
 def stub_collect_facts(monkeypatch: pytest.MonkeyPatch, function: Callable[..., Any]) -> None:
-    """Slice B's seam `red_first.collect_facts(ctx)`, stubbed when B is not merged yet."""
-    try:
-        module = importlib.import_module(RED_FIRST_MODULE)
-    except ImportError:
-        parent_name = RED_FIRST_MODULE.rsplit(".", 1)[0]
-        try:
-            parent = importlib.import_module(parent_name)
-        except ImportError:
-            parent = types.ModuleType(parent_name)
-            monkeypatch.setitem(sys.modules, parent_name, parent)
-        module = types.ModuleType(RED_FIRST_MODULE)
-        monkeypatch.setitem(sys.modules, RED_FIRST_MODULE, module)
-        monkeypatch.setattr(parent, "red_first", module, raising=False)
-        module.collect_facts = function  # type: ignore[attr-defined]
-    else:
-        monkeypatch.setattr(module, "collect_facts", function, raising=False)
+    """Replace Slice B's real seam `red_first.collect_facts(ctx)` (it must exist)."""
+    monkeypatch.setattr(red_first, "collect_facts", function)
 
 
 def no_github(*args: Any) -> Any:

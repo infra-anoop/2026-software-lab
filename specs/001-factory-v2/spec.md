@@ -229,7 +229,7 @@ As the governor, the factory tooling runs in a fresh repo of mine with only conf
 
 **Intent traceability**
 
-- **FR-023**: Every intent MUST map to ≥1 check (presence — 100% invariant). Effective coverage MUST be computed and reported as the share of intents backed by an implemented, passing non-human check or an explicit governor-judged mapping. (I-N1, I-P4)
+- **FR-023**: Every intent MUST map to ≥1 check (presence — 100% invariant). Effective coverage MUST be computed and reported as the share of intents backed by an implemented, passing non-human check or an explicit governor-judged mapping. A mapping is governor-judged only when it is `kind: human` with `status: exists`; a `planned` human mapping never counts (governor 2026-10-04). (I-N1, I-P4)
 - **FR-024**: PR results MUST be reported per intent id. (I-P4)
 
 **Architecture religion**
@@ -283,7 +283,7 @@ As the governor, the factory tooling runs in a fresh repo of mine with only conf
 - **SC-002 Seeded drift caught**: For each sprint-01 drift pattern (undeclared substitution, declared-but-violated lock, hidden deferral, fake-green tests, test seams in app code, out-of-scope edits, jargon to governor), a seeded-violation PR or message is blocked by machine — 100% of seeds, zero governor involvement. (US3)
 - **SC-003 Hand-off integrity**: For every work order this sprint, the PR's acceptance shows per-intent check results and a different-family reviewer verdict; no work order was issued while depending on an open governor decision; no worker reported done with failing checks. (US2)
 - **SC-004 Override visibility**: 100% of gate overrides carry a reason and appear on the board and in per-gate counts; zero overrides without a reason. (US4)
-- **SC-005 Traceability**: (a) Presence: 100% of intents have ≥1 mapping; removing all mappings from any intent fails the check. (b) Effective coverage: by sprint close, ≥ 90% of intents are backed by an implemented, passing non-human check or an explicit governor-judged mapping. (US5)
+- **SC-005 Traceability**: (a) Presence: 100% of intents have ≥1 mapping; removing all mappings from any intent fails the check. (b) Effective coverage: by sprint close, ≥ 90% of intents are backed by an implemented, passing non-human check or an explicit governor-judged mapping (`kind: human` with `status: exists`). During the sprint coverage is report-only; at sprint close `factory check intent --coverage --require-target` exits 1 below 90% (governor 2026-10-04). (US5)
 - **SC-006 Rules as code**: 100% of MUST/NEVER statements in process docs cite an enforcing check or are marked governor-judged. (US8)
 - **SC-007 Mining loop live**: By sprint close, every governor correction has a record; every repeated correction produced an immediate proposal; the sprint cannot close without a post-mortem dispositioning all corrections. (US7)
 - **SC-008 No bookkeeping commits**: After Wave 1 lands, zero commits whose only change is recording status or SHAs in bus files. (US1)

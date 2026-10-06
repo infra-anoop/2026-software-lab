@@ -1,0 +1,78 @@
+schema_version: 1
+kind: verdict
+id: wo-20261004-factory-slice-b.verdict-02
+created: 2026-10-04T22:58:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - wo-20261004-factory-slice-b.verdict-01
+  - wo-20261004-factory-slice-b.amend-01
+  - specs/001-factory-v2/TEST_REVIEW_SLICE_B.md
+decision: reject
+findings:
+  - id: T-B2-1
+    severity: blocker
+    tag: process
+    text: >-
+      Goal-lock tests cover one synthetic single-value Open Decision row, so
+      parsers that mishandle the lab's real multi-value and multiword status
+      cells can pass while missing named locks or creating false positives.
+  - id: T-B2-2
+    severity: blocker
+    tag: process
+    text: >-
+      Eval-reference tests do not require tracked symlink escapes or malformed
+      supported YAML, JSON, JSONL and wrong-shape files to fail closed.
+  - id: T-B2-3
+    severity: nit
+    tag: process
+    text: >-
+      Strength: five round-one findings are resolved, all target boundaries and
+      five valid eval layouts are executable, counts reproduce, and Ruff is clean.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: specs/001-factory-v2/TEST_REVIEW_SLICE_B.md
+    sha: 21fc8e35bb4875707b1c333abe9177e810fcf07c
+  - path: bus/orders/wo-20261004-factory-slice-b/verdict-01.yaml
+    sha: 21fc8e35bb4875707b1c333abe9177e810fcf07c
+  - path: bus/orders/wo-20261004-factory-slice-b/amendment-01.yaml
+    sha: 21fc8e35bb4875707b1c333abe9177e810fcf07c
+  - path: notes/packets/2026-10-04-factory-v2-slice-b.md
+    sha: 21fc8e35bb4875707b1c333abe9177e810fcf07c
+  - path: notes/packets/2026-10-04-factory-v2-slice-b.handoff.md
+    sha: 21fc8e35bb4875707b1c333abe9177e810fcf07c
+  - path: specs/001-factory-v2/spec.md
+    sha: 21fc8e35bb4875707b1c333abe9177e810fcf07c
+  - path: specs/001-factory-v2/contracts/gates.md
+    sha: 21fc8e35bb4875707b1c333abe9177e810fcf07c
+  - path: specs/001-factory-v2/acceptance.md
+    sha: 21fc8e35bb4875707b1c333abe9177e810fcf07c
+  - path: specs/001-factory-v2/tasks.md
+    sha: 21fc8e35bb4875707b1c333abe9177e810fcf07c
+  - path: scripts/factory/tests/unit/gates/drift/test_fidelity.py
+    sha: 21fc8e35bb4875707b1c333abe9177e810fcf07c
+  - path: scripts/factory/tests/unit/gates/drift/test_decision_ids.py
+    sha: 21fc8e35bb4875707b1c333abe9177e810fcf07c
+  - path: scripts/factory/tests/unit/gates/drift/test_deferral_words.py
+    sha: 21fc8e35bb4875707b1c333abe9177e810fcf07c
+  - path: scripts/factory/tests/unit/gates/drift/test_catalog_linkage.py
+    sha: 21fc8e35bb4875707b1c333abe9177e810fcf07c
+  - path: scripts/factory/tests/contract/test_intent.py
+    sha: 21fc8e35bb4875707b1c333abe9177e810fcf07c
+  - path: specs/002-swv2-durable-evals/spec.md
+    sha: 21fc8e35bb4875707b1c333abe9177e810fcf07c
+  - path: specs/smart-writer-v2/spec.md
+    sha: 21fc8e35bb4875707b1c333abe9177e810fcf07c
+bootstrap: true
+manual_equivalents:
+  - "red-first-proof: focused Slice B suite reproduced 172 failures; full suite reproduced 288 failed and 237 passed with no collection errors or xfails"
+  - "diff-within-owned-paths: round-one remediation paths match amendment-01 and no frozen CP0 file changed"
+  - "test-seam-ban: remediation adds tests and contract/review artifacts only, with no production-source seam"
+  - "order-fidelity-declared: goal-only D1 tests execute, but real Open Decision table diversity remains unpinned as T-B2-1"
+  - "deferral-words-need-od: waived/open/locked sprint pointers, generic OD references, plan and file pointers were reviewed and accepted"
+  - "decision-request-no-ids: modified prompt and label, whole-head judgment, clean edit and untouched legacy controls were reviewed and accepted"
+  - "catalog-test-linkage: five valid eval layouts and named path/id cases were reviewed; symlink and malformed-content gaps recorded as T-B2-2"
+  - "factory-check-intent: report-only mode, 17/19 failure, 9/10 and 19/20 success, and exists-only human mappings were reviewed"
+  - "ruff: nix develop ../.. -c uv run ruff check . passed"

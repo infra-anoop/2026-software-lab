@@ -132,3 +132,32 @@ def load_env(environ: Mapping[str, str] | None = None) -> EnvSettings:
         app_id=env.get("FACTORY_GITHUB_APP_ID") or None,
         app_private_key=SecretStr(key) if key else None,
     )
+
+
+# Names a child interpreter that runs PR code may inherit (red-first; Slice B amend-06).
+# Each name is non-secret plumbing for `uv run` / Python. Credentials, `GITHUB_*` and
+# Actions values, and Python / pytest controls (`PYTHON*`, `PYTEST_*`) are never listed.
+CHILD_ENV_ALLOWLIST = (
+    "PATH",
+    "HOME",
+    "LANG",
+    "LC_ALL",
+    "TZ",
+    "TMPDIR",
+    "TMP",
+    "TEMP",
+    "SSL_CERT_FILE",
+    "NIX_SSL_CERT_FILE",
+    "XDG_CACHE_HOME",
+    "UV_CACHE_DIR",
+    "UV_PYTHON",
+    "UV_PYTHON_DOWNLOADS",
+    "UV_PYTHON_INSTALL_DIR",
+)
+
+
+def child_environment(environ: Mapping[str, str] | None = None) -> dict[str, str]:
+    """Environment for a child process that runs untrusted code: only the names in
+    `CHILD_ENV_ALLOWLIST`, copied from `environ` (defaults to `os.environ`)."""
+    env = os.environ if environ is None else environ
+    return {name: env[name] for name in CHILD_ENV_ALLOWLIST if name in env}

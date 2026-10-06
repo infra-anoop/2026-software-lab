@@ -1,0 +1,65 @@
+schema_version: 1
+kind: verdict
+id: wo-20261004-factory-slice-b.verdict-05
+created: 2026-10-06T01:44:31Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - wo-20261004-factory-slice-b.verdict-04
+  - wo-20261004-factory-slice-b.amend-06
+  - wo-20261004-factory-slice-b.amend-07
+decision: reject
+findings:
+  - id: T-B4-1
+    severity: blocker
+    tag: process
+    text: >-
+      Root-cause class: overlapping identifier namespaces are tested only as
+      disjoint sets. Concrete harm and consequence: an order check whose id
+      names both a registered gate and an unlinked catalog row can be discarded
+      as a gate id, so catalog-test-linkage passes falsely and handoff can
+      proceed while the locked auto-evidence shall remains planned or missing.
+      Likelihood: low under today's naming convention but credible because the
+      schema permits arbitrary strings in checks and does not make the
+      namespaces disjoint; filtering registry ids first greens every current
+      checks-kinds test. Smallest sufficient fix: classify catalog membership
+      first and add one regression case where a catalog row uses a registered
+      gate id with planned evidence and must block naming that row.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: specs/001-factory-v2/PR_REVIEW_SLICE_B.md
+    sha: cd8ec5f3edb55faea130ab3324d4057aee467fc3
+  - path: specs/001-factory-v2/TEST_REVIEW_SLICE_B.md
+    sha: cd8ec5f3edb55faea130ab3324d4057aee467fc3
+  - path: notes/packets/2026-10-04-factory-v2-slice-b.handoff.md
+    sha: cd8ec5f3edb55faea130ab3324d4057aee467fc3
+  - path: specs/001-factory-v2/tasks.md
+    sha: cd8ec5f3edb55faea130ab3324d4057aee467fc3
+  - path: bus/orders/wo-20261004-factory-slice-b/amendment-06.yaml
+    sha: cd8ec5f3edb55faea130ab3324d4057aee467fc3
+  - path: bus/orders/wo-20261004-factory-slice-b/amendment-07.yaml
+    sha: cd8ec5f3edb55faea130ab3324d4057aee467fc3
+  - path: scripts/factory/tests/unit/gates/drift/test_red_first_child_env.py
+    sha: cd8ec5f3edb55faea130ab3324d4057aee467fc3
+  - path: scripts/factory/tests/unit/gates/drift/test_deferral_pointer_targets.py
+    sha: cd8ec5f3edb55faea130ab3324d4057aee467fc3
+  - path: scripts/factory/tests/unit/gates/drift/test_catalog_check_kinds.py
+    sha: cd8ec5f3edb55faea130ab3324d4057aee467fc3
+  - path: scripts/factory/tests/unit/gates/drift/test_red_first_facts.py
+    sha: cd8ec5f3edb55faea130ab3324d4057aee467fc3
+  - path: scripts/factory/tests/unit/gates/drift/test_red_first_base_errors.py
+    sha: cd8ec5f3edb55faea130ab3324d4057aee467fc3
+  - path: scripts/factory/tests/fixtures/repo_builder.py
+    sha: cd8ec5f3edb55faea130ab3324d4057aee467fc3
+bootstrap: true
+manual_equivalents:
+  - "round 4 was explicitly governor-authorized under constitution section J"
+  - "focused final-round tests: 30 failed and 9 passed, exactly the documented red/green split"
+  - "fixture probe: 2 accepted Slice A handoff paths passed and 4 failed only on gate ids being treated as missing catalog rows"
+  - "Slice A handoff and git-safety assertions are unchanged from merged main"
+  - "deferral pointer cases pin regular files, directories, symlinks and gitlinks by tree mode"
+  - "child environment cases cover credentials, Actions values, Python and pytest controls, and an unknown secret name"
+  - "W6 and W7 share one parametrized regression test and expose per-node raw facts"
+  - "no focused-test collection error, hang or material flake was observed"

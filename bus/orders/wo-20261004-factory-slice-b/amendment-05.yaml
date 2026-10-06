@@ -1,0 +1,77 @@
+# Orchestrator triage of the PR #22 code review (wo-20261004-factory-slice-b.verdict-04, reject;
+# specs/001-factory-v2/PR_REVIEW_SLICE_B.md, reviewed head 68eb20c, merged --no-ff at 55dfa3f).
+# Recorded by the Slice B worker on the orchestrator's instruction (2026-10-05).
+#
+# Context: governor lock D5 (trusted-base CI, 2026-10-05). Design on Slice C's branch
+# (origin/wo/wo-20261004-factory-slice-c): plan.md § CI topology and trust boundary,
+# contracts/gates.md § CI topology and trust boundary / Evidence bundle, PLAN_DELTA.md.
+#   - Read-only `pull_request` job: runs the PR's tests and red-first with no secrets and
+#     read-only permissions; uploads the untrusted `factory-evidence` artifact.
+#   - Trusted `workflow_run` job: runs main's gate code, reads the PR head as data only,
+#     validates the evidence, and is the only holder of status write.
+#   - Red-first in Wave 1 is self-reported evidence, labelled as such; the T* reviewer's
+#     re-run is the proof of record. A sealed trusted run comes in Wave 2.
+#
+# Orchestrator decisions:
+#   - PR-B1 (directory pointer bypasses deferral-words): FIX. A `→ <artifact>` pointer counts
+#     only when the artifact is a regular file blob at head (mode 100644 / 100755) or a named
+#     phase. A tracked directory (040000), a tracked symlink (120000, whatever it points at)
+#     and a gitlink (160000) do not count, consistent with eval evidence.
+#   - PR-B3 + PR-B4 (red-first runs PR code with the full environment, outside the D5
+#     boundary): FIX within D5.
+#       * `red_first` becomes the evidence producer used by the read-only job. Its output
+#         matches the evidence-bundle shape in Slice C's contracts/gates.md; if that shape is
+#         not pinned enough, report instead of inventing it.
+#       * The child environment is built from an explicit minimal allowlist at the typed
+#         config / execution boundary. No `os.environ` iteration outside factory.config.
+#         Credentials, GITHUB_* tokens and ambient PYTEST_* / PYTHON* controls never reach
+#         the child.
+#       * Not activated in any status-writing workflow. The trusted-side validator belongs to
+#         Slice C (T094-T097) and is not built here.
+#   - PR-B2 (bootstrap branches carry no WorkOrder, so order gates fail closed on the real PR
+#     context): INVESTIGATE, then propose. Applies to Slices A, B and C. No order file is
+#     added on this branch yet; the orchestrator decides for all three slices.
+#
+# Phase 1 (this amendment): red tests only; accepted tests unchanged.
+#   PR-B1 -> scripts/factory/tests/unit/gates/drift/test_deferral_pointer_targets.py
+#   PR-B4 -> scripts/factory/tests/unit/gates/drift/test_red_first_child_env.py
+#   Evidence-producer shape -> no test: Slice C's contract does not pin it (see
+#     PR_REVIEW_SLICE_B.md § Triage (PR review)).
+#
+# owned_paths restated from amend-04 (amendments supersede whole fields), plus:
+#   specs/001-factory-v2/PR_REVIEW_SLICE_B.md   -> worker: only the `## Triage (PR review)`
+#                                                  section; review text arrives via
+#                                                  review-branch merges
+# Line scope, since owned_paths are globs: unchanged from amend-04 otherwise.
+# Not granted here: factory/config/** (CP0 frozen). Phase 2 of PR-B4 needs an additive
+# child-environment builder there; the worker requests it in the triage section.
+schema_version: 1
+kind: amendment
+id: wo-20261004-factory-slice-b.amend-05
+created: 2026-10-05T15:45:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/packets/2026-10-04-factory-v2-slice-b.md
+  - specs/001-factory-v2/PR_REVIEW_SLICE_B.md
+  - wo-20261004-factory-slice-b.verdict-04
+  - wo-20261004-factory-slice-b.amend-04
+supersedes: [owned_paths]
+values:
+  owned_paths:
+    - "scripts/factory/src/factory/gates/drift/**"
+    - "scripts/factory/src/factory/intent/**"
+    - "scripts/factory/src/factory/cli/intent.py"
+    - "scripts/factory/tests/unit/gates/drift/**"
+    - "scripts/factory/tests/contract/test_intent.py"
+    - "scripts/factory/gates.yaml"
+    - "specs/001-factory-v2/spec.md"
+    - "specs/001-factory-v2/contracts/cli.md"
+    - "specs/001-factory-v2/contracts/gates.md"
+    - "specs/001-factory-v2/acceptance.md"
+    - "specs/001-factory-v2/tasks.md"
+    - "specs/001-factory-v2/TEST_REVIEW_SLICE_B.md"
+    - "specs/001-factory-v2/PR_REVIEW_SLICE_B.md"
+    - "bus/orders/wo-20261004-factory-slice-b/**"
+    - "notes/packets/2026-10-04-factory-v2-slice-b.handoff.md"

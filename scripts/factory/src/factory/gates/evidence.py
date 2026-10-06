@@ -11,7 +11,6 @@ the PR's own run, so every result is `self-reported:`; the T* re-run is the proo
 from __future__ import annotations
 
 import ast
-import importlib
 import json
 import re
 from collections.abc import Iterable
@@ -21,12 +20,12 @@ from typing import Any, Literal, get_args
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from factory.api import GateContext, GateResult
+from factory.gates.drift import red_first as red_first_gate
 from factory.gates.repo._git import GitError, changed, failed, git, read_blobs
 
 GATE_ID = "red-first-proof"
 BUNDLE_FILE = "factory-evidence.json"
 SELF_REPORTED = "self-reported:"
-RED_FIRST_MODULE = "factory.gates.drift.red_first"
 SHA_PATTERN = r"^[0-9a-f]{40}$"
 MISSING_MODULE_RE = re.compile(r"No module named '([\w.]+)'")
 MISSING_NAME_RE = re.compile(r"cannot import name '(\w+)' from '([\w.]+)'")
@@ -87,8 +86,8 @@ def _fact(raw: Any) -> TestFact:
 def produce(ctx: GateContext) -> EvidenceBundle:
     """Serialize Slice B's raw facts; a crash or an unknown outcome is `status: crashed`."""
     try:
-        collect = importlib.import_module(RED_FIRST_MODULE).collect_facts
-        tests = sorted((_fact(raw) for raw in collect(ctx)), key=lambda t: t.node_id)
+        raw_facts = red_first_gate.collect_facts(ctx)
+        tests = sorted((_fact(raw) for raw in raw_facts), key=lambda t: t.node_id)
         red_first = RedFirstFacts(status="ran", error=None, tests=tests)
     except Exception as exc:
         red_first = RedFirstFacts(status="crashed", error=f"{type(exc).__name__}: {exc}", tests=[])

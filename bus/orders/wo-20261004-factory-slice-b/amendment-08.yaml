@@ -1,0 +1,59 @@
+# Orchestrator triage of round-4 T* (verdict-05, reject on one harm Blocker T-B4-1),
+# 2026-10-06. Recorded verbatim by the Slice B worker on the orchestrator's instruction:
+#
+#   My triage (constitution §J, after round 3; the same policy I applied to Slice C).
+#   - Fix now; there is NO fifth T* round. The root-cause class is that `checks`
+#     classification resolves an id to a gate before checking the catalog. The fix:
+#     classify catalog rows FIRST, so an id that is a catalog row is always judged for
+#     linkage, even if it is also a gate id.
+#   - Add exactly ONE regression test for the collision. It is red now and goes in
+#     `test_catalog_check_kinds.py`.
+#   - Verification of this fix moves to the PR code re-review, which I'll scope to it
+#     explicitly.
+#
+#   Then phase 2: implement against the accepted tests (TDD; tests frozen apart from the
+#   one regression test).
+#   - PR-B1: directory, symlink and submodule pointers.
+#   - PR-B4: the child-env allowlist through the approved CP0 `settings.py` builder.
+#   - The `checks`-kinds fix (T105), including catalog-first.
+#   - The `red_first.collect_facts` raw-facts seam.
+#   - T106 (W6/W7): per-file base collection and attribution of submodule imports a PR
+#     adds.
+#   Slice A's four remaining handoff tests should go green. Don't touch Slice C's files,
+#   GitHub settings or branch protection.
+#
+# Regression test: scripts/factory/tests/unit/gates/drift/test_catalog_check_kinds.py::
+#   test_a_catalog_row_sharing_a_gate_id_is_still_judged (red by assertion before the fix).
+# Phase 2 stays within amend-07's owned paths; owned_paths restated unchanged (an
+# amendment must supersede at least one field).
+schema_version: 1
+kind: amendment
+id: wo-20261004-factory-slice-b.amend-08
+created: 2026-10-06T02:10:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - wo-20261004-factory-slice-b.verdict-05
+  - wo-20261004-factory-slice-b.amend-07
+  - specs/001-factory-v2/PR_REVIEW_SLICE_B.md
+supersedes: [owned_paths]
+values:
+  owned_paths:
+    - "scripts/factory/src/factory/gates/drift/**"
+    - "scripts/factory/src/factory/intent/**"
+    - "scripts/factory/src/factory/cli/intent.py"
+    - "scripts/factory/src/factory/config/settings.py"
+    - "scripts/factory/tests/unit/gates/drift/**"
+    - "scripts/factory/tests/contract/test_intent.py"
+    - "scripts/factory/tests/fixtures/repo_builder.py"
+    - "scripts/factory/gates.yaml"
+    - "specs/001-factory-v2/spec.md"
+    - "specs/001-factory-v2/contracts/cli.md"
+    - "specs/001-factory-v2/contracts/gates.md"
+    - "specs/001-factory-v2/acceptance.md"
+    - "specs/001-factory-v2/tasks.md"
+    - "specs/001-factory-v2/TEST_REVIEW_SLICE_B.md"
+    - "specs/001-factory-v2/PR_REVIEW_SLICE_B.md"
+    - "bus/orders/wo-20261004-factory-slice-b/**"
+    - "notes/packets/2026-10-04-factory-v2-slice-b.handoff.md"

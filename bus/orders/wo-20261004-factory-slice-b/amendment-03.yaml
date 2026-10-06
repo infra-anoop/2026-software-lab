@@ -1,0 +1,48 @@
+# Implement-phase amendment after T* round 3 (wo-20261004-factory-slice-b.verdict-03,
+# accept). Recorded by the Slice B worker on the orchestrator's instruction (2026-10-05).
+# Accept-SHA (merge of review/wo-20261004-factory-slice-b-r3, --no-ff):
+#   a68b95d884c65eea1e805835cf54b9b1c17ffdda
+# Governor locks (2026-10-04), letter fidelity, written into the spec and contracts:
+#   (a) a mapping is governor-judged only when it is `kind: human` with `status: exists`;
+#       `planned` never counts -> spec.md FR-023 and SC-005(b)
+#   (b) effective coverage is report-only during the sprint;
+#       `factory check intent --coverage --require-target` exits 1 below 90% and 0 at
+#       or above it -> contracts/cli.md (check intent row) and SC-005(b)
+#   (c) eval evidence `eval:<repo-relative path>#<case-id>` is read as the git blob at
+#       the PR head, never the checkout -> contracts/gates.md catalog-linkage detail;
+#       spec.md FR-018 ("an existing test or eval") already agrees and is not edited
+# Owned paths widen by two spec files; line scope:
+#   specs/001-factory-v2/spec.md            -> only the FR-023 and SC-005(b) lines
+#   specs/001-factory-v2/contracts/cli.md   -> only the `factory check intent` row (split
+#                                              out of the shared `factory check` row)
+# Line scope for the other paths is as stated in amendment-01.yaml.
+schema_version: 1
+kind: amendment
+id: wo-20261004-factory-slice-b.amend-03
+created: 2026-10-05T06:50:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/packets/2026-10-04-factory-v2-slice-b.md
+  - specs/001-factory-v2/TEST_REVIEW_SLICE_B.md
+  - wo-20261004-factory-slice-b.verdict-03
+  - wo-20261004-factory-slice-b.amend-02
+supersedes: [owned_paths]
+values:
+  owned_paths:
+    - "scripts/factory/src/factory/gates/drift/**"
+    - "scripts/factory/src/factory/intent/**"
+    - "scripts/factory/src/factory/cli/intent.py"
+    - "scripts/factory/tests/unit/gates/drift/**"
+    - "scripts/factory/tests/contract/test_intent.py"
+    - "scripts/factory/gates.yaml"
+    - "specs/001-factory-v2/spec.md"
+    - "specs/001-factory-v2/contracts/cli.md"
+    - "specs/001-factory-v2/contracts/gates.md"
+    - "specs/001-factory-v2/acceptance.md"
+    - "specs/001-factory-v2/tasks.md"
+    - "specs/001-factory-v2/TEST_REVIEW_SLICE_B.md"
+    - "bus/orders/wo-20261004-factory-slice-b/**"
+    - "notes/packets/2026-10-04-factory-v2-slice-b.md"
+    - "notes/packets/2026-10-04-factory-v2-slice-b.handoff.md"

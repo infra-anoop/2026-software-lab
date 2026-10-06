@@ -2,7 +2,7 @@
 
 Extensible checks for [`spec.md`](./spec.md) Success Criteria. Grow from runs; do not bury in scripts or prompts.
 
-**Evidence lifecycle (FR-018):** every `auto` row carries `evidence`. The sentinel `planned` is allowed until the work order that implements the row; that work order's PR must not merge until `evidence` names an existing test or eval id.
+**Evidence lifecycle (FR-018):** every `auto` row carries `evidence`. The sentinel `planned` is allowed until the work order that implements the row; that work order's PR must not merge until `evidence` names an existing pytest node id (`<path>::<test>`) or eval case (`eval:<path>#<case-id>`), as defined in [`contracts/gates.md`](./contracts/gates.md) § Catalog-linkage rule detail.
 
 | Field | Meaning |
 |-------|---------|
@@ -13,7 +13,7 @@ Extensible checks for [`spec.md`](./spec.md) Success Criteria. Grow from runs; d
 | when | Preconditions |
 | shall | Failable statement |
 | how | `auto` \| `human` \| `hybrid` |
-| evidence | Test/eval id, or `planned` (see lifecycle), or `n/a` for `human` |
+| evidence | pytest node id `<path>::<test>`, eval case `eval:<path>#<case-id>`, `planned` (see lifecycle), or `n/a` for `human` |
 
 ## Checks
 
@@ -23,14 +23,14 @@ Extensible checks for [`spec.md`](./spec.md) Success Criteria. Grow from runs; d
 | board.matches_reality | SC-001 | I-M4 | must | work orders in each lifecycle state | Board state equals state derived from branch/PR/checks for every order | auto | `scripts/factory/tests/contract/test_status.py::test_status_json_sections_match_each_lifecycle_state`; `scripts/factory/tests/unit/test_lifecycle.py` |
 | bus.no_handwritten_status | SC-001 | I-M2 | must | any bus message | Schema rejects hand-maintained status fields | auto | `scripts/factory/tests/unit/test_bus_models.py::test_forbidden_key_at_top_level`; `scripts/factory/tests/contract/test_status.py::test_status_json_sections_match_each_lifecycle_state` |
 | seed.substitution_undeclared | SC-002 | I-B5 | must | work order touches a named lock without fidelity declaration | Issuing is refused | auto | `scripts/factory/tests/contract/test_orders.py::test_order_new_refuses_touched_named_lock_without_fidelity` |
-| seed.substitution_declared | SC-002 | I-B5 | must | work order declares a letter lock; output uses a different tool/host/thinner behavior | PR blocked | auto | planned |
-| seed.hidden_deferral | SC-002 | I-B6 | must | spec/plan/tasks parks required work without OD reference | PR blocked | auto | planned |
-| seed.not_red_first | SC-002 | I-B7, I-P2 | must | new tests already pass on base | PR blocked | auto | planned |
+| seed.substitution_declared | SC-002 | I-B5 | must | work order declares a letter lock; output uses a different tool/host/thinner behavior | PR blocked | auto | `scripts/factory/tests/seeds/test_seeds.py::test_seed_declared_lock_violated` |
+| seed.hidden_deferral | SC-002 | I-B6 | must | spec/plan/tasks parks required work without OD reference | PR blocked | auto | `scripts/factory/tests/seeds/test_seeds.py::test_seed_hidden_deferral` |
+| seed.not_red_first | SC-002 | I-B7, I-P2 | must | new tests already pass on base | PR blocked | auto | `scripts/factory/tests/seeds/test_seeds.py::test_seed_not_red_first` |
 | seed.code_before_test_review | SC-002 | I-B7, I-P3 | must | work branch changes non-test owned code before a test-review `accept` verdict is on the branch | PR blocked (FR-012b; Wave 2) | auto | planned |
-| seed.test_seam | SC-002 | I-A8 | must | app code adds test-only branching | PR blocked | auto | planned |
-| seed.outside_owned_paths | SC-002 | I-B8 | must | diff touches a path not owned by the order | PR blocked | auto | planned |
-| seed.jargon_to_governor | SC-002 | I-B3 | must | decision request contains task/finding ids or internal jargon | Rejected before it reaches the governor | auto | planned |
-| seed.catalog_unlinked | SC-002 | I-B7 | must | `auto` row reaches its implementing PR still `planned` | PR blocked | auto | planned |
+| seed.test_seam | SC-002 | I-A8 | must | app code adds test-only branching | PR blocked | auto | `scripts/factory/tests/seeds/test_seeds.py::test_seed_test_seam` |
+| seed.outside_owned_paths | SC-002 | I-B8 | must | diff touches a path not owned by the order | PR blocked | auto | `scripts/factory/tests/seeds/test_seeds.py::test_seed_outside_owned_paths` |
+| seed.jargon_to_governor | SC-002 | I-B3 | must | decision request contains task/finding ids or internal jargon | Rejected before it reaches the governor | auto | `scripts/factory/tests/seeds/test_seeds.py::test_seed_decision_request_quotes_an_id` |
+| seed.catalog_unlinked | SC-002 | I-B7 | must | `auto` row reaches its implementing PR still `planned` | PR blocked | auto | `scripts/factory/tests/seeds/test_seeds.py::test_seed_catalog_unlinked` |
 | handoff.per_intent_results | SC-003 | I-G2, I-P4 | must | PR linked to a work order | Results reported per intent id | auto | planned |
 | handoff.reviewer_family | SC-003 | I-P3 | must | verdict on a PR | Reviewer family ≠ author family | auto | `scripts/factory/tests/contract/test_pr_and_verdict.py::test_verdict_refuses_same_family_reviewer` |
 | handoff.reviewer_isolated | SC-003 | I-P3 | must | reviewer spawned | Inputs are git artifacts only; verdict records inputs; no conversation/narrative refs | hybrid | machine half: `scripts/factory/tests/contract/test_pr_and_verdict.py::test_verdict_refuses_input_that_is_not_a_git_path`; `scripts/factory/tests/contract/test_pr_and_verdict.py::test_verdict_refuses_input_absent_from_git` |
@@ -45,8 +45,8 @@ Extensible checks for [`spec.md`](./spec.md) Success Criteria. Grow from runs; d
 | ci.trusted_base | SC-002 | I-G1, I-G5, I-P5 | must | a PR, including one that edits gates, the registry or either workflow (D5, FR-022a) | Its `factory/*` statuses are decided by `main`'s gate code with the head read as data; no job holding `statuses: write` checks out or executes head code; a head edit that makes a gate always pass does not change its own statuses | auto | `scripts/factory/tests/contract/test_ci_trust_boundary.py::test_evidence_workflow_is_read_only_on_pull_request`, `scripts/factory/tests/contract/test_ci_trust_boundary.py::test_gates_workflow_runs_only_on_completed_evidence_runs`, `scripts/factory/tests/contract/test_ci_trust_boundary.py::test_trusted_job_is_exactly_the_allowlist`, `scripts/factory/tests/contract/test_ci_trust_boundary.py::test_trusted_allowlist_rejects_a_step_it_does_not_list`, `scripts/factory/tests/contract/test_ci_trust_boundary.py::test_trusted_job_checks_out_main_only_without_credentials`, `scripts/factory/tests/contract/test_ci_trust_boundary.py::test_trusted_job_downloads_only_the_triggering_runs_evidence`, `scripts/factory/tests/contract/test_ci_trust_boundary.py::test_pull_request_triggers_hold_no_status_write_secret_or_head_execution`, `scripts/factory/tests/contract/test_ci_trust_boundary.py::test_ci_mode_runs_main_registry_whatever_the_head_registry_says`, `scripts/factory/tests/contract/test_ci_trust_boundary.py::test_ci_mode_never_executes_head_code`, `scripts/factory/tests/contract/test_ci_trust_boundary.py::test_validators_run_mains_script_against_the_head_tree`, `scripts/factory/tests/contract/test_ci_trust_boundary.py::test_red_first_fails_closed_on_bad_evidence_and_other_gates_still_run`, `scripts/factory/tests/contract/test_ci_trust_boundary.py::test_moved_head_posts_nothing_and_exits_0` |
 | override.governor_only | SC-004 | I-P9 | must | orchestrator/worker overrides a governor-only gate | Rejected | auto | `scripts/factory/tests/contract/test_gate_run.py::test_governor_only_gate_ignores_orchestrator_override_labelled_drift`, `scripts/factory/tests/contract/test_gate_run.py::test_worker_override_is_not_honored`, `scripts/factory/tests/contract/test_gate_run.py::test_governor_override_needs_verified_identity_in_verified_mode`; `scripts/factory/tests/contract/test_cli_contract.py::test_override_refuses_governor_only_gate_by_non_governor` |
 | gate.hook_has_twin | SC-004 | I-G5 | must | editor hook registered | Repository-side equivalent exists | auto | `scripts/factory/tests/unit/gates/test_registry_checks.py::test_hook_twin_blocks_hook_without_registry_row`, `scripts/factory/tests/unit/gates/test_registry_checks.py::test_hook_twin_blocks_row_without_twin`, `scripts/factory/tests/unit/gates/test_registry_checks.py::test_check_hooks_cli_fails_on_untwinned_hook` |
-| trace.presence | SC-005 | I-P4 | must | intent file | Removing all mappings from any intent fails | auto | planned |
-| trace.effective_coverage | SC-005 | I-N1, I-P4 | must | sprint close | ≥ 90% of intents backed by implemented passing non-human check or governor-judged | auto | planned |
+| trace.presence | SC-005 | I-P4 | must | intent file | Removing all mappings from any intent fails | auto | `scripts/factory/tests/contract/test_intent.py::test_presence_fails_naming_the_intent_whose_mappings_are_all_removed` |
+| trace.effective_coverage | SC-005 | I-N1, I-P4 | must | sprint close | ≥ 90% of intents backed by implemented passing non-human check or governor-judged | auto | `scripts/factory/tests/contract/test_intent.py::test_require_target_fails_below_ninety_percent` |
 | rules.cite_checks | SC-006 | I-P6 | must | governed process documents | Every MUST/NEVER carries `[check: <id>]` or `[governor-judged]` | auto | planned |
 | constitution.c1_shared_code | SC-006 | I-A5 | must | constitution 2.0 | States designed-for-reuse rule with declared consumers | hybrid | planned |
 | constitution.c2_ambiguity_split | SC-006 | I-B1 | must | constitution 2.0 | States split-by-owner ambiguity rule | hybrid | planned |
