@@ -13,14 +13,11 @@ refs:
 summary: |
   T102 (PR-C3): factory-status-test gate implemented over main's lifecycle derivation of
   the head bus (D5: head read as git data only). Tests T*-accepted in round 3 (verdict-03).
-  T-ST3 locked by the governor (amendment-05), verbatim: "T-ST3 = option B, block both
-  (governor, 2026-10-06 09:16 PT). 1. A malformed or unreadable head bus file blocks. This
-  already works through `main`'s strict loader, so keep it. 2. An order waiting on the
-  governor with no recorded decision request on the bus blocks, naming the order and the
-  decision." Rule 1 needs no code (main's loader is strict); rule 2 is implemented.
-  Focused suite 10 passed. Full suite 692 passed, 23 failed (unimplemented CLI commands
-  owned by Slice C, T069, T081). The P0 order folder had no order; amendment-03 adds its
-  FR-037 reconstruction and the gate passes over this repo's head.
+  "T-ST3 = option B, block both (governor, 2026-10-06 09:16 PT)." (verbatim lock in amendment-05)
+  Malformed head bus files block via main's strict loader; a governor wait with no recorded
+  decision request blocks, naming the order and the decision. Focused suite 10 passed; full
+  suite 692 passed, 23 failed (CLI commands owned by Slice C, T069, T081). amendment-03 adds
+  P0's FR-037 order; the gate passes over this repo's head.
   Full detail in notes/packets/2026-10-06-factory-status-test.handoff.md.
 checks_run:
   - gate_or_test: scripts/factory/tests/unit/gates/repo/test_status_test.py
