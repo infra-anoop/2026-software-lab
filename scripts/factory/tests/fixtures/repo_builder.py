@@ -224,9 +224,16 @@ class RepoBuilder:
         self.push("main")
 
     def plant_lab_inputs(self) -> None:
-        """Write the files the repo-level gates read (registry, snapshot, validators)."""
+        """Write the files the repo-level gates read (registry, snapshot, validators).
+
+        A copied file absent from this source tree is not planted: `red-first-proof` runs
+        head tests over a base tree that may predate it, and a fixture setup error there
+        reads as "base broken" rather than red.
+        """
         for relative in LAB_COPIED_FILES:
-            self.write(relative, (REPO_ROOT / relative).read_text(encoding="utf-8"))
+            source = REPO_ROOT / relative
+            if source.is_file():
+                self.write(relative, source.read_text(encoding="utf-8"))
         for relative in LAB_VALIDATORS:
             self.write(relative, LAB_VALIDATOR_STAND_IN)
 
