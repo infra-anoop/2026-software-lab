@@ -194,6 +194,20 @@ P19 resolution, adopted verbatim into T104, `plan.md` and here: "move the sealed
 
 **Not re-run:** coverage is unchanged. No FR, SC or task was added or removed; T104 keeps its FR-012 / SC-002 mapping and its catalog row. The round-2 result stands, minus H3 (closed above): 0 critical, 0 high, medium M1–M6 as filed.
 
+## Round 4 — governor decisions on `main` protection (2026-10-06)
+
+Verbatim text: `tasks.md` T101 and `bus/orders/wo-20261004-factory-slice-c/amendment-07.yaml`.
+
+| Item | Kind | Decision |
+|------|------|----------|
+| Mechanism | governor lock, architecture-affecting (ops surface) | A repository ruleset, not classic branch protection. The Codespace token can read rulesets (200) but not classic protection (403), so T103's read-back goes through `GET /repos/{o}/{r}/rulesets/{id}`. Snapshot and gate move to the ruleset shape: target `main`, empty bypass list, rules `pull_request`, `required_status_checks` (every `{context, integration_id}` pinned to GitHub Actions, P9), `non_fast_forward`, `deletion` |
+| Code-owner review | governor-approved fidelity deviation (§I) | Deferred until the factory's App authors PRs (T065); T101 turns on PR required, required checks, no bypass. `.github/CODEOWNERS` added now. The gate requires code-owner review exactly when `identity.mode = "verified"` (agent's choice of form: T065 state, no new config) |
+
+- **Not a re-plan.** The D5/D6/D8 topology, P9 pinning and the probe-then-pin order are unchanged; only the GitHub settings surface and the snapshot schema change.
+- **Accepted tests amended by governor decision.** The `branch-protection-require-pr` tests in `scripts/factory/tests/unit/gates/test_registry_checks.py` keep their intents in the new shape. Tests added: the new rules (`non_fast_forward`, `deletion`, active ruleset on `refs/heads/main`), code-owner review on and off by identity mode, and the committed snapshot.
+- **Downstream.** T066a (lifecycle reads the branch's required checks) should read them from `GET /repos/{o}/{r}/rules/branches/main`, not the classic endpoint (403). Slice A owns T066a; recorded here, not changed.
+- **`/speckit-analyze`:** not re-run. No FR, SC or task was added or removed; FR-031's governor approval is delayed (fidelity deviation above), not dropped.
+
 ## Forbidden (honored)
 
 - No new feature directory solely for OD fills

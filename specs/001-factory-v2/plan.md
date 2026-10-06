@@ -106,7 +106,7 @@ Today the governor and every agent act as one GitHub account. So "only the gover
 - The `identity` adapter starts in recorded-only mode. When the App is live, it switches to verified mode: a governor-only message counts only when the PR containing it has an approving review from the governor's account.
 - Agents' git pushes and REST calls use 1-hour installation tokens minted by `factory` from the App key: a repo-local credential helper for git, and the `github` adapter for REST. The App has **no `statuses: write`** (D8, 2026-10-05): only CI posts `factory/*` statuses.
 - Secret names `FACTORY_GITHUB_APP_ID` and `FACTORY_GITHUB_APP_PRIVATE_KEY` go in `deploy/secrets/schema.yaml` (Infisical, Codespace target).
-- Branch protection on `main`: required factory checks, plus code-owner review on rule paths (`.github/CODEOWNERS`).
+- Branch protection on `main`: required factory checks, plus code-owner review on rule paths (`.github/CODEOWNERS`). **Amended 2026-10-06 (governor):** a repository ruleset, not classic branch protection; code-owner review is switched on after T065, once the App authors PRs (`PLAN_DELTA.md` § Round 4).
 
 Until the App is live, the board marks governor-only actions **unverified**, and FR-020/FR-031 count as not yet enforced in effective coverage (SC-005b).
 

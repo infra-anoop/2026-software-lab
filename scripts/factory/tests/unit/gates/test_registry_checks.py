@@ -11,18 +11,22 @@ command (`.cursor/hooks/factory-hook.sh <name>`, amendment A1), and the registry
 row `id: <name>` whose `hook_twin_of` names an existing CI gate (a row that is not itself
 a hook row).
 
-Branch protection (I-P10, T066): `deploy/github/branch-protection.json` is the GitHub
-REST "get branch protection" body for `main`. It must require a PR, enforce it for
-admins with no bypass allowances, require code-owner review, and require a
-`factory/<gate-id>` status for every P1 CI gate in the registry. Each of those contexts is
-listed in `required_status_checks.checks` with `app_id` equal to typed config
-`github.actions_app_id`, the GitHub Actions integration (delta P* P9, T094): a context
-without a source, with `-1` (any source) or with another app's id fails.
+Branch protection (I-P10, T066/T101): `deploy/github/branch-protection.json` is the GitHub
+REST "get a repository ruleset" body for the ruleset protecting `main` (governor
+2026-10-06: a repository ruleset, not classic branch protection). It must be an active
+branch ruleset targeting `refs/heads/main` with an empty bypass list and the rules
+`pull_request`, `required_status_checks`, `non_fast_forward` and `deletion`. The required
+checks hold a `factory/<gate-id>` context for every P1 CI gate in the registry, and every
+entry has `integration_id` equal to typed config `github.actions_app_id`, the GitHub
+Actions integration (delta P* P9, T094): an entry without a source, with `-1` (any source)
+or with another app's id fails. Code-owner review is required only once `identity.mode` is
+`verified` (T065: the factory's App authors PRs, so the governor can approve them).
 """
 
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -33,7 +37,7 @@ from factory.cli import exit_codes
 from factory.config.settings import GitHubConfig
 from factory.gates.registry import REGISTRY_PATH, load_registry
 from tests.fixtures.cli_runner import FactoryCli
-from tests.fixtures.repo_builder import RepoBuilder
+from tests.fixtures.repo_builder import REPO_ROOT, RepoBuilder
 from tests.unit.gates.pr.helpers import assert_blocks, assert_passes, raw_context
 
 REGISTRY = "scripts/factory/gates.yaml"
@@ -267,25 +271,68 @@ def actions_app_id() -> int:
     return configured
 
 
-def pinned(contexts: list[str], app_id: int | None = None) -> dict[str, Any]:
-    """`required_status_checks` with every context pinned to one source app (P9)."""
-    source = actions_app_id() if app_id is None else app_id
-    return {"strict": True, "checks": [{"context": c, "app_id": source} for c in contexts]}
+def pinned(contexts: list[str], integration_id: int | None = None) -> dict[str, Any]:
+    """The `required_status_checks` rule, every context pinned to one source app (P9)."""
+    source = actions_app_id() if integration_id is None else integration_id
+    return {
+        "type": "required_status_checks",
+        "parameters": {
+            "strict_required_status_checks_policy": True,
+            "do_not_enforce_on_create": False,
+            "required_status_checks": [{"context": c, "integration_id": source} for c in contexts],
+        },
+    }
+
+
+def pull_request_rule(*, code_owner_review: bool = False) -> dict[str, Any]:
+    return {
+        "type": "pull_request",
+        "parameters": {
+            "required_approving_review_count": 0,
+            "dismiss_stale_reviews_on_push": False,
+            "require_code_owner_review": code_owner_review,
+            "require_last_push_approval": False,
+            "required_review_thread_resolution": False,
+        },
+    }
 
 
 def snapshot(**changes: Any) -> dict[str, Any]:
     body: dict[str, Any] = {
-        "required_status_checks": pinned(required_contexts()),
-        "enforce_admins": {"enabled": True},
-        "required_pull_request_reviews": {
-            "require_code_owner_reviews": True,
-            "required_approving_review_count": 0,
-            "bypass_pull_request_allowances": {"users": [], "teams": [], "apps": []},
-        },
-        "restrictions": None,
+        "name": "main",
+        "target": "branch",
+        "enforcement": "active",
+        "conditions": {"ref_name": {"include": ["refs/heads/main"], "exclude": []}},
+        "bypass_actors": [],
+        "rules": [
+            {"type": "deletion"},
+            {"type": "non_fast_forward"},
+            pull_request_rule(),
+            pinned(required_contexts()),
+        ],
     }
     body.update(changes)
     return body
+
+
+def without_rule(body: dict[str, Any], rule_type: str) -> dict[str, Any]:
+    body["rules"] = [rule for rule in body["rules"] if rule["type"] != rule_type]
+    return body
+
+
+def with_rule(body: dict[str, Any], replacement: dict[str, Any]) -> dict[str, Any]:
+    body["rules"] = [
+        replacement if rule["type"] == replacement["type"] else rule for rule in body["rules"]
+    ]
+    return body
+
+
+def required_checks(body: dict[str, Any]) -> list[dict[str, Any]]:
+    for rule in body["rules"]:
+        if rule["type"] == "required_status_checks":
+            checks: list[dict[str, Any]] = rule["parameters"]["required_status_checks"]
+            return checks
+    raise AssertionError("no required_status_checks rule")
 
 
 def protection_ctx(
@@ -300,8 +347,14 @@ def protection_ctx(
     return head_with(repo, files)
 
 
-def test_branch_protection_passes_on_expected_snapshot(repo: RepoBuilder) -> None:
+def test_branch_protection_passes_on_expected_ruleset(repo: RepoBuilder) -> None:
+    """Recorded identity (before T065): code-owner review off still passes."""
     assert_passes("branch-protection-require-pr", protection_ctx(repo, snapshot()))
+
+
+def test_branch_protection_passes_on_the_committed_snapshot(repo: RepoBuilder) -> None:
+    committed = json.loads((REPO_ROOT / SNAPSHOT).read_text(encoding="utf-8"))
+    assert_passes("branch-protection-require-pr", protection_ctx(repo, committed))
 
 
 def test_branch_protection_blocks_without_head_registry(repo: RepoBuilder) -> None:
@@ -314,32 +367,74 @@ def test_branch_protection_blocks_missing_snapshot(repo: RepoBuilder) -> None:
 
 
 def test_branch_protection_blocks_when_pr_not_required(repo: RepoBuilder) -> None:
-    body = snapshot(required_pull_request_reviews=None)
-    assert_blocks("branch-protection-require-pr", protection_ctx(repo, body))
+    body = without_rule(snapshot(), "pull_request")
+    assert_blocks("branch-protection-require-pr", protection_ctx(repo, body), "pull request")
+
+
+ADMIN_ROLE = {"actor_id": 5, "actor_type": "RepositoryRole", "bypass_mode": "always"}
+AGENT_APP = {"actor_id": 424242, "actor_type": "Integration", "bypass_mode": "pull_request"}
 
 
 def test_branch_protection_blocks_admin_bypass(repo: RepoBuilder) -> None:
-    body = snapshot(enforce_admins={"enabled": False})
-    assert_blocks("branch-protection-require-pr", protection_ctx(repo, body))
+    body = snapshot(bypass_actors=[ADMIN_ROLE])
+    ctx = protection_ctx(repo, body)
+    assert_blocks("branch-protection-require-pr", ctx, "RepositoryRole 5")
 
 
 def test_branch_protection_blocks_bypass_allowance(repo: RepoBuilder) -> None:
-    body = snapshot()
-    body["required_pull_request_reviews"]["bypass_pull_request_allowances"]["users"] = [
-        {"login": "some-agent"}
-    ]
-    assert_blocks("branch-protection-require-pr", protection_ctx(repo, body), "some-agent")
+    body = snapshot(bypass_actors=[AGENT_APP])
+    ctx = protection_ctx(repo, body)
+    assert_blocks("branch-protection-require-pr", ctx, "Integration 424242")
 
 
-def test_branch_protection_blocks_without_code_owner_review(repo: RepoBuilder) -> None:
-    body = snapshot()
-    body["required_pull_request_reviews"]["require_code_owner_reviews"] = False
-    assert_blocks("branch-protection-require-pr", protection_ctx(repo, body))
+@pytest.mark.parametrize("rule_type", ["non_fast_forward", "deletion"])
+def test_branch_protection_blocks_without_branch_rule(repo: RepoBuilder, rule_type: str) -> None:
+    body = without_rule(snapshot(), rule_type)
+    assert_blocks("branch-protection-require-pr", protection_ctx(repo, body), rule_type)
+
+
+@pytest.mark.parametrize(
+    ("label", "changes"),
+    [
+        ("another branch", {"conditions": {"ref_name": {"include": ["refs/heads/dev"]}}}),
+        (
+            "main excluded",
+            {"conditions": {"ref_name": {"include": ["~ALL"], "exclude": ["refs/heads/main"]}}},
+        ),
+        ("no conditions", {"conditions": None}),
+        ("tag ruleset", {"target": "tag"}),
+        ("evaluate only", {"enforcement": "evaluate"}),
+        ("disabled", {"enforcement": "disabled"}),
+    ],
+)
+def test_branch_protection_blocks_ruleset_not_enforced_on_main(
+    repo: RepoBuilder, label: str, changes: dict[str, Any]
+) -> None:
+    assert_blocks("branch-protection-require-pr", protection_ctx(repo, snapshot(**changes)))
+
+
+def verified_repo(tmp_path: Path) -> RepoBuilder:
+    """T065 done: the factory's App authors PRs and `identity.mode` is `verified`."""
+    return RepoBuilder(tmp_path / "verified", identity_mode="verified")
+
+
+def test_branch_protection_blocks_without_code_owner_review_once_identity_verified(
+    tmp_path: Path,
+) -> None:
+    ctx = protection_ctx(verified_repo(tmp_path), snapshot())
+    assert_blocks("branch-protection-require-pr", ctx, "code-owner review")
+
+
+def test_branch_protection_passes_with_code_owner_review_once_identity_verified(
+    tmp_path: Path,
+) -> None:
+    body = with_rule(snapshot(), pull_request_rule(code_owner_review=True))
+    assert_passes("branch-protection-require-pr", protection_ctx(verified_repo(tmp_path), body))
 
 
 def test_branch_protection_blocks_missing_required_gate_status(repo: RepoBuilder) -> None:
     contexts = [c for c in required_contexts() if c != "factory/bus.immutable"]
-    body = snapshot(required_status_checks=pinned(contexts))
+    body = with_rule(snapshot(), pinned(contexts))
     ctx = protection_ctx(repo, body)
     assert_blocks("branch-protection-require-pr", ctx, "factory/bus.immutable")
 
@@ -350,16 +445,20 @@ UNPINNED = "factory/bus.immutable"
 
 
 def unpin(body: dict[str, Any], **check: Any) -> dict[str, Any]:
-    for entry in body["required_status_checks"]["checks"]:
+    for entry in required_checks(body):
         if entry["context"] == UNPINNED:
-            entry.pop("app_id")
+            entry.pop("integration_id")
             entry.update(check)
     return body
 
 
 @pytest.mark.parametrize(
     ("label", "source"),
-    [("no app_id", {}), ("any source", {"app_id": -1}), ("null", {"app_id": None})],
+    [
+        ("no integration_id", {}),
+        ("any source", {"integration_id": -1}),
+        ("null", {"integration_id": None}),
+    ],
 )
 def test_branch_protection_blocks_factory_context_without_pinned_source(
     repo: RepoBuilder, label: str, source: dict[str, Any]
@@ -371,13 +470,15 @@ def test_branch_protection_blocks_factory_context_without_pinned_source(
 def test_branch_protection_blocks_factory_context_pinned_to_another_app(
     repo: RepoBuilder,
 ) -> None:
-    body = unpin(snapshot(), app_id=actions_app_id() + 1)
+    body = unpin(snapshot(), integration_id=actions_app_id() + 1)
     assert_blocks("branch-protection-require-pr", protection_ctx(repo, body), UNPINNED)
 
 
 def test_branch_protection_blocks_context_list_without_sources(repo: RepoBuilder) -> None:
-    """The plain `contexts` list names no source at all."""
-    body = snapshot(required_status_checks={"strict": True, "contexts": required_contexts()})
+    """No entry names a source at all (`{context}` only: any app may satisfy it)."""
+    body = snapshot()
+    for entry in required_checks(body):
+        entry.pop("integration_id")
     assert_blocks("branch-protection-require-pr", protection_ctx(repo, body), UNPINNED)
 
 
@@ -389,7 +490,7 @@ def test_branch_protection_compares_with_the_configured_actions_app_id(repo: Rep
         "factory.toml",
         toml.replace("[github]\n", f"[github]\nactions_app_id = {configured}\n", 1),
     )
-    body = snapshot(required_status_checks=pinned(required_contexts(), configured))
+    body = with_rule(snapshot(), pinned(required_contexts(), configured))
     assert_passes("branch-protection-require-pr", protection_ctx(repo, body))
     repo.git("branch", "-D", "feature/head")
     repo.git("push", "-q", "origin", "--delete", "feature/head")
