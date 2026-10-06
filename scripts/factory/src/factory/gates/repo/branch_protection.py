@@ -4,10 +4,10 @@
 for the ruleset protecting `main` (governor 2026-10-06: a repository ruleset, not classic
 branch protection). At head it must be an active branch ruleset that applies to `main`
 (`refs/heads/main`, `~DEFAULT_BRANCH` or `~ALL`, and not excluded), with no bypass actors
-and the rules `pull_request`, `required_status_checks`, `non_fast_forward` and `deletion`. The required checks hold a
-`factory/<gate-id>` context for every P1 CI gate in the head registry, and every entry is
-pinned to the GitHub Actions app (`integration_id` equal to typed config
-`github.actions_app_id`), so no other identity can satisfy it (P9).
+and the rules `pull_request`, `required_status_checks`, `non_fast_forward` and `deletion`.
+The required checks hold a `factory/<gate-id>` context for every P1 CI gate in the head
+registry, and every entry is pinned to the GitHub Actions app (`integration_id` equal to
+typed config `github.actions_app_id`), so no other identity can satisfy it (P9).
 
 Code-owner review is required only once `identity.mode` is `verified` (T065): until the
 factory's App authors PRs, they are the governor's own and GitHub does not let an author

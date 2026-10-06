@@ -82,6 +82,21 @@ DEMO_SPEC = """\
 | **D1** | The demo app has one deploy host | Which host | human | Before deploy | **locked** (2026-10-01) — **Railway** | content-only | letter |
 """  # noqa: E501
 
+# Inputs the repo-level gates read from `main` and the head (amend-08, CP0 fixture
+# amendment): the real gate registry and `main` ruleset snapshot, and stand-ins for the
+# lab validators, whose real inputs (app registry, Railway manifests, secrets schema) are
+# outside the factory's scope.
+LAB_COPIED_FILES = ("scripts/factory/gates.yaml", "deploy/github/branch-protection.json")
+LAB_VALIDATOR_STAND_IN = """\
+\"\"\"Fixture stand-in for a lab validator: takes `--repo-root`, finds nothing wrong.\"\"\"
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--repo-root")
+parser.parse_args()
+"""
+LAB_VALIDATORS = ("scripts/validate_secrets_schema.py", "scripts/validate_deploy_env.py")
+
 DEMO_TASKS = """\
 # Tasks: demo
 
@@ -189,8 +204,16 @@ class RepoBuilder:
             ),
         )
         self.write("README.md", "# fixture repo\n")
+        self.plant_lab_inputs()
         self.commit("init")
         self.push("main")
+
+    def plant_lab_inputs(self) -> None:
+        """Write the files the repo-level gates read (registry, snapshot, validators)."""
+        for relative in LAB_COPIED_FILES:
+            self.write(relative, (REPO_ROOT / relative).read_text(encoding="utf-8"))
+        for relative in LAB_VALIDATORS:
+            self.write(relative, LAB_VALIDATOR_STAND_IN)
 
     # --- git ------------------------------------------------------------------------
 

@@ -1,0 +1,84 @@
+# Orchestrator decisions of 2026-10-06 (after the governor created ruleset 24554609),
+# recorded by the Slice C worker on the orchestrator's instruction.
+# 1. Snapshot follows the live ruleset: name `main-protection`, include `~DEFAULT_BRANCH`,
+#    strict status-check policy off (the governor's choice), the live `pull_request`
+#    parameters including `required_reviewers` and
+#    `require_extra_approval_for_unattributed_changes`. The snapshot is the live body
+#    without per-edit server metadata, plus the T103 target `factory/*` contexts; the live
+#    rule lacks those until T103 step 3. The gate treats `~DEFAULT_BRANCH` (and `~ALL`) as
+#    targeting `main` and still accepts `refs/heads/main`.
+# 2. CP0 fixture amendment (approved by the orchestrator, "realistic fixtures"):
+#    `RepoBuilder.plant_lab_inputs()` runs by default at init and commits on `main` the
+#    inputs the repo-level gates read: the real `scripts/factory/gates.yaml` and
+#    `deploy/github/branch-protection.json` (copied from the repository), and stand-ins for
+#    `scripts/validate_secrets_schema.py` / `scripts/validate_deploy_env.py` that take
+#    `--repo-root` and exit 0 (the real validators need the lab's app registry, Railway
+#    manifests and secrets schema). Fail-closed gate behaviour and the set of gates
+#    `handoff` runs are unchanged. Tests of a missing input remove it from `main` first
+#    (`drop_from_main` in test_registry_checks.py; same intents).
+# 3. Merge origin/main (Slice B) into this branch, then T100 (full suite in the evidence
+#    workflow) and replace the `sys.modules` stub of `red_first.collect_facts` with the
+#    real seam.
+schema_version: 1
+kind: amendment
+id: wo-20261004-factory-slice-c.amend-08
+created: 2026-10-06T04:26:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - specs/001-factory-v2/tasks.md
+  - wo-20261004-factory-slice-c.amend-07
+supersedes: [owned_paths]
+values:
+  owned_paths:
+    - "scripts/factory/src/factory/gates/runner.py"
+    - "scripts/factory/src/factory/gates/overrides.py"
+    - "scripts/factory/src/factory/gates/retro.py"
+    - "scripts/factory/src/factory/gates/evidence.py"
+    - "scripts/factory/src/factory/gates/pr/**"
+    - "scripts/factory/src/factory/gates/repo/**"
+    - "scripts/factory/src/factory/hooks/**"
+    - "scripts/factory/src/factory/cli/gates.py"
+    - "scripts/factory/src/factory/cli/checks.py"
+    - "scripts/factory/src/factory/cli/app.py"
+    - "scripts/factory/src/factory/api.py"
+    - "scripts/factory/src/factory/config/settings.py"
+    - "scripts/factory/src/factory/github/rest.py"
+    - "scripts/factory/src/factory/orders/review.py"
+    - "scripts/factory/tests/fixtures/fake_github.py"
+    - "scripts/factory/tests/fixtures/repo_builder.py"
+    - "scripts/factory/tests/contract/test_gate_run.py"
+    - "scripts/factory/tests/contract/test_ci_trust_boundary.py"
+    - "scripts/factory/tests/unit/gates/test_registry_checks.py"
+    - "scripts/factory/tests/unit/gates/pr/**"
+    - "scripts/factory/tests/unit/hooks/**"
+    - "scripts/factory/tests/unit/test_github_adapter.py"
+    - "scripts/factory/gates.yaml"
+    - "scripts/factory/pyproject.toml"
+    - "scripts/factory/uv.lock"
+    - "scripts/validate_secrets_schema.py"
+    - "scripts/validate_deploy_env.py"
+    - "deploy/github/branch-protection.json"
+    - ".github/CODEOWNERS"
+    - ".cursor/hooks.json"
+    - ".cursor/hooks/factory-hook.sh"
+    - ".github/workflows/factory-gates.yml"
+    - ".github/workflows/factory-pr-evidence.yml"
+    - ".github/workflows/ci-cd-pipeline.yml"
+    - "specs/001-factory-v2/contracts/hooks.md"
+    - "specs/001-factory-v2/contracts/gates.md"
+    - "specs/001-factory-v2/contracts/cli.md"
+    - "specs/001-factory-v2/acceptance.md"
+    - "specs/001-factory-v2/tasks.md"
+    - "specs/001-factory-v2/spec.md"
+    - "specs/001-factory-v2/plan.md"
+    - "specs/001-factory-v2/research.md"
+    - "specs/001-factory-v2/PLAN_DELTA.md"
+    - "specs/001-factory-v2/PLAN_REVIEW.md"
+    - "specs/001-factory-v2/FINISH_BAR.md"
+    - "specs/001-factory-v2/PR_REVIEW_SLICE_C.md"
+    - "specs/001-factory-v2/TEST_REVIEW_SLICE_C.md"
+    - "bus/orders/wo-20261004-factory-slice-c/**"
+    - "notes/packets/2026-10-04-factory-v2-slice-c.handoff.md"
+    - "notes/packets/2026-10-05-factory-v2-d5-delta-pstar.md"

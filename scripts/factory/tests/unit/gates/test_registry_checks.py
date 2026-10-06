@@ -38,7 +38,7 @@ from factory.cli import exit_codes
 from factory.config.settings import GitHubConfig
 from factory.gates.registry import REGISTRY_PATH, load_registry
 from tests.fixtures.cli_runner import FactoryCli
-from tests.fixtures.repo_builder import REPO_ROOT, RepoBuilder
+from tests.fixtures.repo_builder import LAB_VALIDATORS, REPO_ROOT, RepoBuilder
 from tests.unit.gates.pr.helpers import assert_blocks, assert_passes, raw_context
 
 REGISTRY = "scripts/factory/gates.yaml"
@@ -83,6 +83,15 @@ CI_GATE = row(
 SHELL_GUARD = row("shell-guard", hook_twin_of="branch-protection-require-pr", scope="changed_lines")
 
 
+def drop_from_main(repo: RepoBuilder, *paths: str) -> None:
+    """Remove lab inputs the fixture plants by default, for tests of their absence."""
+    repo.checkout("main")
+    for path in paths:
+        repo.delete(path)
+    repo.commit("drop lab inputs")
+    repo.push("main")
+
+
 def head_with(repo: RepoBuilder, files: dict[str, str | None]) -> GateContext:
     pair = repo.base_head_pair({}, files)
     return raw_context(repo, pair)
@@ -109,6 +118,7 @@ def test_fail_mode_blocks_class_category_mismatch(
 
 
 def test_fail_mode_blocks_missing_head_registry(repo: RepoBuilder) -> None:
+    drop_from_main(repo, REGISTRY)
     ctx = head_with(repo, {"README.md": "# edited\n"})
     assert_blocks("gate.fail-mode-category", ctx, REGISTRY)
 
@@ -126,6 +136,7 @@ def test_fail_mode_blocks_unreadable_head_registry(repo: RepoBuilder) -> None:
 def test_check_registry_cli_fails_without_registry(
     repo: RepoBuilder, factory_cli: FactoryCli
 ) -> None:
+    drop_from_main(repo, REGISTRY)
     result = factory_cli("check", "registry", repo=repo.path)
     assert result.exit_code == exit_codes.GATE_FAILURE, result
     assert REGISTRY in result.stdout + result.stderr
@@ -226,6 +237,7 @@ def test_hook_twin_blocks_hook_that_is_not_a_factory_hook(repo: RepoBuilder) -> 
 
 
 def test_hook_twin_blocks_hooks_without_head_registry(repo: RepoBuilder) -> None:
+    drop_from_main(repo, REGISTRY)
     files: dict[str, str | None] = {
         HOOKS: hooks_text(beforeShellExecution=[factory_hook("shell-guard")]),
     }
@@ -361,11 +373,13 @@ def test_branch_protection_passes_on_the_committed_snapshot(repo: RepoBuilder) -
 
 
 def test_branch_protection_blocks_without_head_registry(repo: RepoBuilder) -> None:
+    drop_from_main(repo, REGISTRY)
     ctx = protection_ctx(repo, snapshot(), with_registry=False)
     assert_blocks("branch-protection-require-pr", ctx, REGISTRY)
 
 
 def test_branch_protection_blocks_missing_snapshot(repo: RepoBuilder) -> None:
+    drop_from_main(repo, SNAPSHOT)
     assert_blocks("branch-protection-require-pr", protection_ctx(repo, None), SNAPSHOT)
 
 
@@ -550,6 +564,7 @@ def test_existing_check_passes_when_script_passes(
 
 @pytest.mark.parametrize("gate_id", ["validate-secrets-schema", "validate-deploy-env"])
 def test_existing_check_fails_when_script_missing(repo: RepoBuilder, gate_id: str) -> None:
+    drop_from_main(repo, *LAB_VALIDATORS)
     pair = repo.base_head_pair({}, {"README.md": "# edited\n"})
     assert_blocks(gate_id, raw_context(repo, pair))
 
