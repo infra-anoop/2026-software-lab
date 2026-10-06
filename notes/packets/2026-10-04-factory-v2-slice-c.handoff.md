@@ -231,3 +231,27 @@ Earlier next steps for the orchestrator:
 - After Slice B's T063, run T064.
 - Spawn the bootstrap verdict.
 - Get governor approval of the `.cursor/` files at PR time.
+
+## Integration (post A+B merge), 2026-10-06
+
+Replacement worker; the previous session hung after `5c925a1` (merge of `main` @ `2a591f9`, Slices A and B; real `red_first.collect_facts` seam; T100).
+
+- **Full suite** (`uv run pytest -q -p no:cacheprovider`): **1034 passed, 9 failed, 3 min 22 s**. Every failure is in `test_cli_contract.py` and belongs to an unbuilt task. No Slice C test is red, and nothing came from the integration.
+  - T102: `test_check_registry_exit_0` and `test_json_envelope[check registry]`. `factory.gates.repo.status_test` doesn't exist yet.
+  - T069: `test_retro_exit_0` and `test_json_envelope[retro]` (`factory retro`: not implemented).
+  - T081: `test_correction_new_exit_0`, `test_sprint_close_refuses_without_postmortem`, `test_sprint_close_refuses_undispositioned_correction`, `test_json_envelope[correction new]` and `test_json_envelope[sprint close]`.
+- **Integration fix (`d78ee66`, fixture only, amend-08 path):** `factory gate run --base origin/main --head HEAD` failed `red-first-proof` on 156 Slice C tests with "base broken: errors before the test body runs".
+  - Cause: `RepoBuilder.plant_lab_inputs()` copied `deploy/github/branch-protection.json`. That file isn't on `main`, so on the base side of the gate (head tests over the base tree) fixture setup raised.
+  - Fix: the fixture now skips a copied lab input that is absent from its source tree. On head both files exist, so head behaviour is unchanged.
+  - Untouched: the gates, the set of gates `handoff` runs, and every test assertion.
+  - After the fix, `--gate red-first-proof` passes.
+- **`factory gate run` against `main`** (before the fix): 19 passed, 6 failed. Excluding `red-first-proof` (fixed above), the five remaining are:
+  - `factory-status-test`: T102.
+  - `validate-secrets-schema` and `validate-deploy-env`: `main`'s copies predate `--repo-root`. This is the known one-time bootstrap failure; they pass once C is the base.
+  - `pr-links-order`: an artifact of the detached-HEAD local run. It passes with `--head origin/wo/wo-20261004-factory-slice-c`.
+  - **`deferral-words-need-od` (Slice B's T045 gate, drift class) is open and needs an orchestrator decision.** It flags 27 lines in this branch's `specs/001-factory-v2/` docs: `TEST_REVIEW_SLICE_C.md`, `PLAN_REVIEW.md`, `PLAN_DELTA.md`, `spec.md` (FR-022a, the D5 row, the P2 "stretch" row), `tasks.md:234`, `contracts/gates.md`, `acceptance.md` and `research.md`.
+    - Several of these lines are governor-verbatim quotes or reviewer-authored findings. Adding `→` pointers would change recorded wording, so I left them as they are.
+    - The choices: an orchestrator override for PR #21, or a docs pass that adds pointers to the agent-authored lines only.
+- **Lint / schema:** `ruff check` and `ruff format --check` (135 files) pass, and `factory check schema` reports `schema ok`.
+- **Snapshot vs live ruleset 24554609:** the live body equals `deploy/github/branch-protection.json` once server metadata is removed, except for the 25 `factory/*` `required_status_checks` entries (`integration_id` 15368). Those exist only in the snapshot, as the T103 step 3 target.
+- **Not done:** PR #21 is still a draft. GitHub settings and rulesets are untouched.
