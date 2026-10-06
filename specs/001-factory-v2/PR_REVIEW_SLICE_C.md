@@ -128,3 +128,78 @@ Recorded 2026-10-05 by the Slice C worker on the orchestrator's instruction, aga
 **Merge order:** A → B → (T101 + T102) → C, with C's merge (T103) after the delta P* review, the T* review of T094–T095, T097–T100 green and D6 locked.
 
 **Next:** spawn the delta P* review of the D5 amendment (`PLAN_REVIEW_PROMPT.md` + `STACK_POSTURE.md`), then red tests T094–T095 and T* (T096). No implementation in this triage run.
+
+## Round 2
+
+Reviewed PR #21 at `28e3aa30fba3992e7182d42dc6db633ba5ad9bf0` under the normal
+round-2 bar in constitution §J.
+
+### Verdict
+
+**Accept with Later items.**
+
+No Blocker remains. The privileged workflow is pinned to `workflow_run`, runs the
+default branch's code, treats the head and its evidence as data, and is the sole holder
+of `statuses: write`. The round-4 T* root cause is fixed once by an exact step/command
+allowlist: `env bash -c`, `command bash -c`, `git -C … checkout`, and an arbitrary
+unlisted command all fail its oracle. The evidence judge, ruleset snapshot/gate, hook
+fallback, and A+B integration seams are fail-closed or advisory exactly where locked.
+
+### Blockers
+
+None.
+
+### Later
+
+| ID | Owner / review point | Finding |
+|----|----------------------|---------|
+| PR-C2-L1 | Slice C / Wave 1 retro | Bind the evidence bundle's full `base_sha` to the trusted run. The judge currently validates its shape but not equality with the base it judges. This is the already-recorded T-C4-2 hardening item; Wave 1 remains explicitly `self-reported:` and the independent T* run is the proof of record. |
+| PR-C2-L2 | Slice C / Wave 1 retro | Prove in the workflow oracle that the evidence producer executable comes from the intended checkout. This is the already-recorded T-C4-3 contract-precision item; it adds no authority to Wave 1's explicitly self-reported bundle. |
+| PR-C2-L3 | Slice C / Wave 1 retro | Normalize exit-zero malformed/non-JSON output from the Nix hook fallback to the hook's quiet fail-open JSON. Hooks are advisory and CI remains authoritative, so the uncovered degraded response is not blocking. |
+| PR-C2-L4 | Factory trust-boundary hardening / Wave 1 retro | `SECRETS_REF` detects `secrets.NAME` but not valid indexed expressions such as `secrets['NAME']` or whitespace variants. The current `factory-pr-evidence.yml` contains no secret reference and has workflow-level `contents: read`, so no credential is exposed in this PR. Extend the detector and its self-check table before relying on it for future workflow edits. |
+
+### Explicit scope checks
+
+- **PR-C1 / D5:** `factory-pr-evidence.yml` is `pull_request`, workflow-level
+  `contents: read`, has no secret reference and cannot post statuses.
+  `factory-gates.yml` is `workflow_run`, checks out the default branch without
+  credentials, downloads only `factory-evidence` from
+  `github.event.workflow_run.id`, runs the default branch's locked factory package,
+  and is the only workflow job with `statuses: write`. `ci-cd-pipeline.yml` now has
+  workflow-level `contents: read`.
+- **Round-4 oracle:** workflow/job/step keys, env names, pinned action identities and
+  `with:` keys are allowlisted; the six steps must be exactly three actions and three
+  parsed commands. The four required bypass/unlisted controls are rejected and the
+  focused trust suite passes.
+- **T097 evidence:** Pydantic uses strict, frozen, `extra="forbid"` models at every
+  level; the loader rejects missing, extra, non-regular, over-size, non-UTF-8,
+  non-JSON and schema-invalid inputs. The judge derives the expected test set from git,
+  rejects duplicates, omissions, additions, a wrong head SHA, producer crashes,
+  non-red bases and non-green heads, and labels success `self-reported:`.
+- **P9:** the live ruleset `24554609` is the RULESET shape recorded in
+  `deploy/github/branch-protection.json`; after removing GitHub server metadata, the
+  only intended delta is the 25 `factory/*` contexts targeted by T103. Every required
+  check is pinned to GitHub Actions integration `15368`. The gate requires code-owner
+  review exactly when `identity.mode == "verified"`, matching amendment-07.
+- **PR-C2:** the hook wrapper tries the project venv, ambient `uv`, then
+  `nix develop`; missing tools or a failed/empty Nix answer returns event-appropriate
+  fail-open JSON and exit 0.
+- **A+B integration:** the REST `get_pr` adapter returns `None` only for 404;
+  handoff skips registry hook rows rather than weakening their CI twins; the secrets
+  regex no longer mistakes filenames for context references (with PR-C2-L4 retained);
+  `RepoBuilder.plant_lab_inputs` plants realistic inputs and skips a source-tree input
+  absent on the copied side; evidence calls the real `red_first.collect_facts` seam.
+- **CODEOWNERS:** the constitution, `AGENTS.md`, Cursor rules, agent-OS docs, factory
+  registry/gate/rubric paths, both factory workflows and CODEOWNERS itself are covered.
+
+### Verification
+
+| Check | Result |
+|-------|--------|
+| `nix develop ../.. -c uv sync --locked` | PASS — 30 locked packages resolved, 29 installed |
+| Full `pytest -q -p no:cacheprovider` | Expected partial red — **1034 passed, 9 failed** in 212.68 s; all nine are the stated T102/T069/T081 `test_cli_contract.py` facts |
+| Focused trust / ruleset / hook / adapter suite | PASS — **133 passed** in 24.05 s |
+| `ruff check .` | PASS |
+| `ruff format --check .` | PASS — 135 files formatted |
+| Live ruleset read | PASS — ruleset `24554609`; live body matches the snapshot apart from snapshot-only T103 `factory/*` targets and omitted server metadata |
+| `git diff --check origin/main...HEAD` | One pre-existing trailing-space line in this review file's original PR URL; no code defect |
