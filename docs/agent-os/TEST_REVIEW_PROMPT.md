@@ -63,7 +63,9 @@ One of: `Approve tests as-is` | `Approve tests with minor edits` | `Do not imple
 
 For every **Debate**, add a tag in Suggested resolution or Finding: **`product`** (changes a shall / user-visible behavior / spend) or **`process`** (SNR, wording, duplicate coverage, test shape without changing product shall). Constitution §F: only **product** Debates + Blockers require human adjudication; **process** Debates may be agent-adjudicated like Nit/Later.
 
-Minimum **4** findings if tests exist. At least **1** Debate. At least **1** strength.
+Minimum **4** findings if tests exist. At least **1** Debate. At least **1** strength. (From round 2 on, findings may be fewer; do not pad.)
+
+**Round budget (constitution §J).** State the round number in your verdict. Every Blocker carries: root-cause class, consequence (what breaks, for whom), likelihood, and the smallest sufficient fix. From **round 3**, a Blocker needs a concrete harm statement (security/credential exposure, data loss, a locked shall broken, or CI that can pass falsely or hang `main`); everything else is **Later**. Prefer one root-cause fix over one test per symptom. Once no harm-bar finding remains, the expected verdict is **approve with recorded Later items**.
 
 ### C. Adversarial positions (required)
 

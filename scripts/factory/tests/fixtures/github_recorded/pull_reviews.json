@@ -1,0 +1,9 @@
+[
+  {
+    "id": 1001,
+    "user": { "login": "fixture-governor" },
+    "state": "APPROVED",
+    "commit_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "submitted_at": "2026-10-07T12:00:00Z"
+  }
+]

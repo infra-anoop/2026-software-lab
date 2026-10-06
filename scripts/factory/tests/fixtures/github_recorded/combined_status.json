@@ -1,0 +1,18 @@
+{
+  "state": "pending",
+  "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "statuses": [
+    {
+      "context": "factory/red-first-proof",
+      "state": "pending",
+      "description": "running",
+      "target_url": "https://ci.test/1"
+    },
+    {
+      "context": "factory/test-seam-ban",
+      "state": "success",
+      "description": "clean",
+      "target_url": null
+    }
+  ]
+}

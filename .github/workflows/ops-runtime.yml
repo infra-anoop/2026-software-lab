@@ -1,15 +1,18 @@
 # Ops runtime: Infisical→Railway sync / full bootstrap via annotated git tags.
 #
-# Preferred agent path (Codespace): push sync/** or bootstrap/** tags
+# Preferred agent path (Codespace): push sync/**, bootstrap/** or db/** tags
 #   nix develop -c uv run scripts/ops_runtime_tag.py sync --app-id <id> --environment production --push
 # Break-glass: workflow_dispatch on sync-runtime-secrets / provision-runtime /
 # verify-runtime-bootstrap (UI). Do not fold into v* ship/deploy.
 #
-# Tag shapes (strict): sync/<app_id>/<environment> | bootstrap/<app_id>/<environment>
-# environment ∈ {production, staging}; app_id must be deploy.enabled.
+# Tag shapes (strict): sync|bootstrap|db/<app_id>/<environment>
+# environment ∈ {production, staging}; sync/bootstrap need a deploy.enabled app;
+# db needs deploy/db/<app_id>.yml declaring that environment (no Railway, no sync).
 #
-# Lifecycle: bootstrap = A26 provision → A23 sync → A24 verify;
-# rotate = sync only; code deploy = v* (unchanged).
+# Lifecycle: bootstrap = A26 provision → database login (when deploy/db/<app>.yml
+# exists) → A23 sync → A24 verify; rotate = sync only; database login / password
+# rotation = db only (scripts/db_bootstrap.py; reads Infisical, never writes it);
+# code deploy = v* (unchanged).
 
 name: Ops runtime
 
@@ -18,6 +21,7 @@ on:
     tags:
       - 'sync/**'
       - 'bootstrap/**'
+      - 'db/**'
 
 permissions:
   contents: read
@@ -41,6 +45,7 @@ jobs:
           --github-output
 
       - name: Select Railway token (workspace preferred)
+        if: ${{ steps.tag.outputs.kind != 'db' }}
         run: |
           if [ -n "${{ secrets.RAILWAY_WORKSPACE_TOKEN }}" ]; then
             echo "RAILWAY_TOKEN_EFFECTIVE=${{ secrets.RAILWAY_WORKSPACE_TOKEN }}" >> "$GITHUB_ENV"
@@ -54,7 +59,7 @@ jobs:
           fi
 
       - name: Infisical auth (OIDC preferred)
-        # Needed for sync apply (both sync and bootstrap paths).
+        # Read-only Infisical token for sync apply and the database login step.
         env:
           INFISICAL_MACHINE_IDENTITY_ID: ${{ vars.INFISICAL_MACHINE_IDENTITY_ID }}
         run: |
@@ -83,7 +88,17 @@ jobs:
           --environment "${{ steps.tag.outputs.environment }}"
           --apply
 
+      - name: Database login (ensure) — db, or bootstrap with deploy/db/<app>.yml
+        if: ${{ steps.tag.outputs.kind == 'db' || steps.tag.outputs.db_bootstrap == 'true' }}
+        env:
+          INFISICAL_TOKEN: ${{ env.INFISICAL_TOKEN }}
+        run: >
+          uv run scripts/db_bootstrap.py ensure
+          --app-id "${{ steps.tag.outputs.app_id }}"
+          --environment "${{ steps.tag.outputs.environment }}"
+
       - name: Sync (apply)
+        if: ${{ steps.tag.outputs.kind != 'db' }}
         env:
           RAILWAY_TOKEN: ${{ env.RAILWAY_TOKEN_EFFECTIVE }}
           INFISICAL_TOKEN: ${{ env.INFISICAL_TOKEN }}

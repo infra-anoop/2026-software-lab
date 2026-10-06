@@ -28,6 +28,11 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_PATH = REPO_ROOT / "deploy" / "secrets" / "schema.yaml"
 REQUIRED_PROVIDER = "infisical_cloud"
 MUST_HAVE_SECRET = "LOGFIRE_TOKEN"
+# Repo tooling (not registry apps): tool id -> names its typed settings read.
+TOOLING_CATALOGS: dict[str, frozenset[str]] = {
+    "factory": frozenset({"FACTORY_GITHUB_APP_ID", "FACTORY_GITHUB_APP_PRIVATE_KEY"}),
+}
+TOOLING_TARGETS = frozenset({"codespace"})
 
 
 def _err(msg: str) -> None:
@@ -147,6 +152,40 @@ def validate_schema(
     if mystery_apps:
         errors.append(f"applications has non-deploy-enabled ids: {mystery_apps}")
 
+    if "tooling" in schema:
+        errors.extend(validate_tooling(schema["tooling"]))
+
+    return errors
+
+
+def validate_tooling(raw: object) -> list[str]:
+    """Optional `tooling:` block: repo tools (not apps) and the secret names they read."""
+    block = _as_mapping(raw, "tooling")
+    if isinstance(block, str):
+        return [block]
+    errors: list[str] = []
+    for tool_id, body in sorted(block.items()):
+        label = f"tooling.{tool_id}"
+        catalog = TOOLING_CATALOGS.get(tool_id)
+        if catalog is None:
+            errors.append(f"{label}: unknown tool (known: {sorted(TOOLING_CATALOGS)})")
+            continue
+        entry = _as_mapping(body, label)
+        if isinstance(entry, str):
+            errors.append(entry)
+            continue
+        if entry.get("target") not in TOOLING_TARGETS:
+            errors.append(f"{label}.target must be one of {sorted(TOOLING_TARGETS)}")
+        secrets = _secret_entries(entry.get("secrets"), f"{label}.secrets")
+        if isinstance(secrets, str):
+            errors.append(secrets)
+            continue
+        names = [str(s["name"]) for s in secrets]
+        if len(names) != len(set(names)):
+            errors.append(f"{label}: duplicate secret names")
+        unknown = sorted(set(names) - catalog)
+        if unknown:
+            errors.append(f"{label}: names {tool_id} does not read: {unknown}")
     return errors
 
 

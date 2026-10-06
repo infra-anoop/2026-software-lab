@@ -1,0 +1,64 @@
+# Orchestrator triage of T* round 1 (wo-20261004-factory-slice-a.verdict-01, reject).
+# Recorded by the Slice A worker on the orchestrator's instruction (2026-10-04).
+# Agent-adjudicated: T-A1..T-A3 and T-A5..T-A9 are process-tagged; T-A4 strengthens evidence
+# for the already-locked D4-A (GitHub App identity, letter) and needs no new governor decision.
+# Dispositions (all accepted with the reviewer's suggested resolution):
+#   T-A1 accept: board test pins one section, rendered state and overlays per fixture order
+#   T-A2 accept: first branch-only commit (rev-list --reverse origin/main..), parent origin/main
+#   T-A3 accept: status POST captured and asserted; read-back reflects captured writes
+#   T-A4 accept: RS256 verified with the generated public key; iss, iat/exp bounds,
+#                installation path, recorded expiry surfaced and an expired token refused
+#   T-A5 accept: full required-check set; failed/pending/missing/mixed stay in_review
+#   T-A6 accept: completed-wave exit date + five-working-day boundary
+#   T-A7 accept: two fresh + one stale claim; fourth claim exits 2
+#   T-A8 accept: valid verdict commit path; nonexistent path and nonexistent sha refused
+#   T-A9 accept: red-first shape kept (call-site failures; no collection errors; no xfail)
+# owned_paths are globs, so line scope is stated here and in the packet:
+#   specs/001-factory-v2/TEST_REVIEW_SLICE_A.md   -> worker: only the Triage sections;
+#                                                    reviewer round sections arrive via review-branch merges
+#   bus/orders/wo-20261004-factory-slice-a/**     -> verdicts (reviewer; worker transcription only
+#                                                    on orchestrator instruction) and amendments (orchestrator)
+#   specs/001-factory-v2/acceptance.md            -> only this slice's evidence cells
+#   specs/001-factory-v2/tasks.md                 -> only this slice's checkboxes
+schema_version: 1
+kind: amendment
+id: wo-20261004-factory-slice-a.amend-01
+created: 2026-10-04T16:30:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/packets/2026-10-04-factory-v2-slice-a.md
+  - specs/001-factory-v2/TEST_REVIEW_SLICE_A.md
+  - wo-20261004-factory-slice-a.verdict-01
+supersedes: [owned_paths]
+values:
+  owned_paths:
+    - "scripts/factory/src/factory/lifecycle/**"
+    - "scripts/factory/src/factory/board/**"
+    - "scripts/factory/src/factory/metrics/**"
+    - "scripts/factory/src/factory/github/**"
+    - "scripts/factory/src/factory/identity/**"
+    - "scripts/factory/src/factory/orders/**"
+    - "scripts/factory/src/factory/cli/board.py"
+    - "scripts/factory/src/factory/cli/orders.py"
+    - "scripts/factory/tests/contract/test_status.py"
+    - "scripts/factory/tests/contract/test_orders.py"
+    - "scripts/factory/tests/contract/test_claim.py"
+    - "scripts/factory/tests/contract/test_handoff.py"
+    - "scripts/factory/tests/contract/test_pr_and_verdict.py"
+    - "scripts/factory/tests/contract/test_bus_pr.py"
+    - "scripts/factory/tests/unit/test_lifecycle.py"
+    - "scripts/factory/tests/unit/test_github_adapter.py"
+    - "scripts/factory/tests/unit/test_no_bookkeeping.py"
+    - "scripts/factory/tests/unit/test_scorecard.py"
+    - "scripts/factory/tests/unit/test_identity.py"
+    - "scripts/factory/tests/fixtures/github_recorded/**"
+    - "deploy/secrets/schema.yaml"
+    - "scripts/validate_secrets_schema.py"
+    - "scripts/test_validate_secrets_schema.py"
+    - "specs/001-factory-v2/acceptance.md"
+    - "specs/001-factory-v2/tasks.md"
+    - "specs/001-factory-v2/TEST_REVIEW_SLICE_A.md"
+    - "bus/orders/wo-20261004-factory-slice-a/**"
+    - "notes/packets/2026-10-04-factory-v2-slice-a.handoff.md"

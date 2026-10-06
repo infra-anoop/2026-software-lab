@@ -78,6 +78,8 @@ SAME_REPOSITORY = (
     "github.event.workflow_run.head_repository.full_name == github.repository",
 )
 RUNNER_TEMP = "${{ runner.temp }}"
+# The `secrets` context, not a path or file name that merely ends in "secrets".
+SECRETS_REF = re.compile(r"(?<![\w./-])secrets\.\w+")
 
 BUNDLE_FILE = "factory-evidence.json"
 RED_FIRST = "red-first-proof"
@@ -441,7 +443,7 @@ def pull_request_problems(workflow: dict[str, Any], text: str) -> list[str]:
     if not {"pull_request", "pull_request_target"} & set(triggers(workflow)):
         return []
     problems = [f"{name}: can write statuses" for name in status_writers(workflow)]
-    problems += [f"references {ref}" for ref in sorted(set(re.findall(r"secrets\.\w+", text)))]
+    problems += [f"references {ref}" for ref in sorted(set(SECRETS_REF.findall(text)))]
     return problems
 
 
@@ -543,6 +545,9 @@ def check_pull_request_oracles() -> None:
     for workflow in PR_ALLOWED:
         assert not pull_request_problems(workflow, ""), workflow
     assert pull_request_problems(PR_ALLOWED[0], "token: ${{ secrets.DEPLOY_TOKEN }}")
+    assert pull_request_problems(PR_ALLOWED[0], "token: ${{secrets.DEPLOY_TOKEN}}")
+    for path in ("scripts/test_sync_runtime_secrets.py", "app/secrets.py", "x-secrets.yaml"):
+        assert not pull_request_problems(PR_ALLOWED[0], f"run: pytest {path}"), path
 
 
 # =========================================================================================
@@ -564,7 +569,7 @@ def test_evidence_workflow_is_read_only_on_pull_request() -> None:
     for name, job in jobs(workflow).items():
         assert job.get("permissions", {"contents": "read"}) == {"contents": "read"}, name
     text = EVIDENCE_WORKFLOW.read_text(encoding="utf-8")
-    assert not re.findall(r"secrets\.\w+", text), "the evidence workflow references secrets"
+    assert not SECRETS_REF.findall(text), "the evidence workflow references secrets"
     for name, job in jobs(workflow).items():
         for step in steps(job):
             run = str(step.get("run") or "")

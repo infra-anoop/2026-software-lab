@@ -1,0 +1,67 @@
+schema_version: 1
+kind: verdict
+id: wo-20261004-factory-slice-a.verdict-07
+created: 2026-10-05T14:40:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - wo-20261004-factory-slice-a.verdict-06
+  - wo-20261004-factory-slice-a.amend-07
+decision: reject
+findings:
+  - id: T-A6-1
+    severity: blocker
+    tag: process
+    text: >-
+      The receive-pack wrapper, arrival poll, and Future.result calls have
+      explicit deadlines, but the factory commands still run inside
+      ThreadPoolExecutor context managers. If a command hangs after release,
+      Future.result(timeout=...) raises and executor __exit__ immediately calls
+      shutdown(wait=True), which waits without a bound for the same running
+      future. Thus the deterministic barrier can still hang pytest indefinitely
+      and does not meet the requirement that every wait be bounded. Run held
+      commands in a killable process/subprocess with deadline termination, or
+      provide an equivalent hard test-wide timeout that interrupts executor
+      shutdown while preserving the current release ordering and advertisement
+      assertions.
+  - id: T-A6-2
+    severity: nit
+    tag: process
+    text: >-
+      The round-5 scheduling race is otherwise resolved. Both clients reach
+      receive-pack before either receives an advertisement, claimer 1 exits
+      before claimer 2 is released, and object-presence plus advertised-ref
+      assertions distinguish PR-A7 fetch-first rejection from PR-A8 up-to-date.
+      Twelve fresh repetitions produced the identical intended current-code
+      outcomes.
+  - id: T-A6-3
+    severity: nit
+    tag: process
+    text: >-
+      T-A5-2 is resolved. The PR-A2 suite now covers handoff and verdict with the
+      order branch checked out, a linked-worktree checkout, successful CAS of a
+      non-checked-out branch, divergence before command and during push, and a
+      remote move after event construction. Every red case fails at its stated
+      current-code seam; the successful non-checked-out CAS case is an intended
+      green guard. The suite remains jointly satisfiable.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: bus/orders/wo-20261004-factory-slice-a/amendment-07.yaml
+    sha: d8f2c471b178444b1815d99255374ea4326d11c7
+  - path: scripts/factory/tests/contract/push_barrier.py
+    sha: d8f2c471b178444b1815d99255374ea4326d11c7
+  - path: scripts/factory/tests/contract/test_claim.py
+    sha: d8f2c471b178444b1815d99255374ea4326d11c7
+  - path: scripts/factory/tests/contract/test_git_safety.py
+    sha: d8f2c471b178444b1815d99255374ea4326d11c7
+  - path: specs/001-factory-v2/TEST_REVIEW_SLICE_A.md
+    sha: d8f2c471b178444b1815d99255374ea4326d11c7
+bootstrap: true
+manual_equivalents:
+  - "full suite expected red: 100 failed, 343 passed; no collection errors or xfails"
+  - "12 of 12 synchronized repetitions: atomic race passed, PR-A7 failed [0, 4], PR-A8 failed [0, 0]"
+  - "focused PR-A2 and barrier run: 11 failed, 1 intended green CAS guard"
+  - "factory check schema passed before verdict-07"
+  - "no scripts/factory/src changes since ea6a554; bus changes are additions only"

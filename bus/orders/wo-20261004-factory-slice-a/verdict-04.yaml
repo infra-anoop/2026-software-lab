@@ -1,0 +1,58 @@
+schema_version: 1
+kind: verdict
+id: wo-20261004-factory-slice-a.verdict-04
+created: 2026-10-04T19:09:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - wo-20261004-factory-slice-a.verdict-03
+  - wo-20261004-factory-slice-a.amend-03
+decision: accept
+findings:
+  - id: T-A4-1
+    severity: nit
+    tag: process
+    text: >-
+      The empty-check refusal meets the contract, but its no-internal-IDs assertion
+      spot-checks only T026 and FR-011. Reuse the complete id-pattern set when next
+      touching the test; this does not block implementation.
+  - id: T-A4-2
+    severity: nit
+    tag: process
+    text: >-
+      Strength: issuance and lifecycle independently prevent empty-check
+      acceptance, Slice A helpers carry a real gate, T066a makes the deferred
+      required-run work failable, and amendment 03 faithfully records the triage.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: specs/001-factory-v2/TEST_REVIEW_SLICE_A.md
+    sha: e42b379a6f0fc3d8f7a6306fd0b6cd1bf2da9b2a
+  - path: bus/orders/wo-20261004-factory-slice-a/verdict-03.yaml
+    sha: e42b379a6f0fc3d8f7a6306fd0b6cd1bf2da9b2a
+  - path: bus/orders/wo-20261004-factory-slice-a/amendment-03.yaml
+    sha: e42b379a6f0fc3d8f7a6306fd0b6cd1bf2da9b2a
+  - path: specs/001-factory-v2/spec.md
+    sha: e42b379a6f0fc3d8f7a6306fd0b6cd1bf2da9b2a
+  - path: specs/001-factory-v2/data-model.md
+    sha: e42b379a6f0fc3d8f7a6306fd0b6cd1bf2da9b2a
+  - path: specs/001-factory-v2/tasks.md
+    sha: e42b379a6f0fc3d8f7a6306fd0b6cd1bf2da9b2a
+  - path: scripts/factory/tests/unit/test_lifecycle.py
+    sha: e42b379a6f0fc3d8f7a6306fd0b6cd1bf2da9b2a
+  - path: scripts/factory/tests/contract/test_orders.py
+    sha: e42b379a6f0fc3d8f7a6306fd0b6cd1bf2da9b2a
+  - path: scripts/factory/tests/contract/test_handoff.py
+    sha: e42b379a6f0fc3d8f7a6306fd0b6cd1bf2da9b2a
+  - path: scripts/factory/tests/contract/test_pr_and_verdict.py
+    sha: e42b379a6f0fc3d8f7a6306fd0b6cd1bf2da9b2a
+  - path: scripts/factory/tests/contract/test_cli_contract.py
+    sha: e42b379a6f0fc3d8f7a6306fd0b6cd1bf2da9b2a
+bootstrap: true
+manual_equivalents:
+  - "red-first-proof: Slice A 11-file run produced 66 failed, 0 passed, with no collection errors or xfails"
+  - "full suite expected red: 182 failed, 237 passed, with no collection errors or xfails"
+  - "ruff check and ruff format check passed"
+  - "factory check schema passed before verdict-04 and will be rerun with verdict-04 present"
+  - "diff-within-owned-paths: round-4 reviewer writes only the review section and verdict-04 in amendment-03-owned paths"
