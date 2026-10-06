@@ -124,6 +124,12 @@ def run(ctx: GateContext) -> GateResult:
         return failed([f"cannot derive the board from the head bus: {exc}"])
     except git.GitError as exc:
         return failed([f"cannot read the head commit {ctx.head_sha}: {exc}"])
+    except Exception as exc:  # noqa: BLE001 - fail closed: no exception escapes the gate
+        path = getattr(exc, "path", None)
+        where = f" in {path}" if path else ""
+        return failed(
+            [f"cannot derive the board from head {ctx.head_sha}: {type(exc).__name__}{where}"]
+        )
     if problems:
         return failed(problems)
     return passed("every order folder on the head bus is on main's derived board")

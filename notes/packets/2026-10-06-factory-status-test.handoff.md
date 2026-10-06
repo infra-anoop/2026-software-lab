@@ -142,3 +142,17 @@ P0's first verdict was a reject, so unscoped rework loops rise by one. Wave 1 st
 **Wave 1 exit implication.** No retro has landed, so in the unscoped view P0 joins the Wave 1 cohort. The exit then also needs a P0 run record (`run_complete`), as it already needs one for every other cohort order. No order has one today. The sprint-scoped view is untouched, since no order cites the sprint file.
 
 **Full suite after the change:** 690 passed, 24 failed. These are the same 24 as in § Implementation: the parked T-ST3 test, and 23 CLI commands not implemented on `main` (Slice C, T069, T081). Ruff and `factory check schema` pass.
+
+## PR code review round 1 (`verdict-04`, reject; triage in `amendment-04`)
+
+- **PR-ST1, accepted (Blocker): unexpected exceptions escaped `run`.** An invalid UTF-8 head bus blob raised `UnicodeDecodeError`.
+  - **Fix:** one catch-all at the `run` boundary. Any exception other than the `BusError` and `GitError` already handled returns a failed `GateResult`. The result names the error type, the head sha, and the file when the exception carries a `path`; the exception text is not echoed.
+  - **Regression:** `test_fails_closed_on_an_unexpected_error_reading_the_head` (invalid UTF-8 in a head bus file). It was red at `d011497` ("raised instead of failing closed: UnicodeDecodeError") and is green at `c4b038f`.
+  - This is a **PR-review fix, not a T* change**; the T*-accepted tests are unchanged.
+- **PR-ST-L1, accepted as Later, owner Slice C (trusted-job resource limits).** Git object reads have no subprocess timeout, and bus blobs have no size bound before UTF-8/YAML parsing. This should be addressed once, in the shared git/bus loader and the trusted job, not in this gate.
+
+**Results at `c4b038f`:**
+- Focused file: 9 passed, 1 failed (the parked T-ST3 test).
+- Full suite: **691 passed, 24 failed**. The 24 are the same as before: 1 parked T-ST3 test, and 23 CLI commands not implemented on `main` (Slice C, T069, T081).
+- `ruff check`, `ruff format --check` and `factory check schema` pass.
+- Manual gate run over this repo's head (`c4b038f`, base `2a591f9`): **passes**.

@@ -254,6 +254,22 @@ def test_fails_closed_on_a_malformed_bus_file(repo: RepoBuilder, path: str, text
     assert_blocks(ctx, path)
 
 
+def test_fails_closed_on_an_unexpected_error_reading_the_head(repo: RepoBuilder) -> None:
+    """PR review round 1 (PR-ST1), not a T* change: invalid UTF-8 in a head bus file.
+
+    Any exception inside the gate becomes a failed result naming its type and the head.
+    """
+    pair = repo.base_head_pair({}, valid_bus(), head_branch=f"wo/{oid('status-under-test')}")
+    repo.checkout(pair.head_branch)
+    (repo.path / f"bus/orders/{READY}/claim.yaml").write_bytes(b"kind: claim\nid: \xff\xfe\n")
+    head = repo.commit("invalid utf-8")
+    repo.checkout("main")
+    ctx = GateContext(
+        repo_path=repo.path, base_sha=pair.base_sha, head_sha=head, config=repo.settings
+    )
+    assert_blocks(ctx, "UnicodeDecodeError", head[:7])
+
+
 def test_fails_closed_when_the_head_commit_is_unreadable(repo: RepoBuilder) -> None:
     _, pair = head_ctx(repo, valid_bus())
     missing = "f" * 40
