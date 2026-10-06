@@ -121,3 +121,16 @@ the malformed-bus or missing-decision product rules.
 - Ruff check and format check: pass.
 - Delta inspection: only the oracle sabotage moved from `derive_from_view` to
   `derive_order`; the remaining tests are unchanged.
+
+## Triage
+
+Rounds 1 and 2 were triaged by the orchestrator in `wo-20261006-factory-status-test.amend-01` (T-ST1 and T-ST2 accepted, T-ST4 noted, T-ST5 accepted as Later) and `.amend-02` (T-ST6 accepted). The product Debate T-ST3 was locked by the **governor on 2026-10-06**, recorded in `.amend-05`. The tests are frozen; none was added or changed for the lock.
+
+| ID | Disposition | Decided by | Resolution |
+|----|-------------|------------|------------|
+| T-ST1 | accept | orchestrator (process) | `test_blocks_when_main_derivation_omits_a_head_order` added (`amend-01`), reworked under T-ST6 |
+| T-ST2 | accept | orchestrator (process) | `test_executes_no_head_code` poisons the head `factory` package (`amend-01`); resolved in round 2 |
+| T-ST3 | **closed: option B, governor 2026-10-06** | governor (product) | Verbatim: "T-ST3 = option B, block both (governor, 2026-10-06 09:16 PT). 1. A malformed or unreadable head bus file blocks. This already works through `main`'s strict loader, so keep it. 2. An order waiting on the governor with no recorded decision request on the bus blocks, naming the order and the decision." Rule 1: `test_fails_closed_on_a_malformed_bus_file` passes with no added code. Rule 2: `test_blocks_a_governor_wait_with_no_recorded_decision` passes; the gate blocks each open dependency of a `blocked_on_governor` board entry that has no decision request on the head bus |
+| T-ST4 | noted — strength | orchestrator (process) | Controls kept |
+| T-ST5 | accept (Later) | orchestrator (process) | Bootstrap manual equivalent recorded in the handoff note |
+| T-ST6 | accept | orchestrator (process) | Sabotage and spy moved to `derive_order` (`amend-02`) |
