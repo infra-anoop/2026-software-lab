@@ -1,6 +1,6 @@
 # Handoff — `wo-20261006-factory-status-test` (T102, PR-C3)
 
-**Phase:** 1 of 2: red tests only (constitution §V). No implementation. T* round 1 rejected the tests (`verdict-01`); its Blockers are fixed (see § T* round 1). Next: the T* round 2 review and the governor's T-ST3 choice, then implement `factory.gates.repo.status_test:run` and fill the I-M4 `board.matches_reality` evidence in `acceptance.md`.
+**Phase:** 2 of 2: implemented (see § Implementation). T* rounds 1 and 2 rejected and round 3 accepted (`verdict-03`); the tests are frozen. Waiting on the governor's T-ST3 choice and on a P0 order record (§ Manual equivalent).
 
 **Branch:** `wo/wo-20261006-factory-status-test` from `origin/main` `2a591f9` (Slices A and B merged). No PR opened.
 
@@ -71,3 +71,43 @@ Step 2 runs this branch's gate code, not `main`'s. That is the D5 bootstrap exce
 - **T-ST2:** resolved.
 - **T-ST3:** still open for the governor; not reviewed this round.
 - **Red:** 9 of 9 on the not-implemented assertion, with no collection errors.
+
+## Implementation (after T* round 3 accept, `verdict-03`)
+
+`scripts/factory/src/factory/gates/repo/status_test.py`, `run(ctx)`, uses `main`'s installed code only:
+
+1. If `head_sha` does not resolve to a commit, the gate fails and names the sha.
+2. It lists the head's bus with `factory.bus.store.list_bus_paths` (a git `ls-tree` at the sha). The order folders are the ids under `bus/orders/<id>/`.
+3. It builds a head-only `BusView` with `main`'s strict read model (`factory.lifecycle.view.load_messages` / `load_order` at the head sha; `main_ref` = the head, `on_main` judged against `base_sha`).
+4. It derives with `factory.lifecycle.derive.derive_from_view`, which calls `derive_order` per record. It uses an offline `GitHubPort` with no PRs, reviews, checks or statuses (it writes nothing), and `now` is the head commit time.
+5. It blocks, naming the gate, when an order folder is missing from the derived board, an order shows twice, or the board shows an order with no folder.
+6. A `BusError` or `GitError` returns a failure; nothing escapes.
+
+Nothing from the head is imported, run or checked out (D5).
+
+**T-ST3 tests, as implemented.** No code was added for either one.
+- **`test_fails_closed_on_a_malformed_bus_file` (both cases) passes without special-casing.** `main`'s lifecycle loader is strict: `load_messages` → `load_file` raises `BusError` on an unreadable or schema-invalid file. So the derivation cannot run, and the gate fails closed (step 6), as the original dispatch required ("fails closed on malformed bus data"). If the governor picks option A, the gate would load tolerantly instead. That is a small change, and it would also mean the board silently loses that file.
+- **`test_blocks_a_governor_wait_with_no_recorded_decision` stays red.** `main`'s derivation shows a placeholder, and the gate adds no rule for it.
+
+**Acceptance:** the I-M4 `board.matches_reality` evidence names the gate's pass, dropped-events, derivation-sabotage and no-head-code tests.
+
+**Full suite** (`uv run pytest`, `scripts/factory`): **690 passed, 24 failed**. All 24 are owned elsewhere or parked:
+- 1, the parked T-ST3 test above.
+- 23 in `tests/contract/test_cli_contract.py`, each a `factory` CLI command that is still "not implemented" on `main`:
+  - Slice C: `override` (×4 incl. envelopes), `gate run` (×2), `hook shell-guard` (×2), `check hooks` (×2), `check registry` (×2), `check immutability` (×2).
+  - T069: `retro` (×2).
+  - T081: `correction new` (×2), `sprint close` (×3).
+- None is caused by this order.
+
+`ruff check .`, `ruff format --check` and `factory check schema` pass.
+
+### Manual equivalent, result (T-ST5)
+
+1. Focused tests: 8 passed, 1 failed (the parked T-ST3 test).
+2. The gate over this repository's own head bus (head `35776f9`, base `origin/main` `2a591f9`) **blocks**:
+
+   > `factory-status-test: bus/orders/wo-20261003-factory-p0/ is on the head bus but order wo-20261003-factory-p0 is not on the derived board (its folder holds no order)`
+
+   This is a true finding on `main`'s bus, not a gate defect. The P0 contracts order predates orders. Its folder on `main` holds `amendment-01..03` and `verdict-01..04` but no `order.yaml`. Slices A and B got FR-037 reconstructed orders; P0 did not. So today's board drops P0's record. The other three order folders (Slice A, Slice B, this order) derive cleanly.
+
+**Needed before this gate can be green on `main`:** an FR-037 bootstrap `bus/orders/wo-20261003-factory-p0/order.yaml`, reconstructed from `notes/packets/2026-10-03-factory-v2-p0-contracts.md` as for Slices A and B. It lies outside this order's owned paths (a stop condition), so it is not written here. The orchestrator decides whether to add it in this PR by amendment or in a separate bus change.
