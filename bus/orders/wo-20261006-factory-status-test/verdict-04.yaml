@@ -1,0 +1,58 @@
+schema_version: 1
+kind: verdict
+id: wo-20261006-factory-status-test.verdict-04
+created: 2026-10-06T09:56:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - specs/001-factory-v2/PR_REVIEW_STATUS_TEST.md
+  - https://github.com/infra-anoop/2026-software-lab/pull/25
+  - bus/orders/wo-20261006-factory-status-test/amendment-03.yaml
+decision: reject
+findings:
+  - id: PR-ST1
+    severity: blocker
+    tag: process
+    text: >-
+      Root-cause class: incomplete exception normalization at the gate boundary.
+      run catches only BusError and GitError, so an invalid-UTF-8 head bus blob
+      reproducibly lets UnicodeDecodeError escape instead of returning a failed
+      GateResult; a refused NoGitHub write would likewise escape RuntimeError.
+      Consequence: contributor-controlled head data can crash the judge and violate
+      T102's explicit no-exception fail-closed contract. Likelihood: medium-low
+      accidentally but trivial to trigger deliberately. Smallest fix: retain the
+      specific handlers, catch unexpected Exception at run, return a generic failed
+      result, and add one invalid-UTF-8 regression for the root-cause class.
+  - id: PR-ST-L1
+    severity: later
+    tag: process
+    text: >-
+      Shared git object reads have no subprocess timeout and bus blobs have no
+      size/resource bound before UTF-8 and YAML parsing. A pathological head can
+      consume trusted-job time or memory, though it cannot make the gate pass
+      falsely and the hosted-job timeout contains it. Fix once in the shared
+      git/bus loader during trust-boundary hardening.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: scripts/factory/src/factory/gates/repo/status_test.py
+    sha: 9dececbca38f6aed4837c5b3e65f31d91d86e6ce
+  - path: bus/orders/wo-20261003-factory-p0/order.yaml
+    sha: 9dececbca38f6aed4837c5b3e65f31d91d86e6ce
+  - path: specs/001-factory-v2/acceptance.md
+    sha: 9dececbca38f6aed4837c5b3e65f31d91d86e6ce
+  - path: notes/packets/2026-10-06-factory-status-test.handoff.md
+    sha: 9dececbca38f6aed4837c5b3e65f31d91d86e6ce
+  - path: specs/001-factory-v2/TEST_REVIEW_STATUS_TEST.md
+    sha: 9dececbca38f6aed4837c5b3e65f31d91d86e6ce
+bootstrap: true
+manual_equivalents:
+  - "setup: nix develop ../.. -c uv sync --locked passed (30 resolved, 29 installed)"
+  - "full suite: 690 passed, 24 expected disclosed failures (23 CLI Slice C/T069/T081; one parked T-ST3)"
+  - "quality: ruff check and ruff format --check passed; git diff --check passed"
+  - "factory-status-test at 9dececb over its own head bus: passed; every order folder is on main's derived board"
+  - "D5 inspection: installed loaders and derivation only; no head checkout, import or execution; offline writes raise"
+  - "fail-closed probe: tracked invalid-UTF-8 head bus YAML escaped UnicodeDecodeError"
+  - "P0 bootstrap: packet/amendments faithful; unscoped Wave 1 cohort effect disclosed; sprint-scoped membership unchanged"
+  - "I-M4: all four newly cited pytest node ids exist and were collected"
