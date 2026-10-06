@@ -11,15 +11,20 @@ refs:
   - notes/packets/2026-10-06-factory-status-test.handoff.md
   - "FR-037 bootstrap"
 summary: |
-  T102 (PR-C3) phase 1: red tests for the factory-status-test gate in
-  scripts/factory/tests/unit/gates/repo/test_status_test.py. T* round 1 (verdict-01)
-  and round 2 rejected; triage in amendments 01-02. Fixed: the oracle is pinned to main's
-  derive_order (round 2, T-ST6), and the D5 test poisons the head factory package.
-  9 of 9 red on "not implemented". T-ST3 (product) waits on the governor. No
-  implementation. Full detail in notes/packets/2026-10-06-factory-status-test.handoff.md.
+  T102 (PR-C3): factory-status-test gate implemented over main's lifecycle derivation of
+  the head bus (D5: head read as git data only). Tests T*-accepted in round 3 (verdict-03).
+  Focused suite 8 passed, 1 red (T-ST3 decision wait, parked on the governor); the
+  malformed-file T-ST3 test passes because main's loader is strict. Full suite 690 passed,
+  24 failed (1 parked, 23 unimplemented CLI commands owned by Slice C, T069, T081). The
+  manual run over this repo blocks on a real gap: the P0 order folder on main has no order.
+  Full detail in notes/packets/2026-10-06-factory-status-test.handoff.md.
 checks_run:
   - gate_or_test: scripts/factory/tests/unit/gates/repo/test_status_test.py
-    result: 9 failed (assertion, entrypoint not implemented); 0 collection errors
+    result: 8 passed, 1 failed (test_blocks_a_governor_wait_with_no_recorded_decision, T-ST3 parked)
+  - gate_or_test: uv run pytest (scripts/factory)
+    result: 690 passed, 24 failed (1 T-ST3 parked; 23 CLI not implemented on main, Slice C / T069 / T081)
+  - gate_or_test: factory-status-test over this repo's head bus (manual equivalent, T-ST5)
+    result: blocks; bus/orders/wo-20261003-factory-p0/ holds no order, so the board drops it
   - gate_or_test: ruff check + ruff format --check
     result: passed
   - gate_or_test: factory check schema
