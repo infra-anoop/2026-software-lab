@@ -1,0 +1,38 @@
+schema_version: 1
+kind: verdict
+id: wo-20261006-factory-status-test.verdict-02
+created: 2026-10-06T08:13:55Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - specs/001-factory-v2/TEST_REVIEW_STATUS_TEST.md
+  - bus/orders/wo-20261006-factory-status-test/amendment-01.yaml
+decision: reject
+findings:
+  - id: T-ST6
+    severity: blocker
+    tag: process
+    text: >-
+      Root cause: an implementation symbol replaces contract behavior. The new
+      test requires the exact derive_from_view helper, so a reasonable gate that
+      builds the same head BusView and calls main's derive_order per record
+      satisfies T102 but fails the spy assertion. Sabotage derive_order and its
+      gate alias instead, preserving both aggregate and per-record designs.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: scripts/factory/tests/unit/gates/repo/test_status_test.py
+    sha: 8d126b19b798f2993400477f5015106c051b8aac
+  - path: bus/orders/wo-20261006-factory-status-test/amendment-01.yaml
+    sha: 8d126b19b798f2993400477f5015106c051b8aac
+  - path: notes/packets/2026-10-06-factory-status-test.handoff.md
+    sha: 8d126b19b798f2993400477f5015106c051b8aac
+  - path: specs/001-factory-v2/TEST_REVIEW_STATUS_TEST.md
+    sha: e61ae415797623e2a52bdcc341dc4a9b18d501a4
+bootstrap: true
+manual_equivalents:
+  - "red-first: focused round-2 suite reproduced 9 assertion failures at the missing entrypoint with no collection errors"
+  - "D5: hostile head package now covers package root, bus, config, orders, lifecycle, board, gate helpers, conftests, and sitecustomize"
+  - "oracle: derive_from_view sabotage reviewed against the contract-correct alternative of direct per-record derive_order calls"
+  - "quality: focused test file passes ruff check and ruff format --check"
