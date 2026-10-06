@@ -1,0 +1,30 @@
+schema_version: 1
+kind: verdict
+id: wo-20261006-factory-status-test.verdict-03
+created: 2026-10-06T08:33:25Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - specs/001-factory-v2/TEST_REVIEW_STATUS_TEST.md
+  - bus/orders/wo-20261006-factory-status-test/amendment-02.yaml
+decision: accept
+findings: []
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: scripts/factory/tests/unit/gates/repo/test_status_test.py
+    sha: 45d616301160894b9936fb06938dce604746dc5f
+  - path: bus/orders/wo-20261006-factory-status-test/amendment-02.yaml
+    sha: 45d616301160894b9936fb06938dce604746dc5f
+  - path: notes/packets/2026-10-06-factory-status-test.handoff.md
+    sha: 45d616301160894b9936fb06938dce604746dc5f
+  - path: specs/001-factory-v2/TEST_REVIEW_STATUS_TEST.md
+    sha: 42edb95686df46089887ab8a9de9249d05a0a221
+bootstrap: true
+manual_equivalents:
+  - "harm bar: no security exposure, data loss, D5 break, broken main, hang, or false-green gate remains"
+  - "oracle: derive_order sabotage reaches both direct per-record derivation and derive_from_view, and changed output must block"
+  - "D5: hostile head package coverage from round 2 remains unchanged"
+  - "red-first: focused suite reproduced 9 missing-entrypoint failures with no collection errors"
+  - "quality: focused test file passes ruff check and ruff format --check"
