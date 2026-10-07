@@ -5,6 +5,9 @@ Report (`factory gate run` JSON `data`, or `error.details` when a gate fails):
 `gates: [{id, class, intents, outcome: pass|fail|overridden, messages, override}]`,
 `intents: {<intent id>: [{gate, outcome}]}`, `override_counts: {<gate id>: n}`.
 A gate whose entrypoint is missing or raises fails closed.
+
+`summary_status` is the one `factory/gates` status (T107, `PLAN_DELTA.md` Round 5): success
+only when every installed CI gate has a report entry that passed or was overridden.
 """
 
 from __future__ import annotations
@@ -27,6 +30,8 @@ Outcome = Literal["pass", "fail", "overridden"]
 Judge = Callable[[GateContext], GateResult]
 WORK_ORDER_REF = re.compile(r"^(?:refs/heads/|refs/remotes/[^/]+/|origin/)?wo/(?P<id>[^/]+)$")
 STATUS_DESCRIPTION_LIMIT = 140
+SUMMARY_CONTEXT = "factory/gates"
+PASSING: frozenset[str] = frozenset({"pass", "overridden"})
 
 
 def ci_gates(registry: Registry) -> list[Gate]:
@@ -135,9 +140,31 @@ def commit_status(entry: dict[str, Any]) -> tuple[Literal["success", "failure"],
         description = entry["messages"][0] if entry["messages"] else "failed"
     if entry["id"] == RED_FIRST_GATE and not description.startswith(SELF_REPORTED):
         description = f"{SELF_REPORTED} {description}"
+    return state, _fit(description)
+
+
+def summary_status(
+    report: dict[str, Any], gates: list[Gate]
+) -> tuple[Literal["success", "failure"], str]:
+    """The `factory/gates` status: `gates` are the installed CI gates; one missing from the
+    report, or with an outcome other than pass/overridden, fails the summary."""
+    outcomes = {entry["id"]: entry["outcome"] for entry in report["gates"]}
+    not_run = [gate.id for gate in gates if gate.id not in outcomes]
+    failed = [gate.id for gate in gates if gate.id in outcomes and outcomes[gate.id] not in PASSING]
+    if not not_run and not failed:
+        return "success", f"all {len(gates)} gates passed"
+    parts = []
+    if failed:
+        parts.append(f"{len(failed)} failed: {', '.join(failed)}")
+    if not_run:
+        parts.append(f"{len(not_run)} did not run: {', '.join(not_run)}")
+    return "failure", _fit("; ".join(parts))
+
+
+def _fit(description: str) -> str:
     if len(description) > STATUS_DESCRIPTION_LIMIT:
-        description = description[: STATUS_DESCRIPTION_LIMIT - 1] + "…"
-    return state, description
+        return description[: STATUS_DESCRIPTION_LIMIT - 1] + "…"
+    return description
 
 
 def render_text(report: dict[str, Any]) -> str:

@@ -6,7 +6,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 import typer
 import yaml
@@ -32,6 +32,7 @@ from factory.gates.evidence import judge as judge_evidence
 from factory.gates.registry import Gate, RegistryError, load_registry
 from factory.gates.repo._git import git, object_type, rev_parse
 from factory.gates.runner import (
+    SUMMARY_CONTEXT,
     build_context,
     ci_gates,
     commit_status,
@@ -39,6 +40,7 @@ from factory.gates.runner import (
     order_id_from_ref,
     render_text,
     run_gates,
+    summary_status,
 )
 from factory.hooks.entry import run_hook
 
@@ -236,20 +238,28 @@ def gate_run(
     if pull is not None or evidence is not None:
         judges[RED_FIRST_GATE] = lambda context: judge_evidence(context, evidence)
     report = run_gates(selected, ctx, verify=verify, judges=judges)
+    summary: tuple[Literal["success", "failure"], str] | None = None
     if pull is not None:
         for entry in report["gates"]:
             state, description = commit_status(entry)
             adapters.github.set_commit_status(
                 head_sha, f"factory/{entry['id']}", state, description
             )
+        if not gate:
+            # Any explicit `--gate` is a subset run; only the full run vouches for the PR.
+            summary = summary_status(report, selected)
+            adapters.github.set_commit_status(head_sha, SUMMARY_CONTEXT, *summary)
     text = render_text(report)
     failing = failures(report)
-    if failing:
+    if failing or (summary is not None and summary[0] == "failure"):
         if not json_out:
             typer.echo(text)
-        raise CommandError(
-            exit_codes.GATE_FAILURE, f"{len(failing)} gate(s) failed: {', '.join(failing)}", report
+        problem = (
+            f"{len(failing)} gate(s) failed: {', '.join(failing)}"
+            if failing
+            else f"{SUMMARY_CONTEXT}: {summary[1] if summary else ''}"
         )
+        raise CommandError(exit_codes.GATE_FAILURE, problem, report)
     emit("gate run", as_json=json_out, text=text, data=report)
 
 

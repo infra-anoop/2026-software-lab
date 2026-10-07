@@ -74,3 +74,28 @@ All three changes are in `scripts/factory/tests/contract/test_gate_run.py`, exce
 - Focused files: 15 failed (8 contract, 7 snapshot).
 - Full suite: 15 failed, 1041 passed, 7 xfailed (the known T069/T081 strict xfails). The only failures are those 15.
 - `ruff check` and `ruff format --check` pass.
+
+## Implementation (phase 2) — blocked on a stop condition
+
+T* round 2 accepted (`TEST_REVIEW_GATES_SUMMARY.md` § Round 2, cherry-picked as `5f8851d`'s content).
+
+**Done (owned paths):**
+- `gates/runner.py`: `SUMMARY_CONTEXT = "factory/gates"` and `summary_status(report, gates)`. A gate fails the summary when it is missing from the report or its outcome is not `pass`/`overridden`. The description says "N failed: …; M did not run: …", cut to 140 characters. The per-gate truncation is shared via `_fit`.
+- `cli/gates.py`: after the per-gate statuses, a `--pr` run with no `--gate` posts `factory/gates` from the report it just posted, checked against the installed registry's CI gates. A failing summary also exits 1 (`GATE_FAILURE`), including when the report omitted a gate but no gate failed. A moved head still returns before anything is posted.
+- `gates/repo/branch_protection.py`: requires `[factory/gates]` instead of the per-P1 contexts, and still fails closed on an unreadable head registry. Docstring amended.
+- `deploy/github/branch-protection.json`: required checks are exactly `Factory tests`, `Verify Source / verify`, `factory/gates`, all 15368. Nothing else changed.
+
+**Suite:** 1 failed, 1055 passed, 7 xfailed. All 15 accepted reds are green, and `ruff` is clean.
+
+**Stop condition hit: "Any edit needed outside Owned paths".** `scripts/factory/tests/contract/test_ci_trust_boundary.py::test_ci_mode_runs_main_registry_whatever_the_head_registry_says` (lines 1231–1233) asserts that a full CI run posts *exactly* `{factory/<gate> for every installed CI gate}`. Under the Round 5 lock the full run also posts `factory/gates`, so the test now fails on `Extra items in the left set: 'factory/gates'`. That file is not in this order's `owned_paths`.
+
+Smallest fix for the orchestrator to decide:
+1. Add the file to the order's owned paths via an amendment.
+2. Extend the expected set with `"factory/gates"`, and optionally assert that its state is `failure`, since `bus.immutable` fails in that test.
+
+The changed function would be red on `main` (no summary there), so it satisfies `red-first-proof`. It should also get a T* glance.
+
+**Not yet done (waiting on that decision):**
+- `contracts/gates.md` amendments.
+- The T107 tick in `tasks.md`.
+- The local `factory gate run --base origin/main --head HEAD`.
