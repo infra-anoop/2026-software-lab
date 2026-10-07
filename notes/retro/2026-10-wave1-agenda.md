@@ -11,7 +11,7 @@ Numbers come from git on `main` at `581ed18` unless stated otherwise.
 | Tasks in `specs/001-factory-v2/tasks.md` | 110 lines: 74 done, 36 open |
 | Open in Wave 1 | 13. Three only need ticking: T097 and T101 (work merged; ticked in a record order after the running orders merge) and T066, done apart from code-owner review (after T065). Three are in progress now (T036b, T105, T064). Then T066a, T049, your App setup (T065) and the retro tasks T068–T071 |
 | Open in Wave 2 | 23 (US6–US8 and polish). Not started, per your instruction |
-| Merged factory PRs | 12 (#7, #8, #9, #20–#25, #27–#29); probe PR #26 closed unmerged, as planned |
+| Merged factory PRs | 12 integrated (#7, #8, #9, #20–#25, #27–#29): 11 merge commits plus #24, which landed as a single commit; probe PR #26 closed unmerged, as planned |
 | Work orders | 8, all merged: 37 review verdicts, of which 23 were rejections; 35 order amendments; 3 overrides |
 | Orders with a run-complete record | 2 of 8 (the first one landed this morning, #28) |
 | Plan changes after approval | 6 rounds in `specs/001-factory-v2/PLAN_DELTA.md` |
@@ -101,7 +101,7 @@ The rule from §J and your refinement stays: after three review rounds, defer **
 
 ## 6. G4 — backlog numbers and a burndown
 
-Today these numbers needed hand-written git queries (section 1). **Proposal:** a deterministic `factory burndown` command. It counts done and open tasks per feature, sprint and wave from `tasks.md`, joins order states from the bus, and prints the table in section 1 at every merge, with no AI involved. Agent sizing of the open items can be an optional second column. Candidate for the first post-Wave-1 harness order.
+Today these numbers needed hand-written git queries (section 1). **Proposal:** a deterministic `factory burndown` command. It counts done and open tasks per feature, sprint and wave from `tasks.md`, joins order states from the bus, and prints the table in section 1 at every merge, with no AI involved. Candidate for the first post-Wave-1 harness order.
 
 ## 7. G5 — monitoring and debugging agents
 
@@ -129,12 +129,11 @@ Fixes already in place: push after every green step; never resume a suspected ha
 | The deferral gate flags quoted governor text and review records | Overridden 3 times; backlog: skip review records |
 | `red-first-proof` misjudges tests whose subject isn't code, and strict xfails | Overridden once; backlog |
 | A failed PR gate run marks `main`'s commit red (the trusted job's own check) | Backlog (PLAN_DELTA round 6) |
-| Duplicate task ids (T016, T036, T066) in `tasks.md` | Backlog: renumber after Wave 1 |
 | Wave 1 start date and `size_minutes` are reconstructed estimates | Correct by hand in the formal retro |
 | Bootstrap orders don't name the sprint, so the sprint view showed 0 orders | Decide at retro |
 | `factory claim` checks owned-path overlap against the original order and ignores amendments. Today that refused a claim it should have allowed. The harmful direction is an amendment that widens paths: two orders could then edit the same file | Backlog, Slice A owner: claim uses the amended order |
 | Four orders this morning all listed `tasks.md`, so the overlap check (correctly) let only one claim | Retro: only orchestrator record orders own `tasks.md`; workers report completion in their handoff |
-| 35 stale remote branches | Housekeeping order |
+| 30 remote branches already merged into `581ed18` (`git branch -r --merged 581ed18`) are still kept | Housekeeping order |
 | `gates/evidence.py` duplicates four helpers from `red_first.py` | Backlog |
 
 Earlier Later items (Slice A–C PR reviews: evidence `base_sha` binding, producer checkout origin, Nix fallback output, indexed `secrets['NAME']` detection, git read timeouts and bus blob size bounds, suite-wide timeout policy) are recorded in their review files and orders. They move into the backlog file at grooming (G1).

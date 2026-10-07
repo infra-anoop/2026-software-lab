@@ -12,3 +12,16 @@ The decision-driving counts are correct at `581ed18`, and the PR #30 update is c
 | R-RA4 | Nit | process | `notes/retro/2026-10-wave1-agenda.md` §6, “`optional second column`” | The elective sizing column is an untracked follow-up with no owner or artifact pointer. `notes/retro/**` is outside `deferral-words-need-od`, but the review brief asks for such items to be flagged manually. | Name the backlog/order that owns it, or remove the sizing idea. |
 
 G1–G6, decisions 9–12, and the harness lessons otherwise present governor-level product/ops choices without inventing unplanned product content. The diff under review before these review artifacts is confined to the order’s owned paths.
+
+## Triage (orchestrator, round 1)
+
+All four nits accepted and fixed in the agenda:
+
+| id | Action |
+|---|---|
+| R-RA1 | The row now says 12 integrated PRs: 11 merge commits plus #24, which landed as a single commit |
+| R-RA2 | Row removed; the suffixed ids are distinct tasks |
+| R-RA3 | Row now states 30 remote branches merged into `581ed18`, with the command |
+| R-RA4 | The sizing-column sentence removed |
+
+The review record itself was outside the order's owned paths; amendment-01 adds it.
