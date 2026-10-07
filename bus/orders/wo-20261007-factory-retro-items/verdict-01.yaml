@@ -1,0 +1,31 @@
+schema_version: 1
+kind: verdict
+id: wo-20261007-factory-retro-items.verdict-01
+created: 2026-10-07T23:24:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - specs/001-factory-v2/PR_REVIEW_RETRO_ITEMS.md
+  - "independent factual review of the Wave 1 retro item list"
+decision: accept
+findings: []
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: bus/orders/wo-20261007-factory-retro-items/order.yaml
+    sha: fa3dfd6
+  - path: bus/orders/wo-20261007-factory-retro-items/claim.yaml
+    sha: fa3dfd6
+  - path: notes/retro/2026-10-wave1-items.md
+    sha: fa3dfd6
+  - path: notes/retro/2026-10-wave1-agenda.md
+    sha: fa3dfd6
+  - path: docs/factory/USERS_GUIDE.md
+    sha: fa3dfd6
+  - path: specs/001-factory-v2/tasks.md
+    sha: fa3dfd6
+  - path: specs/001-factory-v2/PR_REVIEW_RETRO_AGENDA.md
+    sha: fa3dfd6
+  - path: docs/agent-os/SPAWN_WORKER.md
+    sha: fa3dfd6
