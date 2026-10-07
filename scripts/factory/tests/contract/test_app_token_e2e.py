@@ -14,6 +14,7 @@ import builtins
 import io
 import logging
 import os
+import shlex
 import shutil
 import stat
 import subprocess
@@ -393,6 +394,7 @@ class CredentialObserver:
         self.writes: dict[str, bytearray] = {}
         self.argv: list[str] = []
         self.exceptions: list[str] = []
+        self.wrapped_spawns = 0
         self._install(monkeypatch)
 
     def _record(self, name: str, data: Any) -> None:
@@ -407,11 +409,14 @@ class CredentialObserver:
             sys.addaudithook(_spawn_audit)
             _HOOKED.append(True)
         monkeypatch.setattr(sys.modules[__name__], "_ACTIVE", [self])
-        if hasattr(os, "_spawnvef"):
+        original_spawn = getattr(os, "_spawnvef", None)
+        if original_spawn is None and sys.platform == "linux":
+            pytest.fail("os._spawnvef is missing: the observer cannot see os.spawn* on Linux")
+        if original_spawn is not None:
             # POSIX os.spawn* forks first and audits `os.exec` only in the child.
-            original_spawn = os._spawnvef
 
             def observed_spawn(mode: int, file: Any, args: Any, *rest: Any) -> Any:
+                observer.wrapped_spawns += 1
                 observer.argv.append(f"os.spawn: {_command_line([file, *args])}")
                 return original_spawn(mode, file, args, *rest)
 
@@ -469,6 +474,37 @@ def _no_leaks(
     tokens = list(tokens)
     found = {**observer.leaks(tokens), **_leaks(texts, tokens), **_files_holding(root, tokens)}
     assert found == {}
+
+
+CANARY = "ghs_observer_canary_token"
+
+
+def _wait(pid: int) -> None:
+    os.waitpid(pid, 0)
+
+
+SPAWNS: dict[str, Callable[[list[str]], object]] = {
+    "os.system": lambda argv: os.system(shlex.join(argv)),
+    "os.posix_spawn": lambda argv: _wait(os.posix_spawn(argv[0], argv, {})),
+    "os.spawnv": lambda argv: os.spawnv(os.P_WAIT, argv[0], argv),
+}
+
+
+@pytest.mark.parametrize("api", list(SPAWNS))
+def test_observer_reports_secrets_in_a_spawned_command_line(
+    api: str, observer: CredentialObserver
+) -> None:
+    """T-AT2-R3: the observer sees a token and key material in a child's command line,
+    through the audit hook (`os.system`, `os.posix_spawn`) and through the `os._spawnvef`
+    wrapper (POSIX `os.spawn*`, which audits only in the forked child). On Linux the wrapper
+    must exist and be hit."""
+    SPAWNS[api]([sys.executable, "-c", "pass", CANARY, app_key().key_line])
+    found = observer.leaks([CANARY])
+    assert list(found.values()) == [[f"token {CANARY[:8]}…", "private key"]], found
+    event = "os.spawn" if api == "os.spawnv" else api
+    assert list(found) == [f"argv #0 ({event}:)"], found
+    if api == "os.spawnv" and sys.platform == "linux":
+        assert observer.wrapped_spawns == 1, "the os._spawnvef wrapper was not hit"
 
 
 def test_push_runs_as_the_app_only_in_verified_mode_and_leaves_no_token_behind(
