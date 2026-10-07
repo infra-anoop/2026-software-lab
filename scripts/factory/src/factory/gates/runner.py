@@ -3,8 +3,13 @@ and build the per-gate and per-intent report.
 
 Report (`factory gate run` JSON `data`, or `error.details` when a gate fails):
 `gates: [{id, class, intents, outcome: pass|fail|overridden, messages, override}]`,
-`intents: {<intent id>: [{gate, outcome}]}`, `override_counts: {<gate id>: n}`.
+`intents: {<intent id>: [{gate, outcome}]}`, `override_counts: {<gate id>: n}`,
+`per_intent: {<intent id>: {result: held|broken|overridden, gates: [{gate, outcome}]}}` (T064).
 A gate whose entrypoint is missing or raises fails closed.
+
+Per intent (amendment `wo-20261007-factory-per-intent.amend-01`): a gate is listed under the
+intents its `gates.yaml` row serves, never under ids its result names. An intent is `broken`
+when any gate serving it failed, else `overridden` when any was overridden, else `held`.
 
 `summary_status` is the one `factory/gates` status (T107, `PLAN_DELTA.md` Round 5): success
 only when every installed CI gate has a report entry that passed or was overridden.
@@ -25,6 +30,7 @@ from factory.gates.evidence import SELF_REPORTED
 from factory.gates.overrides import honored_overrides, order_overrides
 from factory.gates.pr._bus import load_tolerant
 from factory.gates.registry import Gate, Registry
+from factory.intent.coverage import group_by_intent
 
 Outcome = Literal["pass", "fail", "overridden"]
 Judge = Callable[[GateContext], GateResult]
@@ -121,7 +127,27 @@ def run_gates(
         "gates": entries,
         "intents": intents,
         "override_counts": counts,
+        "per_intent": per_intent(entries),
     }
+
+
+def per_intent(entries: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    outcomes = {entry["id"]: entry["outcome"] for entry in entries}
+    rows = [
+        GateResult(
+            gate_id=entry["id"],
+            passed=entry["outcome"] in PASSING,
+            intent_ids=list(entry["intents"]),
+        )
+        for entry in entries
+    ]
+    grouped: dict[str, dict[str, Any]] = {}
+    for intent, results in group_by_intent(rows).items():
+        gates = [{"gate": r.gate_id, "outcome": outcomes[r.gate_id]} for r in results]
+        words = {gate["outcome"] for gate in gates}
+        result = "broken" if "fail" in words else "overridden" if "overridden" in words else "held"
+        grouped[intent] = {"result": result, "gates": gates}
+    return grouped
 
 
 def failures(report: dict[str, Any]) -> list[str]:
@@ -180,8 +206,9 @@ def render_text(report: dict[str, Any]) -> str:
         if entry["outcome"] != "pass":
             lines += [f"    {message}" for message in entry["messages"]]
     lines.append("per intent:")
-    for intent, results in sorted(report["intents"].items()):
-        lines += [f"  {intent}: {r['gate']} {r['outcome']}" for r in results]
+    for intent, group in sorted(report["per_intent"].items()):
+        gates = ", ".join(f"{g['gate']} {g['outcome']}" for g in group["gates"])
+        lines.append(f"  {group['result']:<10} {intent}: {gates}")
     tally = {word: 0 for word in ("fail", "overridden", "pass")}
     for entry in report["gates"]:
         tally[entry["outcome"]] += 1
