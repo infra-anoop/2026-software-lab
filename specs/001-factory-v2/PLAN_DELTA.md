@@ -233,7 +233,7 @@ After T107 merged (`c7fc5ee`), the re-run probe (PR #26, `af72f98`) got `factory
 | Item | Kind | Disposition |
 |------|------|-------------|
 | Confirm a green `factory/gates` from the trusted job satisfies the pin | process check | The first ordinary PR after the freeze must reach a mergeable state on green checks. If it is blocked with every check green, fall back to the check-run design above (summary as a check run with `checks: write`, pinned to GitHub Actions) |
-| Red "Factory gates" on `main`'s commits | Later (process) | When a PR fails its gates, the trusted job's own check run on `main`'s head is red. Decide whether the job should exit 0 after posting → Wave 1 retro |
+| Red "Factory gates" on `main`'s commits | Later (process) | When a PR fails its gates, the trusted job's own check run on `main`'s head is red. Decide whether the job should exit 0 after posting (Wave 1 retro) → notes/sprints/2026-10-sprint-02.md |
 | Ruleset UI names | retro (harness UX) | Job names and status contexts look alike ("Factory gates" / `factory/gates`). Governor instructions should give the exact string and say which entry to pick |
 
 - **Freeze.** Lifted once PR #26 closes unmerged. T103 is done apart from the first-green-PR confirmation above.
