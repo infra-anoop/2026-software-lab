@@ -66,3 +66,29 @@ test set until T-GS1 and T-GS2 are resolved.
 
 None. The orchestrator already ruled that every explicit `--gate` invocation is a subset
 run, including an explicit full list.
+
+## Round 2
+
+### Verdict
+
+**Accept.** T-GS1 through T-GS3 are resolved without introducing a new problem. The
+revised focused suite is honestly red: **15 failed, 76 passed**, with all eight summary
+contract cases failing at the absent `factory/gates` behavior and the seven snapshot
+cases failing at the old per-gate requirement. No T-GS5 finding is warranted.
+
+### Finding dispositions
+
+| Finding | Disposition | Verification |
+|---------|-------------|--------------|
+| T-GS1 | Resolved | `test_gate_run_pr_explicit_gate_list_posts_no_summary_even_when_it_names_every_gate` first proves the no-`--gate` path must post a success summary, then clears recorded statuses and invokes the same CLI with every installed id supplied via `--gate`; it requires exactly the per-gate contexts and no summary. This distinguishes mode selection from set equality. |
+| T-GS2 | Resolved | `test_gate_run_pr_gates_summary_fails_when_the_report_omits_an_installed_gate` wraps the real runner and patches the name actually imported by the CLI. The red run proves the seam bit: `factory/bus.schema` was absent while every other per-gate status was posted, and the test then failed only because the not-yet-implemented summary was absent. A green implementation must post failure naming the omitted installed gate from the altered report. |
+| T-GS3 | Resolved | The mandatory `summary_status(report, gates)` symbol test was deleted. Missing-gate and description-limit behavior now run through the CLI/status adapter, so inline or differently factored correct implementations remain valid. |
+| T-GS4 | Retained strength | Existing CLI, ordering, installed-registry, outcome, ruleset and app-pinning controls remain intact. |
+
+### New-problem check
+
+No new finding. In particular, the T-GS2 monkeypatch is not a dead seam: the observed
+status list omitted `factory/bus.schema`, which can only happen after the wrapped report
+returned to the real CLI posting loop. Patching both the runner module and the CLI's
+imported alias supports either existing call shape without requiring the implementation
+to add a test-only branch.
