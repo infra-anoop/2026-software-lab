@@ -12,10 +12,11 @@ refs:
   - specs/001-factory-v2/tasks.md
   - "FR-037 bootstrap: decision-request order; size_minutes is an estimate"
 feature: 001-factory-v2
-goal: Record the governor's Wave 1 scope choice (finish as planned, or move work to Wave 1.5) as a decision request.
+goal: Record the governor's Wave 1 scope decision (request and lock) and move the work it names to a Wave 1.5 section of the task list.
 intents: [I-B3, I-M4]
 owned_paths:
   - "bus/decisions/wave1-scope/**"
+  - "specs/001-factory-v2/tasks.md"
   - "specs/001-factory-v2/PR_REVIEW_WAVE1_SCOPE.md"
   - "bus/orders/wo-20261007-factory-wave1-scope/**"
 checks:
@@ -32,7 +33,8 @@ locks: []
 size_minutes: 20
 stop_conditions:
   - Any edit needed outside Owned paths
-  - Any change to tasks.md before the governor answers
+  - Any tasks.md change beyond what the governor's chosen option names
+  - Anything that marks Wave 1 as finished (bus/postmortems/wave1-retro.yaml) or starts Wave 2
 depends_on_decisions: []
 tasks: []
 worker_runtime: local_subagent
