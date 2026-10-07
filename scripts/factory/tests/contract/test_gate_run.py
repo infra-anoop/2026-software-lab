@@ -327,6 +327,147 @@ def test_gate_run_prints_per_intent_lines(
     assert any("I-M2" in line and IMMUTABLE in line and "fail" in line for line in lines), lines
 
 
+# --- per-intent results (T064, catalog `handoff.per_intent_results`, FR-024) ----------------
+#
+# The report also carries `per_intent: {<intent id>: {result, gates: [{gate, outcome}]}}`:
+# every intent id a reported gate serves (its `gates.yaml` row), each gate serving it with
+# its outcome, and `result`: `broken` when any of those gates failed, else `overridden`
+# when any was overridden, else `held`. The text report prints one line per intent id,
+# carrying the result word and `<gate> <outcome>` for each gate serving it.
+
+CATALOG = "catalog-test-linkage"
+RED_FIRST = "red-first-proof"
+OWNED = "diff-within-owned-paths"
+
+
+def served_by(gate_ids: set[str]) -> dict[str, set[str]]:
+    """Intent id -> the given CI gates whose registry row lists it."""
+    served: dict[str, set[str]] = {}
+    for gate in load_registry().gates:
+        if gate.hook_twin_of is None and gate.id in gate_ids:
+            for intent_id in gate.intents:
+                served.setdefault(intent_id, set()).add(gate.id)
+    return served
+
+
+def expected_per_intent(outcomes: dict[str, str]) -> dict[str, dict[str, Any]]:
+    expected: dict[str, dict[str, Any]] = {}
+    for intent_id, gate_ids in served_by(set(outcomes)).items():
+        words = {outcomes[gate_id] for gate_id in gate_ids}
+        result = "broken" if "fail" in words else "overridden" if "overridden" in words else "held"
+        pairs = sorted((gate_id, outcomes[gate_id]) for gate_id in gate_ids)
+        expected[intent_id] = {"result": result, "gates": pairs}
+    return expected
+
+
+def per_intent(body: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    grouped = body.get("per_intent")
+    assert isinstance(grouped, dict), f"report has no per_intent mapping: {sorted(body)}"
+    return {
+        intent_id: {
+            "result": group.get("result"),
+            "gates": sorted((g.get("gate"), g.get("outcome")) for g in group.get("gates", [])),
+        }
+        for intent_id, group in grouped.items()
+    }
+
+
+def outcomes_of(body: dict[str, Any]) -> dict[str, str]:
+    return {g["id"]: g["outcome"] for g in body.get("gates", [])}
+
+
+def test_gate_run_json_per_intent_marks_every_intent_of_a_failing_gate_broken(
+    repo: RepoBuilder,
+    factory_cli: FactoryCli,
+    identity: FakeIdentity,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    served = served_by(RecordedGates(monkeypatch, failing={CATALOG, OWNED}).ids)
+    assert {RED_FIRST, CATALOG} <= served["I-B7"] and served["I-P2"] == {RED_FIRST}, served
+    assert len(served["I-A8"]) > 1, served
+    result = gate_run(factory_cli, repo, clean_pair(repo))
+    assert_exit(result, exit_codes.GATE_FAILURE)
+    body = report(result)
+    grouped = per_intent(body)
+    assert grouped == expected_per_intent(outcomes_of(body)), grouped
+    assert grouped["I-B7"]["result"] == "broken", grouped["I-B7"]
+    assert grouped["I-P2"] == {"result": "held", "gates": [(RED_FIRST, "pass")]}, grouped
+    for intent_id in ("I-B8", "I-A8"):
+        assert grouped[intent_id]["result"] == "broken", grouped[intent_id]
+        assert (OWNED, "fail") in grouped[intent_id]["gates"], grouped[intent_id]
+
+
+@pytest.mark.parametrize(
+    ("failing", "expected"),
+    [({IMMUTABLE}, "overridden"), ({IMMUTABLE, "bus.schema"}, "broken")],
+    ids=["override-only", "override-and-failure"],
+)
+def test_gate_run_json_per_intent_result_follows_the_worst_gate(
+    repo: RepoBuilder,
+    factory_cli: FactoryCli,
+    identity: FakeIdentity,
+    monkeypatch: pytest.MonkeyPatch,
+    failing: set[str],
+    expected: str,
+) -> None:
+    RecordedGates(monkeypatch, failing)
+    head: dict[str, str | None] = {
+        f"{ORDER_DIR}/order.yaml": yaml_text(order(ORDER_ID)),
+        **override_files(override(1, IMMUTABLE)),
+    }
+    pair = repo.base_head_pair({}, head, head_branch=f"wo/{ORDER_ID}")
+    result = gate_run(factory_cli, repo, pair)
+    body = report(result)
+    assert entry(body, IMMUTABLE)["outcome"] == "overridden", entry(body, IMMUTABLE)
+    grouped = per_intent(body)
+    assert grouped == expected_per_intent(outcomes_of(body)), grouped
+    assert grouped["I-M2"]["result"] == expected, grouped["I-M2"]
+    assert (IMMUTABLE, "overridden") in grouped["I-M2"]["gates"], grouped["I-M2"]
+
+
+def per_intent_lines(stdout: str) -> list[str]:
+    lines = stdout.splitlines()
+    assert "per intent:" in lines, lines
+    section = lines[lines.index("per intent:") + 1 :]
+    return [line for line in section if not line.startswith("result:")]
+
+
+def words(line: str) -> list[str]:
+    return line.replace(":", " ").replace(",", " ").split()
+
+
+def lines_for(section: list[str], intent_id: str) -> list[str]:
+    return [line for line in section if intent_id in words(line)]
+
+
+def test_gate_run_text_prints_one_line_per_intent_with_its_result(
+    repo: RepoBuilder,
+    factory_cli: FactoryCli,
+    identity: FakeIdentity,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    gates = RecordedGates(monkeypatch, failing={CATALOG, IMMUTABLE})
+    head: dict[str, str | None] = {
+        f"{ORDER_DIR}/order.yaml": yaml_text(order(ORDER_ID)),
+        **override_files(override(1, IMMUTABLE)),
+    }
+    pair = repo.base_head_pair({}, head, head_branch=f"wo/{ORDER_ID}")
+    result = gate_run(factory_cli, repo, pair, as_json=False)
+    assert_exit(result, exit_codes.GATE_FAILURE)
+    section = per_intent_lines(result.stdout)
+    outcomes = {gate_id: "pass" for gate_id in gates.ids}
+    outcomes.update({CATALOG: "fail", IMMUTABLE: "overridden"})
+    expected = expected_per_intent(outcomes)
+    anchors = {"I-B7": "broken", "I-P2": "held", "I-M2": "overridden"}
+    assert {i: expected[i]["result"] for i in anchors} == anchors, expected
+    for intent_id, group in expected.items():
+        found = lines_for(section, intent_id)
+        assert len(found) == 1, f"{intent_id}: expected one line, got {found}"
+        assert group["result"] in words(found[0]), found[0]
+        for gate_id, outcome in group["gates"]:
+            assert f"{gate_id} {outcome}" in found[0], found[0]
+
+
 def test_gate_run_exit_0_when_selected_gates_pass(
     repo: RepoBuilder, factory_cli: FactoryCli, identity: FakeIdentity
 ) -> None:
@@ -622,6 +763,45 @@ def test_gate_run_pr_posts_gates_summary_after_every_gate_status(
     contexts = [status.context for status in fake_github.statuses]
     assert contexts[-1] == SUMMARY, contexts
     assert sorted(contexts[:-1]) == sorted(f"factory/{gate_id}" for gate_id in gates.ids)
+
+
+def test_gate_run_pr_report_carries_per_intent_and_posts_unchanged_statuses(
+    repo: RepoBuilder,
+    factory_cli: FactoryCli,
+    fake_github: FakeGitHub,
+    identity: FakeIdentity,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """T064 adds to the report only: the posted `factory/<gate-id>` and `factory/gates`
+    statuses (context, state, description, order) stay as before."""
+    gates = RecordedGates(monkeypatch, failing={IMMUTABLE, CATALOG})
+    head: dict[str, str | None] = {
+        f"{ORDER_DIR}/order.yaml": yaml_text(order(ORDER_ID)),
+        **override_files(override(1, IMMUTABLE)),
+    }
+    pair = repo.base_head_pair({}, head, head_branch=f"wo/{ORDER_ID}")
+    result = trusted_run(factory_cli, repo, pair, tmp_path)
+    assert_exit(result, exit_codes.GATE_FAILURE)
+    expected: list[tuple[str, str, str]] = []
+    for gate in gates.gates:
+        if gate.id == RED_FIRST:
+            expected.append((f"factory/{gate.id}", "success", "self-reported: passed"))
+        elif gate.id == IMMUTABLE:
+            expected.append((f"factory/{gate.id}", "success", f"overridden: {REASON}"))
+        elif gate.id == CATALOG:
+            expected.append((f"factory/{gate.id}", "failure", f"sentinel FAIL {gate.id}"))
+        else:
+            expected.append((f"factory/{gate.id}", "success", "passed"))
+    expected.append((SUMMARY, "failure", f"1 failed: {CATALOG}"))
+    posted = [(s.context, s.value, s.description) for s in fake_github.statuses]
+    assert posted == expected, posted
+    assert {s.sha for s in fake_github.statuses} == {pair.head_sha}
+    body = report(result)
+    grouped = per_intent(body)
+    assert grouped == expected_per_intent(outcomes_of(body)), grouped
+    assert grouped["I-M2"]["result"] == "overridden", grouped["I-M2"]
+    assert grouped["I-B7"]["result"] == "broken", grouped["I-B7"]
 
 
 def head_registry_without_immutable() -> str:
