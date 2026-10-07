@@ -10,21 +10,32 @@ network.
 from __future__ import annotations
 
 import base64
+import builtins
+import io
 import logging
+import os
 import shutil
+import stat
 import subprocess
+import sys
 import tempfile
 import threading
-from collections.abc import Iterable, Iterator
+import traceback
+from collections.abc import Callable, Iterable, Iterator
+from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Self
+from typing import Any, Self
 
 import pytest
 
+from factory.api import GitHubPort
 from factory.cli import exit_codes
+from factory.cli.common import DEPS, CommandError
+from factory.config.settings import EnvSettings, Settings
 from tests.fixtures.cli_runner import CliResult, FactoryCli
-from tests.fixtures.repo_builder import RepoBuilder, order
+from tests.fixtures.fake_github import FakeGitHub
+from tests.fixtures.repo_builder import RepoBuilder, message, order, yaml_text
 from tests.unit.test_github_adapter import (
     APP_ID,
     INSTALLATION_TOKEN,
@@ -33,6 +44,7 @@ from tests.unit.test_github_adapter import (
     app_key,
     credential,
     patch_transport,
+    secret_kinds,
 )
 
 pytestmark = pytest.mark.contract
@@ -269,33 +281,171 @@ def _origin_files(repo: RepoBuilder, branch: str) -> list[str]:
     return result.stdout.split()
 
 
-def _files_holding(root: Path, secrets: Iterable[str]) -> list[str]:
-    needles = [s.encode() for s in secrets]
-    needles += [base64.b64encode(f"x-access-token:{s}".encode()) for s in secrets]
-    return sorted(
-        str(path.relative_to(root))
-        for path in root.rglob("*")
-        if path.is_file()
-        and not path.is_symlink()
-        and any(needle in path.read_bytes() for needle in needles)
-    )
+def _files_holding(root: Path, tokens: Iterable[str]) -> dict[str, list[str]]:
+    """Persistence check: files left under `root` that hold a token, a JWT or key material."""
+    found = {}
+    for path in sorted(root.rglob("*")):
+        if path.is_file() and not path.is_symlink():
+            kinds = secret_kinds(path.read_bytes(), tokens)
+            if kinds:
+                found[f"file {path.relative_to(root)}"] = kinds
+    return found
 
 
-def _leaks(texts: dict[str, str], secrets: Iterable[str]) -> list[str]:
-    return [name for name, text in texts.items() if any(s in text for s in secrets)]
+def _leaks(texts: dict[str, str], tokens: Iterable[str]) -> dict[str, list[str]]:
+    return {name: kinds for name, text in texts.items() if (kinds := secret_kinds(text, tokens))}
+
+
+def _regular(fd: int) -> bool:
+    try:
+        return stat.S_ISREG(os.fstat(fd).st_mode)
+    except (OSError, ValueError):
+        return False
+
+
+def _fd_name(fd: int) -> str:
+    try:
+        return os.readlink(f"/proc/self/fd/{fd}")
+    except OSError:
+        return f"fd {fd}"
+
+
+class _RecordingFile:
+    """A writable regular file whose payloads are recorded before they reach the file."""
+
+    def __init__(self, handle: Any, name: str, record: Callable[[str, Any], None]) -> None:
+        self._handle = handle
+        self._name = name
+        self._record = record
+
+    def write(self, data: Any) -> Any:
+        self._record(self._name, data)
+        return self._handle.write(data)
+
+    def writelines(self, lines: Iterable[Any]) -> None:
+        listed = list(lines)
+        for line in listed:
+            self._record(self._name, line)
+        self._handle.writelines(listed)
+
+    def __enter__(self) -> Self:
+        self._handle.__enter__()
+        return self
+
+    def __exit__(self, *exc: object) -> Any:
+        return self._handle.__exit__(*exc)
+
+    def __iter__(self) -> Iterator[Any]:
+        return iter(self._handle)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._handle, name)
+
+
+class CredentialObserver:
+    """What the factory hands the OS, or raises, while the test runs (Python level only):
+
+    - payloads written to regular files through `open` / `io.open` (so `Path.write_*`,
+      `os.fdopen` and `tempfile` too) and `os.write`, kept even when the file is deleted;
+    - every child-process argv (`subprocess.Popen`, so `run` / `check_output` too);
+    - the exception chain in flight (`repr` + formatted traceback) whenever a command turns
+      a failure into a `CommandError`.
+
+    Pipes are not files: a token handed to a child on stdin, or in its environment, is
+    not a write here.
+    """
+
+    def __init__(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        self.writes: dict[str, bytearray] = {}
+        self.argv: list[str] = []
+        self.exceptions: list[str] = []
+        self._install(monkeypatch)
+
+    def _record(self, name: str, data: Any) -> None:
+        chunk = data.encode("utf-8", "replace") if isinstance(data, str) else bytes(data)
+        self.writes.setdefault(name, bytearray()).extend(chunk)
+
+    def _install(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        observer = self
+        original_open, original_write = io.open, os.write
+        original_popen, original_init = subprocess.Popen, CommandError.__init__
+
+        def observed_open(file: Any, mode: str = "r", *args: Any, **kwargs: Any) -> Any:
+            handle = original_open(file, mode, *args, **kwargs)
+            if any(flag in mode for flag in "wax+") and _regular(handle.fileno()):
+                name = _fd_name(file) if isinstance(file, int) else os.fsdecode(file)
+                return _RecordingFile(handle, name, observer._record)
+            return handle
+
+        def observed_write(fd: int, data: Any) -> int:
+            if _regular(fd):
+                observer._record(_fd_name(fd), data)
+            return original_write(fd, data)
+
+        class ObservedPopen(original_popen):  # type: ignore[misc, valid-type]
+            def __init__(self, args: Any, *rest: Any, **kwargs: Any) -> None:
+                if not isinstance(args, str | bytes | os.PathLike):
+                    args = list(args)
+                listed = args if isinstance(args, list) else [args]
+                observer.argv.append(" ".join(os.fsdecode(part) for part in listed))
+                super().__init__(args, *rest, **kwargs)
+
+        def observed_init(error: CommandError, *args: Any, **kwargs: Any) -> None:
+            current = sys.exc_info()[1]
+            if current is not None:
+                formatted = "".join(traceback.format_exception(current))
+                observer.exceptions.append(f"{current!r}\n{formatted}")
+            original_init(error, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "open", observed_open)
+        monkeypatch.setattr(io, "open", observed_open)
+        monkeypatch.setattr(os, "write", observed_write)
+        monkeypatch.setattr(subprocess, "Popen", ObservedPopen)
+        monkeypatch.setattr(CommandError, "__init__", observed_init)
+
+    def leaks(self, tokens: Iterable[str]) -> dict[str, list[str]]:
+        tokens = list(tokens)
+        found = {}
+        for name, data in self.writes.items():
+            if kinds := secret_kinds(bytes(data), tokens):
+                found[f"write {name}"] = kinds
+        for index, argv in enumerate(self.argv):
+            if kinds := secret_kinds(argv, tokens):
+                found[f"argv #{index} ({argv.split(' ', 1)[0]})"] = kinds
+        for index, text in enumerate(self.exceptions):
+            if kinds := secret_kinds(text, tokens):
+                found[f"exception #{index}"] = kinds
+        return found
+
+
+@pytest.fixture
+def observer(isolated_git: Path, monkeypatch: pytest.MonkeyPatch) -> CredentialObserver:
+    return CredentialObserver(monkeypatch)
+
+
+def _no_leaks(
+    observer: CredentialObserver, root: Path, texts: dict[str, str], tokens: Iterable[str]
+) -> None:
+    """The secrets (tokens, every App JWT, the whole private key) reached no write, argv,
+    exception chain, output, log, or file left under `root`."""
+    tokens = list(tokens)
+    found = {**observer.leaks(tokens), **_leaks(texts, tokens), **_files_holding(root, tokens)}
+    assert found == {}
 
 
 def test_push_runs_as_the_app_only_in_verified_mode_and_leaves_no_token_behind(
     repo: RepoBuilder,
     factory_cli: FactoryCli,
     isolated_git: Path,
+    observer: CredentialObserver,
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Recorded mode pushes exactly as today (ambient git credentials, no mint). Verified
     mode pushes with the installation token through the helper, ahead of any ambient
-    helper, and no token reaches a file (git config, credential store, trace, temp), the
-    history, the CLI output or the logs."""
+    helper. No token, App JWT or key material reaches a write (even a deleted temp file),
+    a child argv, a file left behind (git config, credential store, trace), the history,
+    the CLI output or the logs."""
     caplog.set_level(logging.DEBUG)
     recorded_order, verified_order = _issue(repo, "recorded-push"), _issue(repo, "verified-push")
     app, data = _app(monkeypatch)
@@ -316,8 +466,6 @@ def test_push_runs_as_the_app_only_in_verified_mode_and_leaves_no_token_behind(
         assert AMBIENT_TOKEN not in [credential(r) for r in data.requests]
 
     assert f"bus/orders/{verified_order}/claim.yaml" in _origin_files(repo, f"wo/{verified_order}")
-    secrets = [INSTALLATION_TOKEN, app_key().key_line]
-    assert _files_holding(isolated_git, secrets) == []
     texts = {
         "stdout": result.stdout,
         "stderr": result.stderr,
@@ -325,7 +473,7 @@ def test_push_runs_as_the_app_only_in_verified_mode_and_leaves_no_token_behind(
         "history": repo.git("log", "--all", "-p"),
         "git config": repo.git("config", "--list", "--show-origin"),
     }
-    assert _leaks(texts, secrets) == []
+    _no_leaks(observer, isolated_git, texts, [INSTALLATION_TOKEN, *app.jwts])
 
 
 @pytest.mark.parametrize("cause", ["mint-refused", "app-not-installed", "no-app-credentials"])
@@ -334,13 +482,14 @@ def test_verified_push_without_an_app_token_fails_closed_and_keeps_secrets_out(
     repo: RepoBuilder,
     factory_cli: FactoryCli,
     isolated_git: Path,
+    observer: CredentialObserver,
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Orchestrator ruling 2026-10-07: in verified mode, a refused mint (401), an
     installation lookup 404, or missing App credentials is an external error (exit 4) with
-    no fallback to GITHUB_TOKEN or ambient git credentials; neither the App JWT nor the
-    key reaches the error, the logs or a file."""
+    no fallback to GITHUB_TOKEN or ambient git credentials; no App JWT or key material
+    reaches the exception chain, a write, an argv, the output, the logs or a file."""
     caplog.set_level(logging.DEBUG)
     order_id = _issue(repo, cause)
     recorded = {
@@ -360,24 +509,24 @@ def test_verified_push_without_an_app_token_fails_closed_and_keeps_secrets_out(
     assert origin.presented == [], "no fallback to ambient git credentials"
     assert AMBIENT_TOKEN not in [credential(r) for r in data.requests], "no GITHUB_TOKEN"
     assert not app.mints or cause == "mint-refused", [r.url.path for r in app.requests]
-    secrets = [*app.jwts, app_key().key_line]
     texts = {"stdout": result.stdout, "stderr": result.stderr, "logs": caplog.text}
-    assert _leaks(texts, secrets) == []
-    assert _files_holding(isolated_git, secrets) == []
+    _no_leaks(observer, isolated_git, texts, app.jwts)
 
 
 def test_refused_push_keeps_the_installation_token_out_of_the_error(
     repo: RepoBuilder,
     factory_cli: FactoryCli,
     isolated_git: Path,
+    observer: CredentialObserver,
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """A push origin refuses after authenticating as the App fails as an external error
-    whose text (git's stderr included) holds no token."""
+    """A push origin refuses after authenticating as the App fails as an external error;
+    no token, App JWT or key material reaches its exception chain, git's stderr, the
+    output, a write, an argv, the logs or a file."""
     caplog.set_level(logging.DEBUG)
     order_id = _issue(repo, "push-refused")
-    _app(monkeypatch)
+    app, _ = _app(monkeypatch)
     _set_identity_mode(repo, "verified")
     with GitHttpOrigin(repo.root, {AMBIENT, APP_CREDENTIAL}, refuse_pushes=True) as origin:
         repo.git("remote", "set-url", "origin", origin.url)
@@ -385,5 +534,164 @@ def test_refused_push_keeps_the_installation_token_out_of_the_error(
     assert result.exit_code == exit_codes.EXTERNAL, (result.exit_code, result.stderr)
     assert APP_CREDENTIAL in origin.presented, origin.presented
     texts = {"stdout": result.stdout, "stderr": result.stderr, "logs": caplog.text}
-    assert _leaks(texts, [INSTALLATION_TOKEN]) == []
-    assert _files_holding(isolated_git, [INSTALLATION_TOKEN]) == []
+    _no_leaks(observer, isolated_git, texts, [INSTALLATION_TOKEN, *app.jwts])
+
+
+# --- T-AT1: every CLI call site picks the provider of its role -------------------------------
+
+AGENT, CI = "agent", "ci"
+CALC = "apps/demo/app/calc.py"
+
+
+class Providers:
+    """Distinguishable CI (`DEPS.github`) and agent (`DEPS.agent_github`, amendment-01)
+    providers. Both hand out the same FakeGitHub, so only the provider asked for differs."""
+
+    def __init__(self, github: FakeGitHub, monkeypatch: pytest.MonkeyPatch) -> None:
+        self.github = github
+        self.calls: list[str] = []
+        monkeypatch.setattr(DEPS, "github", self._provider(CI))
+        monkeypatch.setattr(DEPS, "agent_github", self._provider(AGENT), raising=False)
+
+    def _provider(self, role: str) -> Callable[[Settings, EnvSettings], GitHubPort]:
+        def provide(settings: Settings, env: EnvSettings) -> GitHubPort:
+            self.calls.append(role)
+            return self.github
+
+        return provide
+
+
+@dataclass(frozen=True)
+class Command:
+    argv: tuple[str, ...]
+    role: str
+    pushes: bool
+    branch: str = "main"
+    ok: frozenset[int] = frozenset({exit_codes.OK})
+
+
+def _reviewable(repo: RepoBuilder, slug: str) -> str:
+    """An order claimed, handed off and run-complete on its branch."""
+    order_id = f"wo-20261007-{slug}"
+    repo.issue_order(order(order_id, owned_paths=[CALC], checks=["diff-within-owned-paths"]))
+    repo.add_event(order_id, message("claim", order_id=order_id))
+    work = {CALC: "def add(a, b):\n    return a + b\n"}
+    repo.add_event(order_id, message("handoff", order_id=order_id), extra_files=work)
+    repo.add_event(order_id, message("run_complete", order_id=order_id))
+    return order_id
+
+
+def _stage_every_command(repo: RepoBuilder, tmp_path: Path) -> list[Command]:
+    """Fixture state for each GitHub-using or pushing command, on a file origin."""
+    repo.add_demo_feature()
+    # Verified mode makes `branch-protection-require-pr` (run by `handoff`) require
+    # code-owner review in the ruleset snapshot, as T065 sets it on main.
+    snapshot = repo.path / "deploy/github/branch-protection.json"
+    text = snapshot.read_text(encoding="utf-8")
+    assert '"require_code_owner_review": false' in text
+    snapshot.write_text(
+        text.replace('"require_code_owner_review": false', '"require_code_owner_review": true'),
+        encoding="utf-8",
+    )
+    repo.commit("ruleset requires code-owner review")
+    repo.push("main")
+    claim_id, release_id = _issue(repo, "cs-claim"), _issue(repo, "cs-release")
+    handoff_id = "wo-20261007-cs-handoff"
+    repo.issue_order(order(handoff_id, owned_paths=[CALC], checks=["diff-within-owned-paths"]))
+    work = {CALC: "def add(a, b):\n    return a + b\n"}
+    repo.add_event(handoff_id, message("claim", order_id=handoff_id), extra_files=work)
+    repo.checkout(f"wo/{handoff_id}")
+    repo.write_message(message("handoff", order_id=handoff_id))
+    repo.commit("handoff")
+    repo.checkout("main")
+    pr_id, verdict_id = _reviewable(repo, "cs-pr"), _reviewable(repo, "cs-verdict")
+    verdict = tmp_path / "verdict.yaml"
+    head = repo.head_sha(f"wo/{verdict_id}")
+    fields = {
+        "actor_model": "gpt-5.6-sol",
+        "reviewer_model": "gpt-5.6-sol",
+        "reviewer_family": "openai",
+        "inputs": [{"path": f"bus/orders/{verdict_id}/order.yaml", "sha": head}],
+    }
+    verdict.write_text(yaml_text(message("verdict", order_id=verdict_id, **fields)), "utf-8")
+    gated = repo.make_pr(f"wo/{verdict_id}")
+    # Untracked inputs last: RepoBuilder commits with `git add -A`.
+    issue_id = "wo-20261007-cs-issue"
+    repo.write_message(order(issue_id, owned_paths=[f"apps/demo/{issue_id}/**"]))
+    decision = repo.write_message(message("decision_request", decision_id="cs-web-view"))
+    model = ("--actor-model", "claude-opus-5.5")
+    return [
+        Command(("order", "issue", issue_id), AGENT, pushes=True),
+        Command(("claim", claim_id, *model), AGENT, pushes=True),
+        Command(("release", release_id, "--reason", "abandoned", *model), AGENT, pushes=True),
+        Command(("handoff", handoff_id), AGENT, pushes=True, branch=f"wo/{handoff_id}"),
+        Command(("pr", "open", pr_id), AGENT, pushes=True, branch=f"wo/{pr_id}"),
+        Command(
+            ("verdict", verdict_id, "--file", str(verdict)),
+            AGENT,
+            pushes=True,
+            branch=f"wo/{verdict_id}",
+        ),
+        Command(("bus", "pr", "--message", decision), AGENT, pushes=True),
+        Command(
+            ("gate", "run", "--gate", "diff-within-owned-paths", "--pr", str(gated.number)),
+            CI,
+            pushes=False,
+            ok=frozenset({exit_codes.OK, exit_codes.GATE_FAILURE}),
+        ),
+        Command(
+            ("gate", "evidence", "--base", "main", "--head", "main", "--out", str(tmp_path / "ev")),
+            CI,
+            pushes=False,
+        ),
+    ]
+
+
+def test_every_cli_call_site_uses_the_provider_and_push_credentials_of_its_role(
+    fake_github: FakeGitHub,
+    factory_cli: FactoryCli,
+    isolated_git: Path,
+    observer: CredentialObserver,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Orchestrator ruling + amendment-01, in verified mode. Agent commands (order issue,
+    claim, release, handoff, pr open, verdict, bus pr) never ask `DEPS.github`, and each
+    push authenticates as the App, never with ambient git credentials. The trusted CI
+    commands (`gate run`, `gate evidence`) never ask `DEPS.agent_github`, never mint and
+    never push."""
+    caplog.set_level(logging.DEBUG)
+    repo = RepoBuilder(isolated_git / "fixture", github=fake_github, concurrency_cap=10)
+    commands = _stage_every_command(repo, isolated_git)
+    providers = Providers(fake_github, monkeypatch)
+    app, _ = _app(monkeypatch)
+    _set_identity_mode(repo, "verified")
+    problems: list[str] = []
+    outputs: dict[str, str] = {}
+    with GitHttpOrigin(repo.root, {AMBIENT, APP_CREDENTIAL}) as origin:
+        repo.git("remote", "set-url", "origin", origin.url)
+        for command in commands:
+            name = " ".join(command.argv[:2])
+            repo.checkout(command.branch)
+            providers.calls.clear()
+            origin.presented.clear()
+            minted = len(app.mints)
+            result = factory_cli(*command.argv, repo=repo.path)
+            outputs[f"{name} output"] = result.stdout + result.stderr
+            if result.exit_code not in command.ok:
+                problems.append(f"{name}: exit {result.exit_code}: {result.stderr.strip()[:300]}")
+            wrong = CI if command.role == AGENT else AGENT
+            if wrong in providers.calls:
+                problems.append(f"{name}: asked the {wrong} provider")
+            if command.role == CI and len(app.mints) > minted:
+                problems.append(f"{name}: minted an App token")
+            pushed_as = sorted({user for user, _ in origin.presented})
+            if command.pushes and pushed_as != [APP_CREDENTIAL[0]]:
+                problems.append(f"{name}: pushed as {pushed_as}, not the App")
+            if not command.pushes and pushed_as:
+                problems.append(f"{name}: pushed as {pushed_as}")
+            repo.checkout("main")
+    assert problems == [], "\n".join(problems)
+    _no_leaks(
+        observer, isolated_git, {**outputs, "logs": caplog.text}, [INSTALLATION_TOKEN, *app.jwts]
+    )

@@ -17,8 +17,9 @@ Phase 1 of 2: red tests only, no `src/` edits. Reviewer brief: `docs/agent-os/TE
 |------|------|
 | `tests/unit/test_github_adapter.py::test_credentials_follow_the_role_ci_keeps_github_token_agents_use_the_app` | Per the ruling. The CI adapter `build_github` (what `gate run` / `gate evidence` load through `DEPS.github`) keeps `GITHUB_TOKEN` in both modes and never mints, even with App credentials set. The agent adapter `build_agent_github(settings, env)` keeps `GITHUB_TOKEN` in recorded mode and sends the installation token in verified mode. In verified mode without App credentials it raises `GitHubError` or `AppTokenError` before sending any request: no request carries `GITHUB_TOKEN` |
 | `…::test_verified_mode_finds_the_installation_from_the_repository_with_an_app_jwt` | Agent adapter: the installation id comes from `GET /repos/{owner}/{repo}/installation`, then `POST /app/installations/{id}/access_tokens`. Both carry an RS256 App JWT (`iss` = App id) that verifies against the throwaway public key. The id comes from the response (424242), not from config |
-| `…::test_installation_token_is_reused_while_fresh_and_refreshed_before_expiry` | Agent adapter: a 1-hour token is reused; a token with 2 minutes left is replaced before the next call (refresh margin over 2 min, under 1 h) |
-| `…::test_failing_api_call_keeps_the_installation_token_out_of_errors_and_logs` | Agent adapter: a 403 raises `GitHubError`; the token is absent from `str`/`repr`/the formatted exception chain, `repr(port)`, logs (DEBUG) and captured output |
+| `…::test_installation_token_is_reused_while_fresh_and_refreshed_at_the_margin` | Agent adapter with an injected clock: a 1-hour token is reused 30 minutes in and refreshed before the next request once 5 minutes are left (round 1, T-AT3) |
+| `…::test_failing_api_call_and_failing_mint_keep_secrets_out_of_errors_and_logs` | Agent adapter: a 403 raises `GitHubError`, and a refused mint raises `GitHubError`/`AppTokenError`. No installation token, App JWT or key material in `str`/`repr`/the formatted exception chain, `repr(port)`, logs (DEBUG) or captured output |
+| `tests/contract/test_app_token_e2e.py::test_every_cli_call_site_uses_the_provider_and_push_credentials_of_its_role` | Round 1, T-AT1: see § Round 1 resolution |
 | `tests/unit/test_identity.py::test_installation_token_repr_and_str_hide_the_token` | `InstallationToken`'s `repr`/`str`/format show no token value |
 | `tests/contract/test_app_token_e2e.py::test_push_runs_as_the_app_only_in_verified_mode_and_leaves_no_token_behind` | `factory claim` end to end. Recorded mode pushes with ambient git credentials and never mints. Verified mode pushes as `x-access-token:<installation token>`, ahead of an ambient (Codespaces-style) credential helper, and no REST request carries `GITHUB_TOKEN`. No token or key line in any file under the test root (repo `.git/config`, origin, HOME, credential files, the `GIT_TRACE` command trace, `TMPDIR`), in history, `git config --list`, CLI output or logs |
 | `…::test_verified_push_without_an_app_token_fails_closed_and_keeps_secrets_out[mint-refused \| app-not-installed \| no-app-credentials]` | Per the ruling: in verified mode, a mint answered 401, an installation lookup answered 404, or missing App credentials all give exit 4 (external). There is no push with ambient git credentials, no REST request with `GITHUB_TOKEN`, and neither the App JWT nor the key appears in output, logs or files |
@@ -53,7 +54,32 @@ The recorded-mode legs pass today, which shows the harness works. A throwaway ch
 
 ## Edge cases left open
 
-1. A token written to a temp file and deleted before the scan would not be caught; only files left behind are.
-2. Refresh during a long push (token expiring mid-operation), and concurrent refresh, are not pinned.
-3. Helper scoping: the e2e origin is `127.0.0.1`, so a helper scoped to `github.com` would fail the test. Scoping to origin's URL passes.
-4. `release`, `handoff`, `order issue`, `pr open` and `bus pr` pushes and REST calls are not each driven end to end. They share `push_or_fail`, which `claim` exercises.
+1. Refresh during a long push (token expiring mid-operation), and concurrent refresh, are not pinned.
+2. Helper scoping: the e2e origin is `127.0.0.1`, so a helper scoped to `github.com` would fail the test. Scoping to origin's URL passes.
+3. The observer is Python-level only (triage: no hooks below that). Writes made by a C extension or a child process, `os.system` / `os.posix_spawn`, and a token in a child's environment or on a pipe are not observed. The environment and pipes are the sanctioned channels for an env-fed helper.
+
+## Round 1 resolution
+
+Review: `specs/001-factory-v2/TEST_REVIEW_APP_TOKEN.md` (rejected). Triage + amendment-01 (`DEPS.agent_github`) at `754742c`. Test changes only; no `src/`.
+
+| Finding | Test | What it now pins |
+|---------|------|------------------|
+| T-AT1 (Blocker) | **New** `tests/contract/test_app_token_e2e.py::test_every_cli_call_site_uses_the_provider_and_push_credentials_of_its_role` | Verified mode with one table over all nine commands. `Providers` installs distinguishable spies on `DEPS.github` (CI) and `DEPS.agent_github` (agent), both over one `FakeGitHub`. The agent commands (`order issue`, `claim`, `release`, `handoff`, `pr open`, `verdict`, `bus pr`) must never ask the CI provider, and each push must authenticate as `x-access-token` (the App), never with ambient git credentials. The CI commands (`gate run --pr`, `gate evidence`) must never ask the agent provider, never mint and never push. Every command must also exit as expected, so a setup failure cannot pass as a role result. The observer below runs across the whole table |
+| T-AT2 (Blocker) | **New harness** `CredentialObserver` (`observer` fixture) in `test_app_token_e2e.py`, now in every e2e test; secret corpus via `secret_kinds` in `test_github_adapter.py`; **changed** `test_failing_api_call_and_failing_mint_keep_secrets_out_of_errors_and_logs` | The observer records payloads written to regular files through `open` / `io.open` (so `Path.write_*`, `os.fdopen`, `tempfile`) and `os.write`, kept even when the file is deleted. It also records every child argv (`subprocess.Popen`) and the in-flight exception chain (`repr` + formatted traceback) whenever a command raises `CommandError`. These are checked together with output, logs and the final-tree persistence scan. The corpus is the installation token(s) (verbatim and as the Basic `x-access-token:` credential), every App JWT the recorded App saw, and any 16-character window of the throwaway key's base64 body. The unit failing-call test gains a refused-mint leg that checks `str`/`repr`/traceback of the mint failure for JWTs and key material |
+| T-AT3 (Debate, process) | **Changed** `tests/unit/test_github_adapter.py::test_installation_token_is_reused_while_fresh_and_refreshed_at_the_margin` | Injected clock: `build_agent_github(settings, env, clock=...)` (optional keyword; `DEPS.agent_github`'s two-argument call still works). It mints a 1-hour token, reuses it 30 minutes in, and once `REFRESH_MARGIN` = **5 minutes** is left it refreshes before the next request: credentials `[first, first, second]`, 2 mints |
+| T-AT4 (Nit) | — | Adversarial fixtures kept |
+
+Fixture note: in verified mode, `handoff` runs `branch-protection-require-pr`, which then requires code-owner review. The call-site table therefore commits `require_code_owner_review: true` to the fixture `main` snapshot, the state T065 sets.
+
+Harness bite check (throwaway, not committed): with the observer installed, it reported all four of these: a token written to a `NamedTemporaryFile` that was then deleted, a key fragment `os.write`-n to an `mkstemp` file that was then unlinked, a token in a child argv, and a token in a chained exception at `CommandError`.
+
+**Red output (full suite, this branch): `11 failed, 1056 passed, 7 xfailed`** (the 7 are the known T069/T081 strict xfails). `ruff check` and `ruff format --check` pass. Every failure is an assertion:
+- Call-site table, 10 problems, all role or credential ones (every command exits as expected):
+  - `order issue`, `release`, `handoff` and `verdict` pushed as `['governor']`, not the App.
+  - `claim`, `pr open` and `bus pr` asked the CI provider, and pushed as `['governor']`.
+  - `gate run` and `gate evidence` are clean today, inside the red test.
+- REST (4): `factory.github.rest must export build_agent_github(settings, env)`.
+- e2e push: the verified push presented `('governor', 'ghp_ambient…')`.
+- e2e fail-closed (3 nodes): the claim exits 0 because it pushed with ambient credentials.
+- e2e refused push: the App credential was never presented.
+- repr: `['repr', 'str', 'format']` show the token.

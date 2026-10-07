@@ -6,12 +6,14 @@ mode; the CI adapter keeps GITHUB_TOKEN.
 
 from __future__ import annotations
 
+import base64
 import functools
 import importlib
 import json
 import logging
+import re
 import traceback
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, NamedTuple
@@ -269,6 +271,36 @@ def app_env(*, with_app: bool = True) -> EnvSettings:
     return load_env(values)
 
 
+KEY_WINDOW = 16
+_BASE64_RUN = re.compile(rb"[A-Za-z0-9+/]{%d,}" % KEY_WINDOW)
+
+
+@functools.cache
+def _key_windows() -> frozenset[bytes]:
+    lines = [line for line in app_key().pem.splitlines() if line and not line.startswith("-----")]
+    body = "".join(lines).encode()
+    return frozenset(body[i : i + KEY_WINDOW] for i in range(len(body) - KEY_WINDOW + 1))
+
+
+def secret_kinds(data: str | bytes, tokens: Iterable[str]) -> list[str]:
+    """Which secrets `data` holds: a token or JWT from `tokens` (verbatim, or as the
+    base64 `x-access-token:<token>` Basic credential), or any 16-character window of the
+    throwaway private key's base64 body."""
+    raw = data.encode() if isinstance(data, str) else data
+    kinds = []
+    for token in tokens:
+        basic = base64.b64encode(f"x-access-token:{token}".encode())
+        if token.encode() in raw or basic in raw:
+            kinds.append(f"token {token[:8]}…")
+    windows = _key_windows()
+    for match in _BASE64_RUN.finditer(raw):
+        run = match.group()
+        if any(run[i : i + KEY_WINDOW] in windows for i in range(len(run) - KEY_WINDOW + 1)):
+            kinds.append("private key")
+            break
+    return kinds
+
+
 def credential(request: httpx.Request) -> str:
     """The credential a request carried (`Bearer x` / `token x` -> `x`)."""
     value = request.headers.get("Authorization", "")
@@ -282,7 +314,8 @@ class RecordedApp:
     """Recorded GitHub App endpoints: the repository's installation and token minting.
 
     Mint `i` answers with `tokens[i]` (the last one repeats) expiring `lifetimes[i]` from
-    the real clock: the recorded `expires_at` is re-based so the recording never goes stale.
+    `clock()` (the real clock by default): the recorded `expires_at` is re-based so the
+    recording never goes stale.
     """
 
     def __init__(
@@ -293,12 +326,14 @@ class RecordedApp:
         lifetimes: tuple[timedelta, ...] = (timedelta(hours=1),),
         mint_status: int = 201,
         installed: bool = True,
+        clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
         self.installation_id = installation_id
         self.tokens = tokens
         self.lifetimes = lifetimes
         self.mint_status = mint_status
         self.installed = installed
+        self.clock = clock
         self.requests: list[httpx.Request] = []
 
     @property
@@ -347,7 +382,7 @@ class RecordedApp:
             body = recorded("app_access_token.json")
             body["token"] = self.tokens[min(index, len(self.tokens) - 1)]
             lifetime = self.lifetimes[min(index, len(self.lifetimes) - 1)]
-            body["expires_at"] = (datetime.now(UTC) + lifetime).strftime("%Y-%m-%dT%H:%M:%SZ")
+            body["expires_at"] = (self.clock() + lifetime).strftime("%Y-%m-%dT%H:%M:%SZ")
             return httpx.Response(201, json=body)
         return None
 
@@ -377,11 +412,12 @@ def port_over(
     data: Callable[[httpx.Request], httpx.Response],
     *,
     builder: str = AGENT_BUILDER,
+    **options: Any,
 ) -> GitHubPort:
     build = getattr(load_rest(), builder, None)
     assert callable(build), f"factory.github.rest must export {builder}(settings, env)"
     patch_transport(monkeypatch, lambda request: app.handle(request) or data(request))
-    port = build(settings, env)
+    port = build(settings, env, **options)
     assert isinstance(port, GitHubPort)
     return port
 
@@ -437,29 +473,58 @@ def test_verified_mode_finds_the_installation_from_the_repository_with_an_app_jw
         assert str(claims["iss"]) == APP_ID, claims
 
 
-def test_installation_token_is_reused_while_fresh_and_refreshed_before_expiry(
+REFRESH_MARGIN = timedelta(minutes=5)
+
+
+class FakeClock:
+    def __init__(self, now: datetime) -> None:
+        self.now = now
+
+    def __call__(self) -> datetime:
+        return self.now
+
+
+def test_installation_token_is_reused_while_fresh_and_refreshed_at_the_margin(
     repo: RepoBuilder, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A token with 2 minutes left is replaced before the next call; a 1-hour one is
-    reused (refresh margin over 2 minutes, under an hour)."""
+    """With an injected clock (`build_agent_github(settings, env, clock=...)`), a 1-hour
+    token is reused 30 minutes in, and once only REFRESH_MARGIN (5 minutes) is left it is
+    replaced before the next authenticated request."""
+    start = datetime.now(UTC).replace(microsecond=0)
+    clock = FakeClock(start)
     first, second = INSTALLATION_TOKEN, f"{INSTALLATION_TOKEN}_refreshed"
-    app = RecordedApp(tokens=(first, second), lifetimes=(timedelta(minutes=2), timedelta(hours=1)))
+    app = RecordedApp(tokens=(first, second), clock=clock)
     data = RecordedGitHub()
-    port = port_over(verified(repo.settings), app_env(), monkeypatch, app, data.handler)
-    for _ in range(3):
-        port.pr_reviews(7)
-    used = [credential(r) for r in data.requests]
-    assert used[0] in {first, second}, used
-    assert used[1:] == [second, second], used
+    port = port_over(
+        verified(repo.settings), app_env(), monkeypatch, app, data.handler, clock=clock
+    )
+    port.pr_reviews(7)
+    clock.now = start + timedelta(minutes=30)
+    port.pr_reviews(7)
+    assert len(app.mints) == 1, "a fresh token is reused"
+    clock.now = start + timedelta(hours=1) - REFRESH_MARGIN
+    port.pr_reviews(7)
+    assert [credential(r) for r in data.requests] == [first, first, second]
     assert len(app.mints) == 2, [r.url.path for r in app.requests]
 
 
-def test_failing_api_call_keeps_the_installation_token_out_of_errors_and_logs(
+def _error_texts(error: BaseException) -> dict[str, str]:
+    return {
+        "str": str(error),
+        "repr": repr(error),
+        "traceback": "".join(traceback.format_exception(error)),
+    }
+
+
+def test_failing_api_call_and_failing_mint_keep_secrets_out_of_errors_and_logs(
     repo: RepoBuilder,
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
+    """A refused API call leaks no installation token, and a refused mint no App JWT or
+    private key, into the exception chain (`str`, `repr`, formatted traceback), the port's
+    `repr`, the logs or the output."""
     caplog.set_level(logging.DEBUG)
     seen: list[httpx.Request] = []
 
@@ -467,18 +532,21 @@ def test_failing_api_call_keeps_the_installation_token_out_of_errors_and_logs(
         seen.append(request)
         return httpx.Response(403, json={"message": "Resource not accessible by integration"})
 
-    port = port_over(verified(repo.settings), app_env(), monkeypatch, RecordedApp(), refuse)
+    app = RecordedApp()
+    port = port_over(verified(repo.settings), app_env(), monkeypatch, app, refuse)
     with pytest.raises(load_rest().GitHubError) as caught:
         port.create_pr("wo/wo-20261007-new-pr", "main", "title", "body")
     assert [credential(r) for r in seen] == [INSTALLATION_TOKEN]
-    error = caught.value
+    texts = {**_error_texts(caught.value), "port repr": repr(port)}
+
+    refused = RecordedApp(mint_status=401)
+    port = port_over(verified(repo.settings), app_env(), monkeypatch, refused, refuse)
+    with pytest.raises((load_rest().GitHubError, AppTokenError)) as failed_mint:
+        port.get_pr(7)
+    assert refused.mints, "the mint was attempted"
+    texts |= {f"mint {name}": text for name, text in _error_texts(failed_mint.value).items()}
     captured = capsys.readouterr()
-    texts = {
-        "str": str(error),
-        "repr": repr(error),
-        "traceback": "".join(traceback.format_exception(error)),
-        "port repr": repr(port),
-        "logs": caplog.text,
-        "output": captured.out + captured.err,
-    }
-    assert [name for name, text in texts.items() if INSTALLATION_TOKEN in text] == []
+    texts |= {"logs": caplog.text, "output": captured.out + captured.err}
+    secrets = [INSTALLATION_TOKEN, *app.jwts, *refused.jwts]
+    leaked = {name: kinds for name, text in texts.items() if (kinds := secret_kinds(text, secrets))}
+    assert leaked == {}
