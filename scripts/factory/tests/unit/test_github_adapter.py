@@ -1,17 +1,32 @@
-"""T019 — GitHub REST adapter against recorded responses in github_recorded/."""
+"""T019 — GitHub REST adapter against recorded responses in github_recorded/.
+
+T036b — the agent adapter authenticates with the GitHub App installation token in verified
+mode; the CI adapter keeps GITHUB_TOKEN.
+"""
 
 from __future__ import annotations
 
+import base64
+import functools
 import importlib
 import json
+import logging
+import re
+import traceback
+from collections.abc import Callable, Iterable
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 import httpx
+import jwt
 import pytest
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 
 from factory.api import CheckRun, GitHubPort, PullRequest, PullRequestReview
-from factory.config.settings import EnvSettings, load_env
+from factory.config.settings import EnvSettings, IdentityConfig, Settings, load_env
+from factory.identity.app_token import AppTokenError, InstallationTokenSource
 from tests.fixtures.repo_builder import RepoBuilder
 from tests.unit.test_api import assert_commit_status_read_after_write
 
@@ -20,6 +35,7 @@ HEAD = "wo/wo-20261007-recorded"
 SHA = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 TOKEN = "ghs_test_recorded"
 REPO_PATH = "/repos/fixture/demo"
+APP_ID = "12345"
 
 
 def load_rest() -> Any:
@@ -216,3 +232,436 @@ def test_adapter_commit_status_round_trip(
         f"{REPO_PATH}/statuses/{SHA}",
         f"{REPO_PATH}/statuses/{'b' * 40}",
     ], posted
+
+
+# --- T036b: GitHub App installation token -----------------------------------------------
+
+INSTALLATION_TOKEN = recorded("app_access_token.json")["token"]
+CI_BUILDER = "build_github"
+AGENT_BUILDER = "build_agent_github"
+
+
+class AppKey(NamedTuple):
+    pem: str
+    public_pem: str
+    key_line: str
+
+
+@functools.cache
+def app_key() -> AppKey:
+    """A throwaway App private key (PKCS#1 PEM, the form GitHub issues), made once per run."""
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    pem = key.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.TraditionalOpenSSL,
+        serialization.NoEncryption(),
+    ).decode()
+    public_pem = (
+        key.public_key()
+        .public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
+        .decode()
+    )
+    return AppKey(pem=pem, public_pem=public_pem, key_line=pem.splitlines()[5])
+
+
+def app_env(*, with_app: bool = True) -> EnvSettings:
+    values = {"GITHUB_TOKEN": TOKEN}
+    if with_app:
+        values |= {"FACTORY_GITHUB_APP_ID": APP_ID, "FACTORY_GITHUB_APP_PRIVATE_KEY": app_key().pem}
+    return load_env(values)
+
+
+KEY_WINDOW = 16
+_BASE64_RUN = re.compile(rb"[A-Za-z0-9+/]{%d,}" % KEY_WINDOW)
+
+
+@functools.cache
+def _key_windows() -> frozenset[bytes]:
+    lines = [line for line in app_key().pem.splitlines() if line and not line.startswith("-----")]
+    body = "".join(lines).encode()
+    return frozenset(body[i : i + KEY_WINDOW] for i in range(len(body) - KEY_WINDOW + 1))
+
+
+def secret_kinds(data: str | bytes, tokens: Iterable[str]) -> list[str]:
+    """Which secrets `data` holds: a token or JWT from `tokens` (verbatim, or as the
+    base64 `x-access-token:<token>` Basic credential), or any 16-character window of the
+    throwaway private key's base64 body."""
+    raw = data.encode() if isinstance(data, str) else data
+    kinds = []
+    for token in tokens:
+        basic = base64.b64encode(f"x-access-token:{token}".encode())
+        if token.encode() in raw or basic in raw:
+            kinds.append(f"token {token[:8]}…")
+    windows = _key_windows()
+    for match in _BASE64_RUN.finditer(raw):
+        run = match.group()
+        if any(run[i : i + KEY_WINDOW] in windows for i in range(len(run) - KEY_WINDOW + 1)):
+            kinds.append("private key")
+            break
+    return kinds
+
+
+def credential(request: httpx.Request) -> str:
+    """The credential a request carried (`Bearer x` / `token x` -> `x`)."""
+    value = request.headers.get("Authorization", "")
+    for scheme in ("Bearer ", "token "):
+        if value.startswith(scheme):
+            return value.removeprefix(scheme)
+    return value
+
+
+JSON_HEADERS = {"Content-Type": "application/json; charset=utf-8"}
+
+
+class RecordedApp:
+    """Recorded GitHub App endpoints: the repository's installation and token minting.
+
+    Mint `i` answers with `tokens[i]` (the last one repeats) expiring `lifetimes[i]` from
+    `clock()` (the real clock by default): the recorded `expires_at` is re-based so the
+    recording never goes stale.
+    """
+
+    def __init__(
+        self,
+        *,
+        installation_id: int | None = None,
+        tokens: tuple[str, ...] = (INSTALLATION_TOKEN,),
+        lifetimes: tuple[timedelta, ...] = (timedelta(hours=1),),
+        mint_status: int = 201,
+        installed: bool = True,
+        clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        lookup_body: bytes | None = None,
+        mint_body: bytes | None = None,
+    ) -> None:
+        self.installation_id = installation_id
+        self.tokens = tokens
+        self.lifetimes = lifetimes
+        self.mint_status = mint_status
+        self.installed = installed
+        self.clock = clock
+        self.lookup_body = lookup_body
+        self.mint_body = mint_body
+        self.requests: list[httpx.Request] = []
+
+    @property
+    def mints(self) -> list[httpx.Request]:
+        return [r for r in self.requests if r.url.path.startswith("/app/installations/")]
+
+    @property
+    def jwts(self) -> list[str]:
+        return [credential(r) for r in self.requests]
+
+    def handle(self, request: httpx.Request) -> httpx.Response | None:
+        path = request.url.path
+        lookup = path.startswith("/repos/") and path.endswith("/installation")
+        if request.method == "GET" and lookup:
+            self.requests.append(request)
+            if not self.installed:
+                return httpx.Response(
+                    404,
+                    json={
+                        "message": "Not Found",
+                        "documentation_url": "https://docs.github.com/rest",
+                    },
+                )
+            if self.lookup_body is not None:
+                return httpx.Response(200, content=self.lookup_body, headers=JSON_HEADERS)
+            body = recorded("repo_installation.json")
+            if self.installation_id is not None:
+                body["id"] = self.installation_id
+                body["access_tokens_url"] = (
+                    f"https://api.github.test/app/installations/{self.installation_id}/access_tokens"
+                )
+            return httpx.Response(200, json=body)
+        if (
+            request.method == "POST"
+            and path.startswith("/app/installations/")
+            and path.endswith("/access_tokens")
+        ):
+            self.requests.append(request)
+            if self.mint_status != 201:
+                return httpx.Response(
+                    self.mint_status,
+                    json={
+                        "message": "A JSON web token could not be decoded",
+                        "documentation_url": "https://docs.github.com/rest",
+                    },
+                )
+            if self.mint_body is not None:
+                return httpx.Response(201, content=self.mint_body, headers=JSON_HEADERS)
+            index = len(self.mints) - 1
+            body = recorded("app_access_token.json")
+            body["token"] = self.tokens[min(index, len(self.tokens) - 1)]
+            lifetime = self.lifetimes[min(index, len(self.lifetimes) - 1)]
+            body["expires_at"] = (self.clock() + lifetime).strftime("%Y-%m-%dT%H:%M:%SZ")
+            return httpx.Response(201, json=body)
+        return None
+
+
+def patch_transport(
+    monkeypatch: pytest.MonkeyPatch, handler: Callable[[httpx.Request], httpx.Response]
+) -> None:
+    """Every `httpx.Client` made from here on answers through `handler` (latest wins)."""
+    original = httpx.Client
+
+    def client_with_transport(*args: Any, **kwargs: Any) -> httpx.Client:
+        kwargs.setdefault("transport", httpx.MockTransport(handler))
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(httpx, "Client", client_with_transport)
+
+
+def verified(settings: Settings) -> Settings:
+    return settings.model_copy(update={"identity": IdentityConfig(mode="verified")})
+
+
+def port_over(
+    settings: Settings,
+    env: EnvSettings,
+    monkeypatch: pytest.MonkeyPatch,
+    app: RecordedApp,
+    data: Callable[[httpx.Request], httpx.Response],
+    *,
+    builder: str = AGENT_BUILDER,
+    **options: Any,
+) -> GitHubPort:
+    build = getattr(load_rest(), builder, None)
+    assert callable(build), f"factory.github.rest must export {builder}(settings, env)"
+    patch_transport(monkeypatch, lambda request: app.handle(request) or data(request))
+    port = build(settings, env, **options)
+    assert isinstance(port, GitHubPort)
+    return port
+
+
+def test_credentials_follow_the_role_ci_keeps_github_token_agents_use_the_app(
+    repo: RepoBuilder, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Orchestrator ruling 2026-10-07: the CI gate path (`build_github`, which `factory gate
+    run` / `gate evidence` load to post `factory/*` statuses under D8) keeps GITHUB_TOKEN in
+    either mode and never mints. The agent path (`build_agent_github`) keeps GITHUB_TOKEN in
+    recorded mode, sends the installation token in verified mode, and without App
+    credentials fails closed before any request: no fallback to GITHUB_TOKEN."""
+    legs = [
+        (CI_BUILDER, repo.settings, TOKEN),
+        (CI_BUILDER, verified(repo.settings), TOKEN),
+        (AGENT_BUILDER, repo.settings, TOKEN),
+        (AGENT_BUILDER, verified(repo.settings), INSTALLATION_TOKEN),
+    ]
+    for builder, settings, expected in legs:
+        leg = f"{builder}, mode={settings.identity.mode}"
+        app, data = RecordedApp(), RecordedGitHub()
+        port = port_over(settings, app_env(), monkeypatch, app, data.handler, builder=builder)
+        port.list_prs_by_head(HEAD)
+        assert [credential(r) for r in data.requests] == [expected], leg
+        minted = expected == INSTALLATION_TOKEN
+        assert bool(app.mints) is minted, f"{leg}: {[r.url.path for r in app.requests]}"
+
+    app, data = RecordedApp(), RecordedGitHub()
+    with pytest.raises((load_rest().GitHubError, AppTokenError)):
+        port = port_over(
+            verified(repo.settings), app_env(with_app=False), monkeypatch, app, data.handler
+        )
+        port.list_prs_by_head(HEAD)
+    assert data.requests == [], "no request may fall back to GITHUB_TOKEN"
+    assert app.requests == []
+
+
+def test_verified_mode_finds_the_installation_from_the_repository_with_an_app_jwt(
+    repo: RepoBuilder, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The installation id comes from `GET /repos/{owner}/{repo}/installation` (no config)."""
+    app = RecordedApp(installation_id=424242)
+    port = port_over(verified(repo.settings), app_env(), monkeypatch, app, RecordedGitHub().handler)
+    port.get_pr(7)
+    calls = [(r.method, r.url.path) for r in app.requests]
+    assert calls == [
+        ("GET", f"{REPO_PATH}/installation"),
+        ("POST", "/app/installations/424242/access_tokens"),
+    ], calls
+    for request in app.requests:
+        assert request.headers["Authorization"].startswith("Bearer ")
+        claims = jwt.decode(credential(request), app_key().public_pem, algorithms=["RS256"])
+        assert str(claims["iss"]) == APP_ID, claims
+
+
+REFRESH_MARGIN = timedelta(minutes=5)
+
+
+class FakeClock:
+    def __init__(self, now: datetime) -> None:
+        self.now = now
+
+    def __call__(self) -> datetime:
+        return self.now
+
+
+def test_installation_token_is_reused_while_fresh_and_refreshed_at_the_margin(
+    repo: RepoBuilder, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With an injected clock (`build_agent_github(settings, env, clock=...)`), a 1-hour
+    token is reused 30 minutes in, and once only REFRESH_MARGIN (5 minutes) is left it is
+    replaced before the next authenticated request."""
+    start = datetime.now(UTC).replace(microsecond=0)
+    clock = FakeClock(start)
+    first, second = INSTALLATION_TOKEN, f"{INSTALLATION_TOKEN}_refreshed"
+    app = RecordedApp(tokens=(first, second), clock=clock)
+    data = RecordedGitHub()
+    port = port_over(
+        verified(repo.settings), app_env(), monkeypatch, app, data.handler, clock=clock
+    )
+    port.pr_reviews(7)
+    clock.now = start + timedelta(minutes=30)
+    port.pr_reviews(7)
+    assert len(app.mints) == 1, "a fresh token is reused"
+    clock.now = start + timedelta(hours=1) - REFRESH_MARGIN
+    port.pr_reviews(7)
+    assert [credential(r) for r in data.requests] == [first, first, second]
+    assert len(app.mints) == 2, [r.url.path for r in app.requests]
+
+
+def _error_texts(error: BaseException) -> dict[str, str]:
+    return {
+        "str": str(error),
+        "repr": repr(error),
+        "traceback": "".join(traceback.format_exception(error)),
+    }
+
+
+def test_failing_api_call_and_failing_mint_keep_secrets_out_of_errors_and_logs(
+    repo: RepoBuilder,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A refused API call leaks no installation token, and a refused mint no App JWT or
+    private key, into the exception chain (`str`, `repr`, formatted traceback), the port's
+    `repr`, the logs or the output."""
+    caplog.set_level(logging.DEBUG)
+    seen: list[httpx.Request] = []
+
+    def refuse(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(403, json={"message": "Resource not accessible by integration"})
+
+    app = RecordedApp()
+    port = port_over(verified(repo.settings), app_env(), monkeypatch, app, refuse)
+    with pytest.raises(load_rest().GitHubError) as caught:
+        port.create_pr("wo/wo-20261007-new-pr", "main", "title", "body")
+    assert [credential(r) for r in seen] == [INSTALLATION_TOKEN]
+    texts = {**_error_texts(caught.value), "port repr": repr(port)}
+
+    refused = RecordedApp(mint_status=401)
+    port = port_over(verified(repo.settings), app_env(), monkeypatch, refused, refuse)
+    with pytest.raises((load_rest().GitHubError, AppTokenError)) as failed_mint:
+        port.get_pr(7)
+    assert refused.mints, "the mint was attempted"
+    texts |= {f"mint {name}": text for name, text in _error_texts(failed_mint.value).items()}
+    captured = capsys.readouterr()
+    texts |= {"logs": caplog.text, "output": captured.out + captured.err}
+    secrets = [INSTALLATION_TOKEN, *app.jwts, *refused.jwts]
+    leaked = {name: kinds for name, text in texts.items() if (kinds := secret_kinds(text, secrets))}
+    assert leaked == {}
+
+
+# --- R-AT1: a malformed 200/201 from the App endpoints fails closed and discloses nothing --
+
+MALFORMED_CANARY = "ghs_malformed_response_canary"
+
+
+def _json(value: Any) -> bytes:
+    return json.dumps(value).encode()
+
+
+def _valid_expiry() -> str:
+    return (datetime.now(UTC) + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+# case id -> (endpoint, body factory); every body that can carry content carries the canary
+MALFORMED: dict[str, tuple[str, Callable[[], bytes]]] = {
+    "lookup-empty": ("lookup", lambda: b""),
+    "lookup-invalid-json": ("lookup", lambda: f'{{"id": "{MALFORMED_CANARY}'.encode()),
+    "lookup-missing-id": ("lookup", lambda: _json({"account": {"login": MALFORMED_CANARY}})),
+    "lookup-wrong-typed-id": ("lookup", lambda: _json({"id": MALFORMED_CANARY})),
+    "mint-empty": ("mint", lambda: b""),
+    "mint-invalid-json": ("mint", lambda: f'{{"token": "{MALFORMED_CANARY}'.encode()),
+    "mint-missing-token": (
+        "mint",
+        lambda: _json({"expires_at": _valid_expiry(), "note": MALFORMED_CANARY}),
+    ),
+    "mint-wrong-typed-token": (
+        "mint",
+        lambda: _json({"token": [MALFORMED_CANARY], "expires_at": _valid_expiry()}),
+    ),
+    "mint-missing-expires-at": ("mint", lambda: _json({"token": MALFORMED_CANARY})),
+    "mint-wrong-typed-expires-at": (
+        "mint",
+        lambda: _json({"token": MALFORMED_CANARY, "expires_at": [MALFORMED_CANARY]}),
+    ),
+    "mint-token-shaped-expires-at": (
+        "mint",
+        lambda: _json({"token": INSTALLATION_TOKEN, "expires_at": MALFORMED_CANARY}),
+    ),
+}
+
+
+def malformed_app(case: str) -> RecordedApp:
+    endpoint, body = MALFORMED[case]
+    if endpoint == "lookup":
+        return RecordedApp(lookup_body=body())
+    return RecordedApp(mint_body=body())
+
+
+def raised(call: Callable[[], object]) -> BaseException:
+    """The exception `call` raised, so a wrong type fails an assertion, not the run."""
+    try:
+        call()
+    except Exception as exc:  # noqa: BLE001 (the type is what the caller asserts)
+        return exc
+    pytest.fail("no error was raised")
+
+
+@pytest.mark.parametrize("case", list(MALFORMED))
+def test_malformed_app_response_is_an_app_token_error_that_discloses_nothing(
+    case: str,
+    repo: RepoBuilder,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """R-AT1: a 200 lookup or 201 mint whose body is empty, not JSON, or missing or
+    wrong-typing `id` / `token` / `expires_at` raises a fixed `AppTokenError` from the token
+    source (`from None`), and a `GitHubError` caused by it from the agent adapter, so both
+    the git and REST paths exit 4. No response content (the canary, the token), App JWT or
+    key material reaches the exception chain, the logs or the output."""
+    caplog.set_level(logging.DEBUG)
+    rest = load_rest()
+    app = malformed_app(case)
+    patch_transport(
+        monkeypatch, lambda request: app.handle(request) or RecordedGitHub().handler(request)
+    )
+    env = app_env()
+    source = InstallationTokenSource(
+        app_id=env.app_id,
+        private_key=env.app_private_key,
+        repository=repo.settings.github.repository,
+        api_url=repo.settings.github.api_url,
+    )
+    direct = raised(source.token)
+    assert type(direct) is AppTokenError, type(direct).__name__
+    assert direct.__cause__ is None and direct.__suppress_context__, "raise it from None"
+
+    port = rest.build_agent_github(verified(repo.settings), env)
+    via_rest = raised(lambda: port.get_pr(7))
+    assert isinstance(via_rest, rest.GitHubError), type(via_rest).__name__
+    assert isinstance(via_rest.__cause__, AppTokenError), type(via_rest.__cause__).__name__
+
+    captured = capsys.readouterr()
+    texts = {
+        **_error_texts(direct),
+        **{f"rest {name}": text for name, text in _error_texts(via_rest).items()},
+        "logs": caplog.text,
+        "output": captured.out + captured.err,
+    }
+    secrets = [MALFORMED_CANARY, INSTALLATION_TOKEN, *app.jwts]
+    leaked = {name: kinds for name, text in texts.items() if (kinds := secret_kinds(text, secrets))}
+    assert leaked == {}

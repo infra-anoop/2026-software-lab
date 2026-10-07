@@ -1,0 +1,45 @@
+schema_version: 1
+kind: verdict
+id: wo-20261007-factory-app-token.verdict-03
+created: 2026-10-07T18:54:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - specs/001-factory-v2/TEST_REVIEW_APP_TOKEN.md
+  - notes/packets/2026-10-07-factory-app-token.handoff.md
+  - "review-time: 2026-10-07T18:54:00Z (round 3, final)"
+decision: reject
+findings:
+  - id: T-AT2-R3
+    severity: blocker
+    tag: product
+    text: >-
+      Harm statement: credential exposure. Root cause: the security observer's
+      private-hook path has no executable self-check. On Linux, os.spawn
+      coverage relies on optional private os._spawnvef, the harness silently
+      skips its wrapper when that symbol is absent, and no committed test
+      proves the wrapper records a canary. A CPython or Nix change can therefore
+      let an installation token enter os.spawn argv while the suite stays
+      green. This is a bug that must still be fixed: add one committed
+      parametrized observer bite test covering a representative audit-hook
+      spawn and os.spawn, assert CredentialObserver.leaks reports both
+      canaries, and fail explicitly on the supported Linux environment if the
+      private hook is unavailable or not hit.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: specs/001-factory-v2/TEST_REVIEW_APP_TOKEN.md
+    sha: ee23e8f
+  - path: notes/packets/2026-10-07-factory-app-token.handoff.md
+    sha: ee23e8f
+  - path: bus/orders/wo-20261007-factory-app-token/verdict-02.yaml
+    sha: ee23e8f
+  - path: scripts/factory/tests/contract/test_app_token_e2e.py
+    sha: ee23e8f
+bootstrap: true
+manual_equivalents:
+  - "red-first: full suite reproduced 11 assertion failures, 1056 passes, and 7 expected failures"
+  - "T-AT1-R2: every staged command exited 0; gate run reached the CI provider and the passing diff-within-owned-paths verdict-PR path"
+  - "T-AT2-R2: audit-event routing and private os._spawnvef wrapper inspected under pinned Python 3.12.8"
+  - "harm bar: silent loss of os.spawn observation can make process-list installation-token exposure pass the suite"

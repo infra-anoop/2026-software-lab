@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from datetime import datetime
 from typing import Any
 
 import httpx
@@ -15,6 +17,7 @@ from factory.api import (
     PullRequestReview,
 )
 from factory.config.settings import EnvSettings, Settings
+from factory.identity.app_token import AppTokenError, InstallationTokenSource
 
 API_VERSION = "2022-11-28"
 PAGE_SIZE = 100
@@ -69,11 +72,23 @@ def _status(data: dict[str, Any]) -> CommitStatus:
 
 
 class RestGitHub:
-    """REST client for one repository (`owner/name`)."""
+    """REST client for one repository (`owner/name`).
 
-    def __init__(self, *, repository: str, api_url: str, token: str | None) -> None:
+    Authenticates with a fixed `token`, or with `token_source()` asked before every
+    request (the App installation token, which it refreshes itself).
+    """
+
+    def __init__(
+        self,
+        *,
+        repository: str,
+        api_url: str,
+        token: str | None,
+        token_source: Callable[[], str] | None = None,
+    ) -> None:
         self.repository = repository
         self.owner = repository.split("/", 1)[0]
+        self._token_source = token_source
         headers = {
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": API_VERSION,
@@ -84,9 +99,23 @@ class RestGitHub:
             base_url=api_url.rstrip("/"), headers=headers, timeout=TIMEOUT_SECONDS
         )
 
-    def _request(self, method: str, path: str, **kwargs: Any) -> Any:
+    def __repr__(self) -> str:
+        return f"RestGitHub(repository={self.repository!r})"
+
+    def _auth(self) -> dict[str, str] | None:
+        if self._token_source is None:
+            return None
         try:
-            response = self._client.request(method, f"/repos/{self.repository}{path}", **kwargs)
+            return {"Authorization": f"Bearer {self._token_source()}"}
+        except AppTokenError as exc:
+            raise GitHubError(f"cannot authenticate as the GitHub App: {exc}") from exc
+
+    def _request(self, method: str, path: str, **kwargs: Any) -> Any:
+        headers = self._auth()
+        try:
+            response = self._client.request(
+                method, f"/repos/{self.repository}{path}", headers=headers, **kwargs
+            )
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
             detail = exc.response.text[:200]
@@ -149,10 +178,41 @@ class RestGitHub:
 
 
 def build_github(settings: Settings, env: EnvSettings) -> GitHubPort:
-    """The adapter `factory.cli.common.DEPS.github` loads by default."""
+    """The CI adapter `factory.cli.common.DEPS.github` loads by default: GITHUB_TOKEN in
+    either identity mode, never an App token (`gate run` / `gate evidence` post under D8)."""
     token = env.github_token.get_secret_value() if env.github_token else None
     return RestGitHub(
         repository=settings.github.repository,
         api_url=env.github_api_url or settings.github.api_url,
         token=token,
+    )
+
+
+def build_agent_github(
+    settings: Settings, env: EnvSettings, *, clock: Callable[[], datetime] | None = None
+) -> GitHubPort:
+    """The agent adapter `factory.cli.common.DEPS.agent_github` loads by default.
+
+    Recorded mode: GITHUB_TOKEN, as the CI adapter. Verified mode: the App installation
+    token; without App credentials it raises `GitHubError` before any request (no
+    fallback to GITHUB_TOKEN).
+    """
+    if settings.identity.mode != "verified":
+        return build_github(settings, env)
+    api_url = env.github_api_url or settings.github.api_url
+    try:
+        source = InstallationTokenSource(
+            app_id=env.app_id,
+            private_key=env.app_private_key,
+            repository=settings.github.repository,
+            api_url=api_url,
+            clock=clock,
+        )
+    except AppTokenError as exc:
+        raise GitHubError(str(exc)) from exc
+    return RestGitHub(
+        repository=settings.github.repository,
+        api_url=api_url,
+        token=None,
+        token_source=source.token,
     )

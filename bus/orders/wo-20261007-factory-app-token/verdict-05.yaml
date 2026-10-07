@@ -1,0 +1,38 @@
+schema_version: 1
+kind: verdict
+id: wo-20261007-factory-app-token.verdict-05
+created: 2026-10-07T22:24:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - specs/001-factory-v2/PR_REVIEW_APP_TOKEN.md
+  - notes/packets/2026-10-07-factory-app-token.handoff.md
+  - "review-time: 2026-10-07T22:24:00Z (implementation review round 2)"
+decision: accept
+findings: []
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: notes/packets/2026-10-07-factory-app-token.handoff.md
+    sha: 47d1428
+  - path: specs/001-factory-v2/PR_REVIEW_APP_TOKEN.md
+    sha: 47d1428
+  - path: bus/orders/wo-20261007-factory-app-token/handoff.yaml
+    sha: 47d1428
+  - path: bus/orders/wo-20261007-factory-app-token/verdict-04.yaml
+    sha: 47d1428
+  - path: scripts/factory/src/factory/identity/app_token.py
+    sha: 47d1428
+  - path: scripts/factory/tests/unit/test_github_adapter.py
+    sha: 47d1428
+  - path: scripts/factory/tests/contract/test_app_token_e2e.py
+    sha: 47d1428
+bootstrap: true
+manual_equivalents:
+  - "scope: only R-AT1 resolution and regressions from its fix were reviewed"
+  - "red proof: d978268 changed only tests and its 11-case table fails on behavioral assertions against production paths"
+  - "response validation: empty, invalid JSON, missing, wrong-typed, and token-shaped timestamp cases inspected"
+  - "path behavior: direct source, REST wrapper, and verified git CLI exit-4 paths inspected"
+  - "probe: a 201 empty mint now raises fixed AppTokenError from None with suppressed context"
+  - "verification: full suite passed 1092 tests with 7 expected failures; relevant gates passed"

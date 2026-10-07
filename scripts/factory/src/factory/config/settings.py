@@ -156,6 +156,15 @@ CHILD_ENV_ALLOWLIST = (
 )
 
 
+def git_environment(
+    extra: Mapping[str, str], environ: Mapping[str, str] | None = None
+) -> dict[str, str]:
+    """Environment for the factory's own `git` child: `environ` (defaults to `os.environ`)
+    plus `extra`, for a credential the command-scoped helper reads from its environment."""
+    env = os.environ if environ is None else environ
+    return {**env, **extra}
+
+
 def child_environment(environ: Mapping[str, str] | None = None) -> dict[str, str]:
     """Environment for a child process that runs untrusted code: only the names in
     `CHILD_ENV_ALLOWLIST`, copied from `environ` (defaults to `os.environ`)."""

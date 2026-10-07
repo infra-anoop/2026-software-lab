@@ -1,0 +1,16 @@
+schema_version: 1
+kind: override
+id: wo-20261007-factory-app-token.override-02
+created: '2026-10-07T21:30:00Z'
+actor: orchestrator
+actor_model: claude-opus-5.5
+gate: deferral-words-need-od
+pr: 33
+reason: The flagged line in specs/001-factory-v2/TEST_REVIEW_APP_TOKEN.md is the reviewer's
+  round-3 decision text, which uses the word optional to describe a CPython hook,
+  not to defer work. Review records are not edited by the orchestrator. Same gap as
+  earlier review-record overrides; skipping review records is on the Wave 1 retro
+  agenda.
+gate_class: drift
+refs:
+- wo-20261007-factory-app-token

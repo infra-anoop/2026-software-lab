@@ -12,9 +12,11 @@ from typing import Annotated
 
 import typer
 
+from factory.api import GitHubPort
 from factory.cli import exit_codes
 from factory.cli.common import DEPS, CommandError, JsonOpt, RepoOpt, emit, resolve_repo
 from factory.config.settings import Settings, load_env, load_settings
+from factory.github.rest import GitHubError
 from factory.orders.errors import External, OrderError, Refused, Usage
 from factory.orders.lease import claim_order, issue_order, release_order
 from factory.orders.review import handoff_order, open_bus_pr, open_pr, record_verdict
@@ -36,6 +38,14 @@ _CODES: dict[type[OrderError], int] = {
 def _context(repo: Path | None) -> tuple[Path, Settings]:
     root = resolve_repo(repo)
     return root, load_settings(root)
+
+
+def _agent_github(settings: Settings) -> GitHubPort:
+    """The agent role's client; in verified mode, missing App credentials exit 4."""
+    try:
+        return DEPS.agent_github(settings, load_env())
+    except GitHubError as exc:
+        raise CommandError(exit_codes.EXTERNAL, str(exc)) from exc
 
 
 def _run[T](as_json: bool, action: Callable[[], T]) -> T:
@@ -138,7 +148,7 @@ def claim(
 ) -> None:
     """Fast-forward push of the claim event to wo/<order-id>."""
     root, settings = _context(repo)
-    github = DEPS.github(settings, load_env())
+    github = _agent_github(settings)
     pushed = _run(
         json_out,
         lambda: claim_order(
@@ -224,7 +234,7 @@ def handoff(order_id: OrderIdArg, json_out: JsonOpt = False, repo: RepoOpt = Non
 def pr_open(order_id: OrderIdArg, json_out: JsonOpt = False, repo: RepoOpt = None) -> None:
     """Open PR wo/<order-id> -> main; body links order and intents."""
     root, settings = _context(repo)
-    github = DEPS.github(settings, load_env())
+    github = _agent_github(settings)
     pr = _run(json_out, lambda: open_pr(root, settings, github, order_id))
     emit(
         "pr open",
@@ -258,7 +268,7 @@ def bus_pr(
 ) -> None:
     """Open a bus PR for decision, correction, or post-mortem messages."""
     root, settings = _context(repo)
-    github = DEPS.github(settings, load_env())
+    github = _agent_github(settings)
     pr = _run(json_out, lambda: open_bus_pr(root, settings, github, message, now=DEPS.clock()))
     emit(
         "bus pr",

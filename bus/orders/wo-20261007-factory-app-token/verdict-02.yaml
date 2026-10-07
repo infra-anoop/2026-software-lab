@@ -1,0 +1,57 @@
+schema_version: 1
+kind: verdict
+id: wo-20261007-factory-app-token.verdict-02
+created: 2026-10-07T17:52:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - specs/001-factory-v2/TEST_REVIEW_APP_TOKEN.md
+  - notes/packets/2026-10-07-factory-app-token.handoff.md
+  - "review-time: 2026-10-07T17:52:00Z (round 2)"
+decision: reject
+findings:
+  - id: T-AT1-R2
+    severity: debate
+    tag: process
+    text: >-
+      The call-site table lets gate run exit with either success or gate
+      failure, and only proves that the agent provider was absent. An early
+      failure that never constructs the CI provider can satisfy this leg.
+      Stage a passing gate, require exit 0, and require at least one CI-provider
+      call; gate evidence correctly remains adapter-free.
+  - id: T-AT2-R2
+    severity: blocker
+    tag: product
+    text: >-
+      Root cause: incomplete Python process-spawn interception.
+      CredentialObserver wraps subprocess.Popen but omits os.system and
+      os.posix_spawn variants, so an implementation can put the installation
+      token directly in a git/helper command line and pass every observer
+      assertion. The consequence is process-list credential exposure despite a
+      green security suite, and shell-based credential helpers make this
+      materially plausible. Intercept those standard Python APIs and apply the
+      existing secret corpus to their command and argv. C-extension writes,
+      child-process file writes, and the necessary env/pipe transport may
+      remain as the explicitly bounded gaps.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: specs/001-factory-v2/TEST_REVIEW_APP_TOKEN.md
+    sha: f9ae7ee
+  - path: notes/packets/2026-10-07-factory-app-token.handoff.md
+    sha: f9ae7ee
+  - path: bus/orders/wo-20261007-factory-app-token/verdict-01.yaml
+    sha: f9ae7ee
+  - path: scripts/factory/tests/contract/test_app_token_e2e.py
+    sha: f9ae7ee
+  - path: scripts/factory/tests/unit/test_github_adapter.py
+    sha: f9ae7ee
+  - path: scripts/factory/src/factory/orders/git.py
+    sha: f9ae7ee
+bootstrap: true
+manual_equivalents:
+  - "red-first: full suite reproduced 11 assertion failures, 1056 passes, and 7 expected failures"
+  - "T-AT1: all nine staged commands and provider/push assertions inspected; verified-mode code-owner-review snapshot judged legitimate"
+  - "T-AT2: Python writes, deleted files, subprocess argv, exception chains, final files, JWTs, tokens, and private-key windows inspected against the declared gaps"
+  - "T-AT3: fake-clock reuse and five-minute pre-request refresh checked against the spec and contract; no numeric contradiction found"

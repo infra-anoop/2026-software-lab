@@ -1,0 +1,18 @@
+schema_version: 1
+kind: override
+id: wo-20261007-factory-app-token.override-01
+created: '2026-10-07T21:30:00Z'
+actor: orchestrator
+actor_model: claude-opus-5.5
+gate: red-first-proof
+pr: 33
+reason: 'test_observer_reports_secrets_in_a_spawned_command_line is a harness self-test
+  required by the round-3 test review: it proves the leak observer sees command lines,
+  so it is green on base code by design and cannot be red-first. The orchestrator
+  checked that it bites: with the os._spawnvef wrapper disabled its os.spawnv case
+  fails, and it passes again when restored (2026-10-07). Every other new test is red
+  on base. Same gate gap as the Slice C override-02, owner Slice B, on the Wave 1
+  retro agenda.'
+gate_class: drift
+refs:
+- wo-20261007-factory-app-token

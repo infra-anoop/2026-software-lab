@@ -2,20 +2,29 @@
 
 The App JWT is RS256-signed with PyJWT (research.md § GitHub App JWT signing). Values
 come from typed settings (`EnvSettings.app_id` / `app_private_key`); nothing here reads
-the environment.
+the environment. No token, JWT or key reaches an error message or a `repr`.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import re
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import httpx
 import jwt
+from pydantic import SecretStr
 
 JWT_BACKDATE = timedelta(seconds=60)
 JWT_LIFETIME = timedelta(minutes=9)
+REFRESH_MARGIN = timedelta(minutes=5)
 TIMEOUT_SECONDS = 30.0
+API_VERSION = "2022-11-28"
+# The token goes into an HTTP header and a credential-helper line: no space or control
+# character may ride along.
+_TOKEN_SHAPE = re.compile(r"[\x21-\x7e]+")
 
 
 class AppTokenError(Exception):
@@ -24,7 +33,7 @@ class AppTokenError(Exception):
 
 @dataclass(frozen=True)
 class InstallationToken:
-    token: str
+    token: str = field(repr=False)
     expires_at: datetime
 
 
@@ -35,7 +44,51 @@ def app_jwt(*, app_id: str, private_key: str, now: datetime) -> str:
         "iat": int((now - JWT_BACKDATE).timestamp()),
         "exp": int((now + JWT_LIFETIME).timestamp()),
     }
-    return jwt.encode(payload, private_key, algorithm="RS256")
+    try:
+        return jwt.encode(payload, private_key, algorithm="RS256")
+    except (ValueError, TypeError, jwt.PyJWTError):
+        raise AppTokenError("the GitHub App private key cannot sign a JWT") from None
+
+
+def _json_object(response: httpx.Response, action: str) -> dict[str, Any]:
+    """The response body as a JSON object; anything else is a fixed `AppTokenError`."""
+    try:
+        body = response.json()
+    except ValueError:
+        raise AppTokenError(f"{action} failed: the response is not JSON") from None
+    if not isinstance(body, dict):
+        raise AppTokenError(f"{action} failed: the response is not a JSON object") from None
+    return body
+
+
+def _expiry(value: object) -> datetime:
+    """`expires_at` as an aware UTC datetime; the value itself never reaches the error."""
+    if isinstance(value, str):
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            parsed = None
+        if parsed is not None and parsed.tzinfo is not None:
+            return parsed.astimezone(UTC)
+    raise AppTokenError("the mint response has no valid expires_at") from None
+
+
+def _app_request(api_url: str, method: str, path: str, token: str, action: str) -> httpx.Response:
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "Authorization": f"Bearer {token}",
+        "X-GitHub-Api-Version": API_VERSION,
+    }
+    try:
+        with httpx.Client(base_url=api_url.rstrip("/"), timeout=TIMEOUT_SECONDS) as client:
+            response = client.request(method, path, headers=headers)
+            response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        status = exc.response.status_code
+        raise AppTokenError(f"{action} failed: HTTP {status} from {method} {path}") from None
+    except httpx.HTTPError as exc:
+        raise AppTokenError(f"{action} failed: {type(exc).__name__}") from None
+    return response
 
 
 def mint_installation_token(
@@ -51,23 +104,89 @@ def mint_installation_token(
         raise AppTokenError("FACTORY_GITHUB_APP_ID is not set")
     moment = now or datetime.now(UTC)
     token = app_jwt(app_id=app_id, private_key=private_key, now=moment)
-    headers = {
-        "Accept": "application/vnd.github+json",
-        "Authorization": f"Bearer {token}",
-        "X-GitHub-Api-Version": "2022-11-28",
-    }
     path = f"/app/installations/{installation_id}/access_tokens"
-    try:
-        with httpx.Client(base_url=api_url.rstrip("/"), timeout=TIMEOUT_SECONDS) as client:
-            response = client.post(path, headers=headers)
-            response.raise_for_status()
-    except httpx.HTTPError as exc:
-        raise AppTokenError(f"minting an installation token failed: {exc}") from exc
-    body = response.json()
-    expires_at = datetime.fromisoformat(str(body["expires_at"]).replace("Z", "+00:00"))
+    action = "minting an installation token"
+    body = _json_object(_app_request(api_url, "POST", path, token, action), action)
+    minted = body.get("token")
+    if not isinstance(minted, str) or not _TOKEN_SHAPE.fullmatch(minted):
+        raise AppTokenError("the mint response has no valid token") from None
+    expires_at = _expiry(body.get("expires_at"))
     if expires_at <= moment:
         raise AppTokenError(f"installation token already expired at {expires_at.isoformat()}")
-    return InstallationToken(token=str(body["token"]), expires_at=expires_at.astimezone(UTC))
+    return InstallationToken(token=minted, expires_at=expires_at)
+
+
+def find_installation_id(
+    *, app_id: str, private_key: str, repository: str, api_url: str, now: datetime
+) -> str:
+    """The App's installation on `owner/repo` (`GET /repos/{owner}/{repo}/installation`).
+
+    A 404 (the App is not installed there) is a mint failure like any other.
+    """
+    token = app_jwt(app_id=app_id, private_key=private_key, now=now)
+    path = f"/repos/{repository}/installation"
+    action = "finding the App installation"
+    installation = _json_object(_app_request(api_url, "GET", path, token, action), action).get("id")
+    if isinstance(installation, bool) or not isinstance(installation, int) or installation < 1:
+        raise AppTokenError("the installation response has no valid id") from None
+    return str(installation)
+
+
+class InstallationTokenSource:
+    """The installation token for one repository, minted in-process on first use and
+    reused until only `REFRESH_MARGIN` of its hour is left.
+
+    Raises `AppTokenError` at construction when App credentials are missing, and from
+    `token()` when the lookup or the mint fails; there is no fallback credential.
+    """
+
+    def __init__(
+        self,
+        *,
+        app_id: str | None,
+        private_key: SecretStr | None,
+        repository: str,
+        api_url: str,
+        clock: Callable[[], datetime] | None = None,
+    ) -> None:
+        if not app_id or private_key is None:
+            raise AppTokenError(
+                "identity.mode is verified but FACTORY_GITHUB_APP_ID or"
+                " FACTORY_GITHUB_APP_PRIVATE_KEY is not set"
+            )
+        self._app_id = app_id
+        self._private_key = private_key
+        self._repository = repository
+        self._api_url = api_url
+        self._clock = clock or (lambda: datetime.now(UTC))
+        self._installation_id: str | None = None
+        self._current: InstallationToken | None = None
+
+    def __repr__(self) -> str:
+        return f"InstallationTokenSource(repository={self._repository!r})"
+
+    def token(self) -> str:
+        now = self._clock()
+        current = self._current
+        if current is None or current.expires_at - now <= REFRESH_MARGIN:
+            key = self._private_key.get_secret_value()
+            if self._installation_id is None:
+                self._installation_id = find_installation_id(
+                    app_id=self._app_id,
+                    private_key=key,
+                    repository=self._repository,
+                    api_url=self._api_url,
+                    now=now,
+                )
+            current = mint_installation_token(
+                app_id=self._app_id,
+                private_key=key,
+                installation_id=self._installation_id,
+                api_url=self._api_url,
+                now=now,
+            )
+            self._current = current
+        return current.token
 
 
 def git_credential_response(token: InstallationToken) -> str:

@@ -1,0 +1,47 @@
+# FR-037 bootstrap handoff for T036b. The full handoff (tests, T* rounds, implementation,
+# gate results) is the Markdown file in refs.
+schema_version: 1
+kind: handoff
+id: wo-20261007-factory-app-token.handoff
+created: 2026-10-07T20:50:00Z
+actor: worker
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/packets/2026-10-07-factory-app-token.handoff.md
+  - "FR-037 bootstrap"
+summary: |
+  T036b: in identity.mode = "verified" the agent commands run as the GitHub App. REST goes
+  through DEPS.agent_github; git fetch and push authenticate as x-access-token through a
+  command-scoped helper that resets ambient helpers and reads the token from its environment.
+  The installation comes from GET /repos/{o}/{r}/installation with the App JWT; the token is
+  minted in-process and refreshed 5 minutes before expiry. Missing credentials, a refused
+  mint, a lookup 404, or a malformed lookup/mint body (R-AT1: fixed AppTokenError from None)
+  give exit 4 with no fallback and no response content in the error. gate run and gate
+  evidence keep GITHUB_TOKEN. Full suite 1092 passed, 7 xfailed. identity.mode not flipped.
+checks_run:
+  - gate_or_test: uv run pytest (scripts/factory)
+    result: 1092 passed, 7 xfailed (strict, T069/T081); includes 11 T036b, 3 observer self-test and 22 R-AT1 nodes
+  - gate_or_test: R-AT1 red proof at d978268 (tests only, before the fix)
+    result: 22 failed on assertions (JSONDecodeError, KeyError or ValueError escaped; a wrong-typed id or token was accepted and pushed); green at d55f6f3
+  - gate_or_test: ruff check + ruff format --check
+    result: passed
+  - gate_or_test: observer self-test bite check (throwaway, not committed)
+    result: with the os._spawnvef wrapper not installed, the os.spawnv node fails (leaks() reported {}); with the symbol looked up under a missing name, every node errors at setup on Linux
+  - gate_or_test: factory gate run --base origin/main --head HEAD (at d55f6f3, base a7f4373)
+    result: 24 passed, 1 overridden (deferral-words-need-od, override recorded), 0 failed; red-first-proof passes outright (see packet)
+deviations:
+  - what: config/settings.py gains git_environment(extra), a function, not a typed-config field
+    why: only factory.config may read os.environ (I-A3, ruff TID251), and the git child needs the inherited environment plus the token for the env-fed helper
+    conservative_choice: no Settings or EnvSettings field changed and no installation id field added (the id is looked up); sibling of the existing child_environment()
+  - what: tests/fixtures/cli_runner.py also substitutes DEPS.agent_github, with raising=False
+    why: amendment-01 requires the shared fixture to substitute it; raising=False lets red-first-proof run the head tests on base code, where DEPS has no agent_github
+    conservative_choice: fixture only; no test function was edited in Part B
+  - what: verified-mode git fetch in the agent commands also authenticates as the App, not only push
+    why: the ruling routes every agent-facing path through the App; fetching with ambient credentials would read as the governor
+    conservative_choice: one token per command shared by its fetch and push; board, gate and other non-order fetches are unchanged
+  - what: size_minutes is 60, the dispatch timebox
+    why: FR-037 bootstrap order; no measured size exists yet
+    conservative_choice: true basis stated in the order's refs
+open_questions: []
+author_model: claude-opus-5.5
