@@ -14,3 +14,11 @@ Decision: **reject**
 - The green tests exercise production source: direct adapter tests cover lookup, mint, cache, refresh, and REST redaction; command tests run production git transport and credential helper behavior. Provider spies and recorded HTTP fixtures replace boundaries without bypassing the source under review.
 - The diff is inside amendment-01 owned paths, `tasks.md` is unchanged, `cli/common.py` changes only add the approved agent provider, typed configuration is unchanged, and identity mode is not flipped.
 - Full suite: 1070 passed, 7 xfailed. The requested gate run reported the two documented gate findings plus the expected review-branch-name `pr-links-order` failure; this invocation did not apply the committed overrides.
+
+## Triage (orchestrator, round 1)
+
+| id | Ruling | Fix required |
+|----|--------|--------------|
+| R-AT1 (Blocker) | Accept. Tagged product, but it applies the locked fail-closed and no-disclosure rulings and chooses no new behaviour, so the orchestrator adjudicates it | Red tests first: direct and CLI cases for a malformed installation lookup and a malformed mint (empty body, invalid JSON, missing or wrong-typed `token`/`expires_at`/`id`, and a token-shaped invalid `expires_at`), each expecting exit 4 and no response content in output, logs or the exception chain. Then convert every response-shape and timestamp error inside the App-token boundary to a fixed, secret-free `AppTokenError` raised `from None` |
+
+The reviewer's judgments on the deviations, the two-token mint and both overrides are accepted as written.
