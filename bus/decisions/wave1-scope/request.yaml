@@ -32,7 +32,12 @@ prompt: >
   and ready.
   What happens next: the orchestrator records your choice in the task list, moves the named work
   to Wave 1.5 with a note, and books the retro session.
+  Option C came from your question on Oct 7 about the earliest cohesive point. The factory itself
+  is built and every Wave 1 change already went through it; none of the remaining work is needed
+  to use it. The only part Wave 1.5 cannot start without is the retro's decision on what Wave 1.5
+  contains.
 options:
   - label: "A: Core, about 5 hours: GitHub App, branch protection, review-record check, hand-written report card, full retro"
   - label: "B: Retro only, about 2.5 hours (about 1 hour yours): hand-written report card and review-record check by the orchestrator, then a shortened retro with you; the App, branch protection and status board move to Wave 1.5"
-recommended: "B: Retro only, about 2.5 hours (about 1 hour yours): hand-written report card and review-record check by the orchestrator, then a shortened retro with you; the App, branch protection and status board move to Wave 1.5"
+  - label: "C: Close Wave 1 now: about 1 hour of orchestrator preparation, then a 1-hour session with you to pick the Wave 1.5 list; everything else, including the report card and review-record check, moves to Wave 1.5"
+recommended: "C: Close Wave 1 now: about 1 hour of orchestrator preparation, then a 1-hour session with you to pick the Wave 1.5 list; everything else, including the report card and review-record check, moves to Wave 1.5"
