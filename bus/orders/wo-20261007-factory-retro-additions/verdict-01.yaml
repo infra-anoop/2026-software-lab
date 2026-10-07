@@ -1,0 +1,30 @@
+schema_version: 1
+kind: verdict
+id: wo-20261007-factory-retro-additions.verdict-01
+created: 2026-10-07T21:11:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - notes/retro/2026-10-wave1-agenda.md
+  - specs/001-factory-v2/PR_REVIEW_RETRO_ADDITIONS.md
+  - "independent retro-additions review round 1"
+decision: reject
+findings:
+  - id: R-RX1
+    severity: blocker
+    tag: process
+    text: "Section 13 falsely says both the spec-review prompt and spec template are rule paths. `docs/agent-os/SPEC_REVIEW_PROMPT.md` is protected through `docs/agent-os/`, but `.specify/templates/overrides/spec.md` is not listed by `.github/CODEOWNERS` or AGENTS.md rule 11. Name the concrete paths and describe only the prompt as currently protected."
+  - id: R-RX2
+    severity: debate
+    tag: process
+    text: "Section 14's claims that stored transcripts omit tool output and that tool output is most of the tokens are not established by repo evidence and were unverifiable in this review environment. Qualify them or provide measured evidence before using them for token allocation."
+  - id: R-RX3
+    severity: debate
+    tag: process
+    text: "Section 17 gives an unsupported 2,000-4,000-token wake-up estimate, does not account for unknown caching when claiming much larger token cost, and calls option B near-zero context without naming the non-AI alert bridge. Keep the qualitative comparison, mark costs unmeasured, distinguish context growth from input usage, and specify the notification mechanism."
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: notes/retro/2026-10-wave1-agenda.md
+    sha: 0087dbb
