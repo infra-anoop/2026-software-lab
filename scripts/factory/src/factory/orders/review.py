@@ -31,7 +31,7 @@ from factory.github.rest import GitHubError
 from factory.lifecycle.view import OrderRecord, load_order
 from factory.orders import git
 from factory.orders.errors import External, Refused, Usage
-from factory.orders.lease import fetch_or_fail, push_or_fail
+from factory.orders.lease import fetch_or_fail, git_token, push_or_fail
 from factory.orders.messages import build, path_of, to_yaml, utc_stamp
 
 LOCAL_GATE_SCOPES = frozenset({"changed_lines", "repo"})
@@ -162,9 +162,15 @@ def handoff_order(repo: Path, settings: Settings, order_id: str, *, now: datetim
     questions = [
         q.question for q in handoff.open_questions if q.question_class == "blocker_governor"
     ]
+    token = git_token(settings)
     if questions:
         push_or_fail(
-            repo, head, branch, lost=f"origin {branch} moved; pull and retry", first_writer=False
+            repo,
+            head,
+            branch,
+            token=token,
+            lost=f"origin {branch} moved; pull and retry",
+            first_writer=False,
         )
         raise Refused(
             "Waiting on the governor:\n" + "\n".join(f"- {q}" for q in questions),
@@ -200,7 +206,12 @@ def handoff_order(repo: Path, settings: Settings, order_id: str, *, now: datetim
         )
         written = True
     notes = push_or_fail(
-        repo, sha, branch, lost=f"origin {branch} moved; pull and retry", first_writer=written
+        repo,
+        sha,
+        branch,
+        token=token,
+        lost=f"origin {branch} moved; pull and retry",
+        first_writer=written,
     )
     return HandoffResult(
         order_id=order_id,
@@ -242,7 +253,12 @@ def open_pr(repo: Path, settings: Settings, github: GitHubPort, order_id: str) -
     branch = git.order_branch(order_id)
     sha = git.git_text(repo, "rev-parse", ref)
     push_or_fail(
-        repo, sha, branch, lost=f"origin {branch} moved; pull and retry", first_writer=False
+        repo,
+        sha,
+        branch,
+        token=git_token(settings),
+        lost=f"origin {branch} moved; pull and retry",
+        first_writer=False,
     )
     try:
         existing = [pr for pr in github.list_prs_by_head(branch) if pr.open]
@@ -308,7 +324,9 @@ def record_verdict(
         raise Refused(f"{relative} is already recorded; number the next verdict")
     sha = git.commit_files(repo, base, {relative: content}, f"verdict: {verdict.id}")
     branch = git.order_branch(order_id)
-    notes = push_or_fail(repo, sha, branch, lost=f"origin {branch} moved; pull and retry")
+    notes = push_or_fail(
+        repo, sha, branch, token=git_token(settings), lost=f"origin {branch} moved; pull and retry"
+    )
     return relative, sha, notes
 
 
@@ -347,7 +365,8 @@ def open_bus_pr(
             slug_source = slug_source or message.id.removesuffix(".lock")
         contents[relative] = (repo / relative).read_bytes()
         slug_source = slug_source or PurePosixPath(relative).stem
-    fetch_or_fail(repo)
+    token = git_token(settings)
+    fetch_or_fail(repo, token)
     main = git.main_ref(repo)
     if main is None:
         raise External("origin has no main branch")
@@ -358,7 +377,12 @@ def open_bus_pr(
     base = git.git_text(repo, "rev-parse", main)
     sha = git.commit_files(repo, base, contents, f"bus: {slug}")
     push_or_fail(
-        repo, sha, branch, lost=f"{branch} was created by someone else first", advance=False
+        repo,
+        sha,
+        branch,
+        token=token,
+        lost=f"{branch} was created by someone else first",
+        advance=False,
     )
     body = "Bus messages:\n" + "\n".join(f"- `{r}`" for r in sorted(contents)) + "\n"
     try:

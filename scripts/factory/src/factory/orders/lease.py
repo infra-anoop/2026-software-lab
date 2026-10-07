@@ -12,6 +12,7 @@ event or a PR closed unmerged releases it; landing on `main` or a merged PR ends
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -19,8 +20,9 @@ from pathlib import Path
 from factory.api import GitHubPort, OrderState
 from factory.bus.models import Claim, Release, WorkOrder
 from factory.bus.store import BusError, load_file
-from factory.config.settings import Settings
+from factory.config.settings import Settings, load_env
 from factory.github.rest import GitHubError
+from factory.identity.app_token import AppTokenError, InstallationTokenSource
 from factory.lifecycle.derive import derive_order
 from factory.lifecycle.view import BusView, OrderRecord, load_messages, load_view
 from factory.orders import git
@@ -42,9 +44,40 @@ class Pushed:
     notes: list[str] = field(default_factory=list)
 
 
-def fetch_or_fail(repo: Path) -> None:
+GitToken = Callable[[], str] | None
+
+
+def git_token(settings: Settings) -> GitToken:
+    """Who the order commands' git transport is: None (ambient git credentials) in
+    recorded mode; in verified mode the App installation token, minted in-process. Missing
+    App credentials are an external error here, before any git command runs."""
+    if settings.identity.mode != "verified":
+        return None
+    env = load_env()
     try:
-        git.fetch(repo)
+        source = InstallationTokenSource(
+            app_id=env.app_id,
+            private_key=env.app_private_key,
+            repository=settings.github.repository,
+            api_url=env.github_api_url or settings.github.api_url,
+        )
+    except AppTokenError as exc:
+        raise External(f"cannot authenticate to origin as the GitHub App: {exc}") from exc
+    return source.token
+
+
+def _password(token: GitToken) -> str | None:
+    if token is None:
+        return None
+    try:
+        return token()
+    except AppTokenError as exc:
+        raise External(f"cannot authenticate to origin as the GitHub App: {exc}") from exc
+
+
+def fetch_or_fail(repo: Path, token: GitToken) -> None:
+    try:
+        git.fetch(repo, password=_password(token))
     except git.GitError as exc:
         raise External(f"cannot reach origin: {exc}") from exc
 
@@ -54,19 +87,22 @@ def push_or_fail(
     sha: str,
     branch: str,
     *,
+    token: GitToken,
     lost: str,
     first_writer: bool = True,
     advance: bool = True,
 ) -> list[str]:
     """Push `sha` to origin `branch`, then (`advance`) local `branch`; returns caller notes.
 
-    No local ref moves unless the push landed.
+    No local ref moves unless the push landed. With a `token`, the push runs as the App
+    and nothing falls back to ambient credentials.
     """
+    password = _password(token)
     try:
-        git.push(repo, sha, branch, first_writer=first_writer)
+        git.push(repo, sha, branch, first_writer=first_writer, password=password)
     except git.PushRejected as exc:
         try:
-            git.fetch(repo)
+            git.fetch(repo, password=password)
         except git.GitError:
             pass
         raise Refused(lost) from exc
@@ -102,7 +138,8 @@ def issue_order(repo: Path, settings: Settings, order_id: str) -> Pushed:
             "the order lists no checks, so it could never be accepted; name the gates it must"
             " pass under checks"
         )
-    fetch_or_fail(repo)
+    token = git_token(settings)
+    fetch_or_fail(repo, token)
     main = git.main_ref(repo)
     if main is None:
         raise External("origin has no main branch to issue from")
@@ -115,7 +152,9 @@ def issue_order(repo: Path, settings: Settings, order_id: str) -> Pushed:
     sha = git.commit_files(
         repo, base, {relative: (repo / relative).read_bytes()}, f"order: {order_id}"
     )
-    notes = push_or_fail(repo, sha, branch, lost=f"{order_id} was issued by someone else first")
+    notes = push_or_fail(
+        repo, sha, branch, token=token, lost=f"{order_id} was issued by someone else first"
+    )
     return Pushed(order_id=order_id, branch=branch, sha=sha, path=relative, notes=notes)
 
 
@@ -160,7 +199,8 @@ def claim_order(
 ) -> Pushed:
     if not actor_model:
         raise Usage("say which model is claiming with --actor-model")
-    fetch_or_fail(repo)
+    token = git_token(settings)
+    fetch_or_fail(repo, token)
     view = load_view(repo, settings)
     record = _issued(view, order_id)
     if record.one(Claim) is not None:
@@ -200,7 +240,11 @@ def claim_order(
     relative = path_of(claim, settings)
     sha = _append(repo, record, relative, to_yaml(claim), f"claim: {order_id}")
     notes = push_or_fail(
-        repo, sha, record.branch, lost=f"{order_id} was claimed by someone else first"
+        repo,
+        sha,
+        record.branch,
+        token=token,
+        lost=f"{order_id} was claimed by someone else first",
     )
     return Pushed(order_id=order_id, branch=record.branch, sha=sha, path=relative, notes=notes)
 
@@ -214,7 +258,8 @@ def release_order(
     actor_model: str,
     now: datetime,
 ) -> Pushed:
-    fetch_or_fail(repo)
+    token = git_token(settings)
+    fetch_or_fail(repo, token)
     view = load_view(repo, settings)
     record = _issued(view, order_id)
     if record.one(Release) is not None:
@@ -236,5 +281,7 @@ def release_order(
         raise Usage("not a release event")
     relative = path_of(release, settings)
     sha = _append(repo, record, relative, to_yaml(release), f"release: {order_id}")
-    notes = push_or_fail(repo, sha, record.branch, lost=f"{order_id} moved on origin; try again")
+    notes = push_or_fail(
+        repo, sha, record.branch, token=token, lost=f"{order_id} moved on origin; try again"
+    )
     return Pushed(order_id=order_id, branch=record.branch, sha=sha, path=relative, notes=notes)

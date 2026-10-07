@@ -14,9 +14,18 @@ import subprocess
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 
+from factory.config.settings import git_environment
+
 REMOTE = "origin"
 MAIN = "main"
 ORDER_BRANCH_PREFIX = "wo/"
+APP_USERNAME = "x-access-token"
+_PASSWORD_VARIABLE = "FACTORY_GIT_APP_TOKEN"
+# The helper reads the token from its environment: command lines reach GIT_TRACE and ps.
+_APP_HELPER = (
+    f"!f() {{ test \"$1\" = get && printf 'username={APP_USERNAME}\\npassword=%s\\n'"
+    f' "${_PASSWORD_VARIABLE}"; }}; f'
+)
 
 _REJECTED_MARKERS = (
     "[rejected]",
@@ -45,10 +54,30 @@ class PushUpToDate(PushRejected):
     """A first-writer push found origin already at our commit: someone else wrote it."""
 
 
-def run_git(repo: Path, *args: str, stdin: bytes | None = None) -> bytes:
-    result = subprocess.run(
-        ["git", "-C", str(repo), *args], input=stdin, check=False, capture_output=True
+def _transport(password: str | None) -> tuple[list[str], dict[str, str] | None]:
+    """(config args, child env) so a network command authenticates as the App with
+    `password`, ahead of (and instead of) any ambient helper; nothing for None."""
+    if password is None:
+        return [], None
+    config = ["-c", "credential.helper=", "-c", f"credential.helper={_APP_HELPER}"]
+    return config, git_environment({_PASSWORD_VARIABLE: password, "GIT_TERMINAL_PROMPT": "0"})
+
+
+def _git(
+    repo: Path, args: tuple[str, ...], *, stdin: bytes | None = None, password: str | None = None
+) -> subprocess.CompletedProcess[bytes]:
+    config, env = _transport(password)
+    return subprocess.run(
+        ["git", *config, "-C", str(repo), *args],
+        input=stdin,
+        env=env,
+        check=False,
+        capture_output=True,
     )
+
+
+def run_git(repo: Path, *args: str, stdin: bytes | None = None) -> bytes:
+    result = _git(repo, args, stdin=stdin)
     if result.returncode != 0:
         raise GitError(args, result.stderr.decode(errors="replace"))
     return result.stdout
@@ -73,9 +102,15 @@ def object_exists(repo: Path, spec: str) -> bool:
     return True
 
 
-def fetch(repo: Path) -> None:
-    """Refresh remote-tracking refs (raises `GitError` when the remote is unreachable)."""
-    run_git(repo, "fetch", "--quiet", "--prune", REMOTE)
+def fetch(repo: Path, *, password: str | None = None) -> None:
+    """Refresh remote-tracking refs (raises `GitError` when the remote is unreachable).
+
+    With `password`, authenticates as the App (`x-access-token`); else ambient credentials.
+    """
+    args = ("fetch", "--quiet", "--prune", REMOTE)
+    result = _git(repo, args, password=password)
+    if result.returncode != 0:
+        raise GitError(args, result.stderr.decode(errors="replace"))
 
 
 def remote_ref(branch: str) -> str:
@@ -190,15 +225,23 @@ def _porcelain_flag(stdout: str, target: str) -> str | None:
     return None
 
 
-def push(repo: Path, sha: str, branch: str, *, first_writer: bool = True) -> None:
+def push(
+    repo: Path,
+    sha: str,
+    branch: str,
+    *,
+    first_writer: bool = True,
+    password: str | None = None,
+) -> None:
     """Fast-forward `origin/<branch>` to `sha` (create it when absent); never forces.
 
+    With `password`, authenticates as the App (`x-access-token`); else ambient credentials.
     Raises `PushRejected` when origin refused the update and, when `first_writer`,
     `PushUpToDate` when origin already held `sha` (our push wrote nothing).
     """
     target = f"refs/heads/{branch}"
     args = ("push", "--porcelain", REMOTE, f"{sha}:{target}")
-    result = subprocess.run(["git", "-C", str(repo), *args], check=False, capture_output=True)
+    result = _git(repo, args, password=password)
     stdout = result.stdout.decode(errors="replace")
     stderr = result.stderr.decode(errors="replace")
     flag = _porcelain_flag(stdout, target)

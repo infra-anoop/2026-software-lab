@@ -34,6 +34,7 @@ RepoOpt = Annotated[
 ]
 
 GITHUB_ADAPTER = "factory.github.rest:build_github"
+AGENT_GITHUB_ADAPTER = "factory.github.rest:build_agent_github"
 IDENTITY_ADAPTER = "factory.identity.adapter:build_identity"
 
 
@@ -117,6 +118,11 @@ def _default_github(settings: Settings, env: EnvSettings) -> GitHubPort:
     return adapter
 
 
+def _default_agent_github(settings: Settings, env: EnvSettings) -> GitHubPort:
+    adapter: GitHubPort = _load_adapter(AGENT_GITHUB_ADAPTER)(settings, env)
+    return adapter
+
+
 def _default_identity(settings: Settings, github: GitHubPort) -> IdentityPort:
     adapter: IdentityPort = _load_adapter(IDENTITY_ADAPTER)(settings, github)
     return adapter
@@ -131,6 +137,8 @@ class Deps:
 
     def __init__(self) -> None:
         self.github: Callable[[Settings, EnvSettings], GitHubPort] = _default_github
+        # Agent commands only; `github` stays the CI client (GITHUB_TOKEN in either mode).
+        self.agent_github: Callable[[Settings, EnvSettings], GitHubPort] = _default_agent_github
         self.identity: Callable[[Settings, GitHubPort], IdentityPort] = _default_identity
         self.clock: Callable[[], datetime] = _utc_now
 
