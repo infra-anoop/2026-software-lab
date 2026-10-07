@@ -1,0 +1,36 @@
+schema_version: 1
+kind: handoff
+id: wo-20261007-factory-per-intent.handoff
+created: 2026-10-07T17:05:00Z
+actor: worker
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - wo-20261007-factory-per-intent
+  - notes/packets/2026-10-07-factory-per-intent.handoff.md
+  - specs/001-factory-v2/TEST_REVIEW_PER_INTENT.md
+summary: |
+  `factory gate run` now reports results per intent id, in text and --json (T064).
+  For each intent its gates.yaml rows serve, the report gives the gates, each one's
+  pass/fail/overridden outcome, and whether the intent held, broke, or held only by override.
+  The new report key is `per_intent`; text prints one line per intent. Subset runs list
+  only the gates that ran. Result-supplied intent ids never add rows (amendment-01).
+  The legacy `intents` key and all posted commit statuses are unchanged; no workflow edit.
+  Tests were red first and T*-accepted at round 2 (verdict-02); the catalog row
+  handoff.per_intent_results now names the six passing tests.
+checks_run:
+  - gate_or_test: "uv run --locked pytest (scripts/factory)"
+    result: "1063 passed, 7 xfailed (known strict T069/T081), 0 failed"
+  - gate_or_test: "ruff check . && ruff format --check ."
+    result: passed
+  - gate_or_test: "factory gate run --base origin/main --head HEAD (at 763b409)"
+    result: "24 of 25 passed; verdict.reviewer-family-differs failed (no handoff at head yet)"
+deviations:
+  - what: tasks.md is not ticked for T064
+    why: the order dropped tasks.md from its owned paths before the claim (it overlapped the app-token order)
+    conservative_choice: completion is recorded in the handoff packet and this handoff; the orchestrator ticks it
+  - what: cli/gates.py, an owned path, is unchanged
+    why: it already emits the runner's report and render_text, so the runner change alone carries the feature
+    conservative_choice: kept the diff to runner.py, acceptance.md, and the frozen tests
+open_questions: []
+author_model: claude-opus-5.5
