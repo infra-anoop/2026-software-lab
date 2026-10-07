@@ -209,15 +209,22 @@ class RecordedGates:
     function replaces the real one on its module (other names in that module stay), or,
     while the module does not exist yet, sits in a stub module in `sys.modules`. Each stub
     returns the outcome set in `failing` plus a message only a real call can produce.
+    `intent_ids` replaces a stub's `GateResult.intent_ids` (default: its registry row's).
     """
 
-    def __init__(self, monkeypatch: pytest.MonkeyPatch, failing: set[str]) -> None:
+    def __init__(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        failing: set[str],
+        intent_ids: dict[str, list[str]] | None = None,
+    ) -> None:
         self.calls: list[tuple[str, str, str | None]] = []
         self.failing = failing
         self.gates = [g for g in load_registry().gates if g.hook_twin_of is None]
         stubs: dict[str, types.ModuleType] = {}
         for gate in self.gates:
-            function = self._entrypoint(gate.id, list(gate.intents))
+            ids = (intent_ids or {}).get(gate.id, list(gate.intents))
+            function = self._entrypoint(gate.id, ids)
             try:
                 module = importlib.import_module(gate.module)
             except ImportError:
@@ -372,6 +379,16 @@ def per_intent(body: dict[str, Any]) -> dict[str, dict[str, Any]]:
     }
 
 
+def legacy_intents(body: dict[str, Any]) -> dict[str, list[tuple[str, str]]]:
+    """The pre-T064 `intents` mapping, which stays unchanged (orchestrator lock, T-PI3)."""
+    legacy = body.get("intents")
+    assert isinstance(legacy, dict), f"report has no intents mapping: {sorted(body)}"
+    return {
+        intent_id: sorted((g.get("gate"), g.get("outcome")) for g in rows)
+        for intent_id, rows in legacy.items()
+    }
+
+
 def outcomes_of(body: dict[str, Any]) -> dict[str, str]:
     return {g["id"]: g["outcome"] for g in body.get("gates", [])}
 
@@ -388,13 +405,58 @@ def test_gate_run_json_per_intent_marks_every_intent_of_a_failing_gate_broken(
     result = gate_run(factory_cli, repo, clean_pair(repo))
     assert_exit(result, exit_codes.GATE_FAILURE)
     body = report(result)
+    expected = expected_per_intent(outcomes_of(body))
+    assert legacy_intents(body) == {i: group["gates"] for i, group in expected.items()}, body
     grouped = per_intent(body)
-    assert grouped == expected_per_intent(outcomes_of(body)), grouped
+    assert grouped == expected, grouped
+    assert legacy_intents(body) == {i: group["gates"] for i, group in grouped.items()}
     assert grouped["I-B7"]["result"] == "broken", grouped["I-B7"]
     assert grouped["I-P2"] == {"result": "held", "gates": [(RED_FIRST, "pass")]}, grouped
     for intent_id in ("I-B8", "I-A8"):
         assert grouped[intent_id]["result"] == "broken", grouped[intent_id]
         assert (OWNED, "fail") in grouped[intent_id]["gates"], grouped[intent_id]
+
+
+SENTINEL = "I-SENTINEL-NOT-IN-REGISTRY"
+CHECK_INTENT = "factory-check-intent"
+
+
+def test_gate_run_json_per_intent_uses_registry_rows_not_result_intent_ids(
+    repo: RepoBuilder,
+    factory_cli: FactoryCli,
+    identity: FakeIdentity,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """amendment-01: a gate serves its `gates.yaml` row's intents; `factory-check-intent`
+    reports unmapped intent ids in `GateResult.intent_ids`, which must not regroup it."""
+    row = list(load_registry().get(CHECK_INTENT).intents)
+    assert row and SENTINEL not in row, row
+    RecordedGates(monkeypatch, failing={CHECK_INTENT}, intent_ids={CHECK_INTENT: [SENTINEL]})
+    result = gate_run(factory_cli, repo, clean_pair(repo))
+    assert_exit(result, exit_codes.GATE_FAILURE)
+    grouped = per_intent(report(result))
+    assert SENTINEL not in grouped, grouped
+    listed = {i for i, group in grouped.items() if CHECK_INTENT in dict(group["gates"])}
+    assert listed == set(row), grouped
+    for intent_id in row:
+        assert (CHECK_INTENT, "fail") in grouped[intent_id]["gates"], grouped[intent_id]
+        assert grouped[intent_id]["result"] == "broken", grouped[intent_id]
+
+
+def test_gate_run_json_per_intent_of_a_subset_run_covers_only_the_selected_gate(
+    repo: RepoBuilder,
+    factory_cli: FactoryCli,
+    identity: FakeIdentity,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Orchestrator lock (T-PI2): a `--gate` run carries `per_intent` for the gates that ran."""
+    row = list(load_registry().get(OWNED).intents)
+    assert len(row) > 1, row
+    RecordedGates(monkeypatch, failing={OWNED})
+    result = gate_run(factory_cli, repo, clean_pair(repo), OWNED)
+    assert_exit(result, exit_codes.GATE_FAILURE)
+    grouped = per_intent(report(result))
+    assert grouped == {i: {"result": "broken", "gates": [(OWNED, "fail")]} for i in row}, grouped
 
 
 @pytest.mark.parametrize(

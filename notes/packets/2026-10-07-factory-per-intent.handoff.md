@@ -1,6 +1,6 @@
 # Handoff — `wo-20261007-factory-per-intent` (T064, catalog `handoff.per_intent_results`)
 
-**Phase:** 1 of 2: red tests only, awaiting T* review. No `src` change.
+**Phase:** 1 of 2: red tests only. T* round 1 rejected; the round 1 fixes are in (§ Round 1 resolution), awaiting T* round 2. No `src` change.
 
 **Branch:** `wo/wo-20261007-factory-per-intent`. Claim `024b778` (after the orchestrator dropped `tasks.md` from owned paths in `54bd08b`). Red tests `2d50e4d`. `tasks.md` is not ticked (not owned); T064 completion is reported here.
 
@@ -38,4 +38,23 @@ Every test drives real gate outcomes through the existing `RecordedGates` stubs 
 2. **Overridden wording.** An intent held only by an override shows as `overridden`, not `held`. This is a product word choice for the governor.
 3. **Subset runs (`--gate`).** Only the selected gates' intents appear. Not separately pinned.
 4. **GitHub job summary.** The order's `goal` says "and the CI job summary". The trusted workflow writes only `factory status` to `$GITHUB_STEP_SUMMARY`; `gate run` text lands in the job log. A per-intent job summary needs a workflow edit, which this order forbids (stop condition). Open question for the orchestrator: does the catalog row (`Results reported per intent id`, when "PR linked to a work order") count as met by the run report in the job log? Or does it need a separate workflow order?
-5. **Catalog evidence.** `handoff.per_intent_results` stays `planned` until phase 2. After implement it names the four tests above.
+5. **Catalog evidence.** `handoff.per_intent_results` stays `planned` until phase 2. After implement it names the four tests above, plus the two added in round 1.
+
+Items 1 and 3 are now pinned (round 1, below). Item 2 is locked by amendment-01. Item 4 is settled by amendment-01: scope is the run report.
+
+## Round 1 resolution
+
+These are the three changes from the orchestrator's triage in `TEST_REVIEW_PER_INTENT.md` § Triage. Only `scripts/factory/tests/contract/test_gate_run.py` changed. T-PI4 (strength) is kept unchanged.
+
+| Finding | Test | What it pins |
+|---------|------|--------------|
+| T-PI1 (Blocker) | new `test_gate_run_json_per_intent_uses_registry_rows_not_result_intent_ids` | `RecordedGates` takes an optional `intent_ids` override. The `factory-check-intent` stub fails and returns `intent_ids=["I-SENTINEL-NOT-IN-REGISTRY"]`. The sentinel never appears as a `per_intent` key. The gate is listed, as `fail`, under exactly its `gates.yaml` row's intents (expected ids come from `load_registry().get(...)`), and each of those intents is `broken`. A grouping that passes raw results to `group_by_intent()` fails here. |
+| T-PI2 (locked: subset runs carry `per_intent`) | new `test_gate_run_json_per_intent_of_a_subset_run_covers_only_the_selected_gate` | `--gate diff-within-owned-paths`, failing: `per_intent` equals exactly that gate's registry intents (I-B8, I-A8), each `{broken, [(gate, fail)]}`, and has no other rows. |
+| T-PI3 (locked: legacy `intents` unchanged) | changed `test_gate_run_json_per_intent_marks_every_intent_of_a_failing_gate_broken` | Before the `per_intent` checks, the complete legacy `intents` mapping must equal the registry-derived oracle. This part passes on base, so it guards existing behaviour. After them, legacy `intents` must equal the flattened `per_intent[*].gates`. |
+
+**Red (round 1 head):**
+- Focused file: 7 failed, 32 passed.
+- Six of the seven fail on "report has no per_intent mapping". The text test still fails on "I-M2: expected one line, got [3 lines]".
+- In the changed broad test, the legacy-mapping assertion runs first and passes; the test then goes red at `per_intent`.
+- **Full suite:** 7 failed (only these), 1056 passed, 7 xfailed (known T069/T081). `ruff check` and `ruff format --check` pass.
+- **Satisfiability probe** (throwaway `/tmp` plugin, deleted): the probe passes fresh registry-only results to `group_by_intent()`. With it, all 39 cases in the file pass.
