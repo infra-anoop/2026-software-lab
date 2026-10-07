@@ -1,0 +1,28 @@
+schema_version: 1
+kind: decision_request
+id: wave1-token-usage
+created: 2026-10-07T21:20:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/retro/2026-10-wave1-agenda.md
+owner: governor
+feature: 001-factory-v2
+blocking: false
+prompt: >
+  Why this is asked: the retro will look at where the effort and tokens went in Wave 1.
+  Git shows review rounds, rework and time per order, but real token counts exist only in
+  your Cursor usage data, and only you can export it.
+  How to export it: open cursor.com/dashboard in a browser, choose Usage, set the date range
+  to Oct 3 to Oct 7 2026, then choose Export CSV. In this codespace, create a folder named
+  "downloads" at the top of the Explorer (next to AGENTS.md) and drag the downloaded file
+  into it. Git ignores that folder, so the file (it lists your email per request) never
+  reaches the repo.
+  What happens next: the orchestrator joins the file with the agent records by time and
+  model and fills the effort breakdown in the retro agenda. Nothing waits on this; without
+  it the breakdown uses git and the agent records only, with no token numbers.
+options:
+  - label: "A: I will export the usage file and put it in the downloads folder"
+  - label: "B: Skip token numbers; use git and the agent records only"
+recommended: "A: I will export the usage file and put it in the downloads folder"

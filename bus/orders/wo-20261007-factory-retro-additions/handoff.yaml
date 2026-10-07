@@ -1,0 +1,33 @@
+# FR-037 handoff for the retro agenda additions order. The orchestrator wrote the change and
+# this record (notes and one decision request; no worker was dispatched).
+schema_version: 1
+kind: handoff
+id: wo-20261007-factory-retro-additions.handoff
+created: 2026-10-07T21:50:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/retro/2026-10-wave1-agenda.md
+  - bus/decisions/wave1-token-usage/request.yaml
+  - specs/001-factory-v2/PR_REVIEW_RETRO_ADDITIONS.md
+summary: |
+  The Wave 1 retro agenda gains sections 13 to 18 from the governor's items of 2026-10-07:
+  effort estimates at spec review, where effort and tokens went, a Wave 1.5 before Wave 2,
+  the user's guide before the session, a heartbeat, and factory reliability (codespace stop
+  root cause, cloud agents or orchestrator, machine size, keepalives, an agent handshake).
+  It adds two harness lessons from 10-07 and the factory's first governor decision request
+  (the Cursor usage export). Nothing is decided; Wave 1 is not marked finished.
+  Reviewed twice: rejected, fixed, accepted (verdict-02); its round-2 points were applied.
+checks_run:
+  - gate_or_test: factory gate run --base origin/main --head HEAD
+    result: passed
+deviations:
+  - what: the orchestrator authored the change and this handoff
+    why: notes-only order with no code; no worker was dispatched
+    conservative_choice: an independent reviewer of another model family checked it twice (verdict-01, verdict-02)
+  - what: owned_paths gained the decision request folder (amendment-01)
+    why: the decision-in-chat hook asked for the usage-export request to go on the bus
+    conservative_choice: no active order owns bus/decisions/wave1-token-usage/
+open_questions: []
+author_model: claude-opus-5.5
