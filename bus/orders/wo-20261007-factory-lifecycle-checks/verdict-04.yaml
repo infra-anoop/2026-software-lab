@@ -1,0 +1,33 @@
+schema_version: 1
+kind: verdict
+id: wo-20261007-factory-lifecycle-checks.verdict-04
+created: 2026-10-07T18:45:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - specs/001-factory-v2/PR_REVIEW_LIFECYCLE_CHECKS.md
+  - "review-time: 2026-10-07T18:45:00Z (implementation review round 2)"
+decision: accept
+findings: []
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: specs/001-factory-v2/PR_REVIEW_LIFECYCLE_CHECKS.md
+    sha: 2fdfb30
+  - path: bus/orders/wo-20261007-factory-lifecycle-checks/handoff.yaml
+    sha: 2fdfb30
+  - path: bus/orders/wo-20261007-factory-lifecycle-checks/verdict-03.yaml
+    sha: 2fdfb30
+  - path: notes/packets/2026-10-07-factory-lifecycle-checks.handoff.md
+    sha: 2fdfb30
+  - path: scripts/factory/src/factory/lifecycle/derive.py
+    sha: 2fdfb30
+  - path: scripts/factory/tests/unit/test_lifecycle.py
+    sha: 2fdfb30
+bootstrap: true
+manual_equivalents:
+  - "R-LC1: unreadable PR heads now bypass check evaluation and remain in_review"
+  - "red-first: regression was red at 9fcb3ca and the source fix followed at 246591c"
+  - "test strength: real lifecycle derivation, absent object proof, green gate statuses, accepting verdict, and state assertion"
+  - "scope: reviewed R-LC1 resolution and regressions from its fix"

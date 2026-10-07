@@ -25,3 +25,15 @@
 | id | Ruling | Fix required |
 |----|--------|--------------|
 | R-LC1 (Blocker) | Accept. Tagged product, but it applies the order's own fail-closed rule (amendment-01 ruling 3: rows are judged at the head) and chooses no new behaviour, so the orchestrator adjudicates it. Without the head tree the derivation cannot know whether a registered gate id is a head catalog row, so no order may be accepted from statuses alone | Red regression first: an accepting gate-only order with green statuses whose head commit is absent stays in review. Then make a readable PR-head commit a prerequisite for check satisfaction |
+
+## Round 2
+
+### Decision
+
+**Accept.**
+
+### Findings
+
+| ID | Severity | Tag | Location | Issue | Fix |
+|----|----------|-----|----------|-------|-----|
+| — | — | — | — | No findings. R-LC1 is resolved: an unreadable PR head now keeps an accepting gate-only order in review, and repo-less derivation retains its prior behavior. The regression was red at `9fcb3ca`, exercises real lifecycle derivation with green gate statuses, and directly asserts the required state. | — |
