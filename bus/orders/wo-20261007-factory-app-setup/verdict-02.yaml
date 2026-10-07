@@ -1,0 +1,21 @@
+schema_version: 1
+kind: verdict
+id: wo-20261007-factory-app-setup.verdict-02
+created: 2026-10-07T23:06:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - specs/001-factory-v2/PR_REVIEW_APP_SETUP.md
+  - "independent GitHub App setup review round 2"
+decision: accept
+findings: []
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: bus/orders/wo-20261007-factory-app-setup/verdict-01.yaml
+    sha: "aadcd05"
+  - path: notes/ops/2026-10-07-github-app-setup.md
+    sha: "aadcd05"
+  - path: specs/001-factory-v2/PR_REVIEW_APP_SETUP.md
+    sha: "aadcd05"

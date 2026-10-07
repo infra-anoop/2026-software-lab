@@ -26,3 +26,15 @@
 |----|-------------|--------|
 | R-AS1 | Accepted; confirmed against the registering-a-github-app page | Step 7 table: **Read & write** for Checks, Contents and Pull requests |
 | R-AS2 | Accepted; confirmed against the managing-private-keys page | Step 10: the number next to **App ID**; step 11: **Credentials** → **Key pairs** → **New key** |
+
+## Round 2
+
+### Decision
+
+**Accept.** R-AS1 and R-AS2 are resolved with the exact current labels, and no remaining instruction depends on the replaced **About**, **Private keys**, or **Generate a private key** wording.
+
+### Findings
+
+| id | severity | tag | location | issue | fix |
+|----|----------|-----|----------|-------|-----|
+| — | — | — | — | No findings. | — |
