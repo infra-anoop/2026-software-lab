@@ -71,3 +71,14 @@ Round 2 is the reviewer's check of these changes.
 | T-AT2-R2 | Blocker | product | **Root-cause class: incomplete Python process-spawn interception.** `CredentialObserver` wraps `subprocess.Popen` but explicitly omits `os.system` and `os.posix_spawn*`. An implementation can put the installation token directly in a git/helper command line through either standard Python API and pass every observer assertion. Consequence: the token is exposed through the process list despite a green security suite; the likelihood is material because shell-based credential helpers are a common shortcut. The declared C-extension writes, child-process file writes, and env/pipe channel are acceptable bounded gaps: the current codebase uses Python `subprocess`, the intended helper needs a non-argv transport, and final-state scanning remains. | Smallest sufficient fix: intercept `os.system`, `os.posix_spawn`, and `os.posix_spawnp` in the shared observer and apply the same secret corpus to their command/argv. No below-Python syscall tracer is required. |
 
 T-AT3 is closed. The fake clock proves one-hour reuse and refresh before the request at five minutes remaining; the chosen margin is an implementation bound, not a contradiction of a locked numeric requirement.
+
+## Triage (orchestrator, round 2)
+
+Both findings accepted; round 3 is the last review round under constitution §J.
+
+| id | Ruling | Fix required |
+|----|--------|--------------|
+| T-AT1-R2 (Debate, process) | Accept as written | Stage a passing gate for `gate run`, require exit 0, and assert the CI provider was called at least once and the agent provider never |
+| T-AT2-R2 (Blocker) | Accept. Tagged product, but it only makes the leak check stricter and chooses no product behaviour, so the orchestrator adjudicates it | The shared observer also covers `os.system`, `os.posix_spawn` and `os.posix_spawnp`, with the same secret corpus applied to their command or argv. Preferred mechanism: one `sys.addaudithook` routed to the active observer (events `os.system`, `os.posix_spawn`, `os.exec`, `os.spawn`, `subprocess.Popen`), which also covers the `os.exec*` and `os.spawn*` families. A throwaway check shows each API is caught |
+
+The bounded gaps the reviewer accepted (C-level writes, child-process file writes, env and pipe transport to the credential helper) stay as recorded in the handoff packet.
