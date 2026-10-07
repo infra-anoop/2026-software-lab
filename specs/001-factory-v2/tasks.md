@@ -90,7 +90,7 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 
 **Checkpoint**: `factory status` shows real orders; T017–T020 green.
 
-- [ ] T105 [US1] Slice A follow-up to the Slice B PR review (`checks` kinds, orchestrator 2026-10-05, `bus/orders/wo-20261004-factory-slice-b/amendment-06.yaml`): in `scripts/factory/src/factory/lifecycle/derive.py`, a registered gate id in an order's `checks` needs its own green `factory/<gate-id>` status (or a counted override). A catalog row id is satisfied by the `factory/catalog-test-linkage` status, which judges catalog rows. Test first in `scripts/factory/tests/unit/test_lifecycle.py`. Wave 1 orders carry gate ids only, so this must land before the first order whose `checks` names a catalog row
+- [x] T105 [US1] Slice A follow-up to the Slice B PR review (`checks` kinds, orchestrator 2026-10-05, `bus/orders/wo-20261004-factory-slice-b/amendment-06.yaml`): in `scripts/factory/src/factory/lifecycle/derive.py`, a registered gate id in an order's `checks` needs its own green `factory/<gate-id>` status (or a counted override). A catalog row id is satisfied by the `factory/catalog-test-linkage` status, which judges catalog rows. Test first in `scripts/factory/tests/unit/test_lifecycle.py`. Wave 1 orders carry gate ids only, so this must land before the first order whose `checks` names a catalog row
 - [x] T106 [US3] Slice B fix (W6 + W7, one root cause, orchestrator 2026-10-05, §J): `red-first-proof` attributes base-side collection and import errors to their own tests. A sibling file failing import on base must not leave other tests "not collected", and `from pkg import mod` for a module the PR adds is red, not "base broken". The regression test is `scripts/factory/tests/unit/gates/drift/test_red_first_base_errors.py` (2 cases, red); the fix is in `scripts/factory/src/factory/gates/drift/red_first.py`
 
 ---
@@ -117,7 +117,7 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 - [x] T034 [US2] `order new` / `order issue` / `claim` / `release` / `handoff` / `pr open` / `verdict` / `bus pr` in `scripts/factory/src/factory/cli/orders.py` with logic in `scripts/factory/src/factory/orders/` (git plumbing via subprocess in `scripts/factory/src/factory/orders/git.py`; no business logic in the CLI module — I-A1)
 - [x] T035 [US2] Scorecard `scripts/factory/src/factory/metrics/scorecard.py` + `factory scorecard` in `scripts/factory/src/factory/cli/board.py`
 - [x] T036 [US2] Identity adapter `scripts/factory/src/factory/identity/adapter.py` (implements `IdentityPort`; mode from config: `recorded` until the App exists, then `verified`) and App token minting + repo-local git credential helper `scripts/factory/src/factory/identity/app_token.py` (1-hour installation tokens)
-- [ ] T036b [US2] Wire the App installation token into the git credential helper and the REST client (`scripts/factory/src/factory/identity/app_token.py`, `scripts/factory/src/factory/github/rest.py`, callers in `scripts/factory/src/factory/orders/`), including how the installation id is obtained (config amendment if needed); a recorded-response end-to-end test proves the token is never logged, persisted, or put in exceptions. MUST land before T065 flips `identity.mode = "verified"`
+- [x] T036b [US2] Wire the App installation token into the git credential helper and the REST client (`scripts/factory/src/factory/identity/app_token.py`, `scripts/factory/src/factory/github/rest.py`, callers in `scripts/factory/src/factory/orders/`), including how the installation id is obtained (config amendment if needed); a recorded-response end-to-end test proves the token is never logged, persisted, or put in exceptions. MUST land before T065 flips `identity.mode = "verified"`
 - [x] T037 [US2] Secret names: add a `tooling:` section to `deploy/secrets/schema.yaml` with `factory` → Codespace target, names `FACTORY_GITHUB_APP_ID` and `FACTORY_GITHUB_APP_PRIVATE_KEY` (no values), and teach `scripts/validate_secrets_schema.py` + `scripts/test_validate_secrets_schema.py` to accept the section
 - [x] T038 [US2] Update `acceptance.md` evidence for every row tested in T026–T032
 
@@ -146,7 +146,7 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 - [x] T046 [P] [US3] `fidelity.py` — gates `order-fidelity-declared` (every named lock the order's owned paths or goal touch has a Lock entry) + `lock.letter-tokens` (for `fidelity: letter`, the PR diff contains each `letter_tokens` entry and does not introduce a registered substitute; seed `declared_lock_violated`)
 - [x] T047 [P] [US3] `decision_ids.py` — gate `decision-request-no-ids`: regexes verbatim from `contracts/messages.md` (`\b[TFRPD]\d+\b`, `FR-\d+`, `SC-\d+`, `US\d+`, `§`) plus a jargon list in `factory.toml` applied to `prompt` and `options[].label`
 - [x] T048 [P] [US3] `catalog_linkage.py` — gate `catalog-test-linkage`: every `how: auto` row in any `acceptance.md` has `evidence`; rows whose id appears in the PR's order `checks` must name an existing pytest node id or eval id (not `planned`) before merge (FR-018)
-- [ ] T049 [US3] Update `acceptance.md` evidence for all `seed.*` rows
+- [x] T049 [US3] Update `acceptance.md` evidence for all `seed.*` rows (8 of 9 linked; `seed.code_before_test_review` stays `planned` with its Wave 2 requirement, FR-012b)
 
 **Checkpoint (part of CP1)**: seeds suite 100% green (all blocked).
 
@@ -208,7 +208,7 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 
 ### Implementation
 
-- [ ] T097 [US4] [OD:D5] PR-C1 rework per `contracts/gates.md` § CI topology and trust boundary:
+- [x] T097 [US4] [OD:D5] PR-C1 rework per `contracts/gates.md` § CI topology and trust boundary:
   - Split `.github/workflows/factory-gates.yml` into the untrusted `.github/workflows/factory-pr-evidence.yml` and the trusted `workflow_run` `factory-gates.yml`.
   - Add `factory gate run --expect-head --evidence` and `factory gate evidence` in `scripts/factory/src/factory/cli/gates.py` + `scripts/factory/src/factory/gates/runner.py`.
   - Split red-first into an evidence producer and a bundle judge in `scripts/factory/src/factory/gates/drift/red_first.py`. That is Slice B's path, so it waits until B is merged into C and needs an order amendment.
@@ -227,7 +227,7 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 
 ### Cross-order dependencies for the C merge
 
-- [ ] T101 [HITL] [OD:D6] PR-C6 = T066, moved earlier. Between the Slice B merge and the Slice C merge, the governor walks through branch protection with the orchestrator:
+- [x] T101 [HITL] [OD:D6] PR-C6 = T066, moved earlier. Between the Slice B merge and the Slice C merge, the governor walks through branch protection with the orchestrator:
   - **Amended 2026-10-06 — governor decisions, verbatim:**
     - "**Mechanism: a repository RULESET** (Settings → Rules), not classic branch protection. The codespace token can read rulesets (`GET /repos/{o}/{r}/rulesets` returns 200) but not classic protection (403)."
       - "Change `deploy/github/branch-protection.json` and the `branch-protection-require-pr` gate to the ruleset shape: target `main`; empty bypass list; rules `pull_request` and `required_status_checks`, each `{context, integration_id}` pinned to the GitHub Actions app id (P9); `non_fast_forward` and `deletion`."
@@ -274,7 +274,7 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 - [x] T061 [P] [US5] Contract test `scripts/factory/tests/contract/test_intent.py` — presence over `specs/*/intent.yaml` + `scripts/factory/gates.yaml` + every `acceptance.md`; `--coverage` = share of intents backed by an implemented (registered, entrypoint importable), passing, non-human check or an explicit governor-judged mapping — catalogs `trace.presence`, `trace.effective_coverage`
 - [x] T062 [US5] Spawn T* review for T061 (may share the slice-B packet from T041 if written together)
 - [x] T063 [US5] `scripts/factory/src/factory/intent/coverage.py` + `factory check intent [--coverage]` in `scripts/factory/src/factory/cli/intent.py`; register `factory-check-intent`
-- [ ] T064 [US5] Per-intent PR results: runner groups `GateResult` by intent ids in the job summary (`scripts/factory/src/factory/gates/runner.py` report section — coordinate: slice C owns the file; slice B supplies `intent.coverage.group_by_intent()`) — catalog `handoff.per_intent_results`
+- [x] T064 [US5] Per-intent PR results: runner groups `GateResult` by intent ids in the job summary (`scripts/factory/src/factory/gates/runner.py` report section — coordinate: slice C owns the file; slice B supplies `intent.coverage.group_by_intent()`) — catalog `handoff.per_intent_results`
 
 **Checkpoint CP2**: all P1 gates live as required checks after T065–T066; one real order run end to end.
 
