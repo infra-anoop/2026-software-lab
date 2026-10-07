@@ -92,3 +92,13 @@ The bounded gaps the reviewer accepted (C-level writes, child-process file write
 | T-AT2-R3 | Blocker | product | **Harm statement: credential exposure. Root-cause class: the security observer's private-hook path has no executable self-check.** On Linux, `os.spawn*` is observed only by wrapping private `os._spawnvef`; the harness silently skips that wrapper when the symbol is absent, and no committed test invokes `os.spawn*` or proves the wrapper recorded a canary. A CPython/Nix change can therefore let an implementation put the installation token in an `os.spawn*` argv while this suite stays green. The current pinned Python exposes `_spawnvef(mode, file, args, env, func)`, so the wrapper works now, but the uncommitted throwaway check is not regression evidence. | **Bug — must still be fixed.** Add one committed, parametrized observer bite test that passes synthetic secret canaries through a representative audit-hook spawn and through `os.spawn*`, then asserts `CredentialObserver.leaks()` reports them. On this supported Linux test environment, fail explicitly if the private spawn hook is unavailable or not hit. This is the smallest sufficient fix; no syscall tracer is required. |
 
 T-AT1-R2 is closed. No other final-round finding meets the constitution §J harm bar.
+
+## Triage (orchestrator, round 3)
+
+Round 3 was the last T* round (constitution §J). Its one finding is a bug, so it is fixed, not deferred.
+
+| id | Ruling | Fix required |
+|----|--------|--------------|
+| T-AT2-R3 (Blocker, bug) | Accept. It only makes the leak check stricter and chooses no product behaviour, so the orchestrator adjudicates it | One committed, parametrized observer self-test: synthetic secret canaries passed through a representative audit-hook spawn (`os.system` or `os.posix_spawn`) and through `os.spawnv`, asserting `CredentialObserver.leaks()` reports each one. On Linux it fails explicitly if `os._spawnvef` is missing or the wrapper is not hit |
+
+There is no fourth T* round. The orchestrator checks that the self-test exists and fails when the wrapper is disabled, and the PR reviewer judges it with the implementation.
