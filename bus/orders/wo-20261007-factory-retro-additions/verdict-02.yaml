@@ -1,0 +1,33 @@
+schema_version: 1
+kind: verdict
+id: wo-20261007-factory-retro-additions.verdict-02
+created: 2026-10-07T21:25:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - notes/retro/2026-10-wave1-agenda.md
+  - specs/001-factory-v2/PR_REVIEW_RETRO_ADDITIONS.md
+  - bus/decisions/wave1-token-usage/request.yaml
+  - "independent retro-additions review round 2"
+decision: accept
+findings:
+  - id: R-RX4
+    severity: debate
+    tag: process
+    text: "Section 18(e) inaccurately calls the completion notice the only signal and proposes a new start record even though the worker already commits and pushes a claim, progress, and its verdict or handoff. Use those durable records and define the missing watcher, acknowledgement, and escalation interlock."
+  - id: R-RX5
+    severity: nit
+    tag: process
+    text: "Section 18 records the governor's question about running Cursor or agents in the cloud, but its prepared trade-off covers cloud agents only. Add a separate sentence defining the cloud-hosted orchestrator variant and the evidence needed to judge it."
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: notes/retro/2026-10-wave1-agenda.md
+    sha: 6a60e1f
+  - path: specs/001-factory-v2/PR_REVIEW_RETRO_ADDITIONS.md
+    sha: 6a60e1f
+  - path: bus/decisions/wave1-token-usage/request.yaml
+    sha: 6a60e1f
+  - path: bus/orders/wo-20261007-factory-retro-additions/amendment-01.yaml
+    sha: 6a60e1f
