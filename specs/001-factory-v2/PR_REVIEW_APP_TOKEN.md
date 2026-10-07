@@ -22,3 +22,17 @@ Decision: **reject**
 | R-AT1 (Blocker) | Accept. Tagged product, but it applies the locked fail-closed and no-disclosure rulings and chooses no new behaviour, so the orchestrator adjudicates it | Red tests first: direct and CLI cases for a malformed installation lookup and a malformed mint (empty body, invalid JSON, missing or wrong-typed `token`/`expires_at`/`id`, and a token-shaped invalid `expires_at`), each expecting exit 4 and no response content in output, logs or the exception chain. Then convert every response-shape and timestamp error inside the App-token boundary to a fixed, secret-free `AppTokenError` raised `from None` |
 
 The reviewer's judgments on the deviations, the two-token mint and both overrides are accepted as written.
+
+## Round 2
+
+Decision: **accept**
+
+| id | severity | tag | location | issue | fix |
+|---|---|---|---|---|---|
+| — | — | — | — | No findings. R-AT1 is resolved. | — |
+
+The lookup and mint decoders now reject empty bodies, invalid JSON, missing fields, wrong-typed fields, and invalid timestamps with fixed, value-free `AppTokenError` messages raised `from None`. The REST wrapper preserves that error as the cause of `GitHubError`; the verified git path converts it to external exit 4 without invoking git or ambient credentials. The token-shaped timestamp case is absent from exception chains and captured surfaces.
+
+The red commit changed only the two test files. Its 11-case table drives production `InstallationTokenSource`, the production agent REST adapter, and verified `factory claim`; the assertions distinguish escaped exceptions, accepted malformed credentials, wrong exit codes, pushes, fallback credentials, and disclosure. The fix commit changes only `identity/app_token.py`. Re-running the original 201 `{}` mint probe produced `AppTokenError: the mint response has no valid token`, with no cause and suppressed context.
+
+The full suite passed with 1092 tests and 7 expected failures. The requested gate run passed red-first and all implementation-relevant gates; its two failures were the known reviewer-text rule and the review branch name.
