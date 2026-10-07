@@ -33,7 +33,7 @@ class FactoryCli:
         self._monkeypatch = monkeypatch
         self.github = github
         monkeypatch.setattr(DEPS, "github", lambda settings, env: github)
-        monkeypatch.setattr(DEPS, "agent_github", lambda settings, env: github)
+        monkeypatch.setattr(DEPS, "agent_github", lambda settings, env: github, raising=False)
 
     def __call__(self, *args: str, repo: Path | None = None, stdin: str | None = None) -> CliResult:
         argv = list(args)
