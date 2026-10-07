@@ -54,6 +54,13 @@ If unsure → packet + worker.
 5. Prefer **background** spawn so the main session stays free for human dialogue. Tell the human only: worker spawned, packet path, DoD summary in product language. Do **not** ask whether parallelism is OK when `[P]` + disjoint paths already say so.
 6. When the worker finishes: read handoff notes / diff; present product-altitude status; spawn T* if new red contract tests exist; resume next packet or stop at checkpoint. Do **not** ask “what next.”
 
+7. **Factory order bus steps** (Factory v2 orders under `bus/orders/<order-id>/`). The brief MUST name each step; the merge gates fail on a missing record:
+   - **Claim** before the first code commit: `factory claim <order-id> --actor-model <model> --worker-runtime local_subagent` (it commits and pushes itself; pull before the next push).
+   - **Handoff** when DoD is met: commit `handoff.yaml` (summary ≤ 10 lines), then run `factory handoff <order-id>`, which validates it and pushes the run-complete event. If it refuses, report the exact gate output; do not write overrides.
+   - In added lines under `specs/**` and `notes/sprints/**`, the words *later, optional, deferred, TBD, future, stretch* need one of these on the **same line**: an Open Decision id, `→ <existing file or phase>`, `→ sprint NN` together with a waived Open Decision id, or `[governor-judged]`. Words inside backtick code spans are exempt (`deferral-words-need-od`, rule in `specs/001-factory-v2/contracts/gates.md`).
+8. **Agent hygiene** (from Wave 1). Pre-create the worktree under `.worktree-home/.cursor/worktrees/` and name it in the brief. Never pass `required_permissions` (agents stall on approval prompts). Run Nix as `nix develop /workspaces/2026-software-lab -c bash -c 'cd scripts/factory && uv run --locked …'`. Other command forms can be sandbox-blocked. Give a hard timebox; push after every green step. Check a quiet agent's progress in git (pushed commits), not by waiting for its completion notice, which can arrive late.
+9. **Governor UI steps** (GitHub settings, rulesets): give the exact string to type, which suggestion to pick (job names such as "Factory gates" and status contexts such as `factory/gates` look alike), the expected source, and what to report back. Then read the result back through the API before relying on it.
+
 ## Parallelism rules (automatic)
 
 1. Parse `tasks.md` for `[P]` and file paths in the task text / packet owned paths.
