@@ -222,6 +222,22 @@ Asked at T103 step 3, after the probe PR (#26) proved the trust split: 25 truste
 - **Not a re-plan.** D5 topology, D7, D8, P9 pinning and P12 are unchanged; only which contexts are required, and the summary status, change.
 - **`/speckit-analyze`:** not re-run. One task (T107) was added under existing FR-022a / I-P10 coverage; no FR or SC was added or removed.
 
+## Round 6 — the summary becomes a check run (governor, 2026-10-06 late)
+
+Found at T103 step 3, after T107 merged (`c7fc5ee`) and the re-run probe (PR #26, `af72f98`) got `factory/gates` = failure ("1 failed: pr-links-order") from `github-actions`:
+
+1. **A commit status cannot be source-pinned.** The ruleset UI offers only "Any source" for the `factory/gates` commit status; "GitHub Actions" is offered only for check runs. P9's premise (statuses pinned to GitHub Actions) was never true for statuses. Nothing tested it until the pin.
+2. **The trusted job's own check run lands on `main`.** "Factory gates" (the job) runs on `workflow_run`, so GitHub attaches its check run to `main`'s head (`c7fc5ee`), never the PR head. Requiring it would block every PR. That is why the plan already said it must not be required. As a side effect, `main`'s commit shows a red "Factory gates" whenever a PR fails its gates.
+
+| Item | Kind | Decision |
+|------|------|----------|
+| Permanent form of the required result (amends Round 5 and P9 for the summary) | governor lock, architecture-affecting | The trusted job posts the summary as a **check run** named `factory/gates` on the PR head SHA (Checks API). The job's permissions gain `checks: write`. The ruleset requires it pinned to GitHub Actions (15368). Only apps can create check runs; personal and Codespace tokens cannot. Per-gate `factory/<gate-id>` commit statuses stay for diagnosis |
+| Until that lands | governor-approved temporary fidelity deviation (§I) | The live ruleset requires the `factory/gates` commit status from **any source**. Known weakness: any token that can write statuses, including the Codespace token agents use, could post a green summary. The snapshot keeps `integration_id: 15368` as the target, so live and snapshot differ in exactly this field until the check-run order merges |
+| Red "Factory gates" on `main`'s commits | Later (process) | Decide in the check-run order whether the trusted job exits 0 after posting, so a PR's gate failure does not mark `main` red |
+
+- **Freeze.** It lifts once the any-source pin is read back and probe PR #26 closes. The check-run order is an ordinary order under the gates.
+- **Fake-green gap (Round 5).** Unchanged: any same-repo workflow running as GitHub Actions can still create the check run. It is still to be closed with T065.
+
 ## Forbidden (honored)
 
 - No new feature directory solely for OD fills
