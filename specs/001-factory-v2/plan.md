@@ -88,6 +88,8 @@ The gate rule for this section applies to browser UI + protected API. There is n
   5. Only then do other merges reopen. No merge happens between steps 1 and 4.
 
   Phase 9 retro replays `main`'s gates over the Wave 1 PRs as data.
+
+  **Amended in place 2026-10-06 (governor, `PLAN_DELTA.md` Round 5):** step 3 requires one summary context, `factory/gates`, pinned to GitHub Actions, not one context per gate. The trusted job posts it after the per-gate statuses: `success` only when every CI gate in `main`'s registry ran and passed or was overridden. Per-gate statuses stay for diagnosis but are not required. The order that builds this (T107) merges during the freeze on governor approval, then the probe is re-run against `factory/gates`.
 - **Banned.** `pull_request_target` combined with checkout or execution of head code, anywhere in `.github/workflows/`. Cache restore in the trusted workflow. Artifact download by pattern or from any run other than the triggering one. Only `github.event.workflow_run.id`, the head SHA and the PR number reach shell steps, and only through `env:` (branch names and titles never do).
 
 Alternatives (single job with `statuses: write`, `pull_request_target` with a base checkout, rulesets-required workflows, a hosted GitHub App bot): [`research.md`](./research.md) § Topology & runtime custody.
