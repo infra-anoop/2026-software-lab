@@ -60,3 +60,15 @@ the existing gate cases do not prove that linkage cannot satisfy a registered ga
 
 None. The missing behaviors are already locked by amendment-01; no new product choice is
 required.
+
+## Triage (orchestrator, round 1, 2026-10-07)
+
+Reviewer text above is unchanged.
+
+| Finding | Decision | Change |
+|---------|----------|--------|
+| T-LC1 (Blocker) | **Fix as suggested.** | One classification-matrix test in `test_lifecycle.py` with four rows: an id that is both a gate and a catalog row is catalog-first (green linkage, no own status: accepted); a gate id present only in the head's `gates.yaml` is unknown (stays `in_review`); a catalog row present only in the head's `acceptance.md` is recognised (green linkage: accepted); a registered gate with green linkage and no own status stays `in_review`. Fixture helpers may add a row only on the work branch and change only the head registry. Red on base through its first three rows |
+| T-LC2 (Debate, process) | **Fold into T-LC1's matrix** (its fourth row), as suggested. | — |
+| T-LC3, T-LC4 (Nit, strength) | Keep | — |
+
+Round 2 is the reviewer's check of this one change.
