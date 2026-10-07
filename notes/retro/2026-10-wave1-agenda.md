@@ -114,7 +114,7 @@ What happened in Wave 1:
 
 Fixes already in place: push after every green step; never resume a suspected hang, start fresh from the pushed head; no permission requests; the allowed Nix form (all in `docs/agent-os/SPAWN_WORKER.md` since PR #29).
 
-**Proposal still open:** a heartbeat view. For each running agent, show the last pushed commit, transcript growth, wall time and the order's 60-minute budget, and alert after N quiet minutes. That would give a factual answer to "is it stuck or working?". It is also a candidate first post-Wave-1 harness order, next to `factory burndown`.
+**Proposal still open:** a heartbeat view. For each running agent, show the last pushed commit, transcript growth, wall time and the order's 60-minute budget, and alert after N quiet minutes. That would give a factual answer to "is it stuck or working?". It is also a candidate first post-Wave-1 harness order, next to `factory burndown`. You asked for a 30-minute heartbeat in Wave 1.5; the options and their context cost are in section 17.
 
 ## 8. Harness lessons found by running the factory on itself
 
@@ -135,6 +135,8 @@ Fixes already in place: push after every green step; never resume a suspected ha
 | Four orders this morning all listed `tasks.md`, so the overlap check (correctly) let only one claim | Retro: only orchestrator record orders own `tasks.md`; workers report completion in their handoff |
 | 30 remote branches already merged into `581ed18` (`git branch -r --merged 581ed18`) are still kept | Housekeeping order |
 | `gates/evidence.py` duplicates four helpers from `red_first.py` | Backlog |
+| 10-07: two reviewers finished at about 11:50 PT, but their completion notices never reached the orchestrator. Nothing moved for about 90 minutes, until you asked "still working?" | Interim: the orchestrator checks review branches in git after about 30 quiet minutes. Wave 1.5 candidate: the heartbeat (section 17) |
+| 10-07: a command mixing a file append with `git commit` ran inside the sandbox, which ignored the chosen worktree, so it committed on the primary checkout's local `main`. The push was refused, so nothing reached GitHub; the commit was removed | Interim: git commands run on their own, file edits use the editor tools. Wave 1.5 candidate: a guard that refuses commits on the primary checkout |
 
 Earlier Later items (Slice A–C PR reviews: evidence `base_sha` binding, producer checkout origin, Nix fallback output, indexed `secrets['NAME']` detection, git read timeouts and bus blob size bounds, suite-wide timeout policy) are recorded in their review files and orders. They move into the backlog file at grooming (G1).
 
@@ -144,3 +146,90 @@ Earlier Later items (Slice A–C PR reviews: evidence `base_sha` binding, produc
 10. **Lock words**: should a letter lock's words be code tokens (such as `factory/gates`) from the start, so the lock check can find them? Prose locks caused `drop_from_c`.
 11. **Fake-green gap**: post the required `factory/gates` under an identity only `main`'s trusted job can reach, designed with the App (T065).
 12. **Build vs adopt** (your item from 10-05): compare AI-SDLC, Spec Kitty and Fishhawk against the factory's features, then adopt, borrow or keep each one, before any Wave 2 order. Prep not started; it needs a research worker once a slot frees up.
+
+## 13–17. Your additions (2026-10-07 afternoon)
+
+### 13. Effort estimates at spec review
+
+**Your item:** spec review should include a definite step that estimates effort for each major phase, in story points or tokens.
+
+**For discussion:**
+- **Phases to estimate:** spec and reviews, plan and Architecture review, tasks and the finish bar, tests and test review, implementation and PR review, and the governor's own steps.
+- **Unit.** Tokens can be measured, but only from Cursor's usage data, and they vary with the model. Story points are relative and need a reference task. The factory can already measure review rounds and wall time per order from the bus, so a mixed estimate is possible: story points per phase, plus expected review rounds.
+- **Closing the loop:** each estimate is compared with the actual at the retro. That needs `factory burndown` (G4) and the effort data from section 14.
+- **Where it lives:** the step would go in the spec review prompt and the spec template. Both are rule paths, so this needs a rule-path PR for your approval.
+
+### 14. Where the effort and tokens went in Wave 1, one level down
+
+**Your item:** spend retro time on where effort and tokens went, and why.
+
+**What git can measure:**
+- review rounds, rejections and amendments per order (section 1 has the totals);
+- wall time between bus records: order to claim, claim to first verdict, and last verdict to merge;
+- governor decision points and overrides;
+- commits per order.
+
+**What git cannot measure:**
+- **Tokens.** The real numbers are in Cursor's usage data, and only you can export them. The stored agent transcripts leave out tool output, which is most of the tokens, so they are only a rough proxy.
+- **Time lost** to disconnects, codespace stops and late notices. It can be reconstructed only partly, from gaps between commits.
+
+**Proposed one-level split:**
+- orchestration (main session);
+- implementation workers;
+- reviewers;
+- rework after a rejection;
+- infrastructure friction (sandbox, permissions, GitHub errors, lost notices);
+- governor time.
+
+For each, the session asks why. **Prep:** before the session, the orchestrator fills this split from git and the transcripts, and from your usage export if you can provide it.
+
+### 15. A Wave 1.5 before Wave 2
+
+**Your item:** a short Wave 1.5 between Wave 1 and Wave 2 to get a handle on unpredictability and unreliability. It would implement some of the lessons now, while most items move to future sprints. We decide the list together.
+
+**Candidates from this agenda**, all aimed at how predictable or reliable a run is:
+- the heartbeat (section 17);
+- `factory burndown` (G4);
+- the effort estimate step (section 13);
+- `factory claim` using the amended order (section 8);
+- `factory handoff` honouring recorded overrides;
+- the deferral gate skipping review records;
+- the primary-checkout commit guard;
+- the `tasks.md` ownership rule;
+- the brief rules for review branches and worktrees.
+
+**Test for each candidate:** would it have prevented a stall, a lost hour or an unplanned review round in Wave 1? If not, it goes to the backlog (G1).
+
+**How it fits the process** (decide at the session):
+- **(A)** A small new feature, with its own short spec run through the full loop.
+- **(B)** A plan-delta round that adds a Wave 1.5 phase to the current feature, reusing its spec and intents.
+
+The orchestrator leans to B, because the items fix this feature's own tooling. Either way, Wave 2 starts only after Wave 1.5 exits.
+
+### 16. A Factory user's guide before the session
+
+**Your item:** a guide you can read and digest before the retro. It should cover the key principles and constructs, not the technical details.
+
+**Status:** order `wo-20261007-factory-users-guide` is writing `docs/factory/USERS_GUIDE.md`. An independent reviewer then checks it against main. It explains the rules; the constitution, `AGENTS.md` and the factory spec stay the sources of the rules.
+
+### 17. Heartbeat for reliable runs
+
+**Your item:** in Wave 1.5, a heartbeat every 30 minutes that checks that the key elements are working and prints a very short summary. You asked about its cost to the context window, and whether there is a better way.
+
+**Options:**
+- **(A) The orchestrator wakes itself every 30 minutes** and checks.
+  - **Context:** each wake-up adds, by estimate, 2,000 to 4,000 tokens to the orchestrator's context. That is about 50,000 to 100,000 over a 12-hour codespace day, which brings on summarisation sooner.
+  - **Tokens:** each wake-up also re-reads the whole context, so it costs far more tokens than the check itself.
+  - **Reliability:** it stops when the session hangs, which is exactly when it is needed.
+- **(B) A plain `factory heartbeat` command run every 30 minutes by a background shell loop, with no AI.** It checks:
+  - codespace time left;
+  - GitHub reachable;
+  - each active order's last push against its time budget;
+  - each running agent's latest activity;
+  - CI on open PRs;
+  - review branches pushed but not yet picked up (today's 90-minute loss).
+
+  It prints three to five lines and keeps a log. The orchestrator is told only when a line turns red, so the context cost is near zero while everything is fine.
+- **(C) A scheduled GitHub workflow.** It runs even when the codespace is off, and could tell you directly that work has stopped. It cannot see local agents, so it complements B rather than replacing it.
+
+**Orchestrator's lean:** B now, and C for "the codespace stopped" once the factory's GitHub App exists.
