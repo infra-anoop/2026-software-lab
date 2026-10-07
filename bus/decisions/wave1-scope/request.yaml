@@ -1,0 +1,35 @@
+schema_version: 1
+kind: decision_request
+id: wave1-scope
+created: 2026-10-07T23:10:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - specs/001-factory-v2/tasks.md
+  - notes/retro/2026-10-wave1-agenda.md
+owner: governor
+feature: 001-factory-v2
+blocking: true
+prompt: >
+  Why this is asked: Wave 1 has no total effort budget, and it keeps growing. Six pieces of work
+  are left before the retro, and the retro session itself. The orchestrator's estimate, based on
+  how today's work went and not measured, is about 10 hours of factory time, about 3 of them
+  yours, so 1.5 to 2 working days with the codespace's daily cutoff.
+  What is left: you create the GitHub App and the orchestrator confirms it works (about 1 hour);
+  you turn on the final main-branch protection and the orchestrator records it (about 1 hour);
+  the status board learns about GitHub's own required checks (about 2 hours); a tool that writes
+  the Wave 1 report card from git (about 3 hours); a check that every Wave 1 change has its
+  review record (about 1 hour); the retro session with you (about 2 hours).
+  The trade-off: the success criterion you approved says the factory's checks must prove
+  themselves on the very changes that built them. The report-card tool does that from git
+  records, and every later wave reuses it. A hand-written report card meets the criterion's
+  intent for this wave only, and is weaker evidence. The status-board work is useful but
+  nothing in the retro depends on it.
+  What happens next: the orchestrator records your choice in the task list and works to it.
+  The GitHub App, the branch protection and the retro happen in every option.
+options:
+  - label: "A: Finish Wave 1 as planned (about 10 hours)"
+  - label: "B: Move the status-board work to Wave 1.5; keep the report-card tool (about 8 hours)"
+  - label: "C: Also write the report card by hand instead of building the tool (about 5 hours)"
+recommended: "B: Move the status-board work to Wave 1.5; keep the report-card tool (about 8 hours)"

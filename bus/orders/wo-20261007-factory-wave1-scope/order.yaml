@@ -1,0 +1,38 @@
+# FR-037 bootstrap order, written by the orchestrator on wo/wo-20261007-factory-wave1-scope
+# (from origin/main 6448b0d). Puts the governor's Wave 1 scope choice on the bus after the
+# governor asked how much of Wave 1 is left. size_minutes is an estimate.
+schema_version: 1
+kind: order
+id: wo-20261007-factory-wave1-scope
+created: 2026-10-07T23:10:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - specs/001-factory-v2/tasks.md
+  - "FR-037 bootstrap: decision-request order; size_minutes is an estimate"
+feature: 001-factory-v2
+goal: Record the governor's Wave 1 scope choice (finish as planned, or move work to Wave 1.5) as a decision request.
+intents: [I-B3, I-M4]
+owned_paths:
+  - "bus/decisions/wave1-scope/**"
+  - "specs/001-factory-v2/PR_REVIEW_WAVE1_SCOPE.md"
+  - "bus/orders/wo-20261007-factory-wave1-scope/**"
+checks:
+  - pr-links-order
+  - diff-within-owned-paths
+  - order-fidelity-declared
+  - lock.letter-tokens
+  - deferral-words-need-od
+  - decision-request-no-ids
+  - verdict.reviewer-family-differs
+  - verdict.inputs-isolated
+  - bus.schema
+locks: []
+size_minutes: 20
+stop_conditions:
+  - Any edit needed outside Owned paths
+  - Any change to tasks.md before the governor answers
+depends_on_decisions: []
+tasks: []
+worker_runtime: local_subagent
