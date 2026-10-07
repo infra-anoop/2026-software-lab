@@ -7,9 +7,11 @@ the environment. No token, JWT or key reaches an error message or a `repr`.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import httpx
 import jwt
@@ -20,6 +22,9 @@ JWT_LIFETIME = timedelta(minutes=9)
 REFRESH_MARGIN = timedelta(minutes=5)
 TIMEOUT_SECONDS = 30.0
 API_VERSION = "2022-11-28"
+# The token goes into an HTTP header and a credential-helper line: no space or control
+# character may ride along.
+_TOKEN_SHAPE = re.compile(r"[\x21-\x7e]+")
 
 
 class AppTokenError(Exception):
@@ -43,6 +48,29 @@ def app_jwt(*, app_id: str, private_key: str, now: datetime) -> str:
         return jwt.encode(payload, private_key, algorithm="RS256")
     except (ValueError, TypeError, jwt.PyJWTError):
         raise AppTokenError("the GitHub App private key cannot sign a JWT") from None
+
+
+def _json_object(response: httpx.Response, action: str) -> dict[str, Any]:
+    """The response body as a JSON object; anything else is a fixed `AppTokenError`."""
+    try:
+        body = response.json()
+    except ValueError:
+        raise AppTokenError(f"{action} failed: the response is not JSON") from None
+    if not isinstance(body, dict):
+        raise AppTokenError(f"{action} failed: the response is not a JSON object") from None
+    return body
+
+
+def _expiry(value: object) -> datetime:
+    """`expires_at` as an aware UTC datetime; the value itself never reaches the error."""
+    if isinstance(value, str):
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            parsed = None
+        if parsed is not None and parsed.tzinfo is not None:
+            return parsed.astimezone(UTC)
+    raise AppTokenError("the mint response has no valid expires_at") from None
 
 
 def _app_request(api_url: str, method: str, path: str, token: str, action: str) -> httpx.Response:
@@ -77,11 +105,15 @@ def mint_installation_token(
     moment = now or datetime.now(UTC)
     token = app_jwt(app_id=app_id, private_key=private_key, now=moment)
     path = f"/app/installations/{installation_id}/access_tokens"
-    body = _app_request(api_url, "POST", path, token, "minting an installation token").json()
-    expires_at = datetime.fromisoformat(str(body["expires_at"]).replace("Z", "+00:00"))
+    action = "minting an installation token"
+    body = _json_object(_app_request(api_url, "POST", path, token, action), action)
+    minted = body.get("token")
+    if not isinstance(minted, str) or not _TOKEN_SHAPE.fullmatch(minted):
+        raise AppTokenError("the mint response has no valid token") from None
+    expires_at = _expiry(body.get("expires_at"))
     if expires_at <= moment:
         raise AppTokenError(f"installation token already expired at {expires_at.isoformat()}")
-    return InstallationToken(token=str(body["token"]), expires_at=expires_at.astimezone(UTC))
+    return InstallationToken(token=minted, expires_at=expires_at)
 
 
 def find_installation_id(
@@ -93,8 +125,11 @@ def find_installation_id(
     """
     token = app_jwt(app_id=app_id, private_key=private_key, now=now)
     path = f"/repos/{repository}/installation"
-    body = _app_request(api_url, "GET", path, token, "finding the App installation").json()
-    return str(body["id"])
+    action = "finding the App installation"
+    installation = _json_object(_app_request(api_url, "GET", path, token, action), action).get("id")
+    if isinstance(installation, bool) or not isinstance(installation, int) or installation < 1:
+        raise AppTokenError("the installation response has no valid id") from None
+    return str(installation)
 
 
 class InstallationTokenSource:
