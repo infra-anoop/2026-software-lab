@@ -25,3 +25,16 @@ The branch also gained section 18 and a governor decision request after this rev
 ## Round 1 review notes
 
 The five governor items are all present, the Wave 1.5 candidates remain choices, the orchestrator’s preference is labeled as its lean, the user-guide order exists on `origin/wo/wo-20261007-factory-users-guide`, and the change neither finishes Wave 1 nor starts Wave 2. The reviewed diff is within the order’s owned paths.
+
+## Round 2
+
+### Decision
+
+accept
+
+R-RX1, R-RX2, and R-RX3 are resolved. Section 18 faithfully records all five new reliability questions, labels its mechanisms as discussion or proposals, and does not choose for the governor. The decision request and amendment validate against the bus models, and the request gives accurate CSV-export and git-ignore instructions.
+
+| id | severity | tag | location | issue | fix |
+|----|----------|-----|----------|-------|-----|
+| R-RX4 | Debate | process | Section 18(e), orchestrator–agent handshake | “The completion notice is the only signal” is inaccurate: the current protocol already has the worker commit and push its claim, then push progress and a verdict or handoff. The proposed new start record duplicates the existing claim, while the missing interlock is monitoring and acknowledgement of those durable signals. | Use the pushed claim as the start signal, the verdict or handoff as the finish signal, and make the new mechanism an explicit watcher plus acknowledgement and escalation protocol. |
+| R-RX5 | Nit | process | Section 18(b), cloud agents | The governor’s question names both running Cursor and running agents in the cloud. The agenda records both, but the prepared trade-off covers cloud agents only and merely notes that the orchestrator could move. | Add a separate sentence defining the cloud-hosted orchestrator variant and what evidence the session needs to judge it. |
