@@ -208,6 +208,20 @@ Verbatim text: `tasks.md` T101 and `bus/orders/wo-20261004-factory-slice-c/amend
 - **Downstream.** T066a (lifecycle reads the branch's required checks) should read them from `GET /repos/{o}/{r}/rules/branches/main`, not the classic endpoint (403). Slice A owns T066a; recorded here, not changed.
 - **`/speckit-analyze`:** not re-run. No FR, SC or task was added or removed; FR-031's governor approval is delayed (fidelity deviation above), not dropped.
 
+## Round 5 — governor decisions on how the gates are required (2026-10-06)
+
+Asked at T103 step 3, after the probe PR (#26) proved the trust split: 25 trusted `factory/*` statuses from GitHub Actions, and `factory/pr-links-order` still failed under `main`'s code although the head's copy always passes. The governor judged pinning 25 contexts "the extreme of hardcoding and very fragile" and chose the summary check.
+
+| Item | Kind | Decision |
+|------|------|----------|
+| How the gates are required (amends D6 step 3, P9 unchanged) | governor lock, architecture-affecting (ops surface) | The trusted job also posts one summary status, `factory/gates`, on the head SHA, after the per-gate statuses. It is `success` only when every CI gate in `main`'s registry ran in that invocation and each outcome is `pass` or `overridden`; otherwise `failure`, naming the failing gates. The ruleset requires `factory/gates` (pinned to GitHub Actions, P9) together with `Factory tests` and `Verify Source / verify`, instead of one context per gate. Per-gate `factory/<gate-id>` statuses are still posted for diagnosis and for T105 (lifecycle), but they are not required. Adding, renaming or removing a gate is then a reviewed code change, not a ruleset edit |
+| Fake-green gap (any same-repo workflow running as GitHub Actions can post any context; today only the workflow contract test guards it, and a PR can edit that test) | governor: record now, close with T065 | Applies equally to per-gate pinning. Close it by posting the required result under an identity whose key only `main`'s trusted job can reach (for example an environment restricted to `main`), designed with the factory's App (T065). Wave 1 retro agenda item |
+
+- **Fail-closed properties kept.** The summary is computed from `main`'s registry (the head's `gates.yaml` is data, unchanged). Nothing is posted when the head moved (`--expect-head`). A run that crashes or stops before the summary leaves `factory/gates` absent, so the required check stays pending and the PR cannot merge. A `--gate` subset run posts no summary.
+- **Freeze.** The D6 freeze stays on, with one named exception: this order (`wo-20261006-factory-gates-summary`, T107) merges during the freeze on governor approval, with its trusted per-gate statuses visible but not yet required. Then T103 resumes: the probe PR is re-run, `factory/gates` must fail on it, the governor requires the single context, the live ruleset is read back against the snapshot, the probe closes unmerged, and merges reopen.
+- **Not a re-plan.** D5 topology, D7, D8, P9 pinning and P12 are unchanged; only which contexts are required, and the summary status, change.
+- **`/speckit-analyze`:** not re-run. One task (T107) was added under existing FR-022a / I-P10 coverage; no FR or SC was added or removed.
+
 ## Forbidden (honored)
 
 - No new feature directory solely for OD fills

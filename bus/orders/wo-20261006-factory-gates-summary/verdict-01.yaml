@@ -1,0 +1,80 @@
+schema_version: 1
+kind: verdict
+id: wo-20261006-factory-gates-summary.verdict-01
+created: 2026-10-07T04:31:07Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - specs/001-factory-v2/TEST_REVIEW_GATES_SUMMARY.md
+  - "review-time: 2026-10-07T02:47:00Z (round 1)"
+decision: reject
+findings:
+  - id: T-GS1
+    severity: blocker
+    tag: product
+    text: >-
+      Root cause: boundary case not exercised. The only no-summary case selects
+      two gates, so an implementation can post factory/gates whenever an
+      explicit selection contains every installed gate, violating the ruling
+      that any --gate use is a subset run. Add one explicit all-gates contract
+      regression that requires no summary.
+  - id: T-GS2
+    severity: blocker
+    tag: product
+    text: >-
+      Root cause: oracle disconnected from posting path. The missing-gate
+      assertion calls a new helper directly, so the CLI can bypass it and post
+      success from an incomplete report. Add one CLI-level omitted-report-entry
+      regression requiring failure that names the missing installed gate.
+  - id: T-GS3
+    severity: debate
+    tag: process
+    text: >-
+      Review severity: Should (represented as debate because the bus schema has
+      no should value). Requiring the exact internal symbol and signature
+      summary_status(report, gates) rejects correct inline or differently
+      factored implementations without proving the CLI uses that helper.
+  - id: T-GS4
+    severity: nit
+    tag: process
+    text: >-
+      Strength: all 14 expected failures are assertions at intended missing
+      behavior with no collection error; the real CLI and status adapter cover
+      ordering, installed versus head registry, outcomes, ruleset replacement,
+      and GitHub Actions source pinning.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: docs/agent-os/SPAWN_REVIEWER.md
+    sha: ba78e9a
+  - path: docs/agent-os/TEST_REVIEW_PROMPT.md
+    sha: ba78e9a
+  - path: .specify/memory/constitution.md
+    sha: ba78e9a
+  - path: bus/orders/wo-20261006-factory-gates-summary/order.yaml
+    sha: ba78e9a
+  - path: specs/001-factory-v2/PLAN_DELTA.md
+    sha: ba78e9a
+  - path: specs/001-factory-v2/tasks.md
+    sha: ba78e9a
+  - path: notes/packets/2026-10-06-factory-gates-summary.handoff.md
+    sha: ba78e9a
+  - path: scripts/factory/tests/contract/test_gate_run.py
+    sha: ba78e9a
+  - path: scripts/factory/tests/unit/gates/test_runner.py
+    sha: ba78e9a
+  - path: scripts/factory/tests/unit/gates/test_registry_checks.py
+    sha: ba78e9a
+  - path: scripts/factory/src/factory/cli/gates.py
+    sha: ba78e9a
+  - path: scripts/factory/src/factory/gates/runner.py
+    sha: ba78e9a
+  - path: scripts/factory/src/factory/gates/repo/branch_protection.py
+    sha: ba78e9a
+bootstrap: true
+manual_equivalents:
+  - "red-first: focused suite reproduced 14 assertion failures and 76 passes with no collection error"
+  - "lock fidelity: installed registry, missing gate, status ordering, subset behavior, moved head, ruleset replacement, and source pinning reviewed"
+  - "constant-answer probe: failing and omitted gates must produce a failing summary; overridden and passing gates produce success"
+  - "isolation: only committed artifacts at ba78e9a and the reproduced focused suite were used"
