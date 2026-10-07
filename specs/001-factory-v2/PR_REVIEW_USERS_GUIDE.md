@@ -23,3 +23,15 @@ The per-intent example matches `wo-20261007-factory-per-intent`: order at 16:00,
 ## Triage (orchestrator, round 1)
 
 All five findings accepted; the worker applies them as the reviewer proposes. For R-UG3: since this review, the first decision request merged to `main` (PR #34, `bus/decisions/wave1-token-usage/`), so open question 5 becomes "decision requests started on 10-07; should every governor decision go this way from now on?"
+
+## Round 2
+
+### Decision
+
+**Accept.** R-UG1 through R-UG5 are resolved, and the fixes introduced no regression within the round-2 scope.
+
+### Findings
+
+| id | severity | tag | location in the guide | issue | fix |
+|----|----------|-----|-----------------------|-------|-----|
+| — | — | — | — | No findings. | — |
