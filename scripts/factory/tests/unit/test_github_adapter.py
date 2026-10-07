@@ -26,7 +26,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 
 from factory.api import CheckRun, GitHubPort, PullRequest, PullRequestReview
 from factory.config.settings import EnvSettings, IdentityConfig, Settings, load_env
-from factory.identity.app_token import AppTokenError
+from factory.identity.app_token import AppTokenError, InstallationTokenSource
 from tests.fixtures.repo_builder import RepoBuilder
 from tests.unit.test_api import assert_commit_status_read_after_write
 
@@ -310,6 +310,9 @@ def credential(request: httpx.Request) -> str:
     return value
 
 
+JSON_HEADERS = {"Content-Type": "application/json; charset=utf-8"}
+
+
 class RecordedApp:
     """Recorded GitHub App endpoints: the repository's installation and token minting.
 
@@ -327,6 +330,8 @@ class RecordedApp:
         mint_status: int = 201,
         installed: bool = True,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        lookup_body: bytes | None = None,
+        mint_body: bytes | None = None,
     ) -> None:
         self.installation_id = installation_id
         self.tokens = tokens
@@ -334,6 +339,8 @@ class RecordedApp:
         self.mint_status = mint_status
         self.installed = installed
         self.clock = clock
+        self.lookup_body = lookup_body
+        self.mint_body = mint_body
         self.requests: list[httpx.Request] = []
 
     @property
@@ -357,6 +364,8 @@ class RecordedApp:
                         "documentation_url": "https://docs.github.com/rest",
                     },
                 )
+            if self.lookup_body is not None:
+                return httpx.Response(200, content=self.lookup_body, headers=JSON_HEADERS)
             body = recorded("repo_installation.json")
             if self.installation_id is not None:
                 body["id"] = self.installation_id
@@ -378,6 +387,8 @@ class RecordedApp:
                         "documentation_url": "https://docs.github.com/rest",
                     },
                 )
+            if self.mint_body is not None:
+                return httpx.Response(201, content=self.mint_body, headers=JSON_HEADERS)
             index = len(self.mints) - 1
             body = recorded("app_access_token.json")
             body["token"] = self.tokens[min(index, len(self.tokens) - 1)]
@@ -548,5 +559,109 @@ def test_failing_api_call_and_failing_mint_keep_secrets_out_of_errors_and_logs(
     captured = capsys.readouterr()
     texts |= {"logs": caplog.text, "output": captured.out + captured.err}
     secrets = [INSTALLATION_TOKEN, *app.jwts, *refused.jwts]
+    leaked = {name: kinds for name, text in texts.items() if (kinds := secret_kinds(text, secrets))}
+    assert leaked == {}
+
+
+# --- R-AT1: a malformed 200/201 from the App endpoints fails closed and discloses nothing --
+
+MALFORMED_CANARY = "ghs_malformed_response_canary"
+
+
+def _json(value: Any) -> bytes:
+    return json.dumps(value).encode()
+
+
+def _valid_expiry() -> str:
+    return (datetime.now(UTC) + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+# case id -> (endpoint, body factory); every body that can carry content carries the canary
+MALFORMED: dict[str, tuple[str, Callable[[], bytes]]] = {
+    "lookup-empty": ("lookup", lambda: b""),
+    "lookup-invalid-json": ("lookup", lambda: f'{{"id": "{MALFORMED_CANARY}'.encode()),
+    "lookup-missing-id": ("lookup", lambda: _json({"account": {"login": MALFORMED_CANARY}})),
+    "lookup-wrong-typed-id": ("lookup", lambda: _json({"id": MALFORMED_CANARY})),
+    "mint-empty": ("mint", lambda: b""),
+    "mint-invalid-json": ("mint", lambda: f'{{"token": "{MALFORMED_CANARY}'.encode()),
+    "mint-missing-token": (
+        "mint",
+        lambda: _json({"expires_at": _valid_expiry(), "note": MALFORMED_CANARY}),
+    ),
+    "mint-wrong-typed-token": (
+        "mint",
+        lambda: _json({"token": [MALFORMED_CANARY], "expires_at": _valid_expiry()}),
+    ),
+    "mint-missing-expires-at": ("mint", lambda: _json({"token": MALFORMED_CANARY})),
+    "mint-wrong-typed-expires-at": (
+        "mint",
+        lambda: _json({"token": MALFORMED_CANARY, "expires_at": [MALFORMED_CANARY]}),
+    ),
+    "mint-token-shaped-expires-at": (
+        "mint",
+        lambda: _json({"token": INSTALLATION_TOKEN, "expires_at": MALFORMED_CANARY}),
+    ),
+}
+
+
+def malformed_app(case: str) -> RecordedApp:
+    endpoint, body = MALFORMED[case]
+    if endpoint == "lookup":
+        return RecordedApp(lookup_body=body())
+    return RecordedApp(mint_body=body())
+
+
+def raised(call: Callable[[], object]) -> BaseException:
+    """The exception `call` raised, so a wrong type fails an assertion, not the run."""
+    try:
+        call()
+    except Exception as exc:  # noqa: BLE001 (the type is what the caller asserts)
+        return exc
+    pytest.fail("no error was raised")
+
+
+@pytest.mark.parametrize("case", list(MALFORMED))
+def test_malformed_app_response_is_an_app_token_error_that_discloses_nothing(
+    case: str,
+    repo: RepoBuilder,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """R-AT1: a 200 lookup or 201 mint whose body is empty, not JSON, or missing or
+    wrong-typing `id` / `token` / `expires_at` raises a fixed `AppTokenError` from the token
+    source (`from None`), and a `GitHubError` caused by it from the agent adapter, so both
+    the git and REST paths exit 4. No response content (the canary, the token), App JWT or
+    key material reaches the exception chain, the logs or the output."""
+    caplog.set_level(logging.DEBUG)
+    rest = load_rest()
+    app = malformed_app(case)
+    patch_transport(
+        monkeypatch, lambda request: app.handle(request) or RecordedGitHub().handler(request)
+    )
+    env = app_env()
+    source = InstallationTokenSource(
+        app_id=env.app_id,
+        private_key=env.app_private_key,
+        repository=repo.settings.github.repository,
+        api_url=repo.settings.github.api_url,
+    )
+    direct = raised(source.token)
+    assert type(direct) is AppTokenError, type(direct).__name__
+    assert direct.__cause__ is None and direct.__suppress_context__, "raise it from None"
+
+    port = rest.build_agent_github(verified(repo.settings), env)
+    via_rest = raised(lambda: port.get_pr(7))
+    assert isinstance(via_rest, rest.GitHubError), type(via_rest).__name__
+    assert isinstance(via_rest.__cause__, AppTokenError), type(via_rest.__cause__).__name__
+
+    captured = capsys.readouterr()
+    texts = {
+        **_error_texts(direct),
+        **{f"rest {name}": text for name, text in _error_texts(via_rest).items()},
+        "logs": caplog.text,
+        "output": captured.out + captured.err,
+    }
+    secrets = [MALFORMED_CANARY, INSTALLATION_TOKEN, *app.jwts]
     leaked = {name: kinds for name, text in texts.items() if (kinds := secret_kinds(text, secrets))}
     assert leaked == {}

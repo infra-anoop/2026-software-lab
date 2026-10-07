@@ -40,10 +40,13 @@ from tests.fixtures.repo_builder import RepoBuilder, message, order, yaml_text
 from tests.unit.test_github_adapter import (
     APP_ID,
     INSTALLATION_TOKEN,
+    MALFORMED,
+    MALFORMED_CANARY,
     RecordedApp,
     RecordedGitHub,
     app_key,
     credential,
+    malformed_app,
     patch_transport,
     secret_kinds,
 )
@@ -585,6 +588,39 @@ def test_verified_push_without_an_app_token_fails_closed_and_keeps_secrets_out(
     assert not app.mints or cause == "mint-refused", [r.url.path for r in app.requests]
     texts = {"stdout": result.stdout, "stderr": result.stderr, "logs": caplog.text}
     _no_leaks(observer, isolated_git, texts, app.jwts)
+
+
+@pytest.mark.parametrize("case", list(MALFORMED))
+def test_verified_push_after_a_malformed_app_response_exits_4_and_discloses_nothing(
+    case: str,
+    repo: RepoBuilder,
+    factory_cli: FactoryCli,
+    isolated_git: Path,
+    observer: CredentialObserver,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """R-AT1: a 200 lookup or 201 mint with a malformed body is an external error (exit 4)
+    with no push and no fallback; no response content (the canary, the token), App JWT or
+    key material reaches the exception chain, a write, an argv, the output, the logs or a
+    file."""
+    caplog.set_level(logging.DEBUG)
+    order_id = _issue(repo, f"malformed-{case}")
+    app, data = _app(monkeypatch, malformed_app(case))
+    _set_identity_mode(repo, "verified")
+    with GitHttpOrigin(repo.root, {AMBIENT, APP_CREDENTIAL}) as origin:
+        repo.git("remote", "set-url", "origin", origin.url)
+        escaped = None
+        try:
+            result = _claim(factory_cli, repo, order_id)
+        except Exception as exc:  # noqa: BLE001 (an escape is the failure being pinned)
+            escaped = type(exc).__name__
+    assert escaped is None, f"{escaped} escaped the CLI instead of exit 4"
+    assert result.exit_code == exit_codes.EXTERNAL, (result.exit_code, result.stderr)
+    assert origin.presented == [], "no push, and no fallback to ambient git credentials"
+    assert AMBIENT_TOKEN not in [credential(r) for r in data.requests], "no GITHUB_TOKEN"
+    texts = {"stdout": result.stdout, "stderr": result.stderr, "logs": caplog.text}
+    _no_leaks(observer, isolated_git, texts, [MALFORMED_CANARY, INSTALLATION_TOKEN, *app.jwts])
 
 
 def test_refused_push_keeps_the_installation_token_out_of_the_error(
