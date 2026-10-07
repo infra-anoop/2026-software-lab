@@ -1,0 +1,20 @@
+# Orchestrator, 2026-10-07: the effort breakdown in agenda section 14 needs the governor's
+# Cursor usage export, so the request goes on the bus as a decision request instead of in chat.
+# No active order owns bus/decisions/wave1-token-usage/. The goal is unchanged.
+schema_version: 1
+kind: amendment
+id: wo-20261007-factory-retro-additions.amend-01
+created: 2026-10-07T21:20:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - wo-20261007-factory-retro-additions
+  - bus/decisions/wave1-token-usage/request.yaml
+supersedes: [owned_paths]
+values:
+  owned_paths:
+    - "notes/retro/2026-10-wave1-agenda.md"
+    - "specs/001-factory-v2/PR_REVIEW_RETRO_ADDITIONS.md"
+    - "bus/orders/wo-20261007-factory-retro-additions/**"
+    - "bus/decisions/wave1-token-usage/**"
