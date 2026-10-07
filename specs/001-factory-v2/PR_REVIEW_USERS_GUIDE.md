@@ -19,3 +19,7 @@
 Checked more than 15 concrete claims against the named sources, including: product/workload framing; SNR; Spec Kit phase gates; failable outcomes and catalog evidence; Wave 1 red-first limitations; different-family review and recorded inputs; intent presence/effective coverage; cattle discipline; letter-versus-intent fidelity; progressive HITL; the three-round harm bar; all four roles; ambiguity handling; Wave boundaries; gate classes and overrides; trusted-base evaluation; Open Decision, plan-delta, and finish-bar semantics; work-order fields and append-only records; claim cap/overlap behavior; required check names; board sections; App/T036b/T065 state; and the known rough edges.
 
 The per-intent example matches `wo-20261007-factory-per-intent`: order at 16:00, claim at 16:00:30, amendment at 16:20, rejected test review at 16:24, accepted test review at 16:35, accepted PR review at 17:00, handoff at 17:05, run-complete at 17:06:47, 66.3 minutes, zero governor interrupts, and two deviations. PR #30's merge and subsequent task bookkeeping also match the main-branch records.
+
+## Triage (orchestrator, round 1)
+
+All five findings accepted; the worker applies them as the reviewer proposes. For R-UG3: since this review, the first decision request merged to `main` (PR #34, `bus/decisions/wave1-token-usage/`), so open question 5 becomes "decision requests started on 10-07; should every governor decision go this way from now on?"
