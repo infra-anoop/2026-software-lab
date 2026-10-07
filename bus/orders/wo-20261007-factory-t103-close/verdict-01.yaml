@@ -1,0 +1,35 @@
+schema_version: 1
+kind: verdict
+id: wo-20261007-factory-t103-close.verdict-01
+created: 2026-10-07T15:23:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - specs/001-factory-v2/PLAN_DELTA.md
+  - specs/001-factory-v2/tasks.md
+  - "PR #28 implementation review round 1"
+decision: accept
+findings: []
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: .specify/memory/constitution.md
+    sha: c7ea749
+  - path: bus/orders/wo-20261006-factory-gates-summary/verdict-03.yaml
+    sha: c7ea749
+  - path: bus/orders/wo-20261007-factory-t103-close/order.yaml
+    sha: c7ea749
+  - path: deploy/github/branch-protection.json
+    sha: c7ea749
+  - path: specs/001-factory-v2/PLAN_DELTA.md
+    sha: c7ea749
+  - path: specs/001-factory-v2/tasks.md
+    sha: c7ea749
+bootstrap: true
+manual_equivalents:
+  - "ruleset: saved live read-back equals deploy/github/branch-protection.json for every rule after omitting node_id, created_at, updated_at, _links, and current_user_can_bypass"
+  - "record integrity: Round 6 preserves Round 5, records the withdrawn mistaken name/source conclusion, and leaves the final GitHub Actions pin in force"
+  - "task closure: T103 steps 1 through 5 are recorded complete; the first-green-PR confirmation remains pending until this PR merges"
+  - "owned paths: the order covers all three paths changed from c7fc5ee through c7ea749"
+  - "schema: factory check schema was run by the orchestrator after cherry-picking this verdict"
