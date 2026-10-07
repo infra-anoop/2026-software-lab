@@ -95,7 +95,7 @@ T-AT1-R2 is closed. No other final-round finding meets the constitution §J harm
 
 ## Triage (orchestrator, round 3)
 
-Round 3 was the last T* round (constitution §J). Its one finding is a bug, so it is fixed, not deferred.
+Round 3 was the last T* round (constitution §J). Its one finding is a bug, so it is fixed in this order.
 
 | id | Ruling | Fix required |
 |----|--------|--------------|
