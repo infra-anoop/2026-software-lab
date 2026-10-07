@@ -1,0 +1,43 @@
+# FR-037 bootstrap order, written by the orchestrator on wo/wo-20261007-factory-app-setup
+# (from origin/main 6448b0d). Record-only: governor steps for creating the factory's GitHub App
+# (task T065) and a decision request on how the App's two values reach the codespace. The
+# mode flip and the ruleset change follow in a later order, after the governor's steps and a
+# permission read-back. Known bootstrap distortion: size_minutes is an estimate.
+schema_version: 1
+kind: order
+id: wo-20261007-factory-app-setup
+created: 2026-10-07T23:05:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - specs/001-factory-v2/tasks.md
+  - deploy/secrets/schema.yaml
+  - "FR-037 bootstrap: record-only order; size_minutes is an estimate"
+feature: 001-factory-v2
+goal: Give the governor exact, correct steps to create and install the factory's GitHub App, and record how its two values reach the codespace as a governor decision.
+intents: [I-B3, I-O2]
+owned_paths:
+  - "notes/ops/2026-10-07-github-app-setup.md"
+  - "bus/decisions/app-key-delivery/**"
+  - "specs/001-factory-v2/PR_REVIEW_APP_SETUP.md"
+  - "bus/orders/wo-20261007-factory-app-setup/**"
+checks:
+  - pr-links-order
+  - diff-within-owned-paths
+  - order-fidelity-declared
+  - lock.letter-tokens
+  - deferral-words-need-od
+  - decision-request-no-ids
+  - verdict.reviewer-family-differs
+  - verdict.inputs-isolated
+  - bus.schema
+locks: []
+size_minutes: 30
+stop_conditions:
+  - Any edit needed outside Owned paths
+  - Any step that would put a secret value in git or in chat
+  - Anything that changes GitHub settings, rulesets or Infisical (the governor does those)
+depends_on_decisions: []
+tasks: []
+worker_runtime: local_subagent

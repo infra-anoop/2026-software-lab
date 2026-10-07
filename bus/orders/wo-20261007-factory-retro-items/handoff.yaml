@@ -1,0 +1,23 @@
+# FR-037 bootstrap handoff for the Wave 1 retro item list (notes only).
+schema_version: 1
+kind: handoff
+id: wo-20261007-factory-retro-items.handoff
+created: 2026-10-07T23:35:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - wo-20261007-factory-retro-items
+  - notes/retro/2026-10-wave1-items.md
+summary: |
+  Adds notes/retro/2026-10-wave1-items.md: one list of every item collected for the Wave 1 retro,
+  in five groups (governor items, decisions waiting, work moved out by decision wave1-scope, problems
+  found running the factory on itself, infrastructure friction), each with one suggestion
+  (Wave 1.5, backlog, decide, done), and a suggested Wave 1.5 list for the governor to cut.
+  Does not mark Wave 1 finished. One review pass (governor's instruction): accepted, no findings.
+checks_run:
+  - gate_or_test: "factory gate run (reviewer)"
+    result: "all applicable gates passed; pr-links-order fails only on the review branch name"
+deviations: []
+open_questions: []
+author_model: claude-opus-5.5

@@ -1,0 +1,34 @@
+schema_version: 1
+kind: decision_request
+id: app-key-delivery
+created: 2026-10-07T23:05:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/ops/2026-10-07-github-app-setup.md
+  - deploy/secrets/schema.yaml
+owner: governor
+feature: 001-factory-v2
+blocking: true
+prompt: >
+  Why this is asked: the factory's GitHub App is ready to be created (the steps are in
+  notes/ops/2026-10-07-github-app-setup.md). Its two values, the App ID and its private
+  key, are kept in Infisical. But nothing yet carries Infisical values into the codespace,
+  where the factory runs: CI reads Infisical with its own login, and the codespace has
+  none. So the factory cannot use the App until the codespace can read those two values.
+  Option A: keep Infisical as the source of truth, and also add the same two values as
+  GitHub codespace secrets for this repo (about 3 minutes, step 14). The codespace sees
+  them after its next restart, with no code change. Cost: two copies, so a key rotation
+  updates both places.
+  Option B: Infisical only. The codespace gets its own Infisical login and reads the values
+  when it starts. One copy, but it needs a separate ops change first, and the Infisical
+  login itself is a secret that still has to reach the codespace (in practice as a
+  codespace secret). The App waits until that change lands, so Wave 1 finishes later.
+  What happens next: with A, you follow steps 1 to 16 when convenient, and the orchestrator
+  checks the App's permissions after the restart. With B, the orchestrator writes the ops
+  change first and you do steps 1 to 13 meanwhile.
+options:
+  - label: "A: Infisical plus codespace secrets (two copies; works after a restart)"
+  - label: "B: Infisical only, with a codespace Infisical login built first"
+recommended: "A: Infisical plus codespace secrets (two copies; works after a restart)"
