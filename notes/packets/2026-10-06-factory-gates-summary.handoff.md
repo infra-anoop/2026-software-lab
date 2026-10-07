@@ -75,27 +75,27 @@ All three changes are in `scripts/factory/tests/contract/test_gate_run.py`, exce
 - Full suite: 15 failed, 1041 passed, 7 xfailed (the known T069/T081 strict xfails). The only failures are those 15.
 - `ruff check` and `ruff format --check` pass.
 
-## Implementation (phase 2) — blocked on a stop condition
+## Implementation (phase 2)
 
-T* round 2 accepted (`TEST_REVIEW_GATES_SUMMARY.md` § Round 2, cherry-picked as `5f8851d`'s content).
+T* round 2 accepted (`TEST_REVIEW_GATES_SUMMARY.md` § Round 2, cherry-picked as `5f8851d`'s content). Commits: `4becd75` (implementation and snapshot), `3015313` (orchestrator amendment-01: this order owns `test_ci_trust_boundary.py`), `7a93957` (that test, contracts, T107 tick).
 
-**Done (owned paths):**
-- `gates/runner.py`: `SUMMARY_CONTEXT = "factory/gates"` and `summary_status(report, gates)`. A gate fails the summary when it is missing from the report or its outcome is not `pass`/`overridden`. The description says "N failed: …; M did not run: …", cut to 140 characters. The per-gate truncation is shared via `_fit`.
-- `cli/gates.py`: after the per-gate statuses, a `--pr` run with no `--gate` posts `factory/gates` from the report it just posted, checked against the installed registry's CI gates. A failing summary also exits 1 (`GATE_FAILURE`), including when the report omitted a gate but no gate failed. A moved head still returns before anything is posted.
-- `gates/repo/branch_protection.py`: requires `[factory/gates]` instead of the per-P1 contexts, and still fails closed on an unreadable head registry. Docstring amended.
-- `deploy/github/branch-protection.json`: required checks are exactly `Factory tests`, `Verify Source / verify`, `factory/gates`, all 15368. Nothing else changed.
+**What changed:**
+- `gates/runner.py`: adds `SUMMARY_CONTEXT = "factory/gates"` and `summary_status(report, gates)`.
+  - A gate fails the summary when it is missing from the report, or when its outcome is neither `pass` nor `overridden`.
+  - The description reads "N failed: …; M did not run: …", cut to 140 characters. The per-gate truncation is shared through `_fit`.
+- `cli/gates.py`: a `--pr` run with no `--gate` posts `factory/gates` last.
+  - It builds the summary from the report it just posted, checked against the installed registry's CI gates.
+  - A failing summary also exits 1 (`GATE_FAILURE`), including when the report omits a gate but no gate failed. The orchestrator accepted this.
+  - A moved head still returns before anything is posted.
+- `gates/repo/branch_protection.py`: requires `[factory/gates]` instead of the per-P1 contexts. It still fails closed on an unreadable head registry. Docstring amended.
+- `deploy/github/branch-protection.json`: the required checks are exactly `Factory tests`, `Verify Source / verify` and `factory/gates`, all 15368. Nothing else changed.
+- `tests/contract/test_ci_trust_boundary.py::test_ci_mode_runs_main_registry_whatever_the_head_registry_says` (amendment-01): the full-run status set gains `factory/gates`, and that status must be `failure` (`bus.immutable` fails in that scenario).
+- `contracts/gates.md`: four places amended, worded "Amended 2026-10-06 (governor, `PLAN_DELTA.md` Round 5)": the intro sentence (plus the `factory-gates.yml` reports cell), the Status source paragraph, Bootstrap step 3, and the `branch-protection-require-pr` row. `acceptance.md` is unchanged, since no row cites the per-gate contexts.
+- `tasks.md`: T107 ticked, with a Done note.
 
-**Suite:** 1 failed, 1055 passed, 7 xfailed. All 15 accepted reds are green, and `ruff` is clean.
+**Suite:** 1056 passed, 7 xfailed (the known T069/T081 strict xfails). `ruff check` and `ruff format --check` pass.
 
-**Stop condition hit: "Any edit needed outside Owned paths".** `scripts/factory/tests/contract/test_ci_trust_boundary.py::test_ci_mode_runs_main_registry_whatever_the_head_registry_says` (lines 1231–1233) asserts that a full CI run posts *exactly* `{factory/<gate> for every installed CI gate}`. Under the Round 5 lock the full run also posts `factory/gates`, so the test now fails on `Extra items in the left set: 'factory/gates'`. That file is not in this order's `owned_paths`.
-
-Smallest fix for the orchestrator to decide:
-1. Add the file to the order's owned paths via an amendment.
-2. Extend the expected set with `"factory/gates"`, and optionally assert that its state is `failure`, since `bus.immutable` fails in that test.
-
-The changed function would be red on `main` (no summary there), so it satisfies `red-first-proof`. It should also get a T* glance.
-
-**Not yet done (waiting on that decision):**
-- `contracts/gates.md` amendments.
-- The T107 tick in `tasks.md`.
-- The local `factory gate run --base origin/main --head HEAD`.
+**Local gates** (`factory gate run --base origin/main --head HEAD` at `7a93957`): 22 passed, 3 failed, 0 overridden. No overrides were written. All three failures are missing bus messages, not code problems:
+- `spawn-concurrency-cap`: "order wo-20261006-factory-gates-summary has no claim at head; run `factory claim wo-20261006-factory-gates-summary`".
+- `verdict.reviewer-family-differs`: "order wo-20261006-factory-gates-summary has no verdict at head (not reviewed)".
+- `verdict.inputs-isolated`: "order wo-20261006-factory-gates-summary has no verdict at head (not reviewed)".
