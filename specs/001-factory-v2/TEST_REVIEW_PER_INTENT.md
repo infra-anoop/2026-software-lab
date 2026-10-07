@@ -47,3 +47,16 @@
 - Reviewed commit: `0879802`.
 - Focused command: `nix develop /workspaces/2026-software-lab -c bash -c 'cd scripts/factory && uv run --locked pytest -q tests/contract/test_gate_run.py'`.
 - Result: 5 failed, 32 passed. All five failures are assertions at the intended missing behavior; there were no collection or fixture errors.
+
+## Triage (orchestrator, round 1, 2026-10-07)
+
+Reviewer text above is unchanged. T-PI2 and T-PI3 were tagged product, but they choose the JSON shape of a factory CLI report, not a governor-facing product behaviour. The orchestrator adjudicates them as process/arch, records the call here, and lists it in the PR summary for the governor.
+
+| Finding | Decision | Change |
+|---------|----------|--------|
+| T-PI1 (Blocker) | **Fix.** | One CLI-level JSON test: a stubbed gate returns a conflicting sentinel `intent_ids`; the report lists that gate under exactly its `gates.yaml` row intents (expected ids from the installed registry) and the sentinel appears nowhere in `per_intent` |
+| T-PI2 (Debate) | **Lock: subset runs carry `per_intent`, limited to the gates that ran.** | One `--gate` test: exactly the selected gate's registry intents, no other rows |
+| T-PI3 (Debate) | **Lock: the existing `intents` key stays unchanged.** | In the broad JSON case (no sentinel), assert the full legacy `intents` mapping equals the flattened `per_intent[*].gates` mapping |
+| T-PI4 (Nit, strength) | Keep | — |
+
+Round 2 is the reviewer's check of these three changes.
