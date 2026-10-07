@@ -38,3 +38,10 @@ R-RX1, R-RX2, and R-RX3 are resolved. Section 18 faithfully records all five new
 |----|----------|-----|----------|-------|-----|
 | R-RX4 | Debate | process | Section 18(e), orchestrator–agent handshake | “The completion notice is the only signal” is inaccurate: the current protocol already has the worker commit and push its claim, then push progress and a verdict or handoff. The proposed new start record duplicates the existing claim, while the missing interlock is monitoring and acknowledgement of those durable signals. | Use the pushed claim as the start signal, the verdict or handoff as the finish signal, and make the new mechanism an explicit watcher plus acknowledgement and escalation protocol. |
 | R-RX5 | Nit | process | Section 18(b), cloud agents | The governor’s question names both running Cursor and running agents in the cloud. The agenda records both, but the prepared trade-off covers cloud agents only and merely notes that the orchestrator could move. | Add a separate sentence defining the cloud-hosted orchestrator variant and what evidence the session needs to judge it. |
+
+## Triage (orchestrator, round 2)
+
+| id | Ruling | Change |
+|----|--------|--------|
+| R-RX4 (Debate, process) | Accept in part | Section 18(e) now lists the durable signals that already exist and names the gap as a watcher, an acknowledgement and an escalation. The start signal stays per agent: the claim marks the start of an order, is written by the orchestrator, and reviewers make no claim |
+| R-RX5 (Nit) | Accept | Section 18(b) adds the cloud-hosted orchestrator variant and the evidence the session needs to judge it |

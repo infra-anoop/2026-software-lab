@@ -262,15 +262,21 @@ Today's stop therefore fits the 30-minute idle timeout, not a fixed 12-hour limi
   - **For:** Cursor cloud agents run on their own machines and branches, so a stopped codespace would not kill a worker.
   - **Against:** each cloud machine needs the Nix and uv setup, the factory's credentials by role, and the same brief hygiene, and it costs more. The orchestrator would still be local unless it moves too.
   - **Suggestion:** a pilot with one review order before relying on it.
+  - **Cloud-hosted orchestrator** (the "running Cursor in the cloud" half of your question): the main session itself would run on a cloud machine, so a stopped codespace or a local disconnect would not end it. To judge it, the session needs to know whether a cloud session can run the factory's Nix and git commands, how it reaches you for decisions, and whether it survives as long as a working day.
 - **(c) Bigger machine.** It helps if the failures come from resources: slow suites with three agents at once, or a full disk. Today's numbers show no memory pressure. It would not fix idle stops or lost notices. Cheap to try once (a) is known.
 - **(d) Keepalives.** These help only against idle timeouts. If (a) confirms the idle timeout, there are two options: raise the codespace idle timeout (GitHub allows up to 240 minutes), or keep a terminal active while agents run. The heartbeat loop (section 17, option B) would do the second as a side effect. A keepalive does nothing against a fixed lifetime limit.
-- **(e) Orchestrator–agent handshake.** Today the completion notice is the only signal, and it was lost several times. Proposal: make git the source of truth, with the notice only a shortcut.
-  - **Start:** each agent pushes a short "started" record on its branch within a few minutes of being spawned.
+- **(e) Orchestrator–agent handshake.** Git already holds durable signals:
+  - the order's claim, written by the orchestrator when an order starts;
+  - a worker's pushes;
+  - the verdict or handoff at the end.
+
+  Nothing watches them, though. The orchestrator waits for the completion notice, and that notice was lost several times. Proposal: make git the source of truth, with the notice only a shortcut, and add the missing parts: a watcher, an acknowledgement and an escalation.
+  - **Start:** the claim covers the start of an order, but not each agent spawned for it. Reviewers make no claim at all. So each spawned agent pushes a short "started" commit within a few minutes.
   - **Progress:** it pushes after every green step.
   - **Finish:** a finished agent's last push is its verdict or handoff.
   - **Watch:** the orchestrator, or the heartbeat, checks each branch against the order's time budget. It acts on three cases: no start record, no push for N minutes, and a finished push not yet picked up.
   - **Recovery:** any agent can be restarted fresh from its last pushed commit.
 
-  The bus already has claim, handoff and run-complete records; this adds a start record and a deadline.
+  This reuses the claim, verdict, handoff and run-complete records. It adds a per-agent start commit, a deadline and an acknowledgement: the orchestrator records that it picked up each finished push.
 
 **Wave 1.5 candidates from this item:** the root-cause check (a), a raised idle timeout if (a) supports it, the git handshake (e), and a cloud-agent pilot (b).
