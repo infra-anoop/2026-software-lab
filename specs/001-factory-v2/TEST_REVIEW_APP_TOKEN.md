@@ -82,3 +82,13 @@ Both findings accepted; round 3 is the last review round under constitution §J.
 | T-AT2-R2 (Blocker) | Accept. Tagged product, but it only makes the leak check stricter and chooses no product behaviour, so the orchestrator adjudicates it | The shared observer also covers `os.system`, `os.posix_spawn` and `os.posix_spawnp`, with the same secret corpus applied to their command or argv. Preferred mechanism: one `sys.addaudithook` routed to the active observer (events `os.system`, `os.posix_spawn`, `os.exec`, `os.spawn`, `subprocess.Popen`), which also covers the `os.exec*` and `os.spawn*` families. A throwaway check shows each API is caught |
 
 The bounded gaps the reviewer accepted (C-level writes, child-process file writes, env and pipe transport to the credential helper) stay as recorded in the handoff packet.
+
+## Round 3
+
+**Decision: Do not implement against these tests yet.** The full suite reproduced the stated red result: 11 failed, 1056 passed, and 7 expected failures, all 11 at assertions. T-AT1-R2 is resolved: every staged command exits 0, the staged verdict PR genuinely passes `diff-within-owned-paths`, `gate run` calls the CI provider, and it does not appear among the call-site test's 13 intended role/credential failures. T-AT2-R2 is behaviorally covered today, but the `os.spawn*` coverage rests on an optional private CPython hook with no committed assertion that the hook remains active.
+
+| ID | Severity | Tag | Final-round finding | Disposition |
+|----|----------|-----|---------------------|-------------|
+| T-AT2-R3 | Blocker | product | **Harm statement: credential exposure. Root-cause class: the security observer's private-hook path has no executable self-check.** On Linux, `os.spawn*` is observed only by wrapping private `os._spawnvef`; the harness silently skips that wrapper when the symbol is absent, and no committed test invokes `os.spawn*` or proves the wrapper recorded a canary. A CPython/Nix change can therefore let an implementation put the installation token in an `os.spawn*` argv while this suite stays green. The current pinned Python exposes `_spawnvef(mode, file, args, env, func)`, so the wrapper works now, but the uncommitted throwaway check is not regression evidence. | **Bug — must still be fixed.** Add one committed, parametrized observer bite test that passes synthetic secret canaries through a representative audit-hook spawn and through `os.spawn*`, then asserts `CredentialObserver.leaks()` reports them. On this supported Linux test environment, fail explicitly if the private spawn hook is unavailable or not hit. This is the smallest sufficient fix; no syscall tracer is required. |
+
+T-AT1-R2 is closed. No other final-round finding meets the constitution §J harm bar.
