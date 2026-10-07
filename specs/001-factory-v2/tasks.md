@@ -223,6 +223,7 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 - [x] T099 [POLICY] PR-C4: revert the `Status` line of `notes/packets/2026-10-04-factory-v2-slice-c.md` to its `main` text (no net diff on the packet vs `main`); progress stays in the append-only handoff and verdicts
 - [x] T100 [US4] PR-C5: once Slices A and B are merged into `wo/wo-20261004-factory-slice-c`, `factory-tests` (now in `factory-pr-evidence.yml`) runs the full factory suite with no `-m` / `-k` / `--deselect` selector, and the CP1 bootstrap comment goes; T094's workflow test asserts no selector
   - Done 2026-10-06, after A (`d573721`) and B (`2a591f9`) were merged in. `factory-tests` runs plain `uv run pytest`, with no bootstrap comment left. `test_evidence_workflow_runs_the_full_factory_suite` asserts there is one pytest call and no selector. The full suite still fails on the tasks that are not built yet: T102 (`factory-status-test` entrypoint, its own order), T069 (`factory retro`) and T081 (`factory correction new`, `factory sprint close`). `Factory tests` stays red until those land.
+  - Amended 2026-10-06 (orchestrator): `Factory tests` is a required check on `main` with no bypass, so "stays red" would block every PR until Wave 2. T102 has landed (PR #25). The 7 remaining T069/T081 contract tests are strict expected failures through `UNBUILT` in `tests/contract/test_cli_contract.py`. The suite still runs in full with no selector, and an unexpected pass fails it.
 
 ### Cross-order dependencies for the C merge
 
@@ -289,7 +290,7 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 **Goal**: SC-012 — prove the gates on the PRs that built them.
 
 - [ ] T068 Contract test `scripts/factory/tests/contract/test_retro.py` — report lists each merged Wave 1 PR, each P1 gate result, and per failure a remediation order id or override — catalog `bootstrap.verdicts`
-- [ ] T069 `factory retro --since <ref>` in `scripts/factory/src/factory/gates/retro.py` + `scripts/factory/src/factory/cli/gates.py`; writes `bus/postmortems/wave1-retro.yaml` via `factory bus pr`
+- [ ] T069 `factory retro --since <ref>` in `scripts/factory/src/factory/gates/retro.py` + `scripts/factory/src/factory/cli/gates.py`; writes `bus/postmortems/wave1-retro.yaml` via `factory bus pr`; deletes the `retro` entry from `UNBUILT` in `tests/contract/test_cli_contract.py`
 - [ ] T070 [POLICY] Run retro; for each failure issue a remediation order or record an override with reason; no Wave 2 order is issued until every failure is dispositioned
 - [ ] T071 Verify every Wave 1 PR has a bootstrap verdict (`bootstrap: true`, `manual_equivalents` listed) in its `bus/orders/<id>/verdict-NN.yaml`
 
@@ -321,7 +322,7 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 - [ ] T078 [P] [US7] Contract test `scripts/factory/tests/contract/test_mining.py` — `correction new --links-to` writes the correction + a proposal order; next `factory decisions` batch includes the link for confirmation; a `decision_lock` rejecting the link withdraws the proposal (release event); `sprint close` refuses without a post-mortem dispositioning every correction and reviewing overrides, reversed locks, rework — catalogs `mining.repeat_proposes`, `mining.postmortem_gate`
 - [ ] T079 [P] [US7] Unit test `scripts/factory/tests/unit/gates/test_codeowners_gate.py` — gate `codeowners-governor-on-rule-paths` (governor-only): rule-path changes need an approving review from `governor_login` (verified identity)
 - [ ] T080 [US7] Spawn T* review for T078–T079
-- [ ] T081 [US7] `scripts/factory/src/factory/mining/` (corrections, proposals, post-mortem) + `factory correction new`, `factory sprint close` in `scripts/factory/src/factory/cli/mining.py`
+- [ ] T081 [US7] `scripts/factory/src/factory/mining/` (corrections, proposals, post-mortem) + `factory correction new`, `factory sprint close` in `scripts/factory/src/factory/cli/mining.py`; deletes the `correction new` and `sprint close` entries from `UNBUILT` in `tests/contract/test_cli_contract.py`
   - `sprint-close-requires-postmortem`: `factory sprint close` must call `factory check intent --coverage --require-target` and must not close when it exits non-zero (SC-005b ≥ 90%; governor 2026-10-04)
 - [ ] T082 [US7] Gate `scripts/factory/src/factory/gates/pr/codeowners.py` + registry entry (class governor-only, category governor_decision)
 - [ ] T083 [US7] Evidence: `mining.correction_recorded` (hybrid) — every governor correction this sprint has a `bus/corrections/` record; checked at post-mortem
