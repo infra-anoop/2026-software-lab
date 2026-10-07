@@ -60,3 +60,20 @@ Reviewer text above is unchanged. T-PI2 and T-PI3 were tagged product, but they 
 | T-PI4 (Nit, strength) | Keep | — |
 
 Round 2 is the reviewer's check of these three changes.
+
+## Round 2
+
+**Decision: Approve tests as revised.** Round 2 checked only T-PI1 through T-PI3 and regressions caused by their fixes. The conflicting-result-id test now makes the registry source observable, the subset test pins exactly the selected gate's registry intents, and the broad test proves the complete legacy `intents` mapping is unchanged before it reaches the missing `per_intent` assertion. No blocker, debate, or nit remains from this repair.
+
+Focused command:
+
+`nix develop /workspaces/2026-software-lab -c bash -c 'cd scripts/factory && uv run --locked pytest -q tests/contract/test_gate_run.py'`
+
+Result at `185fa60`: **7 failed, 32 passed**. Six failures are the expected missing-`per_intent` assertion; the text case is the expected one-line-per-intent assertion. There were no collection or fixture errors. The T-PI3 legacy-mapping assertion passes on the base implementation before the broad test fails red on the new field.
+
+Resolution check:
+
+- **T-PI1 resolved:** `factory-check-intent` returns sentinel result ids, while the expected and asserted report placement comes exclusively from its installed registry row.
+- **T-PI2 resolved:** an explicit one-gate run permits only that selected gate's registry intents and outcome.
+- **T-PI3 resolved:** the full legacy mapping is checked against the registry-derived oracle and then against the flattened richer mapping.
+- **T-PI4 preserved:** the exact PR status regression is unchanged.
