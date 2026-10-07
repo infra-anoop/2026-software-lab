@@ -200,3 +200,12 @@ def test_app_token_refuses_recorded_token_already_expired(
     late = RECORDED_EXPIRES_AT + timedelta(seconds=1)
     with pytest.raises(Exception, match="(?i)expire"):
         _mint_against_recording(tmp_path, monkeypatch, now=late)
+
+
+def test_installation_token_repr_and_str_hide_the_token(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """T036b: a minted token printed, logged or put in an error shows no token value."""
+    minted, _, _ = _mint_against_recording(tmp_path, monkeypatch, now=MINT_NOW)
+    shown = {"repr": repr(minted), "str": str(minted), "format": f"{minted}"}
+    assert [name for name, text in shown.items() if RECORDED_TOKEN in text] == []
