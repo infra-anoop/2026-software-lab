@@ -1,0 +1,27 @@
+# FR-037 bootstrap handoff for the Wave 1 record order (record only).
+schema_version: 1
+kind: handoff
+id: wo-20261007-factory-record-wave1.handoff
+created: 2026-10-07T22:58:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - wo-20261007-factory-record-wave1
+  - specs/001-factory-v2/tasks.md
+  - notes/retro/2026-10-wave1-agenda.md
+summary: |
+  Ticks T036b (PR #33), T049 (8 of 9 seed rows linked; seed.code_before_test_review stays planned
+  with FR-012b), T064 (PR #30), T097, T101 and T105 (PR #32) in tasks.md.
+  Retro agenda: the handoff-ignores-overrides row notes its 10-07 recurrence; the lost-notice row
+  counts four lost notices; the primary-checkout commit row records the second incident; a new row
+  records that no gate requires an accept verdict; new section 19 restates the user's guide's five
+  open questions. Nothing marks Wave 1 as finished. Review verdict-01 accepted with no findings.
+checks_run:
+  - gate_or_test: "factory gate run --base origin/main --head HEAD (before review)"
+    result: "23 passed, 2 failed (the two verdict gates, no verdict yet)"
+  - gate_or_test: factory check schema (reviewer)
+    result: passed
+deviations: []
+open_questions: []
+author_model: claude-opus-5.5
