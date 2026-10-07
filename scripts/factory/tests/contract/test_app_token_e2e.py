@@ -20,7 +20,6 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Self
 
-import httpx
 import pytest
 
 from factory.cli import exit_codes
@@ -30,7 +29,9 @@ from tests.unit.test_github_adapter import (
     APP_ID,
     INSTALLATION_TOKEN,
     RecordedApp,
+    RecordedGitHub,
     app_key,
+    credential,
     patch_transport,
 )
 
@@ -232,16 +233,14 @@ def isolated_git(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Pa
     yield tmp_path
 
 
-def _app(monkeypatch: pytest.MonkeyPatch, app: RecordedApp | None = None) -> RecordedApp:
-    recorded = app or RecordedApp()
-    patch_transport(
-        monkeypatch,
-        lambda request: (
-            recorded.handle(request)
-            or httpx.Response(404, json={"message": f"unrecorded {request.url.path}"})
-        ),
-    )
-    return recorded
+def _app(
+    monkeypatch: pytest.MonkeyPatch, app: RecordedApp | None = None
+) -> tuple[RecordedApp, RecordedGitHub]:
+    """App endpoints plus recorded REST data, so `claim`'s reads work whether they reach
+    the substituted FakeGitHub or a real agent adapter."""
+    recorded, data = app or RecordedApp(), RecordedGitHub()
+    patch_transport(monkeypatch, lambda request: recorded.handle(request) or data.handler(request))
+    return recorded, data
 
 
 def _issue(repo: RepoBuilder, slug: str) -> str:
@@ -299,7 +298,7 @@ def test_push_runs_as_the_app_only_in_verified_mode_and_leaves_no_token_behind(
     history, the CLI output or the logs."""
     caplog.set_level(logging.DEBUG)
     recorded_order, verified_order = _issue(repo, "recorded-push"), _issue(repo, "verified-push")
-    app = _app(monkeypatch)
+    app, data = _app(monkeypatch)
     with GitHttpOrigin(repo.root, {AMBIENT, APP_CREDENTIAL}) as origin:
         repo.git("remote", "set-url", "origin", origin.url)
 
@@ -309,10 +308,12 @@ def test_push_runs_as_the_app_only_in_verified_mode_and_leaves_no_token_behind(
         assert app.requests == [], "recorded mode never mints an App token"
 
         origin.presented.clear()
+        data.requests.clear()
         _set_identity_mode(repo, "verified")
         result = _claim(factory_cli, repo, verified_order)
         assert result.exit_code == exit_codes.OK, result.stderr
         assert set(origin.presented) == {APP_CREDENTIAL}, origin.presented
+        assert AMBIENT_TOKEN not in [credential(r) for r in data.requests]
 
     assert f"bus/orders/{verified_order}/claim.yaml" in _origin_files(repo, f"wo/{verified_order}")
     secrets = [INSTALLATION_TOKEN, app_key().key_line]
@@ -327,25 +328,38 @@ def test_push_runs_as_the_app_only_in_verified_mode_and_leaves_no_token_behind(
     assert _leaks(texts, secrets) == []
 
 
-def test_failing_mint_stops_the_push_and_keeps_secrets_out_of_the_error(
+@pytest.mark.parametrize("cause", ["mint-refused", "app-not-installed", "no-app-credentials"])
+def test_verified_push_without_an_app_token_fails_closed_and_keeps_secrets_out(
+    cause: str,
     repo: RepoBuilder,
     factory_cli: FactoryCli,
     isolated_git: Path,
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Verified mode with a mint GitHub refuses: an external error, no push with ambient
-    credentials instead, and neither the App JWT nor the key in the error or logs."""
+    """Orchestrator ruling 2026-10-07: in verified mode, a refused mint (401), an
+    installation lookup 404, or missing App credentials is an external error (exit 4) with
+    no fallback to GITHUB_TOKEN or ambient git credentials; neither the App JWT nor the
+    key reaches the error, the logs or a file."""
     caplog.set_level(logging.DEBUG)
-    order_id = _issue(repo, "mint-fails")
-    app = _app(monkeypatch, RecordedApp(mint_status=401))
+    order_id = _issue(repo, cause)
+    recorded = {
+        "mint-refused": RecordedApp(mint_status=401),
+        "app-not-installed": RecordedApp(installed=False),
+        "no-app-credentials": RecordedApp(),
+    }[cause]
+    if cause == "no-app-credentials":
+        monkeypatch.delenv("FACTORY_GITHUB_APP_ID")
+        monkeypatch.delenv("FACTORY_GITHUB_APP_PRIVATE_KEY")
+    app, data = _app(monkeypatch, recorded)
     _set_identity_mode(repo, "verified")
     with GitHttpOrigin(repo.root, {AMBIENT, APP_CREDENTIAL}) as origin:
         repo.git("remote", "set-url", "origin", origin.url)
         result = _claim(factory_cli, repo, order_id)
     assert result.exit_code == exit_codes.EXTERNAL, (result.exit_code, result.stderr)
     assert origin.presented == [], "no fallback to ambient git credentials"
-    assert app.mints, "the mint was attempted"
+    assert AMBIENT_TOKEN not in [credential(r) for r in data.requests], "no GITHUB_TOKEN"
+    assert not app.mints or cause == "mint-refused", [r.url.path for r in app.requests]
     secrets = [*app.jwts, app_key().key_line]
     texts = {"stdout": result.stdout, "stderr": result.stderr, "logs": caplog.text}
     assert _leaks(texts, secrets) == []

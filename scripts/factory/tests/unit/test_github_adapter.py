@@ -1,6 +1,7 @@
 """T019 — GitHub REST adapter against recorded responses in github_recorded/.
 
-T036b — in verified mode the adapter authenticates with the GitHub App installation token.
+T036b — the agent adapter authenticates with the GitHub App installation token in verified
+mode; the CI adapter keeps GITHUB_TOKEN.
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 
 from factory.api import CheckRun, GitHubPort, PullRequest, PullRequestReview
 from factory.config.settings import EnvSettings, IdentityConfig, Settings, load_env
+from factory.identity.app_token import AppTokenError
 from tests.fixtures.repo_builder import RepoBuilder
 from tests.unit.test_api import assert_commit_status_read_after_write
 
@@ -233,6 +235,8 @@ def test_adapter_commit_status_round_trip(
 # --- T036b: GitHub App installation token -----------------------------------------------
 
 INSTALLATION_TOKEN = recorded("app_access_token.json")["token"]
+CI_BUILDER = "build_github"
+AGENT_BUILDER = "build_agent_github"
 
 
 class AppKey(NamedTuple):
@@ -288,11 +292,13 @@ class RecordedApp:
         tokens: tuple[str, ...] = (INSTALLATION_TOKEN,),
         lifetimes: tuple[timedelta, ...] = (timedelta(hours=1),),
         mint_status: int = 201,
+        installed: bool = True,
     ) -> None:
         self.installation_id = installation_id
         self.tokens = tokens
         self.lifetimes = lifetimes
         self.mint_status = mint_status
+        self.installed = installed
         self.requests: list[httpx.Request] = []
 
     @property
@@ -308,6 +314,14 @@ class RecordedApp:
         lookup = path.startswith("/repos/") and path.endswith("/installation")
         if request.method == "GET" and lookup:
             self.requests.append(request)
+            if not self.installed:
+                return httpx.Response(
+                    404,
+                    json={
+                        "message": "Not Found",
+                        "documentation_url": "https://docs.github.com/rest",
+                    },
+                )
             body = recorded("repo_installation.json")
             if self.installation_id is not None:
                 body["id"] = self.installation_id
@@ -361,34 +375,48 @@ def port_over(
     monkeypatch: pytest.MonkeyPatch,
     app: RecordedApp,
     data: Callable[[httpx.Request], httpx.Response],
+    *,
+    builder: str = AGENT_BUILDER,
 ) -> GitHubPort:
-    build = getattr(load_rest(), "build_github", None)
-    assert callable(build), "factory.github.rest must export build_github(settings, env)"
+    build = getattr(load_rest(), builder, None)
+    assert callable(build), f"factory.github.rest must export {builder}(settings, env)"
     patch_transport(monkeypatch, lambda request: app.handle(request) or data(request))
     port = build(settings, env)
     assert isinstance(port, GitHubPort)
     return port
 
 
-def test_app_installation_token_is_used_only_in_verified_mode_with_app_credentials(
+def test_credentials_follow_the_role_ci_keeps_github_token_agents_use_the_app(
     repo: RepoBuilder, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Recorded mode keeps GITHUB_TOKEN even with App credentials set; verified mode with
-    them sends the installation token. Verified mode without App credentials is the trusted
-    CI job, which posts `factory/*` statuses with its own GITHUB_TOKEN (D8: the App has no
-    `statuses: write`), so it keeps GITHUB_TOKEN too."""
+    """Orchestrator ruling 2026-10-07: the CI gate path (`build_github`, which `factory gate
+    run` / `gate evidence` load to post `factory/*` statuses under D8) keeps GITHUB_TOKEN in
+    either mode and never mints. The agent path (`build_agent_github`) keeps GITHUB_TOKEN in
+    recorded mode, sends the installation token in verified mode, and without App
+    credentials fails closed before any request: no fallback to GITHUB_TOKEN."""
     legs = [
-        (repo.settings, True, TOKEN, False),
-        (verified(repo.settings), True, INSTALLATION_TOKEN, True),
-        (verified(repo.settings), False, TOKEN, False),
+        (CI_BUILDER, repo.settings, TOKEN),
+        (CI_BUILDER, verified(repo.settings), TOKEN),
+        (AGENT_BUILDER, repo.settings, TOKEN),
+        (AGENT_BUILDER, verified(repo.settings), INSTALLATION_TOKEN),
     ]
-    for settings, with_app, expected, mints in legs:
-        leg = f"mode={settings.identity.mode}, App credentials={with_app}"
+    for builder, settings, expected in legs:
+        leg = f"{builder}, mode={settings.identity.mode}"
         app, data = RecordedApp(), RecordedGitHub()
-        port = port_over(settings, app_env(with_app=with_app), monkeypatch, app, data.handler)
+        port = port_over(settings, app_env(), monkeypatch, app, data.handler, builder=builder)
         port.list_prs_by_head(HEAD)
         assert [credential(r) for r in data.requests] == [expected], leg
-        assert bool(app.mints) is mints, f"{leg}: {[r.url.path for r in app.requests]}"
+        minted = expected == INSTALLATION_TOKEN
+        assert bool(app.mints) is minted, f"{leg}: {[r.url.path for r in app.requests]}"
+
+    app, data = RecordedApp(), RecordedGitHub()
+    with pytest.raises((load_rest().GitHubError, AppTokenError)):
+        port = port_over(
+            verified(repo.settings), app_env(with_app=False), monkeypatch, app, data.handler
+        )
+        port.list_prs_by_head(HEAD)
+    assert data.requests == [], "no request may fall back to GITHUB_TOKEN"
+    assert app.requests == []
 
 
 def test_verified_mode_finds_the_installation_from_the_repository_with_an_app_jwt(
