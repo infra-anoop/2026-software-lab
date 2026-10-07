@@ -575,6 +575,31 @@ def test_evidence_workflow_is_read_only_on_pull_request() -> None:
             assert not mentions(run, "factory", "gate", "run"), f"{name} runs the gates: {run}"
 
 
+WORKFLOW_ENV_CONTEXTS = {"github", "secrets", "inputs", "vars", "env"}
+JOB_ENV_CONTEXTS = WORKFLOW_ENV_CONTEXTS | {"needs", "strategy", "matrix"}
+CONTEXT_ROOT = re.compile(r"(?<![\w.'\"-])([a-z_][\w-]*)\s*(?=[.\[])")
+
+
+@pytest.mark.parametrize("path", [EVIDENCE_WORKFLOW, GATES_WORKFLOW], ids=lambda p: p.name)
+def test_workflow_and_job_env_use_only_contexts_github_allows_there(path: Path) -> None:
+    """GitHub rejects the whole file, with no jobs, when workflow- or job-level `env` uses a
+    context it does not offer there (e.g. `runner`, which is step-level only)."""
+    workflow = load_workflow(path)
+    scopes = [("workflow", workflow.get("env") or {}, WORKFLOW_ENV_CONTEXTS)] + [
+        (f"job {name}", job.get("env") or {}, JOB_ENV_CONTEXTS)
+        for name, job in jobs(workflow).items()
+    ]
+    problems = [
+        f"{label} env {key}: `{root}` is not available here"
+        for label, scope, allowed in scopes
+        for key, value in scope.items()
+        for body in expressions_in(value)
+        for root in CONTEXT_ROOT.findall(body)
+        if root not in allowed
+    ]
+    assert problems == []
+
+
 def test_evidence_workflow_has_the_tests_job_and_the_red_first_producer() -> None:
     workflow_jobs = jobs(evidence_workflow())
     assert workflow_jobs.get("factory-tests", {}).get("name") == "Factory tests", workflow_jobs

@@ -48,7 +48,6 @@ jobs:
     env:
       BASE_SHA: ${{ github.event.pull_request.base.sha }}
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-      EVIDENCE_DIR: ${{ runner.temp }}/factory-evidence
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -64,6 +63,9 @@ jobs:
         run: uv sync --locked --project scripts/factory
 
       - name: factory gate evidence
+        # The `runner` context is only available at step level.
+        env:
+          EVIDENCE_DIR: ${{ runner.temp }}/factory-evidence
         run: >-
           uv run --locked --project scripts/factory factory gate evidence
           --base "$BASE_SHA" --head "$HEAD_SHA" --out "$EVIDENCE_DIR"
