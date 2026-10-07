@@ -1,0 +1,19 @@
+# Orchestrator, 2026-10-07: the independent review (verdict-01) wrote its record to
+# specs/001-factory-v2/PR_REVIEW_RETRO_AGENDA.md, as other orders' PR reviews do. That file was
+# not in owned_paths. No active order owns it. The goal is unchanged.
+schema_version: 1
+kind: amendment
+id: wo-20261007-factory-wave1-retro-agenda.amend-01
+created: 2026-10-07T18:05:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - wo-20261007-factory-wave1-retro-agenda
+  - bus/orders/wo-20261007-factory-wave1-retro-agenda/verdict-01.yaml
+supersedes: [owned_paths]
+values:
+  owned_paths:
+    - "notes/retro/2026-10-wave1-agenda.md"
+    - "specs/001-factory-v2/PR_REVIEW_RETRO_AGENDA.md"
+    - "bus/orders/wo-20261007-factory-wave1-retro-agenda/**"

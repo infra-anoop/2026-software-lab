@@ -1,0 +1,30 @@
+# FR-037 handoff for the Wave 1 retro agenda order. The orchestrator wrote the agenda and this
+# record (notes only; no worker was dispatched).
+schema_version: 1
+kind: handoff
+id: wo-20261007-factory-wave1-retro-agenda.handoff
+created: 2026-10-07T18:05:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/retro/2026-10-wave1-agenda.md
+  - specs/001-factory-v2/PR_REVIEW_RETRO_AGENDA.md
+summary: |
+  notes/retro/2026-10-wave1-agenda.md is the governor's prep for the Wave 1 retro session:
+  where Wave 1 stands (from git at 581ed18, plus PR #30), burndown and review cost per order,
+  the 15 governor-approved changes with keep/revise recommendations, proposals G1 to G5,
+  harness lessons, and decisions 9 to 12. It does not mark Wave 1 as finished and writes no
+  postmortem. Reviewed and accepted (verdict-01); its four nits were fixed in this PR.
+checks_run:
+  - gate_or_test: factory gate run --base origin/main --head HEAD
+    result: passed
+deviations:
+  - what: the orchestrator authored the agenda and this handoff
+    why: notes-only order with no code; no worker was dispatched
+    conservative_choice: an independent reviewer of another model family checked every number against git (verdict-01)
+  - what: owned_paths gained the PR review record (amendment-01)
+    why: the reviewer wrote specs/001-factory-v2/PR_REVIEW_RETRO_AGENDA.md, as other orders' reviews do
+    conservative_choice: no active order owns that file
+open_questions: []
+author_model: claude-opus-5.5
