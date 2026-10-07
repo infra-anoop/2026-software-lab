@@ -72,3 +72,27 @@ Edge cases 1–4 above are now ruled by amendment-01 (1: catalog row first; 2: i
 - `test_lifecycle.py`: 8 failed, 21 passed.
 - Full suite: 8 failed, 1056 passed, 7 xfailed. The only failures are the 7 round 0 nodes plus the matrix, and the 7 known strict xfails (T069/T081) are unchanged.
 - `ruff check` and `ruff format --check` pass.
+
+## Implementation (phase 2)
+
+T* round 2 accepted (verdict-02, `6ce96d0`). Commit `ec84c75` touches only `scripts/factory/src/factory/lifecycle/derive.py`. The accepted tests are unchanged and `tasks.md` is not ticked.
+
+**What changed (`derive.py`):**
+- `required_checks_green(record, statuses, catalog_ids)` classifies each `checks` id as follows:
+  - a catalog row first (an id in `catalog_ids`), judged by `factory/catalog-test-linkage`;
+  - else a gate in the installed registry (`load_registry()`, `main`'s package under D5), judged by `factory/<gate-id>`;
+  - else unknown, never satisfied.
+
+  A judging status counts when it is `success`, or `failure`/`error` with an override naming that judging gate. So an override that names a row id never counts.
+- `head_catalog_ids(repo, sha)` returns the row ids of every `acceptance.md` blob in the PR head's tree. It uses the linkage gate's own `catalog_rows` parser, so lifecycle and the gate agree on what a row is. If the head commit is not in the local object store, there are no rows, so rows stay unsatisfied (fail closed).
+- `derive_order` and `derive_from_view` gain a keyword-only `repo: Path | None = None`. `derive_snapshot` passes its `repo`. Existing positional callers are unchanged.
+
+**Suite:** 1064 passed, 7 xfailed (the known T069/T081 strict xfails). `ruff check` and `ruff format --check` pass.
+
+**Local gates** (`factory gate run --base origin/main --head HEAD` at `ec84c75`): 24 passed, 1 failed, 0 overridden. No overrides were written. The failure is a missing bus message, not code: `verdict.reviewer-family-differs` says "order wo-20261007-factory-lifecycle-checks has no handoff at head".
+
+**Open (needs an orchestrator call; amendment-01 stop condition, "reading the head catalog needs anything outside derive.py"):** the production board path, `scripts/factory/src/factory/cli/board.py:44`, calls `derive_from_view(view, github, settings, now)` with no `repo`. Adding `repo=root` there is a one-line change, but `board.py` is not an owned path. Until then, on `factory board`:
+- catalog-row ids are not recognised, so those orders show `in_review` (fail closed);
+- an id that is both a row and a gate is judged as a gate, by its own status, not catalog-first.
+
+The other `derive_order` callers do not reach the checks branch: `orders/lease.py` counts `accepted` and `in_review` alike as active, and `gates/repo/status_test.py` uses `NoGitHub` and has no PRs.
