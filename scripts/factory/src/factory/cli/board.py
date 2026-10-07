@@ -41,7 +41,7 @@ def status(json_out: JsonOpt = False, repo: RepoOpt = None) -> None:
     identity = DEPS.identity(settings, github)
     try:
         view = load_view(root, settings)
-        snapshot = derive_from_view(view, github, settings, DEPS.clock())
+        snapshot = derive_from_view(view, github, settings, DEPS.clock(), repo=root)
         board = build_board(snapshot, view, github, identity, load_registry().ids())
     except GitHubError as exc:
         raise CommandError(exit_codes.EXTERNAL, str(exc)) from exc
