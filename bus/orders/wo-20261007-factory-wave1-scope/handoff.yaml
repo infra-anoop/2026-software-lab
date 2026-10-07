@@ -1,0 +1,27 @@
+# FR-037 bootstrap handoff for the Wave 1 scope decision record.
+schema_version: 1
+kind: handoff
+id: wo-20261007-factory-wave1-scope.handoff
+created: 2026-10-07T23:40:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - wo-20261007-factory-wave1-scope
+  - bus/decisions/wave1-scope/request.yaml
+  - bus/decisions/wave1-scope/lock.yaml
+summary: |
+  Records the governor's Wave 1 scope decision: request (options A, B, C) and lock (C, close Wave 1
+  now, answered in chat at 16:17 PT). tasks.md moves T065, T066, T066a, T068, T069 and T071 to a new
+  Phase 9a (Wave 1.5), redefines T070 for Wave 1 as a one-hour governor session, and records the
+  governor's Wave 1 waiver of SC-012 and SC-013. Nothing ticked; Wave 1 not marked finished.
+  Review round 1 rejected R-WS1 (the request named only one waiver); fixed by stating the second,
+  marked as added after the answer, with the lock citing the 16:14 PT chat disclosure. Round 2 accepted.
+checks_run:
+  - gate_or_test: "factory gate run --base origin/main --head HEAD (before review)"
+    result: "23 passed, 2 failed (the two verdict gates, no verdict yet)"
+  - gate_or_test: "factory gate run (reviewer, round 2); bus models"
+    result: passed
+deviations: []
+open_questions: []
+author_model: claude-opus-5.5
