@@ -1,0 +1,23 @@
+# Orchestrator rulings of 2026-10-07 on the phase-1 concerns in
+# notes/packets/2026-10-07-factory-per-intent.handoff.md (worker stop at 033478a).
+#   1. Scope: catalog row handoff.per_intent_results ("Results reported per intent id") is met
+#      by the `factory gate run` report (text, which CI shows in the job log, and --json). A
+#      GitHub job-summary file needs a workflow edit and is not part of this order. The goal is
+#      superseded to say so; the job-summary file is a backlog item (Wave 1 retro agenda).
+#   2. Intent ids: a gate's results are listed under the intents its gates.yaml row serves.
+#      Ids a result names in its own message (for example the unmapped ids of
+#      factory-check-intent) stay in that message and do not create per-intent rows.
+#   3. Wording: an intent kept passing only by an override is `overridden`, never `held`.
+schema_version: 1
+kind: amendment
+id: wo-20261007-factory-per-intent.amend-01
+created: 2026-10-07T16:20:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - wo-20261007-factory-per-intent
+  - notes/packets/2026-10-07-factory-per-intent.handoff.md
+supersedes: [goal]
+values:
+  goal: Report PR gate results grouped by intent id in the `factory gate run` report (text and --json), test first, so the governor sees which intents a PR held or broke (catalog handoff.per_intent_results).

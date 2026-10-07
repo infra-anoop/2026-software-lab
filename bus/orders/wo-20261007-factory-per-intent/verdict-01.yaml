@@ -1,0 +1,96 @@
+schema_version: 1
+kind: verdict
+id: wo-20261007-factory-per-intent.verdict-01
+created: 2026-10-07T16:24:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - specs/001-factory-v2/TEST_REVIEW_PER_INTENT.md
+  - "review-time: 2026-10-07T16:16:00Z (round 1)"
+decision: reject
+findings:
+  - id: T-PI1
+    severity: blocker
+    tag: product
+    text: >-
+      Root cause: the fixture copies each gates.yaml intent list into
+      GateResult.intent_ids, making the required registry source
+      indistinguishable from the forbidden result-supplied source. Consequence:
+      an implementation can pass while factory-check-intent is reported under
+      unmapped ids instead of I-N1 and I-P4, giving the governor the wrong held
+      or broken intent. Likelihood is high because group_by_intent already
+      prefers result ids. Smallest fix: make one stub return conflicting
+      sentinel ids and assert only the gate registry row controls the report.
+  - id: T-PI2
+    severity: debate
+    tag: product
+    text: >-
+      Every new assertion uses a full registry run, while the supported
+      explicit --gate path is unpinned. Lock whether subset runs carry the
+      richer section; preferably add one selected-gate case requiring exactly
+      that gate's registry intents and no unrelated rows.
+  - id: T-PI3
+    severity: debate
+    tag: product
+    text: >-
+      The packet calls the change additive, but the complete existing intents
+      mapping is not pinned. An implementation can add correct per_intent data
+      while dropping or corrupting legacy rows beyond the single old I-M2
+      assertion. Pin complete equivalence or explicitly retire the old field.
+  - id: T-PI4
+    severity: nit
+    tag: process
+    text: >-
+      Strength: the trusted PR regression pins every posted status SHA,
+      context, state, description, and order, then fails on the absent
+      per_intent report. This accurately protects the unchanged-status
+      boundary.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: docs/agent-os/SPAWN_REVIEWER.md
+    sha: 0879802
+  - path: docs/agent-os/TEST_REVIEW_PROMPT.md
+    sha: 0879802
+  - path: notes/packets/2026-10-07-factory-per-intent.handoff.md
+    sha: 0879802
+  - path: bus/orders/wo-20261007-factory-per-intent/order.yaml
+    sha: 0879802
+  - path: bus/orders/wo-20261007-factory-per-intent/amendment-01.yaml
+    sha: 0879802
+  - path: bus/orders/wo-20261006-factory-gates-summary/verdict-01.yaml
+    sha: 0879802
+  - path: specs/001-factory-v2/tasks.md
+    sha: 0879802
+  - path: specs/001-factory-v2/acceptance.md
+    sha: 0879802
+  - path: specs/001-factory-v2/spec.md
+    sha: 0879802
+  - path: specs/001-factory-v2/contracts/cli.md
+    sha: 0879802
+  - path: specs/001-factory-v2/contracts/gates.md
+    sha: 0879802
+  - path: scripts/factory/src/factory/intent/coverage.py
+    sha: 0879802
+  - path: scripts/factory/src/factory/gates/runner.py
+    sha: 0879802
+  - path: scripts/factory/src/factory/cli/gates.py
+    sha: 0879802
+  - path: scripts/factory/src/factory/bus/models.py
+    sha: 0879802
+  - path: scripts/factory/tests/contract/test_gate_run.py
+    sha: 0879802
+  - path: scripts/factory/tests/fixtures/fake_github.py
+    sha: 0879802
+  - path: .specify/memory/constitution.md
+    sha: 0879802
+  - path: AGENTS.md
+    sha: 0879802
+bootstrap: true
+manual_equivalents:
+  - "red-first: focused suite reproduced 5 assertion failures and 32 passes with no collection or fixture error"
+  - "registry-source fidelity: compared gates.yaml rows, GateResult.intent_ids behavior, and group_by_intent precedence"
+  - "override semantics: override-only reports overridden and a sibling failure reports broken"
+  - "status stability: reviewed exact SHA, context, state, description, and posting order assertions"
+  - "isolation: only committed git artifacts at 0879802 and the focused test run were used"
