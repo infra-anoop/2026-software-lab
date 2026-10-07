@@ -26,8 +26,8 @@ checks_run:
     result: passed
   - gate_or_test: observer self-test bite check (throwaway, not committed)
     result: with the os._spawnvef wrapper not installed, the os.spawnv node fails (leaks() reported {}); with the symbol looked up under a missing name, every node errors at setup on Linux
-  - gate_or_test: factory gate run --base origin/main --head HEAD (at c1ecb84)
-    result: 22 passed, 3 failed (red-first-proof on the green-by-design self-test; deferral-words-need-od on review-record lines 88 and 98; no handoff at head, this file)
+  - gate_or_test: factory gate run --base origin/main --head HEAD (at fbff904, with this handoff)
+    result: 23 passed, 2 failed (red-first-proof on the green-by-design self-test; deferral-words-need-od on review-record lines 88 and 98); see open_questions
 deviations:
   - what: config/settings.py gains git_environment(extra), a function, not a typed-config field
     why: only factory.config may read os.environ (I-A3, ruff TID251), and the git child needs the inherited environment plus the token for the env-fed helper

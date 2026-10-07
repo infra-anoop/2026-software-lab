@@ -90,6 +90,7 @@ The gate path is untouched: `gate run` and `gate evidence` still build only `DEP
   - `red-first-proof`: the observer self-test passes on base, as a harness self-test must. The four e2e tests are red on base since `c1ecb84`. Needs an orchestrator ruling (handoff open question).
   - `deferral-words-need-od`: `TEST_REVIEW_APP_TOKEN.md` line 88 ("optional", reviewer text) and line 98 ("deferred", triage text) were flagged. Neither is a deferral, and the worker left other authors' record lines alone (handoff open question).
   - `verdict.reviewer-family-differs`: no handoff at head; the handoff is committed after this run.
+- Rerun at `fbff904` (handoff committed): **23 passed, 2 failed** (`red-first-proof` and `deferral-words-need-od`, as above).
 
 ### Bounded behaviour not pinned by tests
 
