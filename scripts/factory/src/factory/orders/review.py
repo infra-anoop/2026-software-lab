@@ -121,6 +121,8 @@ def run_local_gates(
     for gate in load_registry().gates:
         if gate.priority != "P1" or gate.scope not in LOCAL_GATE_SCOPES:
             continue
+        if gate.hook_twin_of is not None:
+            continue
         try:
             result = run_gate(gate.id, ctx)
         except GateEntrypointError:

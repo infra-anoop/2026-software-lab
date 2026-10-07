@@ -50,6 +50,11 @@ class RecordedGitHub:
             return httpx.Response(200, json=recorded("pulls_by_head.json"))
         if request.method == "GET" and path.endswith("/reviews"):
             return httpx.Response(200, json=recorded("pull_reviews.json"))
+        if request.method == "GET" and path.startswith(f"{REPO_PATH}/pulls/"):
+            number = path.removeprefix(f"{REPO_PATH}/pulls/")
+            for item in recorded("pulls_by_head.json"):
+                if str(item["number"]) == number:
+                    return httpx.Response(200, json=item)
         if request.method == "GET" and path.endswith("/check-runs"):
             return httpx.Response(200, json=recorded("check_runs.json"))
         if request.method == "GET" and path.startswith(f"{REPO_PATH}/commits/"):
@@ -112,6 +117,18 @@ def test_list_prs_by_head_maps_recorded_payload(
     assert pr.open is True
     assert pr.merged is False
     assert pr.author_login == "factory-app[bot]"
+
+
+def test_get_pr_maps_recorded_payload_and_missing_is_none(
+    repo: RepoBuilder, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    port = build_port(repo, monkeypatch)
+    pr = port.get_pr(7)
+    assert isinstance(pr, PullRequest)
+    assert pr.number == 7
+    assert pr.head_ref == HEAD
+    assert pr.head_sha == SHA
+    assert port.get_pr(999) is None
 
 
 def test_pr_reviews_maps_recorded_payload(

@@ -214,15 +214,33 @@ def load_catalogs(enabled_app_ids: list[str], registry: dict[str, Any]) -> dict[
     return catalogs
 
 
+def set_repo_root(root: Path) -> None:
+    """Judge the tree at ``root`` instead of this script's checkout."""
+    global REPO_ROOT, SCHEMA_PATH
+    REPO_ROOT = root.resolve()
+    SCHEMA_PATH = REPO_ROOT / "deploy" / "secrets" / "schema.yaml"
+    vde.set_repo_root(REPO_ROOT)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--schema",
         type=Path,
-        default=SCHEMA_PATH,
-        help="Path to secrets schema YAML",
+        default=None,
+        help="Path to secrets schema YAML (default: deploy/secrets/schema.yaml under the repo root)",
+    )
+    parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=None,
+        help="Tree to validate (default: this script's repository)",
     )
     args = parser.parse_args(argv)
+    if args.repo_root is not None:
+        set_repo_root(args.repo_root)
+    if args.schema is None:
+        args.schema = SCHEMA_PATH
 
     if not args.schema.is_file():
         _err(f"missing schema file: {args.schema}")

@@ -1,0 +1,60 @@
+schema_version: 1
+kind: verdict
+id: wo-20261004-factory-slice-c.verdict-08
+created: 2026-10-06T07:45:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - bus/orders/wo-20261004-factory-slice-c/verdict-07.yaml
+  - bus/orders/wo-20261004-factory-slice-c/amendment-08.yaml
+  - specs/001-factory-v2/PR_REVIEW_SLICE_C.md
+decision: accept
+findings:
+  - id: PR-C2-L1
+    severity: later
+    tag: process
+    text: >-
+      Bind the evidence bundle's full base_sha to the trusted run. The judge
+      currently validates its shape but not equality with the base it judges.
+      Wave 1 remains explicitly self-reported and the independent T-star run is
+      the proof of record, so this is hardening for the Wave 1 retro.
+  - id: PR-C2-L2
+    severity: later
+    tag: process
+    text: >-
+      Prove in the workflow oracle that the evidence producer executable comes
+      from the intended checkout. This adds contract precision rather than
+      authority to the explicitly self-reported Wave 1 bundle.
+  - id: PR-C2-L3
+    severity: later
+    tag: process
+    text: >-
+      Normalize exit-zero malformed or non-JSON output from the Nix hook
+      fallback to the hook's quiet fail-open JSON. Hooks are advisory and CI is
+      authoritative, so the degraded response is not blocking.
+  - id: PR-C2-L4
+    severity: later
+    tag: process
+    text: >-
+      The workflow secrets-context detector catches secrets.NAME but not valid
+      indexed expressions such as secrets['NAME'] or whitespace variants. The
+      current read-only evidence workflow has no secret reference, so extend
+      the detector and its self-check table as future trust-boundary hardening.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: specs/001-factory-v2/PR_REVIEW_SLICE_C.md
+    sha: 28e3aa30fba3992e7182d42dc6db633ba5ad9bf0
+  - path: specs/001-factory-v2/TEST_REVIEW_SLICE_C.md
+    sha: 28e3aa30fba3992e7182d42dc6db633ba5ad9bf0
+  - path: notes/packets/2026-10-04-factory-v2-slice-c.handoff.md
+    sha: 28e3aa30fba3992e7182d42dc6db633ba5ad9bf0
+  - path: bus/orders/wo-20261004-factory-slice-c/amendment-08.yaml
+    sha: 28e3aa30fba3992e7182d42dc6db633ba5ad9bf0
+  - path: specs/001-factory-v2/contracts/gates.md
+    sha: 28e3aa30fba3992e7182d42dc6db633ba5ad9bf0
+  - path: specs/001-factory-v2/PLAN_DELTA.md
+    sha: 28e3aa30fba3992e7182d42dc6db633ba5ad9bf0
+  - path: specs/001-factory-v2/tasks.md
+    sha: 28e3aa30fba3992e7182d42dc6db633ba5ad9bf0

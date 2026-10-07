@@ -1,0 +1,15 @@
+# Factory rule paths: changes need the governor's approval (FR-031, I-P5; T067).
+# Ownership is recorded now; the `main` ruleset requires code-owner review only after the
+# factory's GitHub App authors PRs (T065), since GitHub does not let an author approve
+# their own PR (governor 2026-10-06, specs/001-factory-v2/PLAN_DELTA.md § Round 4).
+
+/.specify/memory/constitution.md          @infra-anoop
+/AGENTS.md                                @infra-anoop
+/.cursor/rules/                           @infra-anoop
+/docs/agent-os/                           @infra-anoop
+/scripts/factory/gates.yaml               @infra-anoop
+/scripts/factory/src/factory/gates/       @infra-anoop
+/scripts/factory/rubrics/                 @infra-anoop
+/.github/workflows/factory-gates.yml      @infra-anoop
+/.github/workflows/factory-pr-evidence.yml @infra-anoop
+/.github/CODEOWNERS                       @infra-anoop

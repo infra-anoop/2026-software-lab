@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "hooks": {
+    "subagentStart": [
+      { "command": ".cursor/hooks/factory-hook.sh spawn-guard" }
+    ],
+    "beforeShellExecution": [
+      { "command": ".cursor/hooks/factory-hook.sh shell-guard" }
+    ],
+    "postToolUse": [
+      {
+        "command": ".cursor/hooks/factory-hook.sh owned-path-warn",
+        "matcher": "^(?:Write|Delete)$"
+      }
+    ],
+    "stop": [
+      { "command": ".cursor/hooks/factory-hook.sh decision-in-chat" }
+    ]
+  }
+}

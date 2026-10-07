@@ -1,0 +1,118 @@
+schema_version: 1
+kind: verdict
+id: wo-20261004-factory-slice-c.verdict-04
+created: 2026-10-05T07:47:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - wo-20261004-factory-slice-c.verdict-03
+  - https://github.com/infra-anoop/2026-software-lab/pull/21
+decision: reject
+findings:
+  - id: PR-C1
+    severity: blocker
+    tag: product
+    text: >-
+      The pull_request workflow gives statuses:write and GITHUB_TOKEN to code
+      checked out from the PR head, then executes that code. A same-repository PR can
+      steal the token or post arbitrary successful factory statuses, defeating the
+      authority those statuses are meant to provide.
+  - id: PR-C2
+    severity: blocker
+    tag: process
+    text: >-
+      In a fresh worktree with no project venv, factory-hook.sh executes ambient uv.
+      This repository provides uv only through Nix, so all hooks exit 127 before their
+      documented quiet fail-open handler can run.
+  - id: PR-C3
+    severity: blocker
+    tag: product
+    text: >-
+      factory-status-test is a registered P1 gate but its
+      factory.gates.repo.status_test:run entrypoint does not exist in any slice. The
+      authoritative runner and check registry therefore remain fail-closed after A/B.
+  - id: PR-C4
+    severity: blocker
+    tag: process
+    text: >-
+      The PR mutates the Slice C packet Status even though that packet is absent from
+      the original and amended owned paths. Revert the out-of-scope bookkeeping edit.
+  - id: PR-C5
+    severity: later
+    tag: process
+    text: >-
+      The authoritative factory-tests job still excludes every contract and seed test.
+      Remove the CP1 bootstrap selector after A and B merge, before C lands.
+  - id: PR-C6
+    severity: later
+    tag: process
+    text: >-
+      branch-protection-require-pr is registered fail-closed while its required T066
+      deploy/github/branch-protection.json snapshot is absent, so C remains red until
+      that explicit ops dependency is completed or registration is staged.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: notes/packets/2026-10-04-factory-v2-slice-c.md
+    sha: 1284ea60d4f20aec7019b87c9b35086a021937db
+  - path: notes/packets/2026-10-04-factory-v2-slice-c.handoff.md
+    sha: 1284ea60d4f20aec7019b87c9b35086a021937db
+  - path: bus/orders/wo-20261004-factory-slice-c/amendment-01.yaml
+    sha: 1284ea60d4f20aec7019b87c9b35086a021937db
+  - path: bus/orders/wo-20261004-factory-slice-c/amendment-02.yaml
+    sha: 1284ea60d4f20aec7019b87c9b35086a021937db
+  - path: bus/orders/wo-20261004-factory-slice-c/verdict-03.yaml
+    sha: 1284ea60d4f20aec7019b87c9b35086a021937db
+  - path: specs/001-factory-v2/spec.md
+    sha: 1284ea60d4f20aec7019b87c9b35086a021937db
+  - path: specs/001-factory-v2/plan.md
+    sha: 1284ea60d4f20aec7019b87c9b35086a021937db
+  - path: specs/001-factory-v2/contracts/gates.md
+    sha: 1284ea60d4f20aec7019b87c9b35086a021937db
+  - path: specs/001-factory-v2/contracts/hooks.md
+    sha: 1284ea60d4f20aec7019b87c9b35086a021937db
+  - path: specs/001-factory-v2/contracts/cli.md
+    sha: 1284ea60d4f20aec7019b87c9b35086a021937db
+  - path: specs/001-factory-v2/acceptance.md
+    sha: 1284ea60d4f20aec7019b87c9b35086a021937db
+  - path: specs/001-factory-v2/TEST_REVIEW_SLICE_C.md
+    sha: 1284ea60d4f20aec7019b87c9b35086a021937db
+  - path: scripts/factory/gates.yaml
+    sha: 1284ea60d4f20aec7019b87c9b35086a021937db
+  - path: scripts/factory/src/factory/gates/runner.py
+    sha: 1284ea60d4f20aec7019b87c9b35086a021937db
+  - path: scripts/factory/src/factory/gates/overrides.py
+    sha: 1284ea60d4f20aec7019b87c9b35086a021937db
+  - path: scripts/factory/src/factory/cli/gates.py
+    sha: 1284ea60d4f20aec7019b87c9b35086a021937db
+  - path: scripts/factory/src/factory/gates/pr/concurrency_cap.py
+    sha: 1284ea60d4f20aec7019b87c9b35086a021937db
+  - path: scripts/factory/src/factory/gates/pr/override_msg.py
+    sha: 1284ea60d4f20aec7019b87c9b35086a021937db
+  - path: scripts/factory/src/factory/gates/repo/fail_mode.py
+    sha: 1284ea60d4f20aec7019b87c9b35086a021937db
+  - path: scripts/factory/src/factory/gates/repo/branch_protection.py
+    sha: 1284ea60d4f20aec7019b87c9b35086a021937db
+  - path: scripts/factory/src/factory/hooks/entry.py
+    sha: 1284ea60d4f20aec7019b87c9b35086a021937db
+  - path: scripts/factory/src/factory/hooks/shell_guard.py
+    sha: 1284ea60d4f20aec7019b87c9b35086a021937db
+  - path: scripts/factory/src/factory/hooks/spawn_guard.py
+    sha: 1284ea60d4f20aec7019b87c9b35086a021937db
+  - path: .cursor/hooks.json
+    sha: 1284ea60d4f20aec7019b87c9b35086a021937db
+  - path: .cursor/hooks/factory-hook.sh
+    sha: 1284ea60d4f20aec7019b87c9b35086a021937db
+  - path: .github/workflows/factory-gates.yml
+    sha: 1284ea60d4f20aec7019b87c9b35086a021937db
+bootstrap: true
+manual_equivalents:
+  - "accepted tests unchanged: git diff 9445788 HEAD -- scripts/factory/tests was empty"
+  - "owned paths and frozen CP0 files inspected against the packet and amendments"
+  - "full tests: 501 passed and 106 failed; 102 expected A/B/US7/T069 failures plus 4 Slice C hook bootstrap failures"
+  - "CI selector: 447 passed, 4 failed and 156 deselected; all four failures are the missing-venv uv fallback"
+  - "ruff check and factory check schema passed; no env reads outside config"
+  - "hook probes allowed ops runtime-tag, tag and review pushes and review commits; main push denied; spawn always allowed"
+  - "workflow permissions, event choice, expression interpolation and summary publication inspected manually"
+  - "A/B/C pairwise merge simulation found only the acceptance catalog content conflict"

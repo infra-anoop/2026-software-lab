@@ -1,0 +1,75 @@
+# Governor decision of 2026-10-06 (asked by the orchestrator at PR #21 merge):
+# 1. Locks D3 ("GPT (OpenAI)") and D4 ("agents get their own GitHub App identity, set up
+#    during Wave 1") leave this order. Slice C builds neither: D3 is honored by the reviewer
+#    spawn configuration and `verdict.reviewer-family-differs`, D4 by T065 (the App) and the
+#    after_app code-owner switch. The FR-037 bootstrap reconstruction copied the decisions'
+#    prose as letter tokens, which no code line can carry (Wave 1 retro item). Both locks
+#    stay in force where they are built.
+# 2. Owned paths add `tests/contract/test_cli_contract.py`: the orchestrator recorded the
+#    seven unbuilt T069/T081 CLI contracts as strict expected failures (`UNBUILT`), because
+#    the required `Factory tests` check would otherwise block every PR until Wave 2.
+schema_version: 1
+kind: amendment
+id: wo-20261004-factory-slice-c.amend-09
+created: 2026-10-07T01:55:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - specs/001-factory-v2/tasks.md
+  - wo-20261004-factory-slice-c.amend-08
+supersedes: [locks, owned_paths]
+values:
+  locks: []
+  owned_paths:
+    - "scripts/factory/src/factory/gates/runner.py"
+    - "scripts/factory/src/factory/gates/overrides.py"
+    - "scripts/factory/src/factory/gates/retro.py"
+    - "scripts/factory/src/factory/gates/evidence.py"
+    - "scripts/factory/src/factory/gates/pr/**"
+    - "scripts/factory/src/factory/gates/repo/**"
+    - "scripts/factory/src/factory/hooks/**"
+    - "scripts/factory/src/factory/cli/gates.py"
+    - "scripts/factory/src/factory/cli/checks.py"
+    - "scripts/factory/src/factory/cli/app.py"
+    - "scripts/factory/src/factory/api.py"
+    - "scripts/factory/src/factory/config/settings.py"
+    - "scripts/factory/src/factory/github/rest.py"
+    - "scripts/factory/src/factory/orders/review.py"
+    - "scripts/factory/tests/fixtures/fake_github.py"
+    - "scripts/factory/tests/fixtures/repo_builder.py"
+    - "scripts/factory/tests/contract/test_gate_run.py"
+    - "scripts/factory/tests/contract/test_ci_trust_boundary.py"
+    - "scripts/factory/tests/contract/test_cli_contract.py"
+    - "scripts/factory/tests/unit/gates/test_registry_checks.py"
+    - "scripts/factory/tests/unit/gates/pr/**"
+    - "scripts/factory/tests/unit/hooks/**"
+    - "scripts/factory/tests/unit/test_github_adapter.py"
+    - "scripts/factory/gates.yaml"
+    - "scripts/factory/pyproject.toml"
+    - "scripts/factory/uv.lock"
+    - "scripts/validate_secrets_schema.py"
+    - "scripts/validate_deploy_env.py"
+    - "deploy/github/branch-protection.json"
+    - ".github/CODEOWNERS"
+    - ".cursor/hooks.json"
+    - ".cursor/hooks/factory-hook.sh"
+    - ".github/workflows/factory-gates.yml"
+    - ".github/workflows/factory-pr-evidence.yml"
+    - ".github/workflows/ci-cd-pipeline.yml"
+    - "specs/001-factory-v2/contracts/hooks.md"
+    - "specs/001-factory-v2/contracts/gates.md"
+    - "specs/001-factory-v2/contracts/cli.md"
+    - "specs/001-factory-v2/acceptance.md"
+    - "specs/001-factory-v2/tasks.md"
+    - "specs/001-factory-v2/spec.md"
+    - "specs/001-factory-v2/plan.md"
+    - "specs/001-factory-v2/research.md"
+    - "specs/001-factory-v2/PLAN_DELTA.md"
+    - "specs/001-factory-v2/PLAN_REVIEW.md"
+    - "specs/001-factory-v2/FINISH_BAR.md"
+    - "specs/001-factory-v2/PR_REVIEW_SLICE_C.md"
+    - "specs/001-factory-v2/TEST_REVIEW_SLICE_C.md"
+    - "bus/orders/wo-20261004-factory-slice-c/**"
+    - "notes/packets/2026-10-04-factory-v2-slice-c.handoff.md"
+    - "notes/packets/2026-10-05-factory-v2-d5-delta-pstar.md"

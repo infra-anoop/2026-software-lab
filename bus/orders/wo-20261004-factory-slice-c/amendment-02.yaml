@@ -1,0 +1,70 @@
+# Orchestrator triage of T* round 2 (wo-20261004-factory-slice-c.verdict-02, reject).
+# Recorded by the Slice C worker on the orchestrator's instruction (2026-10-04).
+# Dispositions:
+#   T-C2-1 product Blocker, LOCKED by governor 2026-10-04, option B (log-only): spawn-guard
+#        allows every launch; its advisory (unclaimed launch, or at/over the cap) is logged in
+#        Cursor's Hooks output channel, not shown. Enforcement stays authoritative at
+#        `factory claim` (4th claim refused) and in CI (no merge without a valid claim).
+#        Allow-response tests kept and renamed so they claim no visibility; no preToolUse
+#        agent_message assertion. FR-008, catalog row handoff.concurrency_cap and
+#        contracts/hooks.md amended to "logged (advisory)"
+#   T-C2-2 accept: the hard 150 ms warm assertion is removed; the 300 ms end-to-end
+#        median-of-five test, the import ban and CLI parity stay
+#   T-C2-3 accept: owned-path-warn registers an anchored `Write|Delete` postToolUse matcher;
+#        tests cover payload and path for both documented tool types; no undocumented names
+#   T-C2-4 accept the narrowing: only gate-step conditions that can skip it on a PR are
+#        rejected; `if: always()` and `if: ${{ !cancelled() }}` are allowed. The
+#        board-before-gate (or always()) rule stays
+#   T-C2-5 noted: strength, no action
+#   Stale doc: research.md hooks decision block refreshed to the amended design
+# owned_paths are globs, so line scope is stated here and in the packet. Additions over amend-01:
+#   specs/001-factory-v2/spec.md                  -> only the FR-008 line
+#   specs/001-factory-v2/research.md              -> only the "Editor hooks (FR-022)" decision block
+# Widened line scope on an already-owned path:
+#   specs/001-factory-v2/acceptance.md            -> this slice's evidence cells (amend-01), plus the
+#                                                    handoff.concurrency_cap shall cell and one
+#                                                    2026-10-04 change-log row (Slice B edits the
+#                                                    header lines; Slice A the evidence cells)
+# Every other line scope is unchanged from amend-01.
+schema_version: 1
+kind: amendment
+id: wo-20261004-factory-slice-c.amend-02
+created: 2026-10-04T21:49:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/packets/2026-10-04-factory-v2-slice-c.md
+  - specs/001-factory-v2/TEST_REVIEW_SLICE_C.md
+  - specs/001-factory-v2/contracts/hooks.md
+  - wo-20261004-factory-slice-c.verdict-02
+  - wo-20261004-factory-slice-c.amend-01
+supersedes: [owned_paths]
+values:
+  owned_paths:
+    - "scripts/factory/src/factory/gates/runner.py"
+    - "scripts/factory/src/factory/gates/overrides.py"
+    - "scripts/factory/src/factory/gates/retro.py"
+    - "scripts/factory/src/factory/gates/pr/**"
+    - "scripts/factory/src/factory/gates/repo/**"
+    - "scripts/factory/src/factory/hooks/**"
+    - "scripts/factory/src/factory/cli/gates.py"
+    - "scripts/factory/src/factory/cli/checks.py"
+    - "scripts/factory/tests/contract/test_gate_run.py"
+    - "scripts/factory/tests/unit/gates/test_registry_checks.py"
+    - "scripts/factory/tests/unit/gates/pr/**"
+    - "scripts/factory/tests/unit/hooks/**"
+    - "scripts/factory/gates.yaml"
+    - "scripts/factory/pyproject.toml"
+    - "scripts/factory/uv.lock"
+    - ".cursor/hooks.json"
+    - ".cursor/hooks/factory-hook.sh"
+    - ".github/workflows/factory-gates.yml"
+    - "specs/001-factory-v2/contracts/hooks.md"
+    - "specs/001-factory-v2/acceptance.md"
+    - "specs/001-factory-v2/tasks.md"
+    - "specs/001-factory-v2/spec.md"
+    - "specs/001-factory-v2/research.md"
+    - "specs/001-factory-v2/TEST_REVIEW_SLICE_C.md"
+    - "bus/orders/wo-20261004-factory-slice-c/**"
+    - "notes/packets/2026-10-04-factory-v2-slice-c.handoff.md"

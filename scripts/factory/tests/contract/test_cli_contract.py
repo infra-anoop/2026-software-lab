@@ -25,6 +25,20 @@ FIXTURES = REPO_ROOT / "scripts/factory/tests/fixtures"
 DAY = "20261006"
 OPEN_DECISION = "pick-host"
 
+# Commands whose owning task has not landed. `Factory tests` is a required check, so these
+# contracts stay recorded as strict expected failures: the task that builds the command
+# turns them into unexpected passes, which fail the suite until it deletes its entry here.
+UNBUILT = {"retro": "T069", "correction new": "T081", "sprint close": "T081"}
+
+
+def unbuilt(command: str) -> pytest.MarkDecorator:
+    task = UNBUILT[command]
+    return pytest.mark.xfail(
+        reason=f"`factory {command}` is unbuilt until {task}; {task} deletes this entry",
+        raises=AssertionError,
+        strict=True,
+    )
+
 
 def oid(slug: str) -> str:
     return f"wo-{DAY}-{slug}"
@@ -533,6 +547,7 @@ def test_check_immutability_exit_0(repo: RepoBuilder, factory_cli: FactoryCli) -
     assert_exit(result, exit_codes.OK)
 
 
+@unbuilt("retro")
 def test_retro_exit_0(repo: RepoBuilder, factory_cli: FactoryCli) -> None:
     assert_exit(factory_cli("retro", "--since", "main", repo=repo.path), exit_codes.OK)
 
@@ -540,6 +555,7 @@ def test_retro_exit_0(repo: RepoBuilder, factory_cli: FactoryCli) -> None:
 # --- mining loop (US7, Wave 2) ----------------------------------------------------------------
 
 
+@unbuilt("correction new")
 def test_correction_new_exit_0(repo: RepoBuilder, factory_cli: FactoryCli) -> None:
     result = factory_cli(
         "correction",
@@ -555,6 +571,7 @@ def test_correction_new_exit_0(repo: RepoBuilder, factory_cli: FactoryCli) -> No
     assert_exit(result, exit_codes.OK)
 
 
+@unbuilt("sprint close")
 def test_sprint_close_refuses_without_postmortem(
     repo: RepoBuilder, factory_cli: FactoryCli
 ) -> None:
@@ -562,6 +579,7 @@ def test_sprint_close_refuses_without_postmortem(
     assert_exit(result, exit_codes.REFUSED)
 
 
+@unbuilt("sprint close")
 def test_sprint_close_refuses_undispositioned_correction(
     repo: RepoBuilder, factory_cli: FactoryCli
 ) -> None:
@@ -797,8 +815,15 @@ def parse_envelope(result: CliResult) -> dict[str, Any]:
     ids=[f"{command}-{scenario.__name__.lstrip('_')}" for command, scenario, _ in JSON_SCENARIOS],
 )
 def test_json_envelope(
-    repo: RepoBuilder, factory_cli: FactoryCli, command: str, scenario: Scenario, expected: int
+    request: pytest.FixtureRequest,
+    repo: RepoBuilder,
+    factory_cli: FactoryCli,
+    command: str,
+    scenario: Scenario,
+    expected: int,
 ) -> None:
+    if command in UNBUILT:
+        request.applymarker(unbuilt(command))
     args, repo_path = scenario(repo)
     result = factory_cli(*args, "--json", repo=repo_path)
     assert_exit(result, expected)

@@ -1,0 +1,79 @@
+# ------------------------------------------------------------------------------
+# Factory PR evidence (specs/001-factory-v2, D5 / D7) — UNTRUSTED half
+# ------------------------------------------------------------------------------
+# Runs the PR's own code with a read-only token and no secrets. It posts nothing:
+# factory-tests: the factory's own test suite (own uv project at scripts/factory).
+# red-first-evidence: records the raw red-first facts (base vs head) as the
+#   `factory-evidence` artifact. The trusted `factory-gates.yml` (workflow_run, main's
+#   code) downloads it, judges it and posts the `factory/*` statuses.
+# ------------------------------------------------------------------------------
+
+name: "Factory PR evidence"
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: factory-pr-evidence-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  factory-tests:
+    name: Factory tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scripts/factory
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+
+      - name: uv sync --locked
+        run: uv sync --locked
+
+      - name: pytest
+        run: uv run pytest
+
+  red-first-evidence:
+    name: Red-first evidence
+    runs-on: ubuntu-latest
+    env:
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+
+      - name: uv sync --locked
+        run: uv sync --locked --project scripts/factory
+
+      - name: factory gate evidence
+        # The `runner` context is only available at step level.
+        env:
+          EVIDENCE_DIR: ${{ runner.temp }}/factory-evidence
+        run: >-
+          uv run --locked --project scripts/factory factory gate evidence
+          --base "$BASE_SHA" --head "$HEAD_SHA" --out "$EVIDENCE_DIR"
+
+      - name: Upload evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: factory-evidence
+          path: ${{ runner.temp }}/factory-evidence
+          if-no-files-found: error
+          retention-days: 7

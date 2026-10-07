@@ -1,65 +1,76 @@
 # ------------------------------------------------------------------------------
-# Factory gates (specs/001-factory-v2)
+# Factory gates (specs/001-factory-v2, D5) — TRUSTED half
 # ------------------------------------------------------------------------------
-# factory-tests: the factory's own test suite (own uv project at scripts/factory).
-# factory-gates: runs every registered gate on the PR. Placeholder until CP2, when
-#   it becomes authoritative and posts one `factory/<gate-id>` status per gate.
+# `workflow_run` takes this file from the default branch and checks out `main`, so a PR
+# that edits either workflow or any gate is judged by main's current gates. The job never
+# executes PR code: it downloads the triggering run's `factory-evidence` artifact as data,
+# runs every registered CI gate, posts one `factory/<gate-id>` commit status per gate,
+# and writes the board to the job summary.
+#
+# The job is an exact allowlist (tests/contract/test_ci_trust_boundary.py): pinned
+# actions with listed `with:` keys and listed commands only. Add a step there first.
 # ------------------------------------------------------------------------------
 
 name: "Factory gates"
 
 on:
-  pull_request:
+  workflow_run:
+    workflows: ["Factory PR evidence"]
+    types: [completed]
 
-concurrency:
-  group: factory-gates-${{ github.ref }}
-  cancel-in-progress: true
+permissions: {}
 
 jobs:
-  factory-tests:
-    name: Factory tests
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    defaults:
-      run:
-        working-directory: scripts/factory
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-
-      - name: uv sync --locked
-        run: uv sync --locked
-
-      - name: pytest
-        # Until CP1 the CLI contract tests and the SC-002 seeds suite are red by design
-        # (slices A/B/C turn them green). Drop this marker selector at CP1.
-        run: uv run pytest -m "not contract and not seed"
-
   factory-gates:
     name: Factory gates
+    if: >-
+      ${{ github.event.workflow_run.repository.full_name == github.repository
+      && github.event.workflow_run.head_repository.full_name == github.repository
+      && github.event.workflow_run.event == 'pull_request' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: read
+      actions: read
+      statuses: write
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout main
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        with:
+          enable-cache: false
 
       - name: uv sync --locked
         run: uv sync --locked --project scripts/factory
 
+      - name: Download the triggering run's evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: factory-evidence
+          run-id: ${{ github.event.workflow_run.id }}
+          path: ${{ runner.temp }}/factory-evidence
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: factory gate run
-        # Placeholder until CP2 (slice C, T059): step-level so the check stays green while `gate run` exits 3.
-        continue-on-error: true
-        run: uv run --project scripts/factory factory gate run --pr ${{ github.event.number }}
+        # Authoritative: one `factory/<gate-id>` status per gate; missing evidence fails
+        # red-first-proof closed while the other gates still run.
+        if: ${{ !cancelled() }}
+        # The `runner` context is only available at step level.
+        env:
+          EVIDENCE_DIR: ${{ runner.temp }}/factory-evidence
+        run: >-
+          uv run --locked --project scripts/factory factory gate run
+          --pr "$PR_NUMBER" --expect-head "$HEAD_SHA" --evidence "$EVIDENCE_DIR"
+
+      - name: Board in job summary
+        if: ${{ !cancelled() }}
+        run: uv run --locked --project scripts/factory factory status >> "$GITHUB_STEP_SUMMARY"

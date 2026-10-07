@@ -33,4 +33,22 @@
 
 | Date | New rows | Re-lock done? |
 |------|----------|---------------|
-| | | |
+| 2026-10-05 | **D5** (trusted-base CI, governor lock after PR review PR-C1) — locked, architecture-affecting → §G.1 [`PLAN_DELTA.md`](./PLAN_DELTA.md). **D6** (when the required `factory/*` checks switch on relative to Slice C's bootstrap merge) — opened by the D5 reconcile | D5 yes; **D6 no** (open, `who: human`) |
+| 2026-10-05 (round 2, after the delta P* review) | **D6** locked (probe, then pin); **D7** (red-first strength per wave) and **D8** (agents' App has no `statuses: write`) added and locked, all architecture-affecting → §G.1 round 2 in [`PLAN_DELTA.md`](./PLAN_DELTA.md) | yes — D6, D7, D8 |
+
+### Delta inventory (2026-10-05)
+
+| id / source | Product question (governor altitude) | arch_impact (on lock) | Outcome |
+|-------------|--------------------------------------|------------------------|---------|
+| D5 | Which code judges a PR in CI, and what may write the merge-deciding statuses | architecture-affecting | locked 2026-10-05 — `main`'s code judges; the head is data; no head code with status write; gate changes apply after merge; Slice C bootstraps; no `pull_request_target` with head code |
+| D6 | Branch protection and Slice C's own merge: switch on "factory checks must pass" right after C merges, or before it, with the governor personally marking C's checks as passed | (on lock) | locked 2026-10-05 (architecture-affecting) — probe, then pin: C merges on bootstrap review + approval; merges freeze; a non-merging probe gets trusted statuses; every `factory/*` context required with GitHub Actions pinned as source; live rule verified; merges reopen |
+| D7 | How much to trust the CI red-first result before a sealed run exists | architecture-affecting | locked 2026-10-05 — Wave 1 self-reported (stated in the status), T* re-run is the proof of record; Wave 2 sealed trusted run (T104) |
+| D8 | May the agents' GitHub App write commit statuses | architecture-affecting | locked 2026-10-05 — no; only CI posts `factory/*` statuses |
+
+### Delta outcome
+
+| Field | Value |
+|-------|-------|
+| Delta rows resolved? | yes — D5–D8 locked (round 2, 2026-10-05) |
+| Next gate | Narrow P* confirmation of the round-2 reconcile (§G.1 step 4) |
+| **Implement unblocked** (Phase 6a) | **yes once the narrow P* confirmation passes**; Phase 6a stays tests-first (T094–T096 before T097–T098) |

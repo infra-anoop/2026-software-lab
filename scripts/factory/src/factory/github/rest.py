@@ -102,6 +102,15 @@ class RestGitHub:
         prs = [_pr(item) for item in self._request("GET", "/pulls", params=params)]
         return [pr for pr in prs if pr.head_ref == head_branch]
 
+    def get_pr(self, number: int) -> PullRequest | None:
+        try:
+            return _pr(self._request("GET", f"/pulls/{number}"))
+        except GitHubError as exc:
+            cause = exc.__cause__
+            if isinstance(cause, httpx.HTTPStatusError) and cause.response.status_code == 404:
+                return None
+            raise
+
     def pr_reviews(self, pr_number: int) -> list[PullRequestReview]:
         params = {"per_page": PAGE_SIZE}
         return [

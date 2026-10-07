@@ -1,0 +1,104 @@
+# Governor decisions of 2026-10-05 evening (relayed by the orchestrator 2026-10-06), recorded
+# by the Slice C worker on the orchestrator's instruction, plus the owned paths that the
+# merge of origin/main (Slice A, d573721) into this branch and those decisions need.
+# Governor decisions, verbatim:
+#   - **Mechanism: a repository RULESET** (Settings → Rules), not classic branch protection.
+#     The codespace token can read rulesets (`GET /repos/{o}/{r}/rulesets` returns 200) but
+#     not classic protection (403).
+#     - Change `deploy/github/branch-protection.json` and the `branch-protection-require-pr`
+#       gate to the ruleset shape: target `main`; empty bypass list; rules `pull_request` and
+#       `required_status_checks`, each `{context, integration_id}` pinned to the GitHub
+#       Actions app id (P9); `non_fast_forward` and `deletion`.
+#     - Update the gate's tests and fixtures to this shape. This is a governor-decided
+#       amendment to accepted tests; keep each test's intent and list old → new.
+#   - **Code-owner review is deferred until the factory's GitHub App (T065) authors PRs.**
+#     PRs are authored under the governor's own account today, and GitHub won't let them
+#     approve their own PR.
+#     - So T101 now turns on: PR required, required checks, and no bypass for anyone.
+#     - A `.github/CODEOWNERS` file is added now, listing the rule paths under the governor
+#       (constitution, AGENTS.md, `.cursor/rules/`, `docs/agent-os/`,
+#       `scripts/factory/gates.yaml`, `scripts/factory/src/factory/gates/`, and the factory
+#       workflows).
+#     - 'Require code-owner review' is switched on after T065. This is a governor-approved
+#       fidelity deviation; record it as such.
+#     - The gate must accept a snapshot without code-owner review until a config flag (or
+#       T065 state) says it's required. Pick the smallest clean form and say which you chose.
+# Fidelity deviation (governor-approved 2026-10-06): T066's letter "require code-owner
+#   review" is not met at T101; it is met after T065.
+# Chosen form: T065 state. `branch-protection-require-pr` requires code-owner review exactly
+#   when `identity.mode = "verified"` (the flip T065 makes). No new config field, no CP0
+#   change.
+# CODEOWNERS also lists `scripts/factory/rubrics/` (a `rule_paths` entry, T067) and
+#   `.github/CODEOWNERS` itself: additions to the governor's list, not substitutions.
+# Merge integration (Slice A x Slice C), each a minimal additive change:
+#   scripts/factory/src/factory/github/rest.py      -> RestGitHub.get_pr (amend-06 added it
+#                                                      to GitHubPort; Slice A's adapter
+#                                                      predates it)
+#   scripts/factory/tests/unit/test_github_adapter.py -> one recorded-response test for get_pr
+#   scripts/factory/src/factory/orders/review.py    -> run_local_gates skips hook rows
+#                                                      (`hook_twin_of` set), as the CI runner
+#                                                      does
+# Not touched: GitHub settings, rulesets, PR state (governor / orchestrator).
+schema_version: 1
+kind: amendment
+id: wo-20261004-factory-slice-c.amend-07
+created: 2026-10-06T03:07:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - specs/001-factory-v2/tasks.md
+  - specs/001-factory-v2/PLAN_DELTA.md
+  - wo-20261004-factory-slice-c.amend-06
+supersedes: [owned_paths]
+values:
+  owned_paths:
+    - "scripts/factory/src/factory/gates/runner.py"
+    - "scripts/factory/src/factory/gates/overrides.py"
+    - "scripts/factory/src/factory/gates/retro.py"
+    - "scripts/factory/src/factory/gates/evidence.py"
+    - "scripts/factory/src/factory/gates/pr/**"
+    - "scripts/factory/src/factory/gates/repo/**"
+    - "scripts/factory/src/factory/hooks/**"
+    - "scripts/factory/src/factory/cli/gates.py"
+    - "scripts/factory/src/factory/cli/checks.py"
+    - "scripts/factory/src/factory/cli/app.py"
+    - "scripts/factory/src/factory/api.py"
+    - "scripts/factory/src/factory/config/settings.py"
+    - "scripts/factory/src/factory/github/rest.py"
+    - "scripts/factory/src/factory/orders/review.py"
+    - "scripts/factory/tests/fixtures/fake_github.py"
+    - "scripts/factory/tests/contract/test_gate_run.py"
+    - "scripts/factory/tests/contract/test_ci_trust_boundary.py"
+    - "scripts/factory/tests/unit/gates/test_registry_checks.py"
+    - "scripts/factory/tests/unit/gates/pr/**"
+    - "scripts/factory/tests/unit/hooks/**"
+    - "scripts/factory/tests/unit/test_github_adapter.py"
+    - "scripts/factory/gates.yaml"
+    - "scripts/factory/pyproject.toml"
+    - "scripts/factory/uv.lock"
+    - "scripts/validate_secrets_schema.py"
+    - "scripts/validate_deploy_env.py"
+    - "deploy/github/branch-protection.json"
+    - ".github/CODEOWNERS"
+    - ".cursor/hooks.json"
+    - ".cursor/hooks/factory-hook.sh"
+    - ".github/workflows/factory-gates.yml"
+    - ".github/workflows/factory-pr-evidence.yml"
+    - ".github/workflows/ci-cd-pipeline.yml"
+    - "specs/001-factory-v2/contracts/hooks.md"
+    - "specs/001-factory-v2/contracts/gates.md"
+    - "specs/001-factory-v2/contracts/cli.md"
+    - "specs/001-factory-v2/acceptance.md"
+    - "specs/001-factory-v2/tasks.md"
+    - "specs/001-factory-v2/spec.md"
+    - "specs/001-factory-v2/plan.md"
+    - "specs/001-factory-v2/research.md"
+    - "specs/001-factory-v2/PLAN_DELTA.md"
+    - "specs/001-factory-v2/PLAN_REVIEW.md"
+    - "specs/001-factory-v2/FINISH_BAR.md"
+    - "specs/001-factory-v2/PR_REVIEW_SLICE_C.md"
+    - "specs/001-factory-v2/TEST_REVIEW_SLICE_C.md"
+    - "bus/orders/wo-20261004-factory-slice-c/**"
+    - "notes/packets/2026-10-04-factory-v2-slice-c.handoff.md"
+    - "notes/packets/2026-10-05-factory-v2-d5-delta-pstar.md"

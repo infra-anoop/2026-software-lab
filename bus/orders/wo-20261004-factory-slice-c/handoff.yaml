@@ -1,0 +1,34 @@
+# FR-037 bootstrap handoff, recorded 2026-10-05 (orchestrator's instruction, Phase 6a phase 1).
+# The full handoff, with commands, results, red-first pairs and the Phase 6a phase-1 red tests,
+# is the Markdown file in refs.
+schema_version: 1
+kind: handoff
+id: wo-20261004-factory-slice-c.handoff
+created: 2026-10-05T17:25:00Z
+actor: worker
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/packets/2026-10-04-factory-v2-slice-c.handoff.md
+  - "FR-037 bootstrap"
+summary: |
+  Slice C: gate runner with two gate classes and reasoned overrides, PR and repo gates,
+  advisory hooks with CI twins, `factory gate run` / `factory override` / `factory check
+  hooks|registry|immutability`, and the CI workflow. PR review (PR-C1 to PR-C4) and spec D5
+  to D8 are in Phase 6a phase 1: red tests for the trusted-base CI topology, the evidence
+  bundle and fail-closed judge, P9 status-source pinning and the hook wrapper's Nix
+  fallback. Full detail in notes/packets/2026-10-04-factory-v2-slice-c.handoff.md.
+deviations:
+  - what: factory-status-test is left unimplemented
+    why: it depends on another slice's status code (handoff, cross-slice table)
+    conservative_choice: the gate fails closed as "not implemented" until it lands
+  - what: the T059 workflow tests in test_gate_run.py moved to test_ci_trust_boundary.py and the branch-protection snapshot fixture pins app ids
+    why: spec D5 and P9 change behaviour those accepted tests pinned
+    conservative_choice: each amendment is listed old to new in the handoff and goes through T* review
+  - what: Slice B's red_first.collect_facts is stubbed through sys.modules in the phase-1 tests
+    why: Slice B's raw-facts seam is not on this branch yet
+    conservative_choice: the stub matches the frozen seam (node_id, base_outcome, head_outcome, base_error); the real one is used once B merges
+  - what: bootstrap order size_minutes is 1, not the true multi-hour size
+    why: the schema caps size_minutes at the 60-minute horizon; the slice predates orders
+    conservative_choice: true size stated in the order's refs; scorecard dates corrected in the retro
+author_model: claude-opus-5.5
