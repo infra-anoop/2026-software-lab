@@ -58,6 +58,45 @@ The recorded-mode legs pass today, which shows the harness works. A throwaway ch
 2. Helper scoping: the e2e origin is `127.0.0.1`, so a helper scoped to `github.com` would fail the test. Scoping to origin's URL passes.
 3. The observer is Python-level only (triage: no hooks below that). Process spawns are covered since round 2 (see below). Still not observed: writes made by a C extension, writes made by a child process (for example `git` writing its own config or credential files mid-run; only the final-tree persistence scan sees what remains), and a token in a child's environment or on a pipe. The environment and pipes are the sanctioned channels for an env-fed helper.
 
+## Implementation (phase 2)
+
+Round 3 review: `specs/001-factory-v2/TEST_REVIEW_APP_TOKEN.md` (T-AT1-R2 closed; T-AT2-R3 a bug, fixed below). Commits: self-test `25d4b4b`, implementation `61c66a8`, fixture follow-up `c1ecb84`. Handoff: `bus/orders/wo-20261007-factory-app-token/handoff.yaml`.
+
+### T-AT2-R3 observer self-test
+
+**New** `tests/contract/test_app_token_e2e.py::test_observer_reports_secrets_in_a_spawned_command_line[os.system | os.posix_spawn | os.spawnv]`. A canary token and a key line are passed in the argv of each API. `leaks()` must report exactly one argv entry with both secrets, under that API's event (`os.spawn` for the wrapper). The `os.spawnv` node also asserts on Linux that the `os._spawnvef` wrapper was hit once (`CredentialObserver.wrapped_spawns`). The harness no longer skips silently: on Linux, a missing `os._spawnvef` fails the `observer` fixture.
+
+Bite check (throwaway, not committed): with the wrapper not installed, the `os.spawnv` node fails (`leaks()` reported `{}`), and the other two pass. With the symbol looked up under a missing name, every node errors at setup with "os._spawnvef is missing". Both edits were reverted before the commit.
+
+### What was built (T036b)
+
+| Where | What |
+|-------|------|
+| `identity/app_token.py` | `InstallationTokenSource`: the installation comes from `GET /repos/{o}/{r}/installation` with the App JWT (cached per source), then an in-process mint; the token is reused until `REFRESH_MARGIN` (5 minutes) is left. Missing App credentials raise `AppTokenError` at construction. App HTTP errors carry the status and path only (`from None`), and a key that cannot sign gives a fixed message. `InstallationToken.token` is `repr=False` |
+| `github/rest.py` | `build_agent_github(settings, env, *, clock=None)`: recorded mode is `build_github`; verified mode builds `RestGitHub` with a `token_source` asked before each request. `AppTokenError` becomes `GitHubError` both at build and per request. `build_github` stays the CI client (GITHUB_TOKEN, never mints). `RestGitHub.__repr__` names only the repository |
+| `cli/common.py` | `Deps.agent_github`, default `factory.github.rest:build_agent_github` (amendment-01; nothing else changed) |
+| `cli/orders.py` | `claim`, `pr open` and `bus pr` use `DEPS.agent_github`; a build failure exits 4 |
+| `orders/lease.py`, `orders/review.py` | `git_token(settings)`: None in recorded mode (ambient git credentials), else an App token source. Missing credentials are `External` before any git command runs. `fetch_or_fail` / `push_or_fail` take the token as a required argument, so no call site can silently fall back; a failed mint is `External` (exit 4) |
+| `orders/git.py` | With a password, `fetch` / `push` run `git -c credential.helper= -c credential.helper=<helper>`. The reset drops ambient helpers, and the helper answers `get` with `x-access-token` and the token, which it reads from `FACTORY_GIT_APP_TOKEN` in its environment. Neither argv nor `GIT_TRACE` carries the token, and nothing is written to disk. `GIT_TERMINAL_PROMPT=0` |
+| `config/settings.py` | `git_environment(extra)`: the inherited environment plus `extra`, for that git child (deviation: a function, no field) |
+| `tests/fixtures/cli_runner.py` | Also substitutes `DEPS.agent_github` with the same FakeGitHub (amendment-01), `raising=False` so red-first can run the head tests on base |
+
+The gate path is untouched: `gate run` and `gate evidence` still build only `DEPS.github`.
+
+### Results
+
+- Full suite (`nix develop ../.. -c uv run pytest -q` from `scripts/factory`): **1070 passed, 7 xfailed** (the strict T069/T081 xfails). The 11 red T036b nodes pass with no test function edited in phase 2. `ruff check` and `ruff format --check` pass.
+- `factory gate run --base origin/main --head HEAD` (at `c1ecb84`, before the handoff commit): 22 passed, 3 failed:
+  - `red-first-proof`: the observer self-test passes on base, as a harness self-test must. The four e2e tests are red on base since `c1ecb84`. Needs an orchestrator ruling (handoff open question).
+  - `deferral-words-need-od`: `TEST_REVIEW_APP_TOKEN.md` line 88 ("optional", reviewer text) and line 98 ("deferred", triage text) were flagged. Neither is a deferral, and the worker left other authors' record lines alone (handoff open question).
+  - `verdict.reviewer-family-differs`: no handoff at head; the handoff is committed after this run.
+
+### Bounded behaviour not pinned by tests
+
+- A verified `claim`, `pr open` or `bus pr` mints twice: once in the REST adapter and once in `orders/` for git. `DEPS.agent_github`'s signature cannot hand its source to `orders/`.
+- A token that expires during one long git command is not refreshed mid-command (edge case 1). Each fetch or push asks the source first, so it starts with at least 5 minutes left.
+- The helper is scoped to the one git command, not to a host (edge case 2).
+
 ## Round 2 resolution
 
 Review: `specs/001-factory-v2/TEST_REVIEW_APP_TOKEN.md` (round 2 rejected; triage at `e0a03cd`). Test changes only; no `src/`. The round 1 rows below still hold, with the round 2 changes on top.
