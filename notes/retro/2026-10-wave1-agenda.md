@@ -9,7 +9,7 @@ Numbers come from git on `main` at `581ed18` unless stated otherwise.
 | Measure | Value |
 |---------|-------|
 | Tasks in `specs/001-factory-v2/tasks.md` | 110 lines: 74 done, 36 open |
-| Open in Wave 1 | 13. Three only needed ticking: T097 and T101 are ticked in this PR; T066 is done apart from code-owner review (after T065). Three are in progress now (T036b, T105, T064). Then T066a, T049, your App setup (T065) and the retro tasks T068–T071 |
+| Open in Wave 1 | 13. Three only need ticking: T097 and T101 (work merged; ticked in a record order after the running orders merge) and T066, done apart from code-owner review (after T065). Three are in progress now (T036b, T105, T064). Then T066a, T049, your App setup (T065) and the retro tasks T068–T071 |
 | Open in Wave 2 | 23 (US6–US8 and polish). Not started, per your instruction |
 | Merged factory PRs | 12 (#7, #8, #9, #20–#25, #27–#29); probe PR #26 closed unmerged, as planned |
 | Work orders | 8, all merged: 37 review verdicts, of which 23 were rejections; 35 order amendments; 3 overrides |
@@ -130,6 +130,8 @@ Fixes already in place: push after every green step; never resume a suspected ha
 | Duplicate task ids (T016, T036, T066) in `tasks.md` | Backlog: renumber after Wave 1 |
 | Wave 1 start date and `size_minutes` are reconstructed estimates | Correct by hand in the formal retro |
 | Bootstrap orders don't name the sprint, so the sprint view showed 0 orders | Decide at retro |
+| `factory claim` checks owned-path overlap against the original order and ignores amendments. Today that refused a claim it should have allowed. The harmful direction is an amendment that widens paths: two orders could then edit the same file | Backlog, Slice A owner: claim uses the amended order |
+| Four orders this morning all listed `tasks.md`, so the overlap check (correctly) let only one claim | Retro: only orchestrator record orders own `tasks.md`; workers report completion in their handoff |
 | 35 stale remote branches | Housekeeping order |
 | `gates/evidence.py` duplicates four helpers from `red_first.py` | Backlog |
 

@@ -208,7 +208,7 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 
 ### Implementation
 
-- [x] T097 [US4] [OD:D5] PR-C1 rework per `contracts/gates.md` § CI topology and trust boundary:
+- [ ] T097 [US4] [OD:D5] PR-C1 rework per `contracts/gates.md` § CI topology and trust boundary:
   - Split `.github/workflows/factory-gates.yml` into the untrusted `.github/workflows/factory-pr-evidence.yml` and the trusted `workflow_run` `factory-gates.yml`.
   - Add `factory gate run --expect-head --evidence` and `factory gate evidence` in `scripts/factory/src/factory/cli/gates.py` + `scripts/factory/src/factory/gates/runner.py`.
   - Split red-first into an evidence producer and a bundle judge in `scripts/factory/src/factory/gates/drift/red_first.py`. That is Slice B's path, so it waits until B is merged into C and needs an order amendment.
@@ -219,7 +219,6 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
   - `branch-protection-require-pr` asserts the GitHub Actions app id as expected source on every required `factory/*` context (`scripts/factory/src/factory/gates/repo/branch_protection.py`, P9).
   - Fill `ci.trusted_base` and `ci.status_source_pinned` evidence.
   - **Status 2026-10-05:** done except the `red_first.py` producer/judge split, which waits for Slice B's merge into C (the producer imports `collect_facts` lazily meanwhile); `ci.status_source_pinned`'s live-rule half waits for T103.
-  - **Done 2026-10-07 (orchestrator).** The producer/judge split landed when Slice B was merged into C (`5c925a1`): `scripts/factory/src/factory/gates/evidence.py` builds the bundle from `red_first.collect_facts` (`produce`) and judges it (`judge`), and `red_first.py` returns raw facts only. The live-rule half of `ci.status_source_pinned` was met by T103 (PLAN_DELTA.md Round 6).
 - [x] T098 [US4] PR-C2: wrapper `.cursor/hooks/factory-hook.sh` per `contracts/hooks.md` § Invocation (Nix fallback; wrapper-level quiet fail-open)
 - [x] T099 [POLICY] PR-C4: revert the `Status` line of `notes/packets/2026-10-04-factory-v2-slice-c.md` to its `main` text (no net diff on the packet vs `main`); progress stays in the append-only handoff and verdicts
 - [x] T100 [US4] PR-C5: once Slices A and B are merged into `wo/wo-20261004-factory-slice-c`, `factory-tests` (now in `factory-pr-evidence.yml`) runs the full factory suite with no `-m` / `-k` / `--deselect` selector, and the CP1 bootstrap comment goes; T094's workflow test asserts no selector
@@ -228,7 +227,7 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 
 ### Cross-order dependencies for the C merge
 
-- [x] T101 [HITL] [OD:D6] PR-C6 = T066, moved earlier. Between the Slice B merge and the Slice C merge, the governor walks through branch protection with the orchestrator:
+- [ ] T101 [HITL] [OD:D6] PR-C6 = T066, moved earlier. Between the Slice B merge and the Slice C merge, the governor walks through branch protection with the orchestrator:
   - **Amended 2026-10-06 — governor decisions, verbatim:**
     - "**Mechanism: a repository RULESET** (Settings → Rules), not classic branch protection. The codespace token can read rulesets (`GET /repos/{o}/{r}/rulesets` returns 200) but not classic protection (403)."
       - "Change `deploy/github/branch-protection.json` and the `branch-protection-require-pr` gate to the ruleset shape: target `main`; empty bypass list; rules `pull_request` and `required_status_checks`, each `{context, integration_id}` pinned to the GitHub Actions app id (P9); `non_fast_forward` and `deletion`."
@@ -243,7 +242,6 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
   - **Live (done 2026-10-06, ruleset id 24554609 `main-protection`, created by the governor):** a repository ruleset on `~DEFAULT_BRANCH` (`main`) with an empty bypass list; rules `pull_request` (code-owner review off), `required_status_checks` (`Factory tests` and `Verify Source / verify`, each pinned to integration 15368; "require branches up to date" deliberately off), `non_fast_forward`, `deletion`. The `factory/*` contexts are **not** required live; per D6 they are switched on in T103 step 3, after the probe.
   - **Snapshot (committed in C by amend-07, aligned with the live ruleset by amend-08):** `deploy/github/branch-protection.json` is the live `GET /repos/{o}/{r}/rulesets/24554609` body without server metadata that changes on every edit (`node_id`, `created_at`, `updated_at`, `_links`, `current_user_can_bypass`), **plus the T103 target**: each P1 `factory/<gate-id>` context listed individually with `integration_id` 15368 (P9). Until T103 step 3 the live rule is expected to lack exactly those `factory/*` entries; nothing in Wave 1 compares live with the snapshot before T103 step 4. The gate reads only the snapshot and ignores keys it does not check.
   - This task is a pre-merge dependency for C.
-  - **Done 2026-10-07 (orchestrator).** The live ruleset was in place before C merged; T103 then required `factory/gates` (Round 5 replaced the per-gate contexts), and the live ruleset equals `deploy/github/branch-protection.json` (PLAN_DELTA.md Round 6). Code-owner review stays with T065, per the fidelity deviation above.
 - [x] T102 PR-C3 as its own small order (`wo-<date>-factory-status-test`), after Slice A merges and before Slice C merges:
   - Done 2026-10-06: order `wo-20261006-factory-status-test`, merged to `main` as [PR #25](https://github.com/infra-anoop/2026-software-lab/pull/25) (`916fc64`), with a reconstructed P0 bootstrap `order.yaml`. Merged into Slice C's branch from `origin/main`.
   - Test first `scripts/factory/tests/unit/gates/repo/test_status_test.py` (T* reviewed), then the entrypoint `factory.gates.repo.status_test:run` in `scripts/factory/src/factory/gates/repo/status_test.py`.
