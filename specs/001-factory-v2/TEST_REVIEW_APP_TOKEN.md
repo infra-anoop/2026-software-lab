@@ -47,3 +47,16 @@
 ## F. Questions for the human
 
 None. The two blockers require fidelity to already-recorded credential-role and non-disclosure rulings; they do not require a new product choice.
+
+## Triage (orchestrator, round 1, 2026-10-07)
+
+Reviewer text above is unchanged. T-AT1 and T-AT2 are credential-safety harm: fixed now, as suggested. Their product tag needs no governor choice, because the governor-level rule (credentials follow the role, never a silent fallback) is already set in the packet's Orchestrator rulings.
+
+| Finding | Decision | Change |
+|---------|----------|--------|
+| T-AT1 (Blocker) | **Fix as suggested.** | One table-driven call-site contract with distinguishable CI and agent provider spies (`DEPS.github`, `DEPS.agent_github`). It covers every GitHub-using agent command named by amendment-01 (claim, release, handoff, pr open, verdict, bus pr) plus `gate run` and `gate evidence`. Agent commands may use only the agent provider and CI commands only the CI provider. Every push entry point goes through the verified credential path, not ambient git credentials |
+| T-AT2 (Blocker) | **Fix as suggested, bounded.** | One shared observation harness for the e2e tests. It records payloads written through Python file APIs (`open`, `Path.write_*`, `os.write`, tempfile), including files deleted afterwards, every child-process argv (subprocess spawn), logs and output, and formatted exception chains (`repr` and traceback). The secret corpus is the installation token(s), every minted App JWT, and the complete throwaway private key (any 16-character window of its base64 body). The final-tree scan stays as the persistence check. Do not hook below the Python level |
+| T-AT3 (Debate, process) | **Fix.** | Injected or fake clock: mint a one-hour token, prove reuse, advance to the declared refresh boundary, prove refresh before the next authenticated request |
+| T-AT4 (Nit, strength) | Keep the adversarial fixtures | — |
+
+Round 2 is the reviewer's check of these changes.
