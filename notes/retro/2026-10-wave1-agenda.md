@@ -147,7 +147,7 @@ Earlier Later items (Slice A–C PR reviews: evidence `base_sha` binding, produc
 11. **Fake-green gap**: post the required `factory/gates` under an identity only `main`'s trusted job can reach, designed with the App (T065).
 12. **Build vs adopt** (your item from 10-05): compare AI-SDLC, Spec Kitty and Fishhawk against the factory's features, then adopt, borrow or keep each one, before any Wave 2 order. Prep not started; it needs a research worker once a slot frees up.
 
-## 13–17. Your additions (2026-10-07 afternoon)
+## 13–18. Your additions (2026-10-07 afternoon)
 
 ### 13. Effort estimates at spec review
 
@@ -196,7 +196,8 @@ For each, the session asks why. **Prep:** before the session, the orchestrator f
 - the deferral gate skipping review records;
 - the primary-checkout commit guard;
 - the `tasks.md` ownership rule;
-- the brief rules for review branches and worktrees.
+- the brief rules for review branches and worktrees;
+- the reliability mechanisms in section 18.
 
 **Test for each candidate:** would it have prevented a stall, a lost hour or an unplanned review round in Wave 1? If not, it goes to the backlog (G1).
 
@@ -233,3 +234,38 @@ The orchestrator leans to B, because the items fix this feature's own tooling. E
 - **(C) A scheduled GitHub workflow.** It runs even when the codespace is off, and could tell you directly that work has stopped. It cannot see local agents, so it complements B rather than replacing it.
 
 **Orchestrator's lean:** B now, and C for "the codespace stopped" once the factory's GitHub App exists.
+
+### 18. Making the whole factory reliable, beyond the heartbeat
+
+**Your item:** discuss reliability mechanisms for the whole factory. Your starting ideas:
+- (a) root-cause the 12-hour disconnect;
+- (b) whether running Cursor or the agents in the cloud helps;
+- (c) whether a bigger codespace machine helps;
+- (d) whether keepalives help, if timeouts are involved;
+- (e) a sturdier handshake between the orchestrator and its agents, since agents often never reported back.
+
+**Facts gathered on 10-07 at 14:09 PT** (from the GitHub API and the machine):
+- **Machine:** 4 cores, 16 GB RAM, 32 GB disk (70% used). There was no memory pressure at the time.
+- **Idle timeout:** 30 minutes. Stopped codespaces are kept 30 days.
+- **Restart today:** uptime shows the codespace restarted at about 12:37 PT. That is inside today's 90-minute silence, after the two reviewers finished (about 11:50 to 11:53) and while the orchestrator was idle, waiting for their notices. The codespace's last recorded use is 12:39 PT.
+
+Today's stop therefore fits the 30-minute idle timeout, not a fixed 12-hour limit. Whether the earlier "about every 12 hours" stops share that cause is not yet known.
+
+**For discussion:**
+- **(a) Root cause.** Collect, for each past stop: the codespace's restart times (from uptime and the GitHub API) and whether any terminal was active just before. Compare them with the idle timeout. Also check for any organisation codespace policy, and for Cursor's own reconnect log. Only then decide (c) and (d).
+- **(b) Cloud agents.**
+  - **For:** Cursor cloud agents run on their own machines and branches, so a stopped codespace would not kill a worker.
+  - **Against:** each cloud machine needs the Nix and uv setup, the factory's credentials by role, and the same brief hygiene, and it costs more. The orchestrator would still be local unless it moves too.
+  - **Suggestion:** a pilot with one review order before relying on it.
+- **(c) Bigger machine.** It helps if the failures come from resources: slow suites with three agents at once, or a full disk. Today's numbers show no memory pressure. It would not fix idle stops or lost notices. Cheap to try once (a) is known.
+- **(d) Keepalives.** These help only against idle timeouts. If (a) confirms the idle timeout, there are two options: raise the codespace idle timeout (GitHub allows up to 240 minutes), or keep a terminal active while agents run. The heartbeat loop (section 17, option B) would do the second as a side effect. A keepalive does nothing against a fixed lifetime limit.
+- **(e) Orchestrator–agent handshake.** Today the completion notice is the only signal, and it was lost several times. Proposal: make git the source of truth, with the notice only a shortcut.
+  - **Start:** each agent pushes a short "started" record on its branch within a few minutes of being spawned.
+  - **Progress:** it pushes after every green step.
+  - **Finish:** a finished agent's last push is its verdict or handoff.
+  - **Watch:** the orchestrator, or the heartbeat, checks each branch against the order's time budget. It acts on three cases: no start record, no push for N minutes, and a finished push not yet picked up.
+  - **Recovery:** any agent can be restarted fresh from its last pushed commit.
+
+  The bus already has claim, handoff and run-complete records; this adds a start record and a deadline.
+
+**Wave 1.5 candidates from this item:** the root-cause check (a), a raised idle timeout if (a) supports it, the git handshake (e), and a cloud-agent pilot (b).
