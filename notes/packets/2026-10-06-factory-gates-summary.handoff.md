@@ -22,12 +22,7 @@
 | `test_gate_run_pr_posts_gates_summary_after_every_gate_status` | `factory/gates` is the last status posted, after one status per CI gate |
 | `test_gate_run_pr_gates_summary_follows_the_installed_registry_not_the_head` | the head's `gates.yaml` drops `bus.immutable` and adds `head-only-gate`: the summary still fails on `bus.immutable` and does not name `head-only-gate` |
 
-`scripts/factory/tests/unit/gates/test_runner.py` (new). These pin a pure function, `factory.gates.runner.summary_status(report, gates) -> (state, description)`, looked up with `getattr` so the test fails on an assertion, not an import error:
-
-| Test | Pins |
-|------|------|
-| `test_summary_fails_naming_a_registered_ci_gate_that_did_not_run` | an installed CI gate missing from the report gives `failure`, naming it |
-| `test_summary_description_fits_the_status_limit_when_every_gate_fails` | all 25 fail: description ≤ 140 characters and still names the first failing gate |
+`scripts/factory/tests/unit/gates/test_runner.py` (round 0 only) pinned a helper, `summary_status(report, gates)`. It was **deleted in round 1** (T-GS3), and its two cases moved to the CLI level (§ Round 1 resolution).
 
 `scripts/factory/tests/unit/gates/test_registry_checks.py`:
 
@@ -38,10 +33,10 @@
 
 **Already covered, no new test** (a new test would be green on base, and `red-first-proof` rejects that):
 
-- A `--gate` subset posts no summary: `test_gate_run_pr_posts_one_status_per_gate` asserts the exact set of posted contexts.
+- A two-gate `--gate` subset posts no summary: `test_gate_run_pr_posts_one_status_per_gate` asserts the exact set of posted contexts. The full explicit list is pinned in round 1 (T-GS1).
 - A moved head posts nothing: `test_ci_trust_boundary.py::test_moved_head_posts_nothing_and_exits_0` asserts `statuses == []`.
 
-## Red output (phase 1 head)
+## Red output (round 0 head `ba78e9a`; round 1 numbers in § Round 1 resolution)
 
 - Focused files: 14 failed, 76 passed.
   - The 5 contract tests fail on `expected one factory/gates status, got 0` (exit codes and the red-first judge pass first).
@@ -55,7 +50,27 @@
 - `test_branch_protection_passes_on_the_committed_snapshot` goes red after the gate change until `deploy/github/branch-protection.json` drops the 25 per-gate entries and adds `factory/gates` (phase 2, owned).
 - `test_branch_protection_blocks_without_head_registry` is unchanged. The gate should keep failing closed when the head registry is missing, even though it no longer derives contexts from it.
 - Edge cases the decision leaves open (not pinned):
-  1. `--gate` listing every CI gate explicitly. The suggested reading is "summary only when `--gate` is absent".
+  1. ~~`--gate` listing every CI gate explicitly~~. Ruled by the orchestrator in round 1: any `--gate` use is a subset run (pinned, T-GS1).
   2. A crash while posting the per-gate statuses. The ordering test makes the summary last, so an exception before it leaves `factory/gates` absent.
   3. A rerun on the same SHA that crashes leaves an earlier `factory/gates` from older `main` code in place.
   4. A future gate with id `gates` would collide with the summary context. The registry could reject that id (`registry.py` is not owned here).
+
+## Round 1 resolution (T* `TEST_REVIEW_GATES_SUMMARY.md`, changes-needed)
+
+All three changes are in `scripts/factory/tests/contract/test_gate_run.py`, except the deletion. Source, snapshot JSON and contracts are untouched.
+
+| Finding | Resolution | Test |
+|---------|------------|------|
+| T-GS1 (Blocker): an explicit full `--gate` list was untested | Orchestrator ruling: any `--gate` use is a subset run. The test first runs the trusted command with no `--gate` and requires a `success` summary. That half is what makes it red today and gives the second half meaning. It then clears the statuses and passes `--gate` once for every installed CI gate: exactly the per-gate contexts, no `factory/gates`. | `test_gate_run_pr_explicit_gate_list_posts_no_summary_even_when_it_names_every_gate` |
+| T-GS2 (Blocker): the missing-gate oracle bypassed the CLI | The test goes through the real CLI posting path. It wraps the real `run_gates` and drops `bus.schema` from the returned report, patched on both `factory.gates.runner.run_gates` and the name the CLI imports, `factory.cli.gates.run_gates`. The posted `factory/gates` must be `failure` naming `bus.schema`. The test also checks that the seam bit: no `factory/bus.schema` status was posted. | `test_gate_run_pr_gates_summary_fails_when_the_report_omits_an_installed_gate` |
+| T-GS3 (Should): exact-symbol helper over-specified | `tests/unit/gates/test_runner.py` is deleted. Its description-limit case moved to the CLI level: every stubbed gate fails, and the posted summary is at most 140 characters and names at least one failing gate. | `test_gate_run_pr_gates_summary_description_fits_the_status_limit` |
+| T-GS4 (Nit, strength) | Controls kept | — |
+
+**The T-GS2 seam is allowed by `test-seam-ban`.** That gate only scans added non-test code under `app_roots` (`apps/`) for test-only branches. A pytest `monkeypatch` in a test file is outside its scope. The seam binds only to the existing `run_gates` name the CLI already imports. An implementation that computes the summary from anything other than the returned report, for example the selected gate list, fails this test.
+
+**Red-first expectations.** All 8 new or changed summary tests are red today on a real assertion (`expected one factory/gates status, got 0`), including the T-GS1 case, because of its first half. No test is green on base.
+
+**Round 1 red output:**
+- Focused files: 15 failed (8 contract, 7 snapshot).
+- Full suite: 15 failed, 1041 passed, 7 xfailed (the known T069/T081 strict xfails). The only failures are those 15.
+- `ruff check` and `ruff format --check` pass.

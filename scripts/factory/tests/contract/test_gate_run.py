@@ -23,9 +23,10 @@ Under `--pr N`, one commit status `factory/<gate-id>` per gate is posted on the 
 Summary status (T107, governor 2026-10-06, `PLAN_DELTA.md` Round 5): a `--pr` run of every
 CI gate then posts one `factory/gates` status on the head, after every per-gate status. It
 is `success` only when every CI gate in the installed (`main`'s) registry ran and each
-outcome is `pass` or `overridden`; otherwise `failure`, naming the failing gates. A `--gate`
-subset posts no summary (`test_gate_run_pr_posts_one_status_per_gate`); a moved head posts
-nothing (`test_ci_trust_boundary.py::test_moved_head_posts_nothing_and_exits_0`).
+outcome is `pass` or `overridden`; otherwise `failure`, naming the failing gates, within the
+per-gate description limit. Any `--gate` use is a subset run and posts no summary, even a
+list naming every gate (orchestrator ruling, T-GS1); a moved head posts nothing
+(`test_ci_trust_boundary.py::test_moved_head_posts_nothing_and_exits_0`).
 """
 
 from __future__ import annotations
@@ -43,9 +44,12 @@ import yaml
 from factory.api import GateContext, GateResult, PullRequest
 from factory.bus.models import Message
 from factory.cli import exit_codes
+from factory.cli import gates as cli_gates
 from factory.cli.common import DEPS
+from factory.gates import runner
 from factory.gates.evidence import BUNDLE_FILE
 from factory.gates.registry import REGISTRY_PATH, load_registry
+from factory.gates.runner import STATUS_DESCRIPTION_LIMIT
 from tests.fixtures.cli_runner import CliResult, FactoryCli
 from tests.fixtures.fake_github import FakeGitHub, RecordedStatus
 from tests.fixtures.repo_builder import BaseHeadPair, RepoBuilder, message, order, yaml_text
@@ -506,7 +510,7 @@ SUMMARY = "factory/gates"
 def no_new_tests_evidence(tmp_path: Path, pair: BaseHeadPair) -> Path:
     """A valid red-first bundle for a head that adds no tests (the trusted judge passes it)."""
     directory = tmp_path / "evidence"
-    directory.mkdir()
+    directory.mkdir(exist_ok=True)
     bundle = {
         "schema_version": 1,
         "kind": "factory-evidence",
@@ -519,13 +523,16 @@ def no_new_tests_evidence(tmp_path: Path, pair: BaseHeadPair) -> Path:
 
 
 def trusted_run(
-    factory_cli: FactoryCli, repo: RepoBuilder, pair: BaseHeadPair, tmp_path: Path
+    factory_cli: FactoryCli, repo: RepoBuilder, pair: BaseHeadPair, tmp_path: Path, *gates: str
 ) -> CliResult:
-    """The trusted job's command: every CI gate, `--pr`, `--expect-head`, `--evidence`."""
+    """The trusted job's command (`--pr`, `--expect-head`, `--evidence`); `gates` adds
+    one `--gate` each."""
     pr = repo.make_pr(pair.head_branch)
+    selection = [arg for gate_id in gates for arg in ("--gate", gate_id)]
     return factory_cli(
         "gate",
         "run",
+        *selection,
         "--pr",
         str(pr.number),
         "--expect-head",
@@ -646,6 +653,81 @@ def test_gate_run_pr_gates_summary_follows_the_installed_registry_not_the_head(
     assert posted.value == "failure", posted.value
     assert IMMUTABLE in posted.description, posted.description
     assert "head-only-gate" not in posted.description, posted.description
+
+
+def test_gate_run_pr_explicit_gate_list_posts_no_summary_even_when_it_names_every_gate(
+    repo: RepoBuilder,
+    factory_cli: FactoryCli,
+    fake_github: FakeGitHub,
+    identity: FakeIdentity,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Orchestrator ruling (T-GS1): any `--gate` use is a subset run, even a full list."""
+    gates = RecordedGates(monkeypatch, failing=set())
+    pair = clean_pair(repo)
+    assert_exit(trusted_run(factory_cli, repo, pair, tmp_path), exit_codes.OK)
+    assert summary(fake_github, pair.head_sha).value == "success"
+    fake_github.statuses.clear()
+    every = sorted(gates.ids)
+    assert_exit(trusted_run(factory_cli, repo, pair, tmp_path, *every), exit_codes.OK)
+    contexts = [status.context for status in fake_github.statuses]
+    assert SUMMARY not in contexts, contexts
+    assert sorted(contexts) == sorted(f"factory/{gate_id}" for gate_id in every)
+
+
+OMITTED = "bus.schema"
+
+
+def test_gate_run_pr_gates_summary_fails_when_the_report_omits_an_installed_gate(
+    repo: RepoBuilder,
+    factory_cli: FactoryCli,
+    fake_github: FakeGitHub,
+    identity: FakeIdentity,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """A runner regression that drops a gate from the report must not post a green summary."""
+    RecordedGates(monkeypatch, failing=set())
+    real_run_gates = runner.run_gates
+
+    def omitting(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        result = real_run_gates(*args, **kwargs)
+        result["gates"] = [g for g in result["gates"] if g["id"] != OMITTED]
+        return result
+
+    monkeypatch.setattr(runner, "run_gates", omitting)
+    monkeypatch.setattr(cli_gates, "run_gates", omitting, raising=False)
+    pair = clean_pair(repo)
+    trusted_run(factory_cli, repo, pair, tmp_path)
+    assert f"factory/{OMITTED}" not in [s.context for s in fake_github.statuses]
+    posted = summary(fake_github, pair.head_sha)
+    assert posted.value == "failure", posted.value
+    assert OMITTED in posted.description, posted.description
+
+
+def test_gate_run_pr_gates_summary_description_fits_the_status_limit(
+    repo: RepoBuilder,
+    factory_cli: FactoryCli,
+    fake_github: FakeGitHub,
+    identity: FakeIdentity,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    every = {g.id for g in load_registry().gates if g.hook_twin_of is None}
+    RecordedGates(monkeypatch, failing=every)
+    pair = clean_pair(repo)
+    assert_exit(trusted_run(factory_cli, repo, pair, tmp_path), exit_codes.GATE_FAILURE)
+    failing = [
+        status.context.removeprefix("factory/")
+        for status in fake_github.statuses
+        if status.value == "failure" and status.context != SUMMARY
+    ]
+    assert len(", ".join(failing)) > STATUS_DESCRIPTION_LIMIT, failing
+    posted = summary(fake_github, pair.head_sha)
+    assert posted.value == "failure", posted.value
+    assert len(posted.description) <= STATUS_DESCRIPTION_LIMIT, len(posted.description)
+    assert any(gate_id in posted.description for gate_id in failing), posted.description
 
 
 # --- factory override -----------------------------------------------------------------------
