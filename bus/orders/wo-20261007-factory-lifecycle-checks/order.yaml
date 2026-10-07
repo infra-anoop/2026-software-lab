@@ -1,0 +1,48 @@
+# FR-037 bootstrap order for T105, written by the orchestrator as the first commit of
+# wo/wo-20261007-factory-lifecycle-checks (from origin/main 581ed18). Same shape as
+# bus/orders/wo-20261006-factory-gates-summary/. T066a (required checks from the ruleset)
+# touches the GitHub client too and follows T036b in a later order.
+# Known bootstrap distortion: size_minutes is the dispatch timebox (60), an estimate.
+schema_version: 1
+kind: order
+id: wo-20261007-factory-lifecycle-checks
+created: 2026-10-07T16:00:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - specs/001-factory-v2/tasks.md
+  - bus/orders/wo-20261004-factory-slice-b/amendment-06.yaml
+  - "FR-037 bootstrap: T105 dispatched as its own order after Slice C merged"
+  - "FR-037 bootstrap: size_minutes is the 60-minute dispatch timebox, an estimate within the horizon"
+feature: 001-factory-v2
+goal: Make the derived order state honest about an order's checks, test first. A gate id in `checks` needs its own green factory/<gate-id> status (or a counted override); a catalog row id is satisfied by the factory/catalog-test-linkage status.
+intents: [I-M4]
+owned_paths:
+  - "scripts/factory/src/factory/lifecycle/derive.py"
+  - "scripts/factory/tests/unit/test_lifecycle.py"
+  - "specs/001-factory-v2/tasks.md"
+  - "specs/001-factory-v2/TEST_REVIEW_LIFECYCLE_CHECKS.md"
+  - "specs/001-factory-v2/PR_REVIEW_LIFECYCLE_CHECKS.md"
+  - "bus/orders/wo-20261007-factory-lifecycle-checks/**"
+  - "notes/packets/2026-10-07-factory-lifecycle-checks.handoff.md"
+checks:
+  - red-first-proof
+  - test-seam-ban
+  - catalog-test-linkage
+  - diff-within-owned-paths
+  - pr-links-order
+  - order-fidelity-declared
+  - lock.letter-tokens
+  - verdict.reviewer-family-differs
+  - verdict.inputs-isolated
+  - bus.schema
+locks: []
+size_minutes: 60
+stop_conditions:
+  - Any edit needed outside Owned paths
+  - A frozen interface (factory.api, bus models, lifecycle view) is insufficient
+  - A test cannot be made red by a real assertion
+depends_on_decisions: []
+tasks: [T105]
+worker_runtime: local_subagent
