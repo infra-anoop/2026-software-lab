@@ -1,0 +1,56 @@
+schema_version: 1
+kind: verdict
+id: wo-20261007-factory-per-intent.verdict-03
+created: 2026-10-07T17:00:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - specs/001-factory-v2/PR_REVIEW_PER_INTENT.md
+  - notes/packets/2026-10-07-factory-per-intent.handoff.md
+  - "review-time: 2026-10-07T16:58:00Z (PR implementation review round 1)"
+decision: accept
+findings: []
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: bus/orders/wo-20261007-factory-per-intent/order.yaml
+    sha: ceff5bb
+  - path: bus/orders/wo-20261007-factory-per-intent/amendment-01.yaml
+    sha: ceff5bb
+  - path: bus/orders/wo-20261007-factory-per-intent/verdict-01.yaml
+    sha: ceff5bb
+  - path: bus/orders/wo-20261007-factory-per-intent/verdict-02.yaml
+    sha: ceff5bb
+  - path: bus/orders/wo-20261007-factory-per-intent/handoff.yaml
+    sha: ceff5bb
+  - path: notes/packets/2026-10-07-factory-per-intent.handoff.md
+    sha: ceff5bb
+  - path: specs/001-factory-v2/TEST_REVIEW_PER_INTENT.md
+    sha: ceff5bb
+  - path: specs/001-factory-v2/tasks.md
+    sha: ceff5bb
+  - path: specs/001-factory-v2/acceptance.md
+    sha: ceff5bb
+  - path: specs/001-factory-v2/contracts/cli.md
+    sha: ceff5bb
+  - path: specs/001-factory-v2/contracts/gates.md
+    sha: ceff5bb
+  - path: scripts/factory/src/factory/gates/runner.py
+    sha: ceff5bb
+  - path: scripts/factory/src/factory/cli/gates.py
+    sha: ceff5bb
+  - path: scripts/factory/src/factory/intent/coverage.py
+    sha: ceff5bb
+  - path: scripts/factory/gates.yaml
+    sha: ceff5bb
+  - path: scripts/factory/tests/contract/test_gate_run.py
+    sha: ceff5bb
+bootstrap: true
+manual_equivalents:
+  - "correctness: registry-row intent placement, subset scope, and broken/overridden/held precedence match amendment-01"
+  - "compatibility: the legacy intents mapping and posted per-gate plus factory/gates status code paths are unchanged"
+  - "fail-closed: gate exceptions still become failed entries and therefore broken per-intent results"
+  - "ownership: every path in 581ed18..ceff5bb is covered by the order owned_paths"
+  - "source quality: no test-only branch exists in the production diff; focused contracts and Ruff checks pass"
+  - "isolation: only committed git artifacts at ceff5bb and local verification commands were used"
