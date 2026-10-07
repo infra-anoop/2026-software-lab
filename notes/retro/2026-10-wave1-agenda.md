@@ -17,6 +17,8 @@ Numbers come from git on `main` at `581ed18` unless stated otherwise.
 | Plan changes after approval | 6 rounds in `specs/001-factory-v2/PLAN_DELTA.md` |
 | Time against the Wave 1 limit (SC-013) | First order 2026-10-03. Target 3 working days (today, 10-07), limit 5. The target will be missed. The limit (about Fri 2026-10-09) is reachable only if the App is set up quickly after T036b lands |
 
+Since the snapshot: #30 merged at `a7c6341` (T064, per-intent results in `factory gate run`): 3 verdicts, 1 rejection, 1 amendment, with a run-complete record. That makes 9 orders and 3 run-complete records; T064 waits for the record order to be ticked.
+
 **Burndown** (done / open at each merge to `main`):
 
 | Merge | Done | Open |
