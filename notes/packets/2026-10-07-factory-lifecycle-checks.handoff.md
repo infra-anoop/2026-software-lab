@@ -50,3 +50,25 @@ All of them use one helper, `derived_state(repo, checks, statuses, overrides)`. 
   3. **Which registry lifecycle classifies gate ids against:** the installed (`main`'s) registry under D5, or the head's `gates.yaml`. The fixture ids are in both.
   4. **A gate-id status failing beside a green linkage status in a mixed list.** This guards against linkage vouching for gate ids. It cannot be red on base (today's code already keeps it `in_review`), so it is not pinned. `CHECK_CASES` never sets a linkage status.
   5. **A governor-only override by a non-governor.** The `Override` model rejects it at parse, so lifecycle never sees one. No lifecycle test.
+
+## Round 1 resolution (T* `TEST_REVIEW_LIFECYCLE_CHECKS.md`, rejected; orchestrator triage + amendment-01)
+
+Edge cases 1–4 above are now ruled by amendment-01 (1: catalog row first; 2: installed registry; 3: PR-head catalog) and pinned. Only `test_lifecycle.py` changed; there are no source edits.
+
+| Finding | Resolution | Test |
+|---------|------------|------|
+| T-LC1 (Blocker): precedence and source boundaries were unobservable | One classification matrix, four orders in one fixture repo, one snapshot, a whole-map state assertion:<br>• `collision`: `pr-links-order` (an installed gate) added as a row on the head only, green linkage, no own status → `accepted`.<br>• `head-only-gate`: `head-only-gate` added only to the head's `scripts/factory/gates.yaml`, with a green own status and green linkage → `in_review`.<br>• `head-only-row`: `demo.head-only` added only to the head's `acceptance.md`, green linkage → `accepted`.<br>• `gate-without-own-status`: see T-LC2. | `test_check_kinds_follow_the_installed_registry_and_the_head_catalog` |
+| T-LC2 (Debate, process): linkage might vouch for a registered gate | Folded in as the matrix's fourth row: `test-seam-ban` has no own status, linkage is green → `in_review`. | same |
+| T-LC3, T-LC4 (Nit, strength) | Kept unchanged | — |
+
+**Fixture helpers.**
+- `accept_order(..., head_files=...)` is the body of `derived_state`, extracted. It commits `head_files` on the work branch only, after the order commit and before the PR head is recorded. `derived_state` and the existing round 0 tests behave as before.
+- `head_registry_with` appends one drift gate to the planted `gates.yaml`. The test checks that the result parses with `load_registry`.
+- `head_catalog_with` appends one row to `DEMO_ACCEPTANCE`.
+- The guards assert that the installed registry has `pr-links-order`, `catalog-test-linkage` and the two required gates, and has neither head-only id.
+
+**Red output (round 1):**
+- The matrix fails on the state assertion, with exactly three differing items: `collision` in_review≠accepted, `head-only-gate` accepted≠in_review, `head-only-row` in_review≠accepted. `gate-without-own-status` already matches today, as the triage expected.
+- `test_lifecycle.py`: 8 failed, 21 passed.
+- Full suite: 8 failed, 1056 passed, 7 xfailed. The only failures are the 7 round 0 nodes plus the matrix, and the 7 known strict xfails (T069/T081) are unchanged.
+- `ruff check` and `ruff format --check` pass.
