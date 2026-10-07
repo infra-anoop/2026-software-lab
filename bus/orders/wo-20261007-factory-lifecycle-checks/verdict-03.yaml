@@ -1,0 +1,58 @@
+schema_version: 1
+kind: verdict
+id: wo-20261007-factory-lifecycle-checks.verdict-03
+created: 2026-10-07T18:18:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - specs/001-factory-v2/PR_REVIEW_LIFECYCLE_CHECKS.md
+  - "review-time: 2026-10-07T18:18:00Z (implementation review)"
+decision: reject
+findings:
+  - id: R-LC1
+    severity: blocker
+    tag: product
+    text: >-
+      A missing PR-head commit becomes an empty catalog set, after which
+      installed gate ids are still judged from GitHub statuses. An accepting
+      gate-only order can therefore become accepted without a readable head
+      tree. Make head-commit readability a prerequisite for acceptance while
+      evaluating checks, and add a gate-only missing-object regression.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: bus/orders/wo-20261007-factory-lifecycle-checks/order.yaml
+    sha: 63ec206
+  - path: bus/orders/wo-20261007-factory-lifecycle-checks/amendment-01.yaml
+    sha: 63ec206
+  - path: bus/orders/wo-20261007-factory-lifecycle-checks/amendment-02.yaml
+    sha: 63ec206
+  - path: bus/orders/wo-20261007-factory-lifecycle-checks/verdict-01.yaml
+    sha: 63ec206
+  - path: bus/orders/wo-20261007-factory-lifecycle-checks/verdict-02.yaml
+    sha: 63ec206
+  - path: bus/orders/wo-20261007-factory-lifecycle-checks/handoff.yaml
+    sha: 63ec206
+  - path: notes/packets/2026-10-07-factory-lifecycle-checks.handoff.md
+    sha: 63ec206
+  - path: specs/001-factory-v2/TEST_REVIEW_LIFECYCLE_CHECKS.md
+    sha: 63ec206
+  - path: scripts/factory/src/factory/lifecycle/derive.py
+    sha: 63ec206
+  - path: scripts/factory/src/factory/cli/board.py
+    sha: 63ec206
+  - path: scripts/factory/src/factory/orders/lease.py
+    sha: 63ec206
+  - path: scripts/factory/src/factory/gates/repo/status_test.py
+    sha: 63ec206
+  - path: scripts/factory/tests/contract/test_cli_contract.py
+    sha: 63ec206
+  - path: scripts/factory/tests/unit/test_lifecycle.py
+    sha: 63ec206
+bootstrap: true
+manual_equivalents:
+  - "suite: 1065 passed, 7 xfailed"
+  - "gates: 24 passed; pr-links-order ignored for the review branch name"
+  - "caller audit: board passes repo; lease and factory-status-test omissions are harmless"
+  - "board test: red at f6c9e38 and asserts real CLI agreement with repo-aware derivation"

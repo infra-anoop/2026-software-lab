@@ -1,0 +1,39 @@
+# Handoff for T105 (lifecycle check kinds). Detail: notes/packets/2026-10-07-factory-lifecycle-checks.handoff.md.
+schema_version: 1
+kind: handoff
+id: wo-20261007-factory-lifecycle-checks.handoff
+created: 2026-10-07T18:00:00Z
+actor: worker
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - wo-20261007-factory-lifecycle-checks
+  - notes/packets/2026-10-07-factory-lifecycle-checks.handoff.md
+  - specs/001-factory-v2/TEST_REVIEW_LIFECYCLE_CHECKS.md
+summary: |
+  Lifecycle judges each `checks` id by the gate that owns it (T105, amendment-01 rulings).
+  A catalog row in the PR head's acceptance.md is checked first and is satisfied by
+  factory/catalog-test-linkage. A gate in the installed registry is satisfied by its own
+  factory/<gate-id>. Either counts when green or overridden for that gate. An unknown id
+  is never satisfied, and a PR head missing from the repo satisfies no check (R-LC1).
+  `factory status` passes the repo root through (amendment-02). Tests first: T* round 2
+  accepted; red at f6c9e38 (board) and 9fcb3ca (unreadable head).
+checks_run:
+  - gate_or_test: uv run --locked pytest (1066 passed, 7 known strict xfails)
+    result: passed
+  - gate_or_test: ruff check; ruff format --check
+    result: passed
+  - gate_or_test: factory gate run --base origin/main --head HEAD (25 passed, 0 overridden)
+    result: passed
+deviations:
+  - what: derive_order and derive_from_view take an optional keyword `repo`; without it no id is recognised as a catalog row
+    why: the head catalog is read from git, and the frozen BusView carries no repo path
+    conservative_choice: rows stay unsatisfied without a repo (fail closed); the only callers without it (claim cap, factory-status-test gate) never reach the checks branch
+  - what: with a repo, an unreadable PR-head commit keeps the order in review whatever its statuses (R-LC1, PR review round 1); with repo None the behaviour is unchanged
+    why: without the head tree no id can be cleared as not-a-catalog-row (catalog-first, amendment-01 ruling 3)
+    conservative_choice: never accepted from statuses alone; repo-less callers keep today's semantics (their results cannot change between in_review and accepted in practice)
+  - what: the row-id override test posts a factory/<row-id> status that CI never posts
+    why: without it the case is green on base and cannot pass red-first
+    conservative_choice: disclosed in the T* packet; the reviewer kept it (T-LC4)
+open_questions: []
+author_model: claude-opus-5.5

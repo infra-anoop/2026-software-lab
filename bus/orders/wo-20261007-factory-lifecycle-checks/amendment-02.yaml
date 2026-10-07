@@ -1,0 +1,33 @@
+# Orchestrator ruling of 2026-10-07 on the phase-2 stop (handoff note, "Implementation (phase 2)"):
+# `factory status` (cli/board.py) calls derive_from_view without the repo, so the production board
+# would show orders whose checks name a catalog row as still in review, and would judge a row/gate
+# collision as a gate. The fix belongs to this order: pass the resolved repo root through.
+# Checked before writing: no active order owns cli/board.py or tests/contract/test_cli_contract.py.
+# The goal is unchanged; this amendment supersedes owned_paths and stop_conditions.
+schema_version: 1
+kind: amendment
+id: wo-20261007-factory-lifecycle-checks.amend-02
+created: 2026-10-07T17:50:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - wo-20261007-factory-lifecycle-checks
+  - notes/packets/2026-10-07-factory-lifecycle-checks.handoff.md
+supersedes: [owned_paths, stop_conditions]
+values:
+  owned_paths:
+    - "scripts/factory/src/factory/lifecycle/derive.py"
+    - "scripts/factory/src/factory/cli/board.py"
+    - "scripts/factory/tests/unit/test_lifecycle.py"
+    - "scripts/factory/tests/contract/test_cli_contract.py"
+    - "specs/001-factory-v2/TEST_REVIEW_LIFECYCLE_CHECKS.md"
+    - "specs/001-factory-v2/PR_REVIEW_LIFECYCLE_CHECKS.md"
+    - "bus/orders/wo-20261007-factory-lifecycle-checks/**"
+    - "notes/packets/2026-10-07-factory-lifecycle-checks.handoff.md"
+  stop_conditions:
+    - Any edit needed outside Owned paths
+    - A frozen interface (factory.api, bus models, lifecycle view) is insufficient
+    - A test cannot be made red by a real assertion
+    - Implementing ruling 2 or 3 (amendment-01 header) needs the head's registry or a change to the catalog-test-linkage gate
+    - The cli/board.py change is anything beyond passing the resolved repo root to derive_from_view

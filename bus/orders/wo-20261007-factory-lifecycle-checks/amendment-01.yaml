@@ -1,0 +1,29 @@
+# Orchestrator rulings of 2026-10-07 on the phase-1 edge cases in
+# notes/packets/2026-10-07-factory-lifecycle-checks.handoff.md (worker stop at 730ae1b).
+#   1. An id that is both a registered gate and a catalog row is a catalog row first, as the
+#      catalog-test-linkage gate already treats it (slice-b amendment-08): it needs only a green
+#      factory/catalog-test-linkage (or a counted override of that gate). Rejecting such
+#      collisions at load is a backlog item (Wave 1 retro agenda).
+#   2. Gate ids are recognised from the installed (main's) registry, as in CI (D5): code from main.
+#   3. Catalog row ids are recognised from the PR head's acceptance.md: rows are data, judged at
+#      head by the trusted catalog-test-linkage gate, and an order may add its own row.
+#   The implementation may pin rulings 2 and 3 with tests where they can be red on base; the
+#   T* reviewer decides whether they must be pinned.
+# The goal is unchanged; this amendment supersedes stop_conditions to add the rulings' bound.
+schema_version: 1
+kind: amendment
+id: wo-20261007-factory-lifecycle-checks.amend-01
+created: 2026-10-07T16:20:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - wo-20261007-factory-lifecycle-checks
+  - notes/packets/2026-10-07-factory-lifecycle-checks.handoff.md
+supersedes: [stop_conditions]
+values:
+  stop_conditions:
+    - Any edit needed outside Owned paths
+    - A frozen interface (factory.api, bus models, lifecycle view) is insufficient
+    - A test cannot be made red by a real assertion
+    - Implementing ruling 2 or 3 (amendment-01 header) needs the head's registry or a change to the catalog-test-linkage gate

@@ -14,7 +14,9 @@ from typing import Any
 
 import pytest
 
+from factory.api import OrderState
 from factory.cli import exit_codes
+from factory.lifecycle.derive import derive_snapshot
 from tests.fixtures.cli_runner import CliResult, FactoryCli
 from tests.fixtures.repo_builder import RepoBuilder, message, order, yaml_text
 
@@ -164,6 +166,42 @@ def test_status_exit_0(repo: RepoBuilder, factory_cli: FactoryCli) -> None:
 
 def test_status_json_exit_0(repo: RepoBuilder, factory_cli: FactoryCli) -> None:
     assert_exit(factory_cli("status", "--json", repo=repo.path), exit_codes.OK)
+
+
+def test_status_judges_a_catalog_row_check_by_the_head_catalog(
+    repo: RepoBuilder, factory_cli: FactoryCli
+) -> None:
+    """T105 / amendment-02: the board derives with the repo, so a `checks` id that is a row
+    of the PR head's `acceptance.md` is satisfied by green `factory/catalog-test-linkage`."""
+    order_id = oid("catalog-row")
+    repo.add_demo_feature()
+    issue(repo, order_id, checks=["demo.adds"])
+    claim_event(repo, order_id)
+    repo.add_event(order_id, message("handoff", order_id=order_id))
+    pr = repo.make_pr(f"wo/{order_id}")
+    repo.github.set_commit_status(pr.head_sha, "factory/catalog-test-linkage", "success", "ok")
+    inputs = [{"path": f"bus/orders/{order_id}/order.yaml", "sha": pr.head_sha}]
+    verdict = message("verdict", order_id=order_id, decision="accept", inputs=inputs)
+    repo.add_event(order_id, verdict)
+    expected = next(
+        o.state
+        for o in derive_snapshot(repo.path, repo.github, settings=repo.settings).orders
+        if o.order_id == order_id
+    )
+    assert expected != OrderState.IN_REVIEW, f"derive with the repo gives {expected}"
+
+    result = factory_cli("status", "--json", repo=repo.path)
+    assert_exit(result, exit_codes.OK)
+    board = json.loads(result.stdout)["data"]
+    states = {
+        card.get("order_id") or card.get("id"): card.get("state")
+        for section in ("in_flight", "blocked", "waiting_on_governor", "ready")
+        for card in board[section]
+    }
+    assert states.get(order_id) == expected.value, (
+        f"board shows {order_id} as {states.get(order_id)!r}; derive with the repo gives"
+        f" {expected.value!r}"
+    )
 
 
 def test_decisions_exit_0(repo: RepoBuilder, factory_cli: FactoryCli) -> None:

@@ -11,7 +11,8 @@ from typing import Any
 import pytest
 
 from factory.api import OVERLAY_STATES, GitHubPort, LifecycleSnapshot, OrderState
-from tests.fixtures.repo_builder import RepoBuilder, message, order
+from factory.gates.registry import load_registry
+from tests.fixtures.repo_builder import DEMO_ACCEPTANCE, RepoBuilder, message, order
 
 DAY = "20261007"
 
@@ -189,6 +190,235 @@ def test_empty_checks_never_accepted(repo: RepoBuilder) -> None:
     )
     item = by_id(snapshot(repo), order_id)
     assert item.state == OrderState.IN_REVIEW
+
+
+# T105 (amendment-06 decision 2): each `checks` kind is satisfied by its own status. A
+# registered gate id needs `factory/<gate-id>` (CHECK_CASES above); a catalog row id is
+# judged by the `catalog-test-linkage` gate, so its status is `factory/catalog-test-linkage`;
+# an id that is neither is never satisfied (data-model § WorkOrder: "each exists").
+# The demo catalog (`specs/demo-feature/acceptance.md`) has one row, `demo.adds`.
+LINKAGE = "catalog-test-linkage"
+CATALOG_ROW = "demo.adds"
+UNKNOWN_ID = "demo.adds-typo"
+
+
+def derived_state(
+    repo: RepoBuilder,
+    checks: list[str],
+    statuses: dict[str, str],
+    overrides: tuple[str, ...] = (),
+) -> OrderState:
+    """State of an accepted-verdict order whose PR head carries `factory/<id>` statuses."""
+    registered = set(load_registry().ids())
+    assert {*REQUIRED_CHECKS, LINKAGE} <= registered, "fixture gate ids are not registered"
+    assert not {CATALOG_ROW, UNKNOWN_ID} & registered, "fixture row ids must not be gates"
+    repo.add_demo_feature()
+    order_id = oid("check-kinds")
+    accept_order(repo, order_id, checks, statuses, overrides)
+    state: OrderState = by_id(snapshot(repo), order_id).state
+    return state
+
+
+def accept_order(
+    repo: RepoBuilder,
+    order_id: str,
+    checks: list[str],
+    statuses: dict[str, str],
+    overrides: tuple[str, ...] = (),
+    head_files: dict[str, str] | None = None,
+) -> None:
+    """Issue `order_id` (plus `head_files`, on its branch only), open its PR, post the
+    `factory/<id>` statuses on the PR head and accept it."""
+    repo.issue_order(order(order_id, owned_paths=[f"apps/demo/{order_id}/**"], checks=checks))
+    if head_files:
+        start = repo.current_branch()
+        repo.checkout(f"wo/{order_id}")
+        for relative, text in head_files.items():
+            repo.write(relative, text)
+        repo.commit(f"head-only inputs: {order_id}")
+        repo.push()
+        repo.checkout(start)
+    repo.add_event(order_id, message("claim", order_id=order_id))
+    repo.add_event(order_id, message("handoff", order_id=order_id))
+    pr = repo.make_pr(f"wo/{order_id}")
+    for check_id, value in statuses.items():
+        repo.github.set_commit_status(pr.head_sha, f"factory/{check_id}", value, value)
+    for gate in overrides:
+        repo.add_event(
+            order_id,
+            message(
+                "override",
+                order_id=order_id,
+                gate=gate,
+                pr=pr.number,
+                reason="Linkage fixed by hand; verified against the catalog.",
+                gate_class="drift",
+            ),
+        )
+    repo.add_event(
+        order_id,
+        message(
+            "verdict",
+            order_id=order_id,
+            decision="accept",
+            inputs=[{"path": f"bus/orders/{order_id}/order.yaml", "sha": pr.head_sha}],
+        ),
+    )
+
+
+def test_catalog_row_is_satisfied_by_the_catalog_linkage_status(repo: RepoBuilder) -> None:
+    statuses = {**GREEN_STATUSES, LINKAGE: "success"}
+    state = derived_state(repo, [*REQUIRED_CHECKS, CATALOG_ROW], statuses)
+    assert state == OrderState.ACCEPTED, (
+        f"row {CATALOG_ROW} with a green factory/{LINKAGE} and no factory/{CATALOG_ROW}"
+        f" status should be accepted, got {state}"
+    )
+
+
+@pytest.mark.parametrize("linkage", ["failure", "pending", None], ids=str)
+def test_catalog_row_needs_a_green_linkage_status_not_its_own(
+    repo: RepoBuilder, linkage: str | None
+) -> None:
+    statuses = {**GREEN_STATUSES, CATALOG_ROW: "success"}
+    if linkage is not None:
+        statuses[LINKAGE] = linkage
+    state = derived_state(repo, [*REQUIRED_CHECKS, CATALOG_ROW], statuses)
+    assert state == OrderState.IN_REVIEW, (
+        f"a green factory/{CATALOG_ROW} must not satisfy the row while factory/{LINKAGE}"
+        f" is {linkage or 'missing'}; got {state}"
+    )
+
+
+OVERRIDE_CASES = {
+    "linkage-overridden": ({LINKAGE: "failure"}, LINKAGE, OrderState.ACCEPTED),
+    "row-id-overridden": (
+        {LINKAGE: "failure", CATALOG_ROW: "failure"},
+        CATALOG_ROW,
+        OrderState.IN_REVIEW,
+    ),
+}
+
+
+@pytest.mark.parametrize(
+    ("failing", "overridden", "expected"), list(OVERRIDE_CASES.values()), ids=list(OVERRIDE_CASES)
+)
+def test_catalog_row_counts_an_override_of_the_linkage_gate_only(
+    repo: RepoBuilder, failing: dict[str, str], overridden: str, expected: OrderState
+) -> None:
+    """contracts/gates.md § Override resolution: an override names the gate that failed."""
+    statuses = {**GREEN_STATUSES, **failing}
+    state = derived_state(repo, [*REQUIRED_CHECKS, CATALOG_ROW], statuses, (overridden,))
+    assert state == expected, f"override of {overridden} over {failing}: got {state}"
+
+
+def test_an_id_that_is_neither_a_gate_nor_a_catalog_row_fails_closed(repo: RepoBuilder) -> None:
+    statuses = {**GREEN_STATUSES, UNKNOWN_ID: "success", LINKAGE: "success"}
+    state = derived_state(repo, [*REQUIRED_CHECKS, UNKNOWN_ID], statuses)
+    assert state == OrderState.IN_REVIEW, (
+        f"{UNKNOWN_ID} is neither a registered gate nor a catalog row; a green"
+        f" factory/{UNKNOWN_ID} must not satisfy it, got {state}"
+    )
+
+
+def test_unreadable_pr_head_keeps_a_gate_only_order_in_review(repo: RepoBuilder) -> None:
+    """R-LC1: without the PR-head tree no id can be cleared as not-a-catalog-row, so green
+    statuses alone never accept, even when every `checks` id is a registered gate."""
+    order_id = oid("absent-head")
+    repo.issue_order(
+        order(order_id, owned_paths=[f"apps/demo/{order_id}/**"], checks=REQUIRED_CHECKS)
+    )
+    repo.add_event(order_id, message("claim", order_id=order_id))
+    repo.add_event(order_id, message("handoff", order_id=order_id))
+    absent = "f" * 40
+    assert repo.git("cat-file", "-t", repo.head_sha(f"wo/{order_id}")) == "commit"
+    with pytest.raises(RuntimeError):
+        repo.git("cat-file", "-e", f"{absent}^{{commit}}")
+    pr = repo.github.add_pr(f"wo/{order_id}", head_sha=absent)
+    for gate, value in GREEN_STATUSES.items():
+        repo.github.set_commit_status(pr.head_sha, f"factory/{gate}", value, value)
+    repo.add_event(
+        order_id,
+        message(
+            "verdict",
+            order_id=order_id,
+            decision="accept",
+            inputs=[{"path": f"bus/orders/{order_id}/order.yaml", "sha": absent}],
+        ),
+    )
+    state = by_id(snapshot(repo), order_id).state
+    assert state == OrderState.IN_REVIEW, f"PR head {absent} is not in the repo; got {state}"
+
+
+HEAD_REGISTRY = "scripts/factory/gates.yaml"
+HEAD_CATALOG = "specs/demo-feature/acceptance.md"
+COLLISION_ID = "pr-links-order"
+HEAD_ONLY_GATE = "head-only-gate"
+HEAD_ONLY_ROW = "demo.head-only"
+
+
+def head_registry_with(repo: RepoBuilder, gate_id: str) -> str:
+    """The fixture's planted `gates.yaml` plus one more drift gate."""
+    text = (repo.path / HEAD_REGISTRY).read_text(encoding="utf-8")
+    return text + (
+        f"  - id: {gate_id}\n    class: drift\n    category: drift\n    intents: [I-M4]\n"
+        "    ci_job: factory-gates\n    priority: P1\n    scope: repo\n"
+        "    entrypoint: factory.gates.repo.bus_schema:run\n"
+    )
+
+
+def head_catalog_with(row_id: str) -> str:
+    """The demo catalog plus one more row."""
+    row = f"| {row_id} | SC-001 | I-D1 | must | always | holds | auto | planned |\n"
+    return DEMO_ACCEPTANCE + row
+
+
+def test_check_kinds_follow_the_installed_registry_and_the_head_catalog(
+    repo: RepoBuilder, tmp_path: Path
+) -> None:
+    """amendment-01 rulings (T-LC1, T-LC2): gate ids come from the installed registry,
+    catalog rows from the PR head's `acceptance.md`, a row wins over a gate with the same
+    id, and green linkage never stands in for a registered gate's own status."""
+    installed = set(load_registry().ids())
+    assert {*REQUIRED_CHECKS, LINKAGE, COLLISION_ID} <= installed
+    assert not {HEAD_ONLY_GATE, HEAD_ONLY_ROW} & installed
+    repo.add_demo_feature()
+    head_registry = head_registry_with(repo, HEAD_ONLY_GATE)
+    parsed = tmp_path / "head-gates.yaml"
+    parsed.write_text(head_registry, encoding="utf-8")
+    assert HEAD_ONLY_GATE in load_registry(parsed).ids(), "the head registry must be valid"
+
+    green = {**GREEN_STATUSES, LINKAGE: "success"}
+    rows: dict[str, tuple[list[str], dict[str, str], dict[str, str] | None, OrderState]] = {
+        "collision": (
+            [*REQUIRED_CHECKS, COLLISION_ID],
+            green,
+            {HEAD_CATALOG: head_catalog_with(COLLISION_ID)},
+            OrderState.ACCEPTED,
+        ),
+        "head-only-gate": (
+            [*REQUIRED_CHECKS, HEAD_ONLY_GATE],
+            {**green, HEAD_ONLY_GATE: "success"},
+            {HEAD_REGISTRY: head_registry},
+            OrderState.IN_REVIEW,
+        ),
+        "head-only-row": (
+            [*REQUIRED_CHECKS, HEAD_ONLY_ROW],
+            green,
+            {HEAD_CATALOG: head_catalog_with(HEAD_ONLY_ROW)},
+            OrderState.ACCEPTED,
+        ),
+        "gate-without-own-status": (
+            REQUIRED_CHECKS,
+            {REQUIRED_CHECKS[0]: "success", LINKAGE: "success"},
+            None,
+            OrderState.IN_REVIEW,
+        ),
+    }
+    for name, (checks, statuses, head_files, _) in rows.items():
+        accept_order(repo, oid(f"kinds-{name}"), checks, statuses, head_files=head_files)
+    snap = snapshot(repo)
+    got = {name: by_id(snap, oid(f"kinds-{name}")).state for name in rows}
+    assert got == {name: row[3] for name, row in rows.items()}
 
 
 def test_rejected_latest_verdict(repo: RepoBuilder) -> None:

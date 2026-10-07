@@ -1,0 +1,97 @@
+schema_version: 1
+kind: verdict
+id: wo-20261007-factory-lifecycle-checks.verdict-01
+created: 2026-10-07T16:31:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - specs/001-factory-v2/TEST_REVIEW_LIFECYCLE_CHECKS.md
+  - "review-time: 2026-10-07T16:17:00Z (round 1)"
+decision: reject
+findings:
+  - id: T-LC1
+    severity: blocker
+    tag: product
+    text: >-
+      Root-cause class: the fixture fixes row ids as non-gates and puts its
+      catalog on main, making classification precedence and source boundaries
+      unobservable. Lifecycle can therefore read the head registry, read only
+      main catalogs, or classify a gate/row collision as a gate while the suite
+      passes, falsely accepting or withholding acceptance for work-order
+      authors. Likelihood is high because each is a natural implementation
+      shortcut. Add one non-parametrized classification-matrix regression for
+      catalog-first collision, installed-registry classification, PR-head
+      catalog classification, and linkage not satisfying a registered gate;
+      the first three rows make that test red on base.
+  - id: T-LC2
+    severity: debate
+    tag: process
+    text: >-
+      Existing gate-id cases never combine a missing factory/<gate-id> status
+      with green factory/catalog-test-linkage, so they do not prevent linkage
+      from vouching for a registered gate. Include this case in the single red
+      classification matrix instead of adding an isolated always-green test.
+  - id: T-LC3
+    severity: nit
+    tag: process
+    text: >-
+      Strength: all seven new failures are state assertions at the intended
+      missing behavior, with no collection/import errors or mocks bypassing
+      derive_snapshot.
+  - id: T-LC4
+    severity: nit
+    tag: process
+    text: >-
+      Strength: the suite explicitly rejects a row's own green status, an
+      override naming the row, and a green status for an unknown id, blocking
+      three direct constant-answer implementations.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: docs/agent-os/SPAWN_REVIEWER.md
+    sha: 95b8f14
+  - path: docs/agent-os/TEST_REVIEW_PROMPT.md
+    sha: 95b8f14
+  - path: notes/packets/2026-10-07-factory-lifecycle-checks.handoff.md
+    sha: 95b8f14
+  - path: bus/orders/wo-20261007-factory-lifecycle-checks/order.yaml
+    sha: 95b8f14
+  - path: bus/orders/wo-20261007-factory-lifecycle-checks/amendment-01.yaml
+    sha: 95b8f14
+  - path: bus/orders/wo-20261004-factory-slice-b/amendment-06.yaml
+    sha: 95b8f14
+  - path: bus/orders/wo-20261004-factory-slice-b/amendment-08.yaml
+    sha: 95b8f14
+  - path: specs/001-factory-v2/tasks.md
+    sha: 95b8f14
+  - path: specs/001-factory-v2/data-model.md
+    sha: 95b8f14
+  - path: specs/001-factory-v2/acceptance.md
+    sha: 95b8f14
+  - path: specs/001-factory-v2/contracts/gates.md
+    sha: 95b8f14
+  - path: specs/001-factory-v2/contracts/messages.md
+    sha: 95b8f14
+  - path: scripts/factory/gates.yaml
+    sha: 95b8f14
+  - path: scripts/factory/src/factory/lifecycle/derive.py
+    sha: 95b8f14
+  - path: scripts/factory/src/factory/gates/registry.py
+    sha: 95b8f14
+  - path: scripts/factory/src/factory/gates/drift/catalog_linkage.py
+    sha: 95b8f14
+  - path: scripts/factory/tests/unit/test_lifecycle.py
+    sha: 95b8f14
+  - path: scripts/factory/tests/fixtures/repo_builder.py
+    sha: 95b8f14
+  - path: bus/orders/wo-20261006-factory-gates-summary/verdict-01.yaml
+    sha: 95b8f14
+  - path: .specify/memory/constitution.md
+    sha: 95b8f14
+bootstrap: true
+manual_equivalents:
+  - "red-first: focused lifecycle suite reproduced 7 assertion failures and 21 passes with no collection error"
+  - "lock fidelity: ordinary rows, wrong status contexts, wrong override ids, unknown ids, source boundaries, and collision precedence reviewed"
+  - "constant-answer probe: row status, row override, unknown-id status, head-registry lookup, main-only catalog lookup, and gate-first collision considered"
+  - "isolation: only committed artifacts at 95b8f14 and the reproduced focused suite were used"
