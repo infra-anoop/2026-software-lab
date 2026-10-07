@@ -105,3 +105,14 @@ The orchestrator's ruling assigns the board fix to this order and adds `cli/boar
 - Fix: `34b4177` changes only `derive_from_view(view, github, settings, DEPS.clock(), repo=root)` in `board.py`.
 - Suite: 1065 passed, 7 xfailed. `ruff check` and `ruff format --check` pass.
 - The worker-written `bus/orders/wo-20261007-factory-lifecycle-checks/handoff.yaml` passes `factory check schema`. `factory handoff` waits for the PR review verdict.
+
+## PR review round 1 resolution (R-LC1, `PR_REVIEW_LIFECYCLE_CHECKS.md`)
+
+- **Finding:** a PR head missing from the repo gave an empty catalog set. Installed gate ids were then still judged from statuses, so a gate-only order could become `accepted` without its head tree.
+- **Red:** `9fcb3ca` adds `test_unreadable_pr_head_keeps_a_gate_only_order_in_review`. An accepting order has `checks` = the two required gates, all of their statuses green, and a PR head SHA that is not in the repo. It failed with "PR head ffff… is not in the repo; got accepted".
+- **Fix:** `246591c`, in `derive.py` only.
+  - `head_catalog_ids` returns `None` when the head commit is not local.
+  - `derive_order` evaluates `required_checks_green` only when the catalog set is not `None`; otherwise the order stays `in_review`.
+  - With `repo=None` the catalog set is still `set()`, so callers without a repo behave exactly as before.
+- **Suite:** 1066 passed, 7 xfailed. `ruff check` and `ruff format --check` pass.
+- **Local gates:** 25 passed, 0 failed, 0 overridden.
