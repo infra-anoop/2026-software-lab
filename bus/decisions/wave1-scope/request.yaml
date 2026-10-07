@@ -12,7 +12,7 @@ owner: governor
 feature: 001-factory-v2
 blocking: true
 prompt: >
-  Why this is asked: Wave 1 has no total effort budget, and it keeps growing. Six pieces of work
+  Why this is asked: Wave 1 had no total effort budget, and it kept growing. Six pieces of work
   are left before the retro, and the retro session itself. The orchestrator's estimate, based on
   how today's work went and not measured, is about 10 hours of factory time, about 3 of them
   yours, so 1.5 to 2 working days with the codespace's daily cutoff.
@@ -21,15 +21,18 @@ prompt: >
   the status board learns about GitHub's own required checks (about 2 hours); a tool that writes
   the Wave 1 report card from git (about 3 hours); a check that every Wave 1 change has its
   review record (about 1 hour); the retro session with you (about 2 hours).
+  You said in chat on Oct 7 that you want to cut to the core, and that 5 hours is still too much.
   The trade-off: the success criterion you approved says the factory's checks must prove
-  themselves on the very changes that built them. The report-card tool does that from git
-  records, and every later wave reuses it. A hand-written report card meets the criterion's
-  intent for this wave only, and is weaker evidence. The status-board work is useful but
-  nothing in the retro depends on it.
-  What happens next: the orchestrator records your choice in the task list and works to it.
-  The GitHub App, the branch protection and the retro happen in every option.
+  themselves on the very changes that built them, using a report-card tool. A hand-written
+  report card, by the orchestrator from git, meets that intent for this wave only and is weaker
+  evidence; recording it as your waiver of that criterion for Wave 1 is part of either option.
+  The GitHub App and the main-branch protection are the factory's verified identity: once on,
+  every change needs your approving review on GitHub. Moving them to Wave 1.5 keeps today's
+  setup (you approve rule changes in chat) a little longer. The App setup steps stay written
+  and ready.
+  What happens next: the orchestrator records your choice in the task list, moves the named work
+  to Wave 1.5 with a note, and books the retro session.
 options:
-  - label: "A: Finish Wave 1 as planned (about 10 hours)"
-  - label: "B: Move the status-board work to Wave 1.5; keep the report-card tool (about 8 hours)"
-  - label: "C: Also write the report card by hand instead of building the tool (about 5 hours)"
-recommended: "B: Move the status-board work to Wave 1.5; keep the report-card tool (about 8 hours)"
+  - label: "A: Core, about 5 hours: GitHub App, branch protection, review-record check, hand-written report card, full retro"
+  - label: "B: Retro only, about 2.5 hours (about 1 hour yours): hand-written report card and review-record check by the orchestrator, then a shortened retro with you; the App, branch protection and status board move to Wave 1.5"
+recommended: "B: Retro only, about 2.5 hours (about 1 hour yours): hand-written report card and review-record check by the orchestrator, then a shortened retro with you; the App, branch protection and status board move to Wave 1.5"
