@@ -21,3 +21,17 @@ The factory gate run passed bus schema validation and 23 other applicable gates.
 | id | disposition | change |
 |----|-------------|--------|
 | R-WS1 | Accepted in part | The request now states the computed-exit-date waiver, marked as added after the answer. The lock cites the 16:14 PT chat message, which named both waivers and which the governor read before answering "C". No new governor confirmation was sought, because that disclosure came before the answer [governor-judged] |
+
+## Round 2
+
+### Decision
+
+accept
+
+### Findings
+
+None.
+
+### Harm-bar review
+
+R-WS1 is resolved. The request now states both Wave 1 waivers and clearly marks the computed-exit-date sentence as a post-answer addition. The lock preserves that history and cites the contemporaneous 16:14 PT disclosure the governor read before choosing C at 16:17 PT. The resulting record is consistent without implying that the amended request text itself preceded the answer.
