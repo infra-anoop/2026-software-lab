@@ -1,0 +1,28 @@
+# FR-037 bootstrap handoff for the GitHub App setup steps (docs and a decision request only).
+schema_version: 1
+kind: handoff
+id: wo-20261007-factory-app-setup.handoff
+created: 2026-10-07T23:15:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - wo-20261007-factory-app-setup
+  - notes/ops/2026-10-07-github-app-setup.md
+  - bus/decisions/app-key-delivery/request.yaml
+summary: |
+  Adds notes/ops/2026-10-07-github-app-setup.md: the governor's steps to create the factory GitHub App
+  (Checks, Contents, Pull requests at Read & write; Metadata Read-only; Commit statuses and Workflows
+  at No access), install it on this repo only, store its App ID and private key in Infisical, and add
+  both as Codespaces secrets. Adds the blocking decision request app-key-delivery (how the two values
+  reach the codespace). No GitHub settings, rulesets or Infisical were changed; no secret values.
+  Review round 1 rejected two stale labels (R-AS1 Read & write, R-AS2 Credentials > Key pairs > New key);
+  both confirmed against GitHub docs and fixed. Round 2 accepted with no findings.
+checks_run:
+  - gate_or_test: "factory gate run --base origin/main --head HEAD (before review)"
+    result: "23 passed, 2 failed (the two verdict gates, no verdict yet)"
+  - gate_or_test: "factory gate run (reviewer, round 2)"
+    result: "24 applicable gates passed; bus schema passed"
+deviations: []
+open_questions: []
+author_model: claude-opus-5.5
