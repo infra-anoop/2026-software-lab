@@ -1,0 +1,29 @@
+schema_version: 1
+kind: verdict
+id: wo-20261007-factory-lifecycle-checks.verdict-02
+created: 2026-10-07T16:46:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - specs/001-factory-v2/TEST_REVIEW_LIFECYCLE_CHECKS.md
+  - "review-time: 2026-10-07T16:40:00Z (round 2)"
+decision: accept
+findings: []
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: specs/001-factory-v2/TEST_REVIEW_LIFECYCLE_CHECKS.md
+    sha: 712665a
+  - path: notes/packets/2026-10-07-factory-lifecycle-checks.handoff.md
+    sha: 712665a
+  - path: scripts/factory/tests/unit/test_lifecycle.py
+    sha: 712665a
+  - path: bus/orders/wo-20261007-factory-lifecycle-checks/verdict-01.yaml
+    sha: 712665a
+bootstrap: true
+manual_equivalents:
+  - "red-first: focused lifecycle suite reproduced 8 assertion failures and 21 passes with no collection error"
+  - "round-1 resolution: classification matrix failed on exactly collision precedence, installed-registry source, and PR-head catalog source"
+  - "regression guard: the matrix's registered-gate row stayed in_review when linkage was green but the gate's own status was missing"
+  - "isolation: only committed artifacts at 712665a and the reproduced focused suite were used"

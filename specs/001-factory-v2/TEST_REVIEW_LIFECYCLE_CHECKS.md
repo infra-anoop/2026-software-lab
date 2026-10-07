@@ -72,3 +72,33 @@ Reviewer text above is unchanged.
 | T-LC3, T-LC4 (Nit, strength) | Keep | — |
 
 Round 2 is the reviewer's check of this one change.
+
+## Round 2
+
+### A. Executive verdict
+
+**Approve tests as-is.** Round 1's blocker and process debate are resolved by one
+classification-matrix regression without changing product code or weakening the original
+seven negative cases. The focused suite now reports 8 failed and 21 passed: the matrix
+fails on exactly collision precedence, installed-registry classification, and PR-head
+catalog classification, while its gate/linkage row already matches the base behavior.
+No new finding was introduced by the helper extraction or the four-order fixture.
+
+### B. Resolution check
+
+| Round 1 item | Round 2 result |
+|--------------|----------------|
+| T-LC1 — catalog-first collision | Resolved: a head-only row colliding with installed `pr-links-order` requires linkage, not its own status. |
+| T-LC1 — installed registry source | Resolved: a gate added only to the head registry remains unknown despite green own and linkage statuses. |
+| T-LC1 — PR-head catalog source | Resolved: a row added only to the work branch is recognized through green linkage. |
+| T-LC2 — linkage must not vouch for gates | Resolved: installed `test-seam-ban` stays `in_review` when its own status is missing despite green linkage. |
+
+### C. Findings
+
+No new findings.
+
+### D. Verification
+
+- `nix develop /workspaces/2026-software-lab -c bash -c 'cd scripts/factory && uv run --locked pytest -q tests/unit/test_lifecycle.py'`
+- Result: 8 failed, 21 passed; all failures are expected state assertions.
+- Matrix result: three intended mismatches and one already-correct gate/linkage row.
