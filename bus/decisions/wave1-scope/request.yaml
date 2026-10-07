@@ -32,6 +32,10 @@ prompt: >
   and ready.
   What happens next: the orchestrator records your choice in the task list, moves the named work
   to Wave 1.5 with a note, and books the retro session.
+  Option C also waives, for Wave 1 only, the requirement that Wave 1's exit dates are computed by
+  the factory; they would be stated by hand instead. (This sentence was added after your answer.
+  The same point was in the orchestrator's chat message at 16:14 PT on Oct 7, which you read
+  before answering: "closing now means waiving both for Wave 1 and moving them to Wave 1.5".)
   Option C came from your question on Oct 7 about the earliest cohesive point. The factory itself
   is built and every Wave 1 change already went through it; none of the remaining work is needed
   to use it. The only part Wave 1.5 cannot start without is the retro's decision on what Wave 1.5

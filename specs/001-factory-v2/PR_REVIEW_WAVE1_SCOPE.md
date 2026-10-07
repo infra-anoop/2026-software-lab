@@ -15,3 +15,9 @@ reject
 The lock's `chosen` value exactly matches option C's label. The task-list change moves all six named open items into Phase 9a, redefines T070 as the one-hour session, leaves every checkbox unchanged, adds no postmortem, and does not alter Wave 2.
 
 The factory gate run passed bus schema validation and 23 other applicable gates. Its only failure was `pr-links-order`, caused by the required review branch name rather than a `wo/<order-id>` branch.
+
+## Orchestrator triage (round 1)
+
+| id | disposition | change |
+|----|-------------|--------|
+| R-WS1 | Accepted in part | The request now states the computed-exit-date waiver, marked as added after the answer. The lock cites the 16:14 PT chat message, which named both waivers and which the governor read before answering "C". No new governor confirmation was sought, because that disclosure came before the answer [governor-judged] |
