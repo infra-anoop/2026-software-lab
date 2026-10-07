@@ -1,0 +1,95 @@
+schema_version: 1
+kind: verdict
+id: wo-20261007-factory-record-wave1.verdict-01
+created: 2026-10-07T22:50:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - specs/001-factory-v2/PR_REVIEW_RECORD_WAVE1.md
+  - "independent record-only Wave 1 review"
+decision: accept
+findings: []
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: bus/orders/wo-20261007-factory-record-wave1/order.yaml
+    sha: ab2fb58
+  - path: bus/orders/wo-20261007-factory-record-wave1/claim.yaml
+    sha: ab2fb58
+  - path: notes/retro/2026-10-wave1-agenda.md
+    sha: ab2fb58
+  - path: specs/001-factory-v2/tasks.md
+    sha: ab2fb58
+  - path: specs/001-factory-v2/spec.md
+    sha: ab2fb58
+  - path: specs/001-factory-v2/plan.md
+    sha: ab2fb58
+  - path: specs/001-factory-v2/acceptance.md
+    sha: ab2fb58
+  - path: specs/001-factory-v2/PLAN_DELTA.md
+    sha: ab2fb58
+  - path: docs/factory/USERS_GUIDE.md
+    sha: ab2fb58
+  - path: scripts/factory/gates.yaml
+    sha: ab2fb58
+  - path: scripts/factory/src/factory/gates/pr/verdict.py
+    sha: ab2fb58
+  - path: scripts/factory/src/factory/gates/drift/red_first.py
+    sha: ab2fb58
+  - path: scripts/factory/src/factory/gates/evidence.py
+    sha: ab2fb58
+  - path: scripts/factory/src/factory/gates/runner.py
+    sha: ab2fb58
+  - path: scripts/factory/src/factory/gates/repo/existing.py
+    sha: ab2fb58
+  - path: scripts/factory/src/factory/gates/repo/branch_protection.py
+    sha: ab2fb58
+  - path: scripts/factory/src/factory/cli/gates.py
+    sha: ab2fb58
+  - path: scripts/factory/src/factory/config/settings.py
+    sha: ab2fb58
+  - path: scripts/factory/src/factory/api.py
+    sha: ab2fb58
+  - path: scripts/factory/src/factory/identity/app_token.py
+    sha: ab2fb58
+  - path: scripts/factory/src/factory/github/rest.py
+    sha: ab2fb58
+  - path: scripts/factory/src/factory/lifecycle/derive.py
+    sha: ab2fb58
+  - path: scripts/factory/tests/contract/test_app_token_e2e.py
+    sha: ab2fb58
+  - path: scripts/factory/tests/contract/test_gate_run.py
+    sha: ab2fb58
+  - path: scripts/factory/tests/contract/test_ci_trust_boundary.py
+    sha: ab2fb58
+  - path: scripts/factory/tests/unit/test_lifecycle.py
+    sha: ab2fb58
+  - path: .github/workflows/ci-cd-pipeline.yml
+    sha: ab2fb58
+  - path: .github/workflows/factory-gates.yml
+    sha: ab2fb58
+  - path: .github/workflows/factory-pr-evidence.yml
+    sha: ab2fb58
+  - path: deploy/github/branch-protection.json
+    sha: ab2fb58
+  - path: scripts/validate_secrets_schema.py
+    sha: ab2fb58
+  - path: scripts/validate_deploy_env.py
+    sha: ab2fb58
+  - path: bus/orders/wo-20261004-factory-slice-c/amendment-07.yaml
+    sha: ab2fb58
+  - path: bus/orders/wo-20261004-factory-slice-c/amendment-08.yaml
+    sha: ab2fb58
+  - path: bus/orders/wo-20261007-factory-t103-close/order.yaml
+    sha: ab2fb58
+  - path: bus/orders/wo-20261007-factory-t103-close/handoff.yaml
+    sha: ab2fb58
+  - path: bus/orders/wo-20261007-factory-users-guide/verdict-02.yaml
+    sha: ab2fb58
+  - path: bus/orders/wo-20261007-factory-retro-additions/verdict-01.yaml
+    sha: ab2fb58
+  - path: bus/orders/wo-20261007-factory-app-token/verdict-05.yaml
+    sha: ab2fb58
+  - path: specs/001-factory-v2/PR_REVIEW_RETRO_AGENDA.md
+    sha: ab2fb58
