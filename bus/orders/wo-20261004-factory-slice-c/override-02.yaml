@@ -1,0 +1,18 @@
+schema_version: 1
+kind: override
+id: wo-20261004-factory-slice-c.override-02
+created: '2026-10-07T01:46:59Z'
+actor: orchestrator
+actor_model: claude-opus-5.5
+gate: red-first-proof
+pr: 21
+reason: 'Two orchestrator fixes made after the T* reviews. (1) test_workflow_and_job_env_use_only_contexts_github_allows_there
+  guards workflow files, not code: it failed on the broken workflows at 8b6d02b and
+  passes on the fixed ones at 7fdba0c, which this gate cannot see because it swaps
+  base code only. (2) test_json_envelope gained strict expected failures for the unbuilt
+  T069/T081 commands (UNBUILT); every other case passes on head. Later: red-first-proof
+  should judge tests whose subject is a non-code file, and treat strict xfail on head
+  as recorded-red (owner Slice B, Wave 1 retro).'
+gate_class: drift
+refs:
+- wo-20261004-factory-slice-c
