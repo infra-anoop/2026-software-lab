@@ -1,0 +1,39 @@
+# FR-037 bootstrap order, written by the orchestrator on wo/wo-20261007-factory-wave1-retro-agenda
+# (from origin/main 581ed18). Record-only: a governor-facing retro agenda (not the formal
+# bus/postmortems/wave1-retro.yaml, which T069 writes) and two task ticks whose work is done.
+# Known bootstrap distortion: size_minutes is an estimate.
+schema_version: 1
+kind: order
+id: wo-20261007-factory-wave1-retro-agenda
+created: 2026-10-07T16:40:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - specs/001-factory-v2/tasks.md
+  - specs/001-factory-v2/PLAN_DELTA.md
+  - "FR-037 bootstrap: record-only order; size_minutes is an estimate"
+feature: 001-factory-v2
+goal: Give the governor a git-sourced Wave 1 retro agenda (G1-G6, burndown, review cost, harness lessons, decisions to take) and tick T097 and T101, whose work is already merged.
+intents: [I-M4, I-P8]
+owned_paths:
+  - "notes/retro/2026-10-wave1-agenda.md"
+  - "specs/001-factory-v2/tasks.md"
+  - "bus/orders/wo-20261007-factory-wave1-retro-agenda/**"
+checks:
+  - pr-links-order
+  - diff-within-owned-paths
+  - order-fidelity-declared
+  - lock.letter-tokens
+  - deferral-words-need-od
+  - verdict.reviewer-family-differs
+  - verdict.inputs-isolated
+  - bus.schema
+locks: []
+size_minutes: 30
+stop_conditions:
+  - Any edit needed outside Owned paths
+  - Anything that would mark Wave 1 as finished (bus/postmortems/wave1-retro.yaml)
+depends_on_decisions: []
+tasks: [T097, T101]
+worker_runtime: local_subagent
