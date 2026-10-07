@@ -1,0 +1,13 @@
+schema_version: 1
+kind: run_complete
+id: wo-20261007-factory-wave1-retro-agenda.run-complete
+created: '2026-10-07T18:03:04Z'
+actor: worker
+actor_model: claude-opus-5.5
+refs:
+- wo-20261007-factory-wave1-retro-agenda
+wall_minutes: 20.6
+governor_interrupts: 0
+cost_usd_estimated: true
+deviations_count: 2
+cost_usd: null
