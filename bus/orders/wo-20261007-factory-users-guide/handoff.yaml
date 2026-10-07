@@ -1,0 +1,47 @@
+# FR-037 bootstrap handoff for the Factory user's guide (docs only).
+schema_version: 1
+kind: handoff
+id: wo-20261007-factory-users-guide.handoff
+created: 2026-10-07T21:45:00Z
+actor: worker
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - wo-20261007-factory-users-guide
+  - docs/factory/USERS_GUIDE.md
+summary: |
+  Adds docs/factory/USERS_GUIDE.md, a plain-language guide for the governor, accurate to main a2f782c.
+  Sections: what the factory is; nine principles (what, why, cost); roles; a glossary of constructs;
+  the life of one change (wo-20261007-factory-per-intent, PR #30) with governor touchpoints marked;
+  how to read PR bodies, gate results, the per-intent report, the board and AskQuestion prompts;
+  limits and rough edges from the Wave 1 retro agenda; a where-to-look map; five open questions.
+  "Not built yet" notes mark the GitHub App (T065; T036b in open PR #33), retro tooling (T068-T071),
+  T066a, Wave 2 and the P3 rows. It states no new rules. About 4,600 words of prose.
+  Round 1 fixes (verdict-01): exact credential boundary and fake-green gap (R-UG1), AskQuestion layout
+  labelled a kickoff convention (R-UG2), decision-request question reworded after PR #34 (R-UG3),
+  an id legend (R-UG4), "no bus record holds a hand-maintained work-status field" (R-UG5).
+checks_run:
+  - gate_or_test: "factory gate run --base origin/main --head HEAD (round 1 fixes, base a7f4373)"
+    result: "25 of 25 passed, 0 overridden (verdict-01 present at head)"
+  - gate_or_test: factory check schema
+    result: passed
+deviations:
+  - what: the guide is about 4,500 words of prose, about 5,000 counting tables and paths, at the top of the 3,000-4,500 range
+    why: the brief asked for eight sections plus open questions, with a short example per glossary term
+    conservative_choice: trimmed duplicate prose; kept every requested section and the not-built markers
+  - what: the phrase 'defer test cases, never bugs' is presented as the governor's refinement, not as a constitution rule
+    why: constitution 1.10 section J states a harm bar; the refinement is retro decision 9 in the agenda
+    conservative_choice: the guide marks it as not yet in the constitution and lists it as open question 1
+  - what: the guide is accurate to main a2f782c plus PR #34's first decision request, not to every later main commit
+    why: R-UG3 and the orchestrator's triage named PR #34; nothing else after a2f782c was in scope
+    conservative_choice: the header says so; section 7 and open question 5 now reflect PR #34
+open_questions:
+  - question: The constitution does not say whether the orchestrator may re-tag a reviewer's product debate as process (done in the per-intent order and disclosed in its PR).
+    class: non_blocking
+  - question: SPAWN_WORKER says to run factory handoff when done, but the verdict gates need a review of the handoff first; the sequence handoff file, review, then the command is practice, not written.
+    class: non_blocking
+  - question: The constitution still describes worker units as lab packets and never mentions work orders or the bus; constitution 2.0 (T088) is the reconciling item.
+    class: non_blocking
+  - question: Decision requests on the bus started on 2026-10-07 (PR #34); should every governor decision go this way from now on?
+    class: non_blocking
+author_model: claude-opus-5.5

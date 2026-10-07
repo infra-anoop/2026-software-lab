@@ -1,0 +1,44 @@
+# FR-037 bootstrap order, written by the orchestrator on wo/wo-20261007-factory-users-guide
+# (from origin/main a2f782c). The governor asked on 2026-10-07 for a Factory user's guide to
+# read before the Wave 1 retro: key principles and constructs, not technical detail. The guide
+# explains; it is not a rule source (the constitution, AGENTS.md and specs/001-factory-v2 stay
+# canonical), so it lives outside docs/agent-os/. Known bootstrap distortion: size_minutes is an estimate.
+schema_version: 1
+kind: order
+id: wo-20261007-factory-users-guide
+created: 2026-10-07T21:10:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - .specify/memory/constitution.md
+  - AGENTS.md
+  - specs/001-factory-v2/spec.md
+  - specs/001-factory-v2/plan.md
+  - "governor request, 2026-10-07 14:04 PT"
+  - "FR-037 bootstrap: size_minutes is an estimate"
+feature: 001-factory-v2
+goal: Give the governor a readable Factory user's guide that explains the factory's principles and constructs in plain language, accurate to what is on main.
+intents: [I-G4, I-P8]
+owned_paths:
+  - "docs/factory/USERS_GUIDE.md"
+  - "specs/001-factory-v2/PR_REVIEW_USERS_GUIDE.md"
+  - "bus/orders/wo-20261007-factory-users-guide/**"
+checks:
+  - pr-links-order
+  - diff-within-owned-paths
+  - order-fidelity-declared
+  - lock.letter-tokens
+  - deferral-words-need-od
+  - verdict.reviewer-family-differs
+  - verdict.inputs-isolated
+  - bus.schema
+locks: []
+size_minutes: 60
+stop_conditions:
+  - Any edit needed outside Owned paths
+  - The guide would need to state a rule that is not already in the constitution, AGENTS.md or specs/001-factory-v2 (report it; do not invent policy)
+  - Anything that would mark Wave 1 as finished or start Wave 2
+depends_on_decisions: []
+tasks: []
+worker_runtime: local_subagent
