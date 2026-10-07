@@ -2,10 +2,12 @@
 
 **For:** the governor, the one human who owns this software factory.
 **Purpose:** explain the factory's principles and building blocks in plain language, so you can read it in one sitting before the Wave 1 retro.
-**Accurate to:** `main` at `a2f782c` (2026-10-07, after PR #32).
+**Accurate to:** `main` at `a2f782c` (2026-10-07, after PR #32), plus the first decision request, merged in PR #34.
 **Not a rule source.** Rules live in the constitution (`.specify/memory/constitution.md`, version 1.10.0), `AGENTS.md`, and the factory feature in `specs/001-factory-v2/`. This guide explains those files and adds no rules. Where they disagree or leave a gap, the guide says so in the last section.
 
 Throughout, a **Not built yet** note marks anything that is designed in the spec or plan but not on `main` today, and names the task or wave that owns it.
+
+**Reading ids.** Where an id helps you find the source, it follows a plain name: `I-` is an intent (`intent.yaml`), `FR-` a requirement (`spec.md`), `T` a task (`tasks.md`), and `D` a decision (the spec's Open Decisions table).
 
 ---
 
@@ -19,7 +21,7 @@ The factory is a set of habits, files and checks that lets AI agents do real sof
 
 **Git is the bus.** Every instruction, result, review and decision is a file committed to the repository. Agents do not pass context to each other through chat, and they never ask you to copy text from one agent to another. If it is not in git, it did not happen.
 
-**State is derived, never hand-written.** No file holds a "status: done" field. Whether a piece of work is ready, in progress, in review, accepted or merged is computed from git, pull requests and check results. A board (`factory status`) shows the computed view.
+**State is derived, never hand-written.** No bus record holds a hand-maintained work-status field. Whether a piece of work is ready, in progress, in review, accepted or merged is computed from git, pull requests and check results. A board (`factory status`) shows the computed view.
 
 **You are a governor, not a router.** You set intent, lock decisions, approve plans, and judge outcomes. You are not asked to relay messages, pick the next task, decide what can run in parallel, or learn task numbers. Agents should ask you only real decisions, in product language, as plain choices. The orchestrator plans, workers build, reviewers from another model family judge, and machine checks decide whether a change may merge (section 3).
 
@@ -46,7 +48,7 @@ Each principle below says what it is, why it exists, and what it costs. All of t
 **What.** For executable work, the tests that prove a behaviour are written first and must fail ("be red") before the code that makes them pass. Then a separate reviewer judges the tests before implementation starts. This is the **T\* review**.
 **Why.** In sprint 01 you caught tests that were "greened" with fake data, or that merely mirrored the code they were meant to judge.
 **Cost.** At least one extra review round per slice of work, often two or more.
-**Today.** The gate `red-first-proof` checks for red-then-green, but in Wave 1 its evidence comes from a job that runs the pull request's own code, so it is labelled "self-reported" and the reviewer's re-run is the proof of record. **Not built yet:** a sealed run that cannot be faked (task T104), and a gate that blocks code commits before the test review accepts (FR-012b); both are Wave 2.
+**Today.** The gate `red-first-proof` checks for red-then-green, but in Wave 1 its evidence comes from a job that runs the pull request's own code, so it is labelled "self-reported" and the reviewer's re-run is the proof of record. **Not built yet:** a sealed run that cannot be faked (task T104), and a gate that blocks code commits before the test review accepts (requirement FR-012b); both are Wave 2.
 
 ### Different model families review each other
 
@@ -158,9 +160,10 @@ Terms are grouped by topic. Each has a short real or realistic example.
 
 ### Credentials by role
 
-- **CI's trusted job** holds the only token allowed to post `factory/*` results. **CI's untrusted job** runs the pull request's own tests with read-only access and no secrets.
+- **CI's trusted job** is, by policy, the only poster of `factory/*` results, and its token is the only factory CI job token granted permission to post statuses. That is a policy boundary, not a technical one: your Codespace account and any other GitHub Actions workflow in this repository can still post a status with the same name. What protects merges is that the required `factory/gates` check is pinned to GitHub Actions as its source, so a status from your Codespace account does not count. A status from another Actions workflow would still count; that fake-green gap stays open until the App work closes it (section 7).
+- **CI's untrusted job** runs the pull request's own tests with read-only access and no secrets.
 - **Agents today** push and open pull requests through the Codespace token, which acts as your GitHub account. So the factory cannot yet tell your actions from an agent's: governor-only actions are marked "unverified", and code-owner review on rule files is off, because GitHub will not let you approve a pull request your own account opened.
-- **Not built yet: the factory GitHub App** (task T065, a setup step for you, about 20 minutes, plus token wiring in T036b). Agents will then act as the App with one-hour tokens, with no permission to post statuses (your lock D8). The factory switches to "verified" identity mode, and code-owner review on rule files is switched on.
+- **Not built yet: the factory GitHub App** (task T065, a setup step for you, about 20 minutes, plus token wiring in task T036b, which is in open PR #33 and not on `main`). Agents will then act as the App with one-hour tokens, with no permission to post statuses (your lock D8). The factory switches to "verified" identity mode, and code-owner review on rule files is switched on.
 
 ---
 
@@ -194,7 +197,7 @@ Read for three things: does the goal match what you wanted; were any of your dec
 
 ### Gate results
 
-- **The required result** is one commit status, `factory/gates`. It is green only if every gate in `main`'s registry ran and passed or was overridden. The `main` branch rules also require `Factory tests` and `Verify Source / verify`. All three are pinned to GitHub Actions as their source, so a result posted by any other account does not count.
+- **The required result** is one commit status, `factory/gates`. It is green only if every gate in `main`'s registry ran and passed or was overridden. The `main` branch rules also require `Factory tests` and `Verify Source / verify`. All three are pinned to GitHub Actions as their source, so a result posted from outside GitHub Actions (for example your Codespace account) does not count; another Actions workflow is the known gap (section 7).
 - **Per-gate results** (`factory/<gate-id>`) are posted too, for diagnosis. They are not individually required; adding a gate is a code change, not a settings change.
 - **The per-intent report** comes from `factory gate run`, in the CI job log and in the command's own output. For each intent, it lists the gates serving it and gives one word:
   - **held**: every gate serving the intent passed;
@@ -218,7 +221,7 @@ The board is computed on demand from git, pull requests and checks. Its sections
 
 ### AskQuestion prompts
 
-When the orchestrator needs a decision, it asks in Cursor's AskQuestion tool, in batches. The kickoff skill sets the form: two to four plain options per question, the recommended option first and labelled "(Recommended)", the stakes of each option, and for architecture choices the concrete consequences (services, where secrets live, ops steps, cost). No task ids, finding ids or internal jargon. If you have to open `tasks.md` to understand a question, the constitution counts that as a harness defect.
+When the orchestrator needs a decision, it asks in Cursor's AskQuestion tool, in batches. The sourced requirement is plain choices with the stakes of each, concrete consequences for architecture choices (services, where secrets live, ops steps, cost), and no task ids, finding ids or internal jargon. The exact layout you see (two to four options, the recommended one first and labelled "(Recommended)") is the current Cursor kickoff-skill convention, not factory policy. If you have to open `tasks.md` to understand a question, the constitution counts that as a harness defect.
 
 ---
 
@@ -227,7 +230,7 @@ When the orchestrator needs a decision, it asks in Cursor's AskQuestion tool, in
 This section reports what the Wave 1 retro agenda found, without proposing fixes.
 
 **Designed but not built.**
-- The factory's GitHub App (T065) and its token wiring (T036b, in progress at the time of writing). Until both land, the factory has a single identity, governor-only actions are "unverified", and approval of rule-path changes relies on your chat approval rather than a GitHub approval.
+- The factory's GitHub App (task T065) and its token wiring (task T036b, in open PR #33, not on `main`). Until both land, the factory has a single identity, governor-only actions are "unverified", and approval of rule-path changes relies on your chat approval rather than a GitHub approval.
 - The retro tooling (`factory retro`, T068–T071) that replays `main`'s gates over every Wave 1 pull request and records remediations. Wave 1 cannot formally close without it, and the formal retro record waits for it.
 - The lifecycle reading the non-factory required checks from GitHub (T066a).
 - All of Wave 2: architecture lints and the pattern catalog (user story 6); the correction-mining loop with `factory correction new` and `factory sprint close` (user story 7); rules-as-code, constitution 2.0 and lean always-loaded guidance (user story 8); the mutation gate at 70%; the sealed red-first run; and the tests-reviewed-before-code gate.
@@ -240,7 +243,7 @@ This section reports what the Wave 1 retro agenda found, without proposing fixes
 - `factory claim` checks owned-path overlap against the original order and ignores amendments, which once refused a valid claim and could let a widened order overlap another.
 - `factory handoff` ignores recorded overrides while CI honours them.
 - The deferral-word gate flags quoted governor text and review records (overridden three times); `red-first-proof` misjudges tests whose subject is not code (overridden once).
-- `bus/decisions/` is empty: your decisions so far were asked in chat and recorded in the spec, plan delta and task files, not as bus decision requests.
+- Until 2026-10-07 your decisions were asked in chat and recorded in the spec, plan delta and task files. The first bus decision request (about exporting Wave 1 token usage) merged in PR #34.
 - Run-complete records exist for only the most recent orders; the Wave 1 start date and order sizes are reconstructed estimates.
 
 **Harness lessons from running the factory on itself.**
@@ -284,4 +287,4 @@ These are gaps or tensions between the sources, found while writing. The guide d
 2. **Re-tagging a reviewer's "product" debate.** In the per-intent order, the reviewer tagged two debates "product" and the orchestrator settled them as process, disclosing the call in the pull request. The constitution says reviewers must tag debates and only product debates need you; it does not say whether the orchestrator may change a reviewer's tag.
 3. **When a worker runs `factory handoff`.** The worker spawn doc says to run it when the work is done, but the command refuses while any gate fails, and the review-verdict gates cannot pass until a reviewer has read the handoff. In practice the handoff file comes first, then review, then the command. No source states that order.
 4. **Two vocabularies for work units.** The constitution still describes worker units as lab packets (`notes/packets/`) and never mentions work orders or the bus; the factory spec and the spawn docs use orders. Constitution 2.0 (task T088, Wave 2) is the item that reconciles them.
-5. **Where your decisions are recorded.** The plan routes governor questions through bus decision requests (`bus/decisions/`, listed by `factory decisions`), but every decision to date was asked in chat and recorded in the spec, plan delta or task files. It is unclear whether bus decision requests are expected in Wave 1, or whether the current practice is accepted.
+5. **Where your decisions are recorded.** The plan routes governor questions through bus decision requests (`bus/decisions/`, listed by `factory decisions`). Decision requests started on 2026-10-07 (PR #34); before that, every decision was asked in chat and recorded in the spec, plan delta or task files. Should every governor decision go this way from now on?
