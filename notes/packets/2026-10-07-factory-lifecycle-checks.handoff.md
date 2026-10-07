@@ -96,3 +96,12 @@ T* round 2 accepted (verdict-02, `6ce96d0`). Commit `ec84c75` touches only `scri
 - an id that is both a row and a gate is judged as a gate, by its own status, not catalog-first.
 
 The other `derive_order` callers do not reach the checks branch: `orders/lease.py` counts `accepted` and `in_review` alike as active, and `gates/repo/status_test.py` uses `NoGitHub` and has no PRs.
+
+## Board wiring (amendment-02)
+
+The orchestrator's ruling assigns the board fix to this order and adds `cli/board.py` and `tests/contract/test_cli_contract.py` to the owned paths.
+
+- Red: `f6c9e38` adds `test_status_judges_a_catalog_row_check_by_the_head_catalog`. An order whose `checks` names `demo.adds`, with green `factory/catalog-test-linkage` and an accepting verdict, must show on `factory status --json` in the state `derive_snapshot` gives it with the repo (`accepted`). It failed at the old `board.py` with "board shows … as 'in_review'; derive with the repo gives 'accepted'".
+- Fix: `34b4177` changes only `derive_from_view(view, github, settings, DEPS.clock(), repo=root)` in `board.py`.
+- Suite: 1065 passed, 7 xfailed. `ruff check` and `ruff format --check` pass.
+- The worker-written `bus/orders/wo-20261007-factory-lifecycle-checks/handoff.yaml` passes `factory check schema`. `factory handoff` waits for the PR review verdict.
