@@ -60,3 +60,14 @@ Reviewer text above is unchanged. T-AT1 and T-AT2 are credential-safety harm: fi
 | T-AT4 (Nit, strength) | Keep the adversarial fixtures | — |
 
 Round 2 is the reviewer's check of these changes.
+
+## Round 2
+
+**Decision: Do not implement against these tests yet.** The full suite reproduced the expected red state: 11 failed, 1056 passed, and 7 expected failures, with the changed tests failing on assertions. T-AT3 is resolved; the five-minute refresh margin contradicts no spec or contract. The code-owner-review snapshot is a legitimate verified-mode fixture state because T065 flips both identity mode and that ruleset requirement. T-AT1 is substantially improved but its gate-run leg can pass without a successful CI path, and T-AT2 still permits the exact command-line credential exposure the finding required the observer to catch.
+
+| ID | Severity | Tag | Round-2 finding | What to change |
+|----|----------|-----|-----------------|----------------|
+| T-AT1-R2 | Debate | process | The table requires normal exits for agent commands, but `gate run` accepts either 0 or gate failure and only asserts that the agent provider was not called. An early gate failure that never constructs the CI provider therefore satisfies this leg. `gate evidence` correctly need not construct any GitHub adapter. | Make the staged gate pass, require exit 0, and assert that `gate run` called the CI provider at least once while never calling the agent provider. |
+| T-AT2-R2 | Blocker | product | **Root-cause class: incomplete Python process-spawn interception.** `CredentialObserver` wraps `subprocess.Popen` but explicitly omits `os.system` and `os.posix_spawn*`. An implementation can put the installation token directly in a git/helper command line through either standard Python API and pass every observer assertion. Consequence: the token is exposed through the process list despite a green security suite; the likelihood is material because shell-based credential helpers are a common shortcut. The declared C-extension writes, child-process file writes, and env/pipe channel are acceptable bounded gaps: the current codebase uses Python `subprocess`, the intended helper needs a non-argv transport, and final-state scanning remains. | Smallest sufficient fix: intercept `os.system`, `os.posix_spawn`, and `os.posix_spawnp` in the shared observer and apply the same secret corpus to their command/argv. No below-Python syscall tracer is required. |
+
+T-AT3 is closed. The fake clock proves one-hour reuse and refresh before the request at five minutes remaining; the chosen margin is an implementation bound, not a contradiction of a locked numeric requirement.
