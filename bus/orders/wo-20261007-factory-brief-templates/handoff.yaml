@@ -1,0 +1,33 @@
+# FR-037 bootstrap handoff for the process-doc brief-template order. The orchestrator wrote
+# the change and this record (docs only; no worker was dispatched).
+schema_version: 1
+kind: handoff
+id: wo-20261007-factory-brief-templates.handoff
+created: 2026-10-07T16:30:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - docs/agent-os/SPAWN_WORKER.md
+  - docs/agent-os/SPAWN_REVIEWER.md
+  - "FR-037 bootstrap"
+summary: |
+  SPAWN_WORKER.md gains three orchestrator steps: the factory claim and handoff commands
+  every worker brief must name, the deferral-word rule, Wave 1 agent hygiene (pre-created
+  worktree, no permission requests, the Nix command form that is not sandbox-blocked,
+  timebox, check git not notices), and how to write GitHub screen steps for the governor.
+  SPAWN_REVIEWER.md gains the verdict-NN.yaml step for factory orders. Reviewed and
+  accepted (verdict-01); its one finding (the deferral-word rule was stated too loosely)
+  was fixed in this PR.
+checks_run:
+  - gate_or_test: factory check schema
+    result: passed
+deviations:
+  - what: the orchestrator authored the change and this handoff
+    why: docs-only order with no code; no worker was dispatched
+    conservative_choice: an independent reviewer of another model family accepted it (verdict-01)
+  - what: the deferral-word bullet was corrected after verdict-01
+    why: verdict-01 finding L-01 showed the first wording misstated the gate
+    conservative_choice: the new wording follows deferral_words.py and contracts/gates.md
+open_questions: []
+author_model: claude-opus-5.5
