@@ -1,6 +1,6 @@
 # Handoff — `wo-20261007-factory-per-intent` (T064, catalog `handoff.per_intent_results`)
 
-**Phase:** 1 of 2: red tests only. T* round 1 rejected; the round 1 fixes are in (§ Round 1 resolution), awaiting T* round 2. No `src` change.
+**Phase:** 2 of 2: implemented (§ Implementation (phase 2)). T* round 1 rejected; round 2 accepted (`verdict-02`), and the tests are frozen. Awaiting PR review.
 
 **Branch:** `wo/wo-20261007-factory-per-intent`. Claim `024b778` (after the orchestrator dropped `tasks.md` from owned paths in `54bd08b`). Red tests `2d50e4d`. `tasks.md` is not ticked (not owned); T064 completion is reported here.
 
@@ -58,3 +58,28 @@ These are the three changes from the orchestrator's triage in `TEST_REVIEW_PER_I
 - In the changed broad test, the legacy-mapping assertion runs first and passes; the test then goes red at `per_intent`.
 - **Full suite:** 7 failed (only these), 1056 passed, 7 xfailed (known T069/T081). `ruff check` and `ruff format --check` pass.
 - **Satisfiability probe** (throwaway `/tmp` plugin, deleted): the probe passes fresh registry-only results to `group_by_intent()`. With it, all 39 cases in the file pass.
+
+## Implementation (phase 2)
+
+After T* round 2 accepted (`verdict-02`), the implementation commit is `763b409`. Only `scripts/factory/src/factory/gates/runner.py` changed; `cli/gates.py` needed nothing, because it already emits the runner's report as JSON `data` / `error.details` and prints `render_text`. The accepted tests are unchanged.
+
+- **`per_intent(entries)`**, new in the runner, is added to the report as `per_intent`.
+  - It builds one `GateResult` per reported gate, with `intent_ids` set to that gate's `gates.yaml` row. It then groups them with Slice B's `group_by_intent()`.
+  - Because those results carry the row's ids, the helper's result-ids-first rule resolves to the registry row. A real gate's own `intent_ids` (such as `factory-check-intent`'s unmapped ids) never creates a row (amendment-01, ruling 2).
+  - Only reported gates are grouped, so a `--gate` subset lists only the intents of the gates that ran.
+- **`result`:** `broken` if any serving gate failed, else `overridden` if any was overridden, else `held`. An override never shows as `held` (ruling 3).
+- **`render_text`:** the `per intent:` section now prints one line per intent, sorted by id: `  <result> <intent>: <gate> <outcome>, …`. It previously printed one line per (intent, gate) pair.
+- **Unchanged:**
+  - The legacy `intents` mapping is still built as before (T-PI3 lock).
+  - `commit_status` and `summary_status` are untouched, so the posted `factory/<gate-id>` and `factory/gates` statuses do not change.
+  - No workflow was edited (ruling 1: scope is the run report).
+- **Catalog:** `handoff.per_intent_results` evidence now names the six accepted tests. `tasks.md` is not ticked because it is not an owned path; T064 is complete as of this commit.
+
+**Results at `763b409`:**
+- Focused file: 39 passed.
+- **Full suite:** 1063 passed, 7 xfailed (the known strict T069/T081 xfails), 0 failed.
+- `ruff check` and `ruff format --check` pass.
+
+**Local gates** (`factory gate run --base origin/main --head HEAD`, at `763b409`): 24 of 25 CI gates pass.
+- The one failure is `verdict.reviewer-family-differs`: "order wo-20261007-factory-per-intent has no handoff at head". This is expected until `handoff.yaml` and the PR-review verdict land.
+- The per-intent section printed 23 intents: 22 held, and I-P3 broken (from that gate), with `verdict.inputs-isolated pass` listed beside it.
