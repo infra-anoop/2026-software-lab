@@ -320,6 +320,35 @@ def test_an_id_that_is_neither_a_gate_nor_a_catalog_row_fails_closed(repo: RepoB
     )
 
 
+def test_unreadable_pr_head_keeps_a_gate_only_order_in_review(repo: RepoBuilder) -> None:
+    """R-LC1: without the PR-head tree no id can be cleared as not-a-catalog-row, so green
+    statuses alone never accept, even when every `checks` id is a registered gate."""
+    order_id = oid("absent-head")
+    repo.issue_order(
+        order(order_id, owned_paths=[f"apps/demo/{order_id}/**"], checks=REQUIRED_CHECKS)
+    )
+    repo.add_event(order_id, message("claim", order_id=order_id))
+    repo.add_event(order_id, message("handoff", order_id=order_id))
+    absent = "f" * 40
+    assert repo.git("cat-file", "-t", repo.head_sha(f"wo/{order_id}")) == "commit"
+    with pytest.raises(RuntimeError):
+        repo.git("cat-file", "-e", f"{absent}^{{commit}}")
+    pr = repo.github.add_pr(f"wo/{order_id}", head_sha=absent)
+    for gate, value in GREEN_STATUSES.items():
+        repo.github.set_commit_status(pr.head_sha, f"factory/{gate}", value, value)
+    repo.add_event(
+        order_id,
+        message(
+            "verdict",
+            order_id=order_id,
+            decision="accept",
+            inputs=[{"path": f"bus/orders/{order_id}/order.yaml", "sha": absent}],
+        ),
+    )
+    state = by_id(snapshot(repo), order_id).state
+    assert state == OrderState.IN_REVIEW, f"PR head {absent} is not in the repo; got {state}"
+
+
 HEAD_REGISTRY = "scripts/factory/gates.yaml"
 HEAD_CATALOG = "specs/demo-feature/acceptance.md"
 COLLISION_ID = "pr-links-order"
