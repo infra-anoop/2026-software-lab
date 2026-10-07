@@ -1,0 +1,110 @@
+schema_version: 1
+kind: verdict
+id: wo-20261007-factory-users-guide.verdict-01
+created: 2026-10-07T21:55:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - specs/001-factory-v2/PR_REVIEW_USERS_GUIDE.md
+  - "independent Factory user's guide review round 1"
+  - "unmerged branch wo/wo-20261007-factory-retro-additions contains the first bus decision request"
+decision: reject
+findings:
+  - id: R-UG1
+    severity: blocker
+    tag: process
+    text: >-
+      The credentials section falsely says the trusted CI job holds the only token
+      allowed to post factory/* results. The Codespace user token and other Actions
+      workflows remain technically capable; source pinning only limits which source
+      satisfies the required check. Clarify that policy and source pinning are the
+      current boundary and keep the known fake-green gap explicit.
+  - id: R-UG2
+    severity: nit
+    tag: process
+    text: >-
+      The AskQuestion option count and ordering are current kickoff-skill behavior,
+      not a contract in the listed canonical sources. Label them as a current Cursor
+      convention or remove the implementation detail.
+  - id: R-UG3
+    severity: nit
+    tag: product
+    text: >-
+      Open question 5 is accurate only for main. The first bus decision request now
+      exists on the unmerged retro-additions branch, so qualify the history and ask
+      whether that new practice is the expected Wave 1 path.
+  - id: R-UG4
+    severity: nit
+    tag: product
+    text: >-
+      Recurring I-, FR-, T-, and D-prefixed source ids are unexplained for the
+      non-coding governor. Add a one-line legend at first use.
+  - id: R-UG5
+    severity: nit
+    tag: process
+    text: >-
+      The derived-state section says no file has a hand-maintained done field, but
+      that prohibition is scoped to bus records. Qualify the sentence so legitimate
+      spec approval fields and task checkboxes are not swept into the claim.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: docs/factory/USERS_GUIDE.md
+    sha: 6dbb581
+  - path: bus/orders/wo-20261007-factory-users-guide/order.yaml
+    sha: 6dbb581
+  - path: bus/orders/wo-20261007-factory-users-guide/handoff.yaml
+    sha: 6dbb581
+  - path: .specify/memory/constitution.md
+    sha: 6dbb581
+  - path: AGENTS.md
+    sha: 6dbb581
+  - path: docs/agent-os/README.md
+    sha: 6dbb581
+  - path: docs/agent-os/SPAWN_WORKER.md
+    sha: 6dbb581
+  - path: docs/agent-os/SPAWN_REVIEWER.md
+    sha: 6dbb581
+  - path: specs/001-factory-v2/spec.md
+    sha: 6dbb581
+  - path: specs/001-factory-v2/intent.yaml
+    sha: 6dbb581
+  - path: specs/001-factory-v2/plan.md
+    sha: 6dbb581
+  - path: specs/001-factory-v2/tasks.md
+    sha: 6dbb581
+  - path: specs/001-factory-v2/acceptance.md
+    sha: 6dbb581
+  - path: specs/001-factory-v2/contracts/gates.md
+    sha: 6dbb581
+  - path: scripts/factory/gates.yaml
+    sha: 6dbb581
+  - path: scripts/factory/src/factory/bus/models.py
+    sha: 6dbb581
+  - path: notes/retro/2026-10-wave1-agenda.md
+    sha: 6dbb581
+  - path: notes/packets/2026-10-07-factory-per-intent.handoff.md
+    sha: 6dbb581
+  - path: specs/001-factory-v2/TEST_REVIEW_PER_INTENT.md
+    sha: 6dbb581
+  - path: specs/001-factory-v2/PR_REVIEW_PER_INTENT.md
+    sha: 6dbb581
+  - path: bus/orders/wo-20261007-factory-per-intent/order.yaml
+    sha: 6dbb581
+  - path: bus/orders/wo-20261007-factory-per-intent/amendment-01.yaml
+    sha: 6dbb581
+  - path: bus/orders/wo-20261007-factory-per-intent/claim.yaml
+    sha: 6dbb581
+  - path: bus/orders/wo-20261007-factory-per-intent/handoff.yaml
+    sha: 6dbb581
+  - path: bus/orders/wo-20261007-factory-per-intent/run-complete.yaml
+    sha: 6dbb581
+  - path: bus/orders/wo-20261007-factory-per-intent/verdict-01.yaml
+    sha: 6dbb581
+  - path: bus/orders/wo-20261007-factory-per-intent/verdict-02.yaml
+    sha: 6dbb581
+  - path: bus/orders/wo-20261007-factory-per-intent/verdict-03.yaml
+    sha: 6dbb581
+  - path: bus/orders/wo-20261007-factory-wave1-retro-agenda/verdict-01.yaml
+    sha: 6dbb581
