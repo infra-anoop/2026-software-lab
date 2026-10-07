@@ -157,7 +157,9 @@ Earlier Later items (Slice A–C PR reviews: evidence `base_sha` binding, produc
 - **Phases to estimate:** spec and reviews, plan and Architecture review, tasks and the finish bar, tests and test review, implementation and PR review, and the governor's own steps.
 - **Unit.** Tokens can be measured, but only from Cursor's usage data, and they vary with the model. Story points are relative and need a reference task. The factory can already measure review rounds and wall time per order from the bus, so a mixed estimate is possible: story points per phase, plus expected review rounds.
 - **Closing the loop:** each estimate is compared with the actual at the retro. That needs `factory burndown` (G4) and the effort data from section 14.
-- **Where it lives:** the step would go in the spec review prompt and the spec template. Both are rule paths, so this needs a rule-path PR for your approval.
+- **Where it lives:** the step would go in two files:
+  - `docs/agent-os/SPEC_REVIEW_PROMPT.md`, the spec review prompt. It is a rule path, so changing it needs your approval.
+  - `.specify/templates/overrides/spec.md`, the spec template. It is not a rule path today. Whether to protect it as one is a separate choice for the session.
 
 ### 14. Where the effort and tokens went in Wave 1, one level down
 
@@ -170,7 +172,7 @@ Earlier Later items (Slice A–C PR reviews: evidence `base_sha` binding, produc
 - commits per order.
 
 **What git cannot measure:**
-- **Tokens.** The real numbers are in Cursor's usage data, and only you can export them. The stored agent transcripts leave out tool output, which is most of the tokens, so they are only a rough proxy.
+- **Tokens.** The real numbers are in Cursor's usage data, and only you can export them; the request is in `bus/decisions/wave1-token-usage/request.yaml`. The stored agent transcripts are only a rough proxy: Cursor's own note on them says tool calls and their results are left out. How large that left-out share is has not been measured, so no token conclusions are drawn until the export is in.
 - **Time lost** to disconnects, codespace stops and late notices. It can be reconstructed only partly, from gaps between commits.
 
 **Proposed one-level split:**
@@ -219,8 +221,8 @@ The orchestrator leans to B, because the items fix this feature's own tooling. E
 
 **Options:**
 - **(A) The orchestrator wakes itself every 30 minutes** and checks.
-  - **Context:** each wake-up adds, by estimate, 2,000 to 4,000 tokens to the orchestrator's context. That is about 50,000 to 100,000 over a 12-hour codespace day, which brings on summarisation sooner.
-  - **Tokens:** each wake-up also re-reads the whole context, so it costs far more tokens than the check itself.
+  - **Context (unmeasured guess):** each wake-up adds the check and its reply to the orchestrator's context. At a guessed 2,000 to 4,000 tokens, that is 50,000 to 100,000 over a 12-hour codespace day, which brings on summarisation sooner. The real figure should come from one measured day.
+  - **Tokens:** this is a separate cost from context growth. Each wake-up is a full model call over the current context. Caching may make much of that cheap; how cheap is not known until the usage export is in.
   - **Reliability:** it stops when the session hangs, which is exactly when it is needed.
 - **(B) A plain `factory heartbeat` command run every 30 minutes by a background shell loop, with no AI.** It checks:
   - codespace time left;
@@ -230,7 +232,10 @@ The orchestrator leans to B, because the items fix this feature's own tooling. E
   - CI on open PRs;
   - review branches pushed but not yet picked up (today's 90-minute loss).
 
-  It prints three to five lines and keeps a log. The orchestrator is told only when a line turns red, so the context cost is near zero while everything is fine.
+  It prints three to five lines and keeps a log.
+  - **Alerting:** the loop runs in a background terminal started by the orchestrator. Cursor can watch a background terminal's output for a pattern and notify the orchestrator only when it matches; the pattern would be a red heartbeat line.
+  - **Context cost:** nothing while all lines are green; one short notice per red line.
+  - **Limit:** that notice uses the same delivery path that lost two completion notices today, so the log file and option C are the backstop.
 - **(C) A scheduled GitHub workflow.** It runs even when the codespace is off, and could tell you directly that work has stopped. It cannot see local agents, so it complements B rather than replacing it.
 
 **Orchestrator's lean:** B now, and C for "the codespace stopped" once the factory's GitHub App exists.
