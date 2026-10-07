@@ -19,6 +19,13 @@ Report (JSON `data` on exit 0, `error.details` on exit 1):
 `override` is `{id, actor, reason, verified}` when the outcome is `overridden`.
 Every registered CI gate runs (hook rows, which carry `hook_twin_of`, are not CI gates).
 Under `--pr N`, one commit status `factory/<gate-id>` per gate is posted on the head.
+
+Summary status (T107, governor 2026-10-06, `PLAN_DELTA.md` Round 5): a `--pr` run of every
+CI gate then posts one `factory/gates` status on the head, after every per-gate status. It
+is `success` only when every CI gate in the installed (`main`'s) registry ran and each
+outcome is `pass` or `overridden`; otherwise `failure`, naming the failing gates. A `--gate`
+subset posts no summary (`test_gate_run_pr_posts_one_status_per_gate`); a moved head posts
+nothing (`test_ci_trust_boundary.py::test_moved_head_posts_nothing_and_exits_0`).
 """
 
 from __future__ import annotations
@@ -37,9 +44,10 @@ from factory.api import GateContext, GateResult, PullRequest
 from factory.bus.models import Message
 from factory.cli import exit_codes
 from factory.cli.common import DEPS
-from factory.gates.registry import load_registry
+from factory.gates.evidence import BUNDLE_FILE
+from factory.gates.registry import REGISTRY_PATH, load_registry
 from tests.fixtures.cli_runner import CliResult, FactoryCli
-from tests.fixtures.fake_github import FakeGitHub
+from tests.fixtures.fake_github import FakeGitHub, RecordedStatus
 from tests.fixtures.repo_builder import BaseHeadPair, RepoBuilder, message, order, yaml_text
 
 pytestmark = pytest.mark.contract
@@ -488,6 +496,156 @@ def test_gate_run_pr_posts_failure_and_resolves_order_from_head(
     assert_exit(result, exit_codes.GATE_FAILURE)
     posted = statuses(fake_github, pair.head_sha)
     assert posted[f"factory/{OPEN_OD}"].state == "failure", posted
+
+
+# --- --pr: the `factory/gates` summary status (T107) -----------------------------------------
+
+SUMMARY = "factory/gates"
+
+
+def no_new_tests_evidence(tmp_path: Path, pair: BaseHeadPair) -> Path:
+    """A valid red-first bundle for a head that adds no tests (the trusted judge passes it)."""
+    directory = tmp_path / "evidence"
+    directory.mkdir()
+    bundle = {
+        "schema_version": 1,
+        "kind": "factory-evidence",
+        "base_sha": pair.base_sha,
+        "head_sha": pair.head_sha,
+        "red_first": {"status": "ran", "error": None, "tests": []},
+    }
+    (directory / BUNDLE_FILE).write_text(json.dumps(bundle), encoding="utf-8")
+    return directory
+
+
+def trusted_run(
+    factory_cli: FactoryCli, repo: RepoBuilder, pair: BaseHeadPair, tmp_path: Path
+) -> CliResult:
+    """The trusted job's command: every CI gate, `--pr`, `--expect-head`, `--evidence`."""
+    pr = repo.make_pr(pair.head_branch)
+    return factory_cli(
+        "gate",
+        "run",
+        "--pr",
+        str(pr.number),
+        "--expect-head",
+        pair.head_sha,
+        "--evidence",
+        str(no_new_tests_evidence(tmp_path, pair)),
+        "--json",
+        repo=repo.path,
+    )
+
+
+def summary(github: FakeGitHub, sha: str) -> RecordedStatus:
+    posted = [status for status in github.statuses if status.context == SUMMARY]
+    seen = [(status.context, status.value) for status in github.statuses]
+    assert len(posted) == 1, f"expected one {SUMMARY} status, got {len(posted)}: {seen}"
+    assert posted[0].sha == sha, posted[0].sha
+    return posted[0]
+
+
+def test_gate_run_pr_posts_gates_summary_success_when_every_gate_passes(
+    repo: RepoBuilder,
+    factory_cli: FactoryCli,
+    fake_github: FakeGitHub,
+    identity: FakeIdentity,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    RecordedGates(monkeypatch, failing=set())
+    pair = clean_pair(repo)
+    result = trusted_run(factory_cli, repo, pair, tmp_path)
+    assert_exit(result, exit_codes.OK)
+    assert summary(fake_github, pair.head_sha).value == "success"
+
+
+def test_gate_run_pr_gates_summary_fails_naming_each_failing_gate(
+    repo: RepoBuilder,
+    factory_cli: FactoryCli,
+    fake_github: FakeGitHub,
+    identity: FakeIdentity,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    failing = {IMMUTABLE, second_failing_gate()}
+    RecordedGates(monkeypatch, failing)
+    pair = clean_pair(repo)
+    result = trusted_run(factory_cli, repo, pair, tmp_path)
+    assert_exit(result, exit_codes.GATE_FAILURE)
+    posted = summary(fake_github, pair.head_sha)
+    assert posted.value == "failure", posted.value
+    for gate_id in sorted(failing):
+        assert gate_id in posted.description, posted.description
+    assert "bus.schema" not in posted.description, posted.description
+
+
+def test_gate_run_pr_gates_summary_counts_overridden_as_success(
+    repo: RepoBuilder,
+    factory_cli: FactoryCli,
+    fake_github: FakeGitHub,
+    identity: FakeIdentity,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    RecordedGates(monkeypatch, failing={IMMUTABLE})
+    head: dict[str, str | None] = {
+        f"{ORDER_DIR}/order.yaml": yaml_text(order(ORDER_ID)),
+        **override_files(override(1, IMMUTABLE)),
+    }
+    pair = repo.base_head_pair({}, head, head_branch=f"wo/{ORDER_ID}")
+    result = trusted_run(factory_cli, repo, pair, tmp_path)
+    assert_exit(result, exit_codes.OK)
+    assert entry(report(result), IMMUTABLE)["outcome"] == "overridden"
+    assert summary(fake_github, pair.head_sha).value == "success"
+
+
+def test_gate_run_pr_posts_gates_summary_after_every_gate_status(
+    repo: RepoBuilder,
+    factory_cli: FactoryCli,
+    fake_github: FakeGitHub,
+    identity: FakeIdentity,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    gates = RecordedGates(monkeypatch, failing={IMMUTABLE})
+    pair = clean_pair(repo)
+    trusted_run(factory_cli, repo, pair, tmp_path)
+    summary(fake_github, pair.head_sha)
+    contexts = [status.context for status in fake_github.statuses]
+    assert contexts[-1] == SUMMARY, contexts
+    assert sorted(contexts[:-1]) == sorted(f"factory/{gate_id}" for gate_id in gates.ids)
+
+
+def head_registry_without_immutable() -> str:
+    """The head's registry drops `bus.immutable` and adds a gate `main` does not have."""
+    data = yaml.safe_load(REGISTRY_PATH.read_text(encoding="utf-8"))
+    rows = [row for row in data["gates"] if row["id"] != IMMUTABLE]
+    rows.append({**rows[0], "id": "head-only-gate", "entrypoint": "factory.api:run_gate"})
+    data["gates"] = rows
+    return yaml.safe_dump(data, sort_keys=False)
+
+
+def test_gate_run_pr_gates_summary_follows_the_installed_registry_not_the_head(
+    repo: RepoBuilder,
+    factory_cli: FactoryCli,
+    fake_github: FakeGitHub,
+    identity: FakeIdentity,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    RecordedGates(monkeypatch, failing={IMMUTABLE})
+    head: dict[str, str | None] = {
+        f"{ORDER_DIR}/order.yaml": yaml_text(order(ORDER_ID)),
+        "scripts/factory/gates.yaml": head_registry_without_immutable(),
+    }
+    pair = repo.base_head_pair({}, head, head_branch=f"wo/{ORDER_ID}")
+    result = trusted_run(factory_cli, repo, pair, tmp_path)
+    assert_exit(result, exit_codes.GATE_FAILURE)
+    posted = summary(fake_github, pair.head_sha)
+    assert posted.value == "failure", posted.value
+    assert IMMUTABLE in posted.description, posted.description
+    assert "head-only-gate" not in posted.description, posted.description
 
 
 # --- factory override -----------------------------------------------------------------------
