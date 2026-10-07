@@ -44,10 +44,10 @@ def latest_verdict(record: OrderRecord) -> Verdict | None:
     return verdicts[-1] if verdicts else None
 
 
-def head_catalog_ids(repo: Path, sha: str) -> set[str]:
-    """Row ids of every `acceptance.md` in the tree of `sha` (empty when `sha` is not local)."""
+def head_catalog_ids(repo: Path, sha: str) -> set[str] | None:
+    """Row ids of every `acceptance.md` in the tree of `sha`; None when `sha` is not local."""
     if not git.object_exists(repo, f"{sha}^{{commit}}"):
-        return set()
+        return None
     listing = git.run_git(repo, "ls-tree", "-r", "-z", sha).decode("utf-8", errors="replace")
     ids: set[str] = set()
     for record in listing.split("\0"):
@@ -115,7 +115,8 @@ def derive_order(
     repo: Path | None = None,
 ) -> OrderLifecycle:
     """`repo` is the checkout whose objects hold the PR head; without it no `checks` id is
-    recognised as a catalog row (the row stays unsatisfied)."""
+    recognised as a catalog row (the row stays unsatisfied). With it, a PR head missing
+    from `repo` satisfies no check (catalog-first needs the head tree)."""
     prs = github.list_prs_by_head(record.branch)
     pr = pick_pr(prs)
     claimed = record.one(Claim) is not None
@@ -134,8 +135,10 @@ def derive_order(
             state = OrderState.REJECTED
         else:
             catalog_ids = head_catalog_ids(repo, pr.head_sha) if repo is not None else set()
-            statuses = github.list_commit_statuses(pr.head_sha)
-            green, _ = required_checks_green(record, statuses, catalog_ids)
+            green = False
+            if catalog_ids is not None:
+                statuses = github.list_commit_statuses(pr.head_sha)
+                green, _ = required_checks_green(record, statuses, catalog_ids)
             state = OrderState.ACCEPTED if green else OrderState.IN_REVIEW
     elif claimed:
         state = OrderState.CLAIMED
