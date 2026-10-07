@@ -222,6 +222,22 @@ Asked at T103 step 3, after the probe PR (#26) proved the trust split: 25 truste
 - **Not a re-plan.** D5 topology, D7, D8, P9 pinning and P12 are unchanged; only which contexts are required, and the summary status, change.
 - **`/speckit-analyze`:** not re-run. One task (T107) was added under existing FR-022a / I-P10 coverage; no FR or SC was added or removed.
 
+## Round 6 — pinning `factory/gates` (governor, 2026-10-06 late; corrected the same night)
+
+After T107 merged (`c7fc5ee`), the re-run probe (PR #26, `af72f98`) got `factory/gates` = failure ("1 failed: pr-links-order") from `github-actions`. Then T103 step 3:
+
+- **First attempt.** The governor added "Factory gates": the trusted *job's* check run. It runs on `workflow_run`, so GitHub attaches it to `main`'s head (`c7fc5ee`), never the PR head. Requiring it would block every PR, which is why the plan says it must not be required. Removed.
+- **Second attempt.** "factory gates" (space, not slash) offered only "Any source", because no such context was ever posted. The orchestrator wrongly concluded that commit statuses cannot be source-pinned, and proposed a check-run redesign plus a temporary any-source pin (both approved, then withdrawn). The name never matched, so it was removed unused.
+- **Final.** The governor added `factory/gates` with source **GitHub Actions**, which the ruleset UI offers for this commit status. Read-back of ruleset 24554609: every rule equals `deploy/github/branch-protection.json` (first exact live = snapshot match): active, no bypass, `Factory tests` / `Verify Source / verify` / `factory/gates` all `integration_id` 15368. PR #26 shows `factory/gates` required and failing, so it is blocked. Round 5 and P9 stand unchanged; no check-run change and no deviation.
+
+| Item | Kind | Disposition |
+|------|------|-------------|
+| Confirm a green `factory/gates` from the trusted job satisfies the pin | process check | The first ordinary PR after the freeze must reach a mergeable state on green checks. If it is blocked with every check green, fall back to the check-run design above (summary as a check run with `checks: write`, pinned to GitHub Actions) |
+| Red "Factory gates" on `main`'s commits | Later (process) | When a PR fails its gates, the trusted job's own check run on `main`'s head is red. Decide whether the job should exit 0 after posting (Wave 1 retro) → notes/sprints/2026-10-sprint-02.md |
+| Ruleset UI names | retro (harness UX) | Job names and status contexts look alike ("Factory gates" / `factory/gates`). Governor instructions should give the exact string and say which entry to pick |
+
+- **Freeze.** Lifted once PR #26 closes unmerged. T103 is done apart from the first-green-PR confirmation above.
+
 ## Forbidden (honored)
 
 - No new feature directory solely for OD fills
