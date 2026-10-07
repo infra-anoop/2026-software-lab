@@ -1,0 +1,57 @@
+schema_version: 1
+kind: verdict
+id: wo-20261007-factory-app-setup.verdict-01
+created: 2026-10-07T22:55:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - specs/001-factory-v2/PR_REVIEW_APP_SETUP.md
+  - "independent GitHub App setup review"
+decision: reject
+findings:
+  - id: R-AS1
+    severity: blocker
+    tag: process
+    text: GitHub's exact writable permission label is Read & write, not Read and write.
+  - id: R-AS2
+    severity: blocker
+    tag: process
+    text: Current private-key navigation is Credentials, Key pairs, New key; the recorded credential steps are stale.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: .cursor/skills/lab-kickoff/SKILL.md
+    sha: "1722290"
+  - path: bus/decisions/app-key-delivery/request.yaml
+    sha: "1722290"
+  - path: bus/orders/wo-20261007-factory-app-setup/claim.yaml
+    sha: "1722290"
+  - path: bus/orders/wo-20261007-factory-app-setup/order.yaml
+    sha: "1722290"
+  - path: bus/orders/wo-20261007-factory-users-guide/verdict-02.yaml
+    sha: "1722290"
+  - path: deploy/secrets/schema.yaml
+    sha: "1722290"
+  - path: notes/ops/2026-10-07-github-app-setup.md
+    sha: "1722290"
+  - path: scripts/factory/src/factory/bus/models.py
+    sha: "1722290"
+  - path: scripts/factory/src/factory/cli/orders.py
+    sha: "1722290"
+  - path: scripts/factory/src/factory/config/settings.py
+    sha: "1722290"
+  - path: scripts/factory/src/factory/github/rest.py
+    sha: "1722290"
+  - path: scripts/factory/src/factory/identity/app_token.py
+    sha: "1722290"
+  - path: scripts/factory/src/factory/orders/git.py
+    sha: "1722290"
+  - path: scripts/factory/src/factory/orders/lease.py
+    sha: "1722290"
+  - path: scripts/factory/src/factory/orders/review.py
+    sha: "1722290"
+  - path: specs/001-factory-v2/PR_REVIEW_USERS_GUIDE.md
+    sha: "1722290"
+  - path: specs/001-factory-v2/tasks.md
+    sha: "1722290"
