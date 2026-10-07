@@ -282,6 +282,8 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 
 ## Phase 8: Ops — governor steps for Wave 1 [HITL]
 
+**Moved to Wave 1.5 (governor decision `wave1-scope`, 2026-10-07, option C):** T065, T066 and T066a in this phase, and T068, T069 and T071 in Phase 9 → Phase 9a. They stay unticked here; Wave 1 closes without them.
+
 - [ ] T065 [HITL] Governor creates the GitHub App (repo contents/PRs/checks read-write; **no `statuses: write`**, D8 2026-10-05: only CI posts `factory/*` statuses), installs it on this repo, stores `FACTORY_GITHUB_APP_ID` + `FACTORY_GITHUB_APP_PRIVATE_KEY` in Infisical (names from T037); orchestrator then flips `identity.mode = "verified"` in `factory.toml` — before Phase 9. **Amended 2026-10-06 (governor):** that flip is also what makes `branch-protection-require-pr` require code-owner review, so the same PR updates the snapshot to `require_code_owner_review: true` (and an approving-review count of at least 1) and the governor switches it on in the `main` ruleset
 - [ ] T066 [HITL] Governor sets branch protection on `main`: **require a pull request before merging, with bypass off for everyone including admins** (I-P10), require each `factory/<gate-id>` P1 status + existing checks, require code-owner review; orchestrator snapshots settings to `deploy/github/branch-protection.json`, and gate `branch-protection-require-pr` (slice C, `scripts/factory/src/factory/gates/repo/branch_protection.py`, test first) checks the snapshot holds the expected settings (live drift check is P3 → sprint 03 per D1). **Amended 2026-10-05 (D5, PR-C6):** done as T101, between the Slice B and Slice C merges, as a pre-merge dependency for C. The required checks name each P1 `factory/<gate-id>` context individually, each pinned to GitHub Actions as expected source (P9), plus `Factory tests`. The `factory/*` requirement switches on after C's merge and the probe, per D6 (T103). **Amended 2026-10-06 (governor, verbatim):** "**Mechanism: a repository RULESET** (Settings → Rules), not classic branch protection. The codespace token can read rulesets (`GET /repos/{o}/{r}/rulesets` returns 200) but not classic protection (403)." "**Code-owner review is deferred until the factory's GitHub App (T065) authors PRs.** PRs are authored under the governor's own account today, and GitHub won't let them approve their own PR." "'Require code-owner review' is switched on after T065. This is a governor-approved fidelity deviation; record it as such." The snapshot is the ruleset body; the gate requires code-owner review once `identity.mode = "verified"` (T065). Full text: T101, `wo-20261004-factory-slice-c.amend-07`; delta note: `PLAN_DELTA.md` § Round 4
 - [ ] T066a [US1] After T066: lifecycle (`scripts/factory/src/factory/lifecycle/`) reads the branch's required checks from GitHub branch protection and adds non-factory required check runs to the acceptance set; tests in `scripts/factory/tests/unit/test_lifecycle.py` for a failed required run and a pending required run (both stay `in_review`)
@@ -299,6 +301,20 @@ SC-013: Wave 1 exits by CP2 within 5 working days of the first order; dates come
 - [ ] T071 Verify every Wave 1 PR has a bootstrap verdict (`bootstrap: true`, `manual_equivalents` listed) in its `bus/orders/<id>/verdict-NN.yaml`
 
 **Checkpoint**: Wave 1 exit — SC-013 dates computed by `factory scorecard`.
+
+**Wave 1 close (governor decision `wave1-scope`, 2026-10-07, option C):** for Wave 1, T070 is one governor session (about 1 hour) that picks the Wave 1.5 list from `notes/retro/2026-10-wave1-agenda.md`; failures found there are dispositioned onto that list. SC-012 and SC-013 are waived for Wave 1 by the governor [governor-judged] and carry to Phase 9a with T068, T069 and T071.
+
+---
+
+## Phase 9a: Wave 1.5 — carried from Wave 1 (decision `wave1-scope`)
+
+**Goal**: the work Wave 1 closed without, plus the reliability items the governor picks at the Wave 1 retro. The full list is set in that session.
+
+- T065, T066: the factory GitHub App and code-owner review (verified identity). Governor steps: `notes/ops/2026-10-07-github-app-setup.md`; open decision `app-key-delivery`
+- T066a: the status board reads GitHub's required checks
+- T068, T069: the report-card tool (`factory retro`) → SC-012
+- T071: every Wave 1 change has its review record
+- SC-013: Wave 1 exit dates computed by `factory scorecard`
 
 ---
 

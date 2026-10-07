@@ -1,0 +1,39 @@
+schema_version: 1
+kind: verdict
+id: wo-20261007-factory-wave1-scope.verdict-01
+created: 2026-10-07T23:21:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - specs/001-factory-v2/PR_REVIEW_WAVE1_SCOPE.md
+  - "independent Wave 1 scope review"
+decision: reject
+findings:
+  - id: R-WS1
+    severity: blocker
+    tag: product
+    text: >-
+      The request discloses the report-card evidence waiver but not the
+      separate waiver of computed Wave 1 exit dates. The lock and tasks.md
+      nevertheless record waivers of both SC-012 and SC-013, making the lock
+      broader than the choice presented to the governor. Amend the request to
+      disclose both waivers and their consequences, obtain confirmation, and
+      record that confirmation in the lock.
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: bus/orders/wo-20261007-factory-wave1-scope/order.yaml
+    sha: ce49568
+  - path: bus/orders/wo-20261007-factory-wave1-scope/claim.yaml
+    sha: ce49568
+  - path: bus/decisions/wave1-scope/request.yaml
+    sha: ce49568
+  - path: bus/decisions/wave1-scope/lock.yaml
+    sha: ce49568
+  - path: specs/001-factory-v2/tasks.md
+    sha: ce49568
+  - path: specs/001-factory-v2/spec.md
+    sha: ce49568
+  - path: notes/retro/2026-10-wave1-agenda.md
+    sha: ce49568

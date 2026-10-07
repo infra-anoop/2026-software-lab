@@ -1,0 +1,33 @@
+schema_version: 1
+kind: verdict
+id: wo-20261007-factory-wave1-scope.verdict-02
+created: 2026-10-07T23:29:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - specs/001-factory-v2/PR_REVIEW_WAVE1_SCOPE.md
+  - "independent Wave 1 scope review, round 2"
+decision: accept
+findings: []
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: bus/orders/wo-20261007-factory-wave1-scope/order.yaml
+    sha: df5c7cc
+  - path: bus/orders/wo-20261007-factory-wave1-scope/claim.yaml
+    sha: df5c7cc
+  - path: bus/orders/wo-20261007-factory-wave1-scope/verdict-01.yaml
+    sha: df5c7cc
+  - path: bus/decisions/wave1-scope/request.yaml
+    sha: df5c7cc
+  - path: bus/decisions/wave1-scope/lock.yaml
+    sha: df5c7cc
+  - path: specs/001-factory-v2/PR_REVIEW_WAVE1_SCOPE.md
+    sha: df5c7cc
+  - path: specs/001-factory-v2/tasks.md
+    sha: df5c7cc
+  - path: specs/001-factory-v2/spec.md
+    sha: df5c7cc
+  - path: notes/retro/2026-10-wave1-agenda.md
+    sha: df5c7cc

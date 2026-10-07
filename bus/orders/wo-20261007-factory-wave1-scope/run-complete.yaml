@@ -1,0 +1,13 @@
+schema_version: 1
+kind: run_complete
+id: wo-20261007-factory-wave1-scope.run-complete
+created: '2026-10-07T23:39:54Z'
+actor: worker
+actor_model: claude-opus-5.5
+refs:
+- wo-20261007-factory-wave1-scope
+wall_minutes: 21.4
+governor_interrupts: 0
+cost_usd_estimated: true
+deviations_count: 0
+cost_usd: null

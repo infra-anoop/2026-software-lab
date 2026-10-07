@@ -1,0 +1,20 @@
+schema_version: 1
+kind: decision_lock
+id: wave1-scope.lock
+created: 2026-10-07T23:17:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - bus/decisions/wave1-scope/request.yaml
+  - specs/001-factory-v2/tasks.md
+chosen: "C: Close Wave 1 now: about 1 hour of orchestrator preparation, then a 1-hour session with you to pick the Wave 1.5 list; everything else, including the report card and review-record check, moves to Wave 1.5"
+governor_minutes: 20
+notes: >
+  The governor answered "Lets go with C." in chat at 16:17 PT on 2026-10-07, after asking how much
+  of Wave 1 was left and what the earliest cohesive point was. Recorded by the orchestrator.
+  Includes the governor's waiver, for Wave 1 only, of the report-card success criterion and the
+  computed exit dates; both carry to Wave 1.5 (tasks.md Phase 9a). The request text named only the
+  first waiver when answered; the orchestrator's 16:14 PT chat message, read by the governor before
+  answering, named both ("closing now means waiving both for Wave 1 and moving them to Wave 1.5").
+  The request now states the second waiver too, marked as added after the answer.
