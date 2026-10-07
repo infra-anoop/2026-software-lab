@@ -56,7 +56,30 @@ The recorded-mode legs pass today, which shows the harness works. A throwaway ch
 
 1. Refresh during a long push (token expiring mid-operation), and concurrent refresh, are not pinned.
 2. Helper scoping: the e2e origin is `127.0.0.1`, so a helper scoped to `github.com` would fail the test. Scoping to origin's URL passes.
-3. The observer is Python-level only (triage: no hooks below that). Writes made by a C extension or a child process, `os.system` / `os.posix_spawn`, and a token in a child's environment or on a pipe are not observed. The environment and pipes are the sanctioned channels for an env-fed helper.
+3. The observer is Python-level only (triage: no hooks below that). Process spawns are covered since round 2 (see below). Still not observed: writes made by a C extension, writes made by a child process (for example `git` writing its own config or credential files mid-run; only the final-tree persistence scan sees what remains), and a token in a child's environment or on a pipe. The environment and pipes are the sanctioned channels for an env-fed helper.
+
+## Round 2 resolution
+
+Review: `specs/001-factory-v2/TEST_REVIEW_APP_TOKEN.md` (round 2 rejected; triage at `e0a03cd`). Test changes only; no `src/`. The round 1 rows below still hold, with the round 2 changes on top.
+
+| Finding | Test | What it now pins |
+|---------|------|------------------|
+| T-AT1-R2 (Debate) | **Changed** `test_every_cli_call_site_uses_the_provider_and_push_credentials_of_its_role` | Every command, `gate run` included, must now exit **0**: the `gate run --gate diff-within-owned-paths --pr` leg runs over the staged verdict PR, which stays inside its owned paths, so the gate passes. A new `reads_github` flag requires the command to ask **its own role's** provider at least once: `gate run` must call `DEPS.github` (CI), and `claim`, `pr open` and `bus pr` must call `DEPS.agent_github`. The existing checks stay: a CI command never asks the agent provider, never mints and never pushes. `gate evidence` builds no GitHub adapter, so it carries no `reads_github` |
+| T-AT2-R2 (Blocker) | **Changed harness** `CredentialObserver` in `test_app_token_e2e.py` (used by every e2e test) | Spawns are recorded by one `sys.addaudithook(_spawn_audit)`, registered once per process and routed to the active observer through module-level `_ACTIVE` (monkeypatched per test, so it is a no-op outside the `observer` fixture). It records the command or argv of `os.system`, `os.posix_spawn` (also `os.posix_spawnp`), `os.exec` (the `os.exec*` family) and `subprocess.Popen` (so `run`, `check_output`, `shell=True`). The `subprocess.Popen` subclass wrapper is gone because the hook replaces it. One wrapper stays, on `os._spawnvef`: POSIX `os.spawn*` forks first and audits `os.exec` only in the child, where the parent cannot see it, and the `os.spawn` audit event exists only on Windows. The same `secret_kinds` corpus is checked as before |
+
+Spawn check (throwaway, not committed): with the observer installed, a fake token or a key fragment was passed in the command line of each of these APIs, and each was recorded exactly once with the secret detected (`leaks()` reported all 11, key fragment as `private key`):
+- `os.system`, `os.posix_spawn`, `os.posix_spawnp`;
+- `os.spawnv`, `os.spawnlp`, `os.spawnvpe`;
+- `os.execv` and `os.execvpe` (on a missing path, so the audit fires and then the call raises);
+- `subprocess.run` (list and `shell=True`), `subprocess.check_output`.
+
+**Red output (full suite, this branch): `11 failed, 1056 passed, 7 xfailed`** (the 7 are the known T069/T081 strict xfails). `ruff check` and `ruff format --check` pass. Every failure is an assertion. The call-site table now has 13 problems, all role or credential ones. Every command exits 0, and `gate run` and `gate evidence` are clean:
+- `order issue`, `release`, `handoff` and `verdict` pushed as `['governor']`, not the App.
+- `claim`, `pr open` and `bus pr` asked the CI provider, **never asked the agent provider**, and pushed as `['governor']`.
+
+The other 10 red nodes are unchanged from round 1.
+
+Bounded gaps that remain (see edge case 3): C-level writes, file writes made inside child processes, and env/pipe transport.
 
 ## Round 1 resolution
 

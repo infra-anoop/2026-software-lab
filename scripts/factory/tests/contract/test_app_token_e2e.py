@@ -342,12 +342,46 @@ class _RecordingFile:
         return getattr(self._handle, name)
 
 
+SPAWN_EVENTS = {
+    # audit event -> index of the command or argv in its arguments
+    "os.system": 0,  # (command,)
+    "os.posix_spawn": 1,  # (path, argv, env): posix_spawn and posix_spawnp
+    "os.exec": 1,  # (path, args, env): the os.exec* family
+    "os.spawn": 2,  # (mode, path, args, env): the os.spawn* family
+    "subprocess.Popen": 1,  # (executable, args, cwd, env): run, check_output, ...
+}
+_ACTIVE: list[CredentialObserver] = []
+_HOOKED: list[bool] = []
+
+
+def _command_line(value: Any) -> str:
+    if isinstance(value, str | bytes | os.PathLike):
+        return os.fsdecode(value)
+    return " ".join(os.fsdecode(part) for part in value)
+
+
+def _spawn_audit(event: str, args: tuple[Any, ...]) -> None:
+    """Process-wide audit hook (they cannot be removed): routes spawns to the active
+    observer, if any. Child environments are not recorded (the sanctioned channel)."""
+    index = SPAWN_EVENTS.get(event)
+    if index is None or not _ACTIVE:
+        return
+    try:
+        _ACTIVE[-1].argv.append(f"{event}: {_command_line(args[index])}")
+    except Exception as exc:  # noqa: BLE001 (an audit hook must not break the call)
+        _ACTIVE[-1].argv.append(f"{event}: unrecordable ({exc!r}) {args!r}")
+
+
 class CredentialObserver:
     """What the factory hands the OS, or raises, while the test runs (Python level only):
 
     - payloads written to regular files through `open` / `io.open` (so `Path.write_*`,
       `os.fdopen` and `tempfile` too) and `os.write`, kept even when the file is deleted;
-    - every child-process argv (`subprocess.Popen`, so `run` / `check_output` too);
+    - every child-process command line, through one `sys.addaudithook` for the events in
+      `SPAWN_EVENTS`: `subprocess.Popen` (so `run` / `check_output`), `os.system`,
+      `os.posix_spawn` / `os.posix_spawnp`, and the `os.exec*` / `os.spawn*` families
+      (POSIX `os.spawn*` through a wrapper on `os._spawnvef`, which audits only in the
+      forked child);
     - the exception chain in flight (`repr` + formatted traceback) whenever a command turns
       a failure into a `CommandError`.
 
@@ -368,7 +402,20 @@ class CredentialObserver:
     def _install(self, monkeypatch: pytest.MonkeyPatch) -> None:
         observer = self
         original_open, original_write = io.open, os.write
-        original_popen, original_init = subprocess.Popen, CommandError.__init__
+        original_init = CommandError.__init__
+        if not _HOOKED:
+            sys.addaudithook(_spawn_audit)
+            _HOOKED.append(True)
+        monkeypatch.setattr(sys.modules[__name__], "_ACTIVE", [self])
+        if hasattr(os, "_spawnvef"):
+            # POSIX os.spawn* forks first and audits `os.exec` only in the child.
+            original_spawn = os._spawnvef
+
+            def observed_spawn(mode: int, file: Any, args: Any, *rest: Any) -> Any:
+                observer.argv.append(f"os.spawn: {_command_line([file, *args])}")
+                return original_spawn(mode, file, args, *rest)
+
+            monkeypatch.setattr(os, "_spawnvef", observed_spawn)
 
         def observed_open(file: Any, mode: str = "r", *args: Any, **kwargs: Any) -> Any:
             handle = original_open(file, mode, *args, **kwargs)
@@ -382,14 +429,6 @@ class CredentialObserver:
                 observer._record(_fd_name(fd), data)
             return original_write(fd, data)
 
-        class ObservedPopen(original_popen):  # type: ignore[misc, valid-type]
-            def __init__(self, args: Any, *rest: Any, **kwargs: Any) -> None:
-                if not isinstance(args, str | bytes | os.PathLike):
-                    args = list(args)
-                listed = args if isinstance(args, list) else [args]
-                observer.argv.append(" ".join(os.fsdecode(part) for part in listed))
-                super().__init__(args, *rest, **kwargs)
-
         def observed_init(error: CommandError, *args: Any, **kwargs: Any) -> None:
             current = sys.exc_info()[1]
             if current is not None:
@@ -400,7 +439,6 @@ class CredentialObserver:
         monkeypatch.setattr(builtins, "open", observed_open)
         monkeypatch.setattr(io, "open", observed_open)
         monkeypatch.setattr(os, "write", observed_write)
-        monkeypatch.setattr(subprocess, "Popen", ObservedPopen)
         monkeypatch.setattr(CommandError, "__init__", observed_init)
 
     def leaks(self, tokens: Iterable[str]) -> dict[str, list[str]]:
@@ -567,7 +605,7 @@ class Command:
     role: str
     pushes: bool
     branch: str = "main"
-    ok: frozenset[int] = frozenset({exit_codes.OK})
+    reads_github: bool = False
 
 
 def _reviewable(repo: RepoBuilder, slug: str) -> str:
@@ -622,22 +660,22 @@ def _stage_every_command(repo: RepoBuilder, tmp_path: Path) -> list[Command]:
     model = ("--actor-model", "claude-opus-5.5")
     return [
         Command(("order", "issue", issue_id), AGENT, pushes=True),
-        Command(("claim", claim_id, *model), AGENT, pushes=True),
+        Command(("claim", claim_id, *model), AGENT, pushes=True, reads_github=True),
         Command(("release", release_id, "--reason", "abandoned", *model), AGENT, pushes=True),
         Command(("handoff", handoff_id), AGENT, pushes=True, branch=f"wo/{handoff_id}"),
-        Command(("pr", "open", pr_id), AGENT, pushes=True, branch=f"wo/{pr_id}"),
+        Command(("pr", "open", pr_id), AGENT, pushes=True, branch=f"wo/{pr_id}", reads_github=True),
         Command(
             ("verdict", verdict_id, "--file", str(verdict)),
             AGENT,
             pushes=True,
             branch=f"wo/{verdict_id}",
         ),
-        Command(("bus", "pr", "--message", decision), AGENT, pushes=True),
+        Command(("bus", "pr", "--message", decision), AGENT, pushes=True, reads_github=True),
         Command(
             ("gate", "run", "--gate", "diff-within-owned-paths", "--pr", str(gated.number)),
             CI,
             pushes=False,
-            ok=frozenset({exit_codes.OK, exit_codes.GATE_FAILURE}),
+            reads_github=True,
         ),
         Command(
             ("gate", "evidence", "--base", "main", "--head", "main", "--out", str(tmp_path / "ev")),
@@ -659,7 +697,9 @@ def test_every_cli_call_site_uses_the_provider_and_push_credentials_of_its_role(
     claim, release, handoff, pr open, verdict, bus pr) never ask `DEPS.github`, and each
     push authenticates as the App, never with ambient git credentials. The trusted CI
     commands (`gate run`, `gate evidence`) never ask `DEPS.agent_github`, never mint and
-    never push."""
+    never push. Every command exits 0 (`gate run` over a passing gate), and each one that
+    reads GitHub asks its own role's provider at least once, so no leg passes by failing
+    before it reaches GitHub. `gate evidence` builds no GitHub adapter at all."""
     caplog.set_level(logging.DEBUG)
     repo = RepoBuilder(isolated_git / "fixture", github=fake_github, concurrency_cap=10)
     commands = _stage_every_command(repo, isolated_git)
@@ -678,11 +718,13 @@ def test_every_cli_call_site_uses_the_provider_and_push_credentials_of_its_role(
             minted = len(app.mints)
             result = factory_cli(*command.argv, repo=repo.path)
             outputs[f"{name} output"] = result.stdout + result.stderr
-            if result.exit_code not in command.ok:
+            if result.exit_code != exit_codes.OK:
                 problems.append(f"{name}: exit {result.exit_code}: {result.stderr.strip()[:300]}")
             wrong = CI if command.role == AGENT else AGENT
             if wrong in providers.calls:
                 problems.append(f"{name}: asked the {wrong} provider")
+            if command.reads_github and command.role not in providers.calls:
+                problems.append(f"{name}: never asked the {command.role} provider")
             if command.role == CI and len(app.mints) > minted:
                 problems.append(f"{name}: minted an App token")
             pushed_as = sorted({user for user, _ in origin.presented})
