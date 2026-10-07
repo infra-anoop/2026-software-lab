@@ -19,3 +19,9 @@
 - The diff is within amendment-02 owned paths, and `tasks.md` is unchanged.
 - Required suite: `1065 passed, 7 xfailed`.
 - Required gates: `24 passed`; only `pr-links-order` failed because the review branch is not a `wo/<order-id>` branch, the permitted review-branch exception.
+
+## Triage (orchestrator, round 1)
+
+| id | Ruling | Fix required |
+|----|--------|--------------|
+| R-LC1 (Blocker) | Accept. Tagged product, but it applies the order's own fail-closed rule (amendment-01 ruling 3: rows are judged at the head) and chooses no new behaviour, so the orchestrator adjudicates it. Without the head tree the derivation cannot know whether a registered gate id is a head catalog row, so no order may be accepted from statuses alone | Red regression first: an accepting gate-only order with green statuses whose head commit is absent stays in review. Then make a readable PR-head commit a prerequisite for check satisfaction |
