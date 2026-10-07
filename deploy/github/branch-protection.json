@@ -35,31 +35,7 @@
         "required_status_checks": [
           {"context": "Factory tests", "integration_id": 15368},
           {"context": "Verify Source / verify", "integration_id": 15368},
-          {"context": "factory/bus.schema", "integration_id": 15368},
-          {"context": "factory/bus.immutable", "integration_id": 15368},
-          {"context": "factory/bus.no-handwritten-status", "integration_id": 15368},
-          {"context": "factory/factory-check-intent", "integration_id": 15368},
-          {"context": "factory/red-first-proof", "integration_id": 15368},
-          {"context": "factory/test-seam-ban", "integration_id": 15368},
-          {"context": "factory/diff-within-owned-paths", "integration_id": 15368},
-          {"context": "factory/deferral-words-need-od", "integration_id": 15368},
-          {"context": "factory/order-fidelity-declared", "integration_id": 15368},
-          {"context": "factory/lock.letter-tokens", "integration_id": 15368},
-          {"context": "factory/decision-request-no-ids", "integration_id": 15368},
-          {"context": "factory/catalog-test-linkage", "integration_id": 15368},
-          {"context": "factory/pr-links-order", "integration_id": 15368},
-          {"context": "factory/order-blocked-on-open-human-od", "integration_id": 15368},
-          {"context": "factory/spawn-concurrency-cap", "integration_id": 15368},
-          {"context": "factory/verdict.reviewer-family-differs", "integration_id": 15368},
-          {"context": "factory/verdict.inputs-isolated", "integration_id": 15368},
-          {"context": "factory/message.override", "integration_id": 15368},
-          {"context": "factory/gate.fail-mode-category", "integration_id": 15368},
-          {"context": "factory/hook-has-ci-twin", "integration_id": 15368},
-          {"context": "factory/factory-status-test", "integration_id": 15368},
-          {"context": "factory/branch-protection-require-pr", "integration_id": 15368},
-          {"context": "factory/validate-secrets-schema", "integration_id": 15368},
-          {"context": "factory/validate-deploy-env", "integration_id": 15368},
-          {"context": "factory/uv-sync-locked", "integration_id": 15368}
+          {"context": "factory/gates", "integration_id": 15368}
         ]
       }
     }

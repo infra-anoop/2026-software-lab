@@ -1,0 +1,64 @@
+# FR-037 bootstrap order for T107 (governor 2026-10-06, PLAN_DELTA.md Round 5), written by
+# the orchestrator as the first commit of wo/wo-20261006-factory-gates-summary (from
+# origin/main ac60d43, Slice C merged). Same shape as bus/orders/wo-20261006-factory-status-test/.
+# Known bootstrap distortion: size_minutes is the dispatch timebox (60), an estimate.
+# This order merges during the D6 freeze on governor approval (PLAN_DELTA.md Round 5).
+schema_version: 1
+kind: order
+id: wo-20261006-factory-gates-summary
+created: 2026-10-07T02:27:19Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - specs/001-factory-v2/tasks.md
+  - specs/001-factory-v2/PLAN_DELTA.md
+  - "FR-037 bootstrap: T107 dispatched as its own small order after Slice C merged (ac60d43)"
+  - "FR-037 bootstrap: size_minutes is the 60-minute dispatch timebox, an estimate within the horizon"
+feature: 001-factory-v2
+goal: Build the factory/gates summary status test first, so the main ruleset requires one trusted context (D6 as amended) and adding or renaming a gate needs no ruleset edit.
+intents: [I-P10, I-P9]
+owned_paths:
+  - "scripts/factory/src/factory/cli/gates.py"
+  - "scripts/factory/src/factory/gates/runner.py"
+  - "scripts/factory/src/factory/gates/repo/branch_protection.py"
+  - "scripts/factory/tests/contract/test_gate_run.py"
+  - "scripts/factory/tests/unit/gates/test_registry_checks.py"
+  - "scripts/factory/tests/unit/gates/test_runner.py"
+  - "scripts/factory/tests/fixtures/fake_github.py"
+  - "deploy/github/branch-protection.json"
+  - "specs/001-factory-v2/contracts/gates.md"
+  - "specs/001-factory-v2/acceptance.md"
+  - "specs/001-factory-v2/tasks.md"
+  - "specs/001-factory-v2/plan.md"
+  - "specs/001-factory-v2/PLAN_DELTA.md"
+  - "specs/001-factory-v2/TEST_REVIEW_GATES_SUMMARY.md"
+  - "specs/001-factory-v2/PR_REVIEW_GATES_SUMMARY.md"
+  - "bus/orders/wo-20261006-factory-gates-summary/**"
+  - "notes/packets/2026-10-06-factory-gates-summary.handoff.md"
+checks:
+  - red-first-proof
+  - test-seam-ban
+  - catalog-test-linkage
+  - diff-within-owned-paths
+  - pr-links-order
+  - order-fidelity-declared
+  - lock.letter-tokens
+  - verdict.reviewer-family-differs
+  - verdict.inputs-isolated
+  - bus.schema
+  - branch-protection-require-pr
+locks:
+  - id: D6
+    letter_tokens: ["factory/gates"]
+    fidelity: letter
+size_minutes: 60
+stop_conditions:
+  - Any edit needed outside Owned paths
+  - A frozen interface (factory.api, bus models, lifecycle) is insufficient
+  - A test cannot be made red by a real assertion
+  - The summary would need the head's registry or head code
+  - Any GitHub settings or ruleset change (the governor does those)
+depends_on_decisions: []
+tasks: [T107]
+worker_runtime: local_subagent

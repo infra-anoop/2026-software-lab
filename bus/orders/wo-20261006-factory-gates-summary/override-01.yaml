@@ -1,0 +1,15 @@
+schema_version: 1
+kind: override
+id: wo-20261006-factory-gates-summary.override-01
+created: '2026-10-07T05:21:47Z'
+actor: orchestrator
+actor_model: claude-opus-5.5
+gate: deferral-words-need-od
+pr: 27
+reason: 'Flagged line is a recorded review finding in specs/001-factory-v2/PR_REVIEW_GATES_SUMMARY.md
+  restating Later items already pointed to in PLAN_DELTA.md Round 5 and the handoff
+  packet; rewording it would alter the review record. Later: the gate should skip
+  review records (owner Slice B, Wave 1 retro), as for Slice C override-01.'
+gate_class: drift
+refs:
+- wo-20261006-factory-gates-summary

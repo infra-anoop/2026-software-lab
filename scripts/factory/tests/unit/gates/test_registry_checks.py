@@ -17,7 +17,8 @@ REST "get a repository ruleset" body for the ruleset protecting `main` (governor
 branch ruleset applying to `main` (`~DEFAULT_BRANCH`, as live, or `refs/heads/main`) with
 an empty bypass list and the rules
 `pull_request`, `required_status_checks`, `non_fast_forward` and `deletion`. The required
-checks hold a `factory/<gate-id>` context for every P1 CI gate in the registry, and every
+checks hold the summary context `factory/gates` (T107, governor 2026-10-06, `PLAN_DELTA.md`
+Round 5), not one `factory/<gate-id>` context per P1 CI gate, and every
 entry has `integration_id` equal to typed config `github.actions_app_id`, the GitHub
 Actions integration (delta P* P9, T094): an entry without a source, with `-1` (any source)
 or with another app's id fails. Code-owner review is required only once `identity.mode` is
@@ -36,7 +37,7 @@ import yaml
 from factory.api import GateContext
 from factory.cli import exit_codes
 from factory.config.settings import GitHubConfig
-from factory.gates.registry import REGISTRY_PATH, load_registry
+from factory.gates.registry import REGISTRY_PATH
 from tests.fixtures.cli_runner import FactoryCli
 from tests.fixtures.repo_builder import LAB_VALIDATORS, REPO_ROOT, RepoBuilder
 from tests.unit.gates.pr.helpers import assert_blocks, assert_passes, raw_context
@@ -269,12 +270,12 @@ def test_check_hooks_cli_passes_on_twinned_hook(repo: RepoBuilder, factory_cli: 
 # --- branch-protection-require-pr ---------------------------------------------------------
 
 
+SUMMARY = "factory/gates"
+
+
 def required_contexts() -> list[str]:
-    return [
-        f"factory/{gate.id}"
-        for gate in load_registry().gates
-        if gate.priority == "P1" and gate.hook_twin_of is None
-    ]
+    """The T107 target: the two workflow checks and the one `factory/gates` summary."""
+    return ["Factory tests", "Verify Source / verify", SUMMARY]
 
 
 def actions_app_id() -> int:
@@ -462,16 +463,16 @@ def test_branch_protection_passes_with_code_owner_review_once_identity_verified(
     assert_passes("branch-protection-require-pr", protection_ctx(verified_repo(tmp_path), body))
 
 
-def test_branch_protection_blocks_missing_required_gate_status(repo: RepoBuilder) -> None:
-    contexts = [c for c in required_contexts() if c != "factory/bus.immutable"]
+def test_branch_protection_blocks_without_the_gates_summary_status(repo: RepoBuilder) -> None:
+    contexts = [c for c in required_contexts() if c != SUMMARY]
     body = with_rule(snapshot(), pinned(contexts))
     ctx = protection_ctx(repo, body)
-    assert_blocks("branch-protection-require-pr", ctx, "factory/bus.immutable")
+    assert_blocks("branch-protection-require-pr", ctx, SUMMARY)
 
 
-# P9: every required `factory/*` context names the GitHub Actions integration as source.
+# P9: every required context names the GitHub Actions integration as source.
 
-UNPINNED = "factory/bus.immutable"
+UNPINNED = SUMMARY
 
 
 def unpin(body: dict[str, Any], **check: Any) -> dict[str, Any]:

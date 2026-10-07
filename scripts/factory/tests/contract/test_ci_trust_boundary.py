@@ -1230,7 +1230,8 @@ def test_ci_mode_runs_main_registry_whatever_the_head_registry_says(
     assert any(merged in line for line in immutable.get("messages", [])), immutable
     assert {context for _, context in statuses(fake_github)} == {
         f"factory/{gate}" for gate in installed_ci_gates()
-    }
+    } | {"factory/gates"}
+    assert statuses(fake_github)[(pair.head_sha, "factory/gates")].value == "failure"
 
 
 def test_ci_mode_still_validates_the_head_registry_as_data(

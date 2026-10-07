@@ -1,0 +1,43 @@
+schema_version: 1
+kind: verdict
+id: wo-20261006-factory-gates-summary.verdict-02
+created: 2026-10-07T04:31:08Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - specs/001-factory-v2/TEST_REVIEW_GATES_SUMMARY.md
+  - notes/packets/2026-10-06-factory-gates-summary.handoff.md
+  - "review-time: 2026-10-07T03:24:00Z (round 2)"
+decision: accept
+findings: []
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: bus/orders/wo-20261006-factory-gates-summary/order.yaml
+    sha: bd1a2f8
+  - path: specs/001-factory-v2/PLAN_DELTA.md
+    sha: bd1a2f8
+  - path: specs/001-factory-v2/tasks.md
+    sha: bd1a2f8
+  - path: notes/packets/2026-10-06-factory-gates-summary.handoff.md
+    sha: bd1a2f8
+  - path: specs/001-factory-v2/TEST_REVIEW_GATES_SUMMARY.md
+    sha: bd1a2f8
+  - path: scripts/factory/tests/contract/test_gate_run.py
+    sha: bd1a2f8
+  - path: scripts/factory/tests/unit/gates/test_registry_checks.py
+    sha: bd1a2f8
+  - path: scripts/factory/src/factory/cli/gates.py
+    sha: bd1a2f8
+  - path: scripts/factory/src/factory/gates/runner.py
+    sha: bd1a2f8
+  - path: scripts/factory/src/factory/gates/repo/branch_protection.py
+    sha: bd1a2f8
+bootstrap: true
+manual_equivalents:
+  - "red-first: revised focused suite reproduced 15 assertion failures and 76 passes with no collection error"
+  - "T-GS1: explicit --gate for every installed gate reaches the CLI and requires exactly per-gate statuses with no summary"
+  - "T-GS2: the wrapped report omitted factory/bus.schema before the real CLI posting loop, proving the missing-gate seam is live"
+  - "T-GS3: the exact summary_status helper requirement was removed; missing-gate and description-limit behavior now use the CLI path"
+  - "round budget: round 2 normal bar found no new blocker, debate, later, or nit"

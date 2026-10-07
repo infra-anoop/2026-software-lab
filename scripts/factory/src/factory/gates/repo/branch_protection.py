@@ -5,9 +5,12 @@ for the ruleset protecting `main` (governor 2026-10-06: a repository ruleset, no
 branch protection). At head it must be an active branch ruleset that applies to `main`
 (`refs/heads/main`, `~DEFAULT_BRANCH` or `~ALL`, and not excluded), with no bypass actors
 and the rules `pull_request`, `required_status_checks`, `non_fast_forward` and `deletion`.
-The required checks hold a `factory/<gate-id>` context for every P1 CI gate in the head
-registry, and every entry is pinned to the GitHub Actions app (`integration_id` equal to
-typed config `github.actions_app_id`), so no other identity can satisfy it (P9).
+The required checks hold the summary context `factory/gates`, and every entry is pinned to
+the GitHub Actions app (`integration_id` equal to typed config `github.actions_app_id`), so
+no other identity can satisfy it (P9). Amended 2026-10-06 (governor, `PLAN_DELTA.md`
+Round 5, T107): `factory/gates` replaces one required `factory/<gate-id>` context per P1
+gate, so adding or renaming a gate needs no ruleset edit. The head registry must still be
+readable (fail closed), though it no longer names the required contexts.
 
 Code-owner review is required only once `identity.mode` is `verified` (T065): until the
 factory's App authors PRs, they are the governor's own and GitHub does not let an author
@@ -22,6 +25,7 @@ from typing import Any
 from factory.api import GateContext, GateResult
 from factory.gates.repo._git import failed, outcome, show
 from factory.gates.repo.fail_mode import head_registry
+from factory.gates.runner import SUMMARY_CONTEXT
 
 GATE_ID = "branch-protection-require-pr"
 SNAPSHOT_FILE = "deploy/github/branch-protection.json"
@@ -123,14 +127,9 @@ def run(ctx: GateContext) -> GateResult:
         body: Any = json.loads(text)
     except ValueError as exc:
         return failed(GATE_ID, [f"{SNAPSHOT_FILE}: unreadable JSON ({exc})"])
-    required = [
-        f"factory/{gate.id}"
-        for gate in gates
-        if gate.priority == "P1" and gate.hook_twin_of is None
-    ]
     problems = snapshot_problems(
         body,
-        required,
+        [SUMMARY_CONTEXT],
         ctx.config.github.actions_app_id,
         code_owner_review=ctx.config.identity.mode == "verified",
     )
