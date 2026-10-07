@@ -123,7 +123,7 @@ Fixes already in place: push after every green step; never resume a suspected ha
 | Briefs left out the record steps (claim, verdict, handoff) | Fixed, PR #29 |
 | Look-alike names in GitHub screens | Fixed in the briefs, PR #29 |
 | The orchestrator edited files in the main checkout before branching (caught before any commit), and once captured the Nix banner as a commit id (the merge call failed safely) | Retro: a pre-edit guard for the primary checkout; never capture `nix develop` output |
-| `factory handoff` ignores recorded overrides while CI honors them | Backlog: align them |
+| `factory handoff` ignores recorded overrides while CI honors them. It happened again on 10-07: the App token PR merged on green CI without a run-complete record | Backlog: align them |
 | Workflows were invalid for a day (job-level `runner` context) and nothing caught it | Fixed with a regression test; backlog: add `actionlint` to CI |
 | The plan said "Factory tests stays red" after the ruleset made it required | Fixed (strict xfail); retro: cross-check plan text against settings decisions |
 | The deferral gate flags quoted governor text and review records | Overridden 3 times; backlog: skip review records |
@@ -135,8 +135,9 @@ Fixes already in place: push after every green step; never resume a suspected ha
 | Four orders this morning all listed `tasks.md`, so the overlap check (correctly) let only one claim | Retro: only orchestrator record orders own `tasks.md`; workers report completion in their handoff |
 | 30 remote branches already merged into `581ed18` (`git branch -r --merged 581ed18`) are still kept | Housekeeping order |
 | `gates/evidence.py` duplicates four helpers from `red_first.py` | Backlog |
-| 10-07: two reviewers finished at about 11:50 PT, but their completion notices never reached the orchestrator. Nothing moved for about 90 minutes, until you asked "still working?" | Interim: the orchestrator checks review branches in git after about 30 quiet minutes. Wave 1.5 candidate: the heartbeat (section 17) |
-| 10-07: a command mixing a file append with `git commit` ran inside the sandbox, which ignored the chosen worktree, so it committed on the primary checkout's local `main`. The push was refused, so nothing reached GitHub; the commit was removed | Interim: git commands run on their own, file edits use the editor tools. Wave 1.5 candidate: a guard that refuses commits on the primary checkout |
+| 10-07: two reviewers finished at about 11:50 PT, but their completion notices never reached the orchestrator. Nothing moved for about 90 minutes, until you asked "still working?" Four notices were lost that day in total | Interim: the orchestrator checks review branches in git after about 30 quiet minutes. Wave 1.5 candidate: the heartbeat (section 17) |
+| 10-07: a command mixing a file append with `git commit` ran inside the sandbox, which ignored the chosen worktree, so it committed on the primary checkout's local `main`. The push was refused, so nothing reached GitHub; the commit was removed. It happened a second time that afternoon (four commits, pushes again refused, again removed) | Interim: git commands run on their own, file edits use the editor tools. Wave 1.5 candidate: a guard that refuses commits on the primary checkout |
+| 10-07: no check requires the reviewer to have said "accept". The verdict checks look only at the latest verdict's reviewer family and inputs, so a PR whose reviewer said "reject" can pass CI. Only the orchestrator's own discipline stops that merge | Wave 1.5 candidate: a check that the latest verdict is `accept`. It is a rule path, so it needs your approval |
 
 Earlier Later items (Slice A–C PR reviews: evidence `base_sha` binding, producer checkout origin, Nix fallback output, indexed `secrets['NAME']` detection, git read timeouts and bus blob size bounds, suite-wide timeout policy) are recorded in their review files and orders. They move into the backlog file at grooming (G1).
 
@@ -280,3 +281,13 @@ Today's stop therefore fits the 30-minute idle timeout, not a fixed 12-hour limi
   This reuses the claim, verdict, handoff and run-complete records. It adds a per-agent start commit, a deadline and an acknowledgement: the orchestrator records that it picked up each finished push.
 
 **Wave 1.5 candidates from this item:** the root-cause check (a), a raised idle timeout if (a) supports it, the git handshake (e), and a cloud-agent pilot (b).
+
+## 19. Open questions from the user's guide
+
+`docs/factory/USERS_GUIDE.md` ends with five questions where practice and the written rules disagree, or where no rule exists yet. Each needs your answer at the retro:
+
+1. "Defer test cases, never bugs" is how the third test-review round works in practice, but the constitution does not say it. Should it be written in? This overlaps with item 9.
+2. When a reviewer tags a debate "product", may the orchestrator re-tag it "process" and settle it, as long as it tells you in the pull request?
+3. A worker's finishing steps actually run in this order: write the handoff file, get the review, then run `factory handoff`. No document says so. Should the spawn instructions state it?
+4. The constitution describes work units as packets and never mentions orders or the bus. Should that wait for the constitution rewrite in Wave 2, or be patched sooner?
+5. Should every governor decision now go through a decision request on the bus, as they have since 10-07?
