@@ -1,0 +1,59 @@
+# FR-037 bootstrap order for T036b, written by the orchestrator as the first commit of
+# wo/wo-20261007-factory-app-token (from origin/main 581ed18). Same shape as
+# bus/orders/wo-20261006-factory-gates-summary/. T036b must land before T065 flips
+# identity.mode = "verified" (tasks.md Phase 8 note).
+# Known bootstrap distortion: size_minutes is the dispatch timebox (90), an estimate.
+schema_version: 1
+kind: order
+id: wo-20261007-factory-app-token
+created: 2026-10-07T16:00:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - specs/001-factory-v2/tasks.md
+  - "FR-037 bootstrap: T036b dispatched as its own order after Slice C merged"
+  - "FR-037 bootstrap: size_minutes is the 90-minute dispatch timebox, an estimate within the horizon"
+feature: 001-factory-v2
+goal: Wire the GitHub App installation token into the git credential helper and the REST client, test first, so that after the governor creates the App (T065) every factory push and API call runs as the App and the token never reaches a log, file or exception.
+intents: [I-O2, I-A4]
+owned_paths:
+  - "scripts/factory/src/factory/identity/**"
+  - "scripts/factory/src/factory/github/rest.py"
+  - "scripts/factory/src/factory/orders/**"
+  - "scripts/factory/src/factory/config/settings.py"
+  - "scripts/factory/factory.toml"
+  - "scripts/factory/tests/unit/test_identity.py"
+  - "scripts/factory/tests/unit/test_github_adapter.py"
+  - "scripts/factory/tests/unit/test_settings.py"
+  - "scripts/factory/tests/contract/test_app_token_e2e.py"
+  - "scripts/factory/tests/fixtures/github_recorded/**"
+  - "scripts/factory/tests/fixtures/fake_github.py"
+  - "specs/001-factory-v2/tasks.md"
+  - "specs/001-factory-v2/TEST_REVIEW_APP_TOKEN.md"
+  - "specs/001-factory-v2/PR_REVIEW_APP_TOKEN.md"
+  - "bus/orders/wo-20261007-factory-app-token/**"
+  - "notes/packets/2026-10-07-factory-app-token.handoff.md"
+checks:
+  - red-first-proof
+  - test-seam-ban
+  - catalog-test-linkage
+  - diff-within-owned-paths
+  - pr-links-order
+  - order-fidelity-declared
+  - lock.letter-tokens
+  - verdict.reviewer-family-differs
+  - verdict.inputs-isolated
+  - bus.schema
+locks: []
+size_minutes: 90
+stop_conditions:
+  - Any edit needed outside Owned paths
+  - A frozen interface (factory.api, bus models, lifecycle) is insufficient
+  - A typed config change beyond adding the installation id field (and its factory.toml entry)
+  - A test cannot be made red by a real assertion
+  - Any step that needs a real App, a real private key or a live GitHub call (the governor creates the App in T065)
+  - Flipping identity.mode to "verified" (T065 does that)
+depends_on_decisions: []
+tasks: [T036b]
+worker_runtime: local_subagent
