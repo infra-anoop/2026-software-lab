@@ -20,10 +20,10 @@ Prepared by the orchestrator on 2026-10-07, after PR #33 merged the code that us
 
    | Permission | Set to |
    |---|---|
-   | **Checks** | Read and write |
-   | **Contents** | Read and write |
+   | **Checks** | Read & write |
+   | **Contents** | Read & write |
    | **Metadata** | Read-only (GitHub sets this itself) |
-   | **Pull requests** | Read and write |
+   | **Pull requests** | Read & write |
    | **Commit statuses** | **No access** (leave it) |
    | **Workflows** | **No access** (leave it) |
    | everything else | No access |
@@ -34,8 +34,8 @@ Prepared by the orchestrator on 2026-10-07, after PR #33 merged the code that us
    With **Workflows** at No access, the App cannot push changes to files under `.github/workflows/`. Those files are already yours to approve (they are rule paths), and a factory change to them will need a push by you.
 8. **Where can this GitHub App be installed?:** choose **Only on this account**.
 9. Click **Create GitHub App**.
-10. On the page that opens, near the top under **About**, note the **App ID** (a number).
-11. Scroll down to **Private keys** and click **Generate a private key**. A file ending in `.pem` downloads. Keep it out of the repo and out of the chat.
+10. On the App's settings page that opens, note the number next to **App ID**.
+11. In the left sidebar, click **Credentials**, then **Key pairs**, then click **New key**. A file ending in `.pem` downloads. Keep it out of the repo and out of the chat.
 
 ## Part 2: install it on this repo
 

@@ -19,3 +19,10 @@
 - The decision request validates, uses plain language, recommends an exact option label, and fairly explains that automated Infisical access still needs a codespace-delivered credential.
 - GitHub documents that a newly added Codespaces secret reaches an existing codespace after it is stopped and restarted: https://docs.github.com/en/codespaces/managing-your-codespaces/managing-your-account-specific-secrets-for-github-codespaces
 - Requiring one approving review plus code-owner review matches the T065 amendment.
+
+## Orchestrator triage (round 1)
+
+| id | disposition | change |
+|----|-------------|--------|
+| R-AS1 | Accepted; confirmed against the registering-a-github-app page | Step 7 table: **Read & write** for Checks, Contents and Pull requests |
+| R-AS2 | Accepted; confirmed against the managing-private-keys page | Step 10: the number next to **App ID**; step 11: **Credentials** → **Key pairs** → **New key** |
