@@ -58,6 +58,32 @@ The recorded-mode legs pass today, which shows the harness works. A throwaway ch
 2. Helper scoping: the e2e origin is `127.0.0.1`, so a helper scoped to `github.com` would fail the test. Scoping to origin's URL passes.
 3. The observer is Python-level only (triage: no hooks below that). Process spawns are covered since round 2 (see below). Still not observed: writes made by a C extension, writes made by a child process (for example `git` writing its own config or credential files mid-run; only the final-tree persistence scan sees what remains), and a token in a child's environment or on a pipe. The environment and pipes are the sanctioned channels for an env-fed helper.
 
+## PR review round 1 resolution (R-AT1)
+
+Review: `specs/001-factory-v2/PR_REVIEW_APP_TOKEN.md` (verdict-04 rejected; triage at `b16ecd8`). The reviewer accepted the three deviations, the two-token mint and both overrides, so the earlier handoff open questions are answered and the handoff now lists none.
+
+**Finding.** A 200 lookup or 201 mint whose body was malformed escaped as `KeyError`, a JSON decode error or `ValueError`, so the CLI did not exit 4. An invalid `expires_at` was also copied into the `ValueError` text.
+
+**Red tests** (`d978268`, test files only). One 11-row table, `MALFORMED` in `tests/unit/test_github_adapter.py`, covers both endpoints:
+- lookup: empty body, invalid JSON, missing `id`, wrong-typed `id`;
+- mint: empty body, invalid JSON, missing `token`, wrong-typed `token`, missing `expires_at`, wrong-typed `expires_at`, and a token-shaped invalid `expires_at`.
+
+Every body that can carry content carries `MALFORMED_CANARY`. `RecordedApp` gains `lookup_body` / `mint_body` to serve them. The table runs through two tests:
+- `test_malformed_app_response_is_an_app_token_error_that_discloses_nothing[case]` (unit): `InstallationTokenSource.token()` must raise exactly `AppTokenError` with `__cause__ is None` and the context suppressed. The agent adapter's `get_pr` must raise `GitHubError` caused by it. The canary, the token, the App JWTs and the key must be absent from both exception chains, the logs and the output.
+- `test_verified_push_after_a_malformed_app_response_exits_4_and_discloses_nothing[case]` (CLI, `factory claim` in verified mode): no exception may escape, the exit must be 4, and there is no push and no GITHUB_TOKEN. The `CredentialObserver` corpus plus the canary must not appear in writes, argv, the exception chain, the output, the logs or files.
+
+Red output at `d978268`: **22 failed, all on assertions.** In 18 nodes `JSONDecodeError`, `KeyError` or `ValueError` escaped. In the other 4, a wrong-typed `id` or `token` was accepted (the CLI pushed `"['ghs_…']"` as the password).
+
+**Fix** (`d55f6f3`, `identity/app_token.py` only). The lookup and mint bodies are decoded inside the App-token boundary:
+- the body must be a JSON object;
+- the installation `id` must be a positive integer (not a bool);
+- the `token` must be a non-empty string of printable non-space ASCII, since it goes into an HTTP header and a credential-helper line;
+- `expires_at` must be an ISO 8601 timestamp with a zone.
+
+Every other shape raises a fixed `AppTokenError` (`from None`) that names the field but never its value. The REST path wraps it in `GitHubError` and the git path in `External`, so both exit 4.
+
+**Results.** Full suite **1092 passed, 7 xfailed**. `ruff check` and `ruff format --check` pass. `factory gate run --base origin/main --head HEAD` at `d55f6f3` (base `a7f4373`): **24 passed, 1 overridden (`deferral-words-need-od`), 0 failed**. `red-first-proof` now passes outright, not through its override. The cause: `test_github_adapter.py` imports `InstallationTokenSource` (added by this PR) at module level, and `test_app_token_e2e.py` imports from it. On base, both files fail to import with only PR-added names missing, which the gate counts as red for every new or changed test in them, the observer self-test included. Assertion-level red for the R-AT1 tests is the `d978268` run above; for the self-test, it is the bite check.
+
 ## Implementation (phase 2)
 
 Round 3 review: `specs/001-factory-v2/TEST_REVIEW_APP_TOKEN.md` (T-AT1-R2 closed; T-AT2-R3 a bug, fixed below). Commits: self-test `25d4b4b`, implementation `61c66a8`, fixture follow-up `c1ecb84`. Handoff: `bus/orders/wo-20261007-factory-app-token/handoff.yaml`.
