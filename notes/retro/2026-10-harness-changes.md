@@ -90,7 +90,7 @@ Sources consulted: Anthropic, [Building effective agents](https://www.anthropic.
 
 ## Theme 3: The factory's own checks
 
-**Status: draft, under discussion (opened 2026-10-17).** Nothing in this theme is agreed unless its row says so.
+**Status: agreed (governor, 2026-10-17 10:57 PT).**
 
 Evidence: Wave 1 retro items D1, D5 to D8, D11, D17 to D19 in `notes/retro/2026-10-wave1-items.md`; 25 checks; 5 overrides in Wave 1, 3 of them on one check.
 
@@ -100,35 +100,35 @@ Sources consulted: OpenAI, [Harness engineering](https://openai.com/index/harnes
 
 | # | Principle | Status |
 |---|-----------|--------|
-| P5 | **Fewer, stronger checks, derived from the design,** each written once and judged on its false-alarm record | draft |
-| P6 | **Learn from quality producers** (OpenAI, Google, Anthropic) and adopt where it fits a learning project | draft (governor's point) |
-| P7 | **Tilt toward correct by design.** Moving away from adding routine tests is half the change; the other half is design practices that prevent the defects in the first place | draft (governor's point) |
+| P5 | **Fewer, stronger checks, derived from the design,** each written once and judged on its false-alarm record | agreed |
+| P6 | **Learn from quality producers** (OpenAI, Google, Anthropic) and adopt where it fits a learning project | agreed (governor's point) |
+| P7 | **Tilt toward correct by design.** Moving away from adding routine tests is half the change; the other half is design practices that prevent the defects in the first place | agreed (governor's point) |
 
 ### A. Adding a check, hook or test
 
 | # | Change | Status | Builds on |
 |---|--------|--------|-----------|
-| 25 | **Checks come from the design.** Each blocking check maps to an invariant in the one-level design (item 3) or a rule you set; anything else is a warning by default | draft | the gate registry |
-| 26 | **Relevance check.** Every proposed check, hook or test suite is judged on its economic return for a learning project with about 5 users: "two nines", not "six nines". Not relevant means backlog for triage, not built. Exception: irreversible harm (secrets, lost work, production data, changes to `main`) is always guarded | draft (governor's point) | item 6 |
-| 27 | **Consistency check.** Every proposal names the rule it enforces and the existing checks, hooks and tests it overlaps or conflicts with; overlaps are merged or the old one retired before the new one lands. Applies to checks, hooks, contract and acceptance tests, not to every unit test | draft (governor's point, scoped) | — |
-| 28 | **Each check carries its reason, severity (block or warn) and track record** (fires, overrides, false alarms) | draft | `gates.yaml` |
-| 29 | **New checks start as warnings** and become blocking after a clean run | draft | — |
+| 25 | **Checks come from the design.** Each blocking check maps to an invariant in the one-level design (item 3) or a rule you set; anything else is a warning by default | agreed | the gate registry |
+| 26 | **Relevance check.** Every proposed check, hook or test suite is judged on its economic return for a learning project with about 5 users: "two nines", not "six nines". Not relevant means backlog for triage, not built. Exception: irreversible harm (secrets, lost work, production data, changes to `main`) is always guarded | agreed (governor's point) | item 6 |
+| 27 | **Consistency check.** Every proposal names the rule it enforces and the existing checks, hooks and tests it overlaps or conflicts with; overlaps are merged or the old one retired before the new one lands. Applies to checks, hooks, contract and acceptance tests, not to every unit test | agreed (governor's point, scoped) | — |
+| 28 | **Each check carries its reason, severity (block or warn) and track record** (fires, overrides, false alarms) | agreed | `gates.yaml` |
+| 29 | **New checks start as warnings** and become blocking after a clean run | agreed | — |
 
 ### B. Running and keeping checks
 
 | # | Change | Status | Builds on |
 |---|--------|--------|-----------|
-| 30 | **One implementation per rule,** called from every enforcement point (editor hook, `factory` command, CI). Hooks become thin callers | draft | CI twins of hooks |
-| 31 | **Structure over words.** Checks read structured records and typed messages (item 19), not prose; word lists only warn | draft | record schemas |
-| 32 | **False-alarm limit.** A check overridden three times in a wave is fixed or demoted, not overridden a fourth time | draft | the three-turn rule (item 7) |
-| 33 | **A small blocking set,** about seven: changes reach `main` only by PR; a reviewer accepted; tests green; changes stay within the order's files; records match their schemas; no secrets; choices brought to you are plain. Everything else warns | draft | — |
-| 34 | **No checks of checks.** The track record (item 28) is the only oversight; checks that only police other checks are retired | draft | — |
-| 35 | **Editor hooks only for irreversible harm** (committing or pushing to `main`); nudges move into CI or the control loop, where a false alarm does not interrupt you | draft | `.cursor/hooks.json` |
-| 36 | **A broken check never blocks its own fix:** a recorded governor bypass plus item 29 prevent deadlocks | draft | override records |
-| 37 | **Close the important holes first, by return on investment:** a reviewer's accept is required to merge now; claim and handoff honour amendments and overrides through item 30; the rest to backlog | draft | — |
-| 38 | **Audit all 25 checks:** keep, demote to warning, or retire, by items 25 to 28. Aim for fewer | draft | — |
-| 39 | **Continuous cleanup slot** for drift: duplicated code, stale branches, retired checks and tests | draft | — |
-| 40 | **Build or buy for checks** goes into the off-the-shelf survey; lean: our own Python for factory rules, bought tools for code-level analysis | draft | item 2 |
+| 30 | **One implementation per rule,** called from every enforcement point (editor hook, `factory` command, CI). Hooks become thin callers | agreed | CI twins of hooks |
+| 31 | **Structure over words.** Checks read structured records and typed messages (item 19), not prose; word lists only warn | agreed | record schemas |
+| 32 | **False-alarm limit.** A check overridden three times in a wave is fixed or demoted, not overridden a fourth time | agreed | the three-turn rule (item 7) |
+| 33 | **A small blocking set,** about seven: changes reach `main` only by PR; a reviewer accepted; tests green; changes stay within the order's files; records match their schemas; no secrets; choices brought to you are plain. Everything else warns | agreed | — |
+| 34 | **No checks of checks.** The track record (item 28) is the only oversight; checks that only police other checks are retired | agreed | — |
+| 35 | **Editor hooks only for irreversible harm** (committing or pushing to `main`); nudges move into CI or the control loop, where a false alarm does not interrupt you | agreed | `.cursor/hooks.json` |
+| 36 | **A broken check never blocks its own fix:** a recorded governor bypass plus item 29 prevent deadlocks | agreed | override records |
+| 37 | **Close the important holes first, by return on investment:** a reviewer's accept is required to merge now; claim and handoff honour amendments and overrides through item 30; the rest to backlog | agreed | — |
+| 38 | **Audit all 25 checks:** keep, demote to warning, or retire, by items 25 to 28. Aim for fewer | agreed | — |
+| 39 | **Continuous cleanup slot** for drift: duplicated code, stale branches, retired checks and tests | agreed | — |
+| 40 | **Build or buy for checks** goes into the off-the-shelf survey; lean: our own Python for factory rules, bought tools for code-level analysis | agreed | item 2 |
 
 ### C. Correct by design
 
@@ -136,14 +136,14 @@ Items 2 (architecture phase, spikes, second-model review) and 3 (one-level desig
 
 | # | Change | Status | Builds on |
 |---|--------|--------|-----------|
-| 41 | **Requirements by example, with a held-back set.** The spec gives concrete examples for each requirement. The builder sees all requirements and most examples; a fresh evaluator runs a held-back share of acceptance scenarios. Every held-back scenario traces to a written requirement: hide test cases, never requirements | draft (governor's idea, refined) | acceptance catalog |
-| 42 | **Make wrong states impossible.** Typed records and messages, strict type checking, explicit state machines (for example the control loop's), so whole classes of defects cannot be written | draft | Pydantic schemas |
-| 43 | **Properties over examples.** Where a block has invariants, state them as property-based tests: one property replaces many example tests | draft | — |
-| 44 | **Architecture rules enforced by structure,** such as which layers may import which, rather than by review | draft | — |
-| 45 | **Exemplars.** One reference implementation per kind of block that agents copy | draft | — |
-| 46 | **Simplicity bias in design review:** the fewest blocks and interfaces that deliver the value | draft | item 2 |
-| 47 | **Trace rework to its cause.** Each rejection is classed as a design gap, a build slip or a check false alarm; the retro turns design gaps into design rules | draft | items 8, 10 |
+| 41 | **Requirements by example, with a held-back set.** The spec gives concrete examples for each requirement. The builder sees all requirements and most examples; a fresh evaluator runs a held-back share of acceptance scenarios. Every held-back scenario traces to a written requirement: hide test cases, never requirements | agreed (governor's idea, refined) | acceptance catalog |
+| 42 | **Make wrong states impossible.** Typed records and messages, strict type checking, explicit state machines (for example the control loop's), so whole classes of defects cannot be written | agreed | Pydantic schemas |
+| 43 | **Properties over examples.** Where a block has invariants, state them as property-based tests: one property replaces many example tests | agreed | — |
+| 44 | **Architecture rules enforced by structure,** such as which layers may import which, rather than by review | agreed | — |
+| 45 | **Exemplars.** One reference implementation per kind of block that agents copy | agreed | — |
+| 46 | **Simplicity bias in design review:** the fewest blocks and interfaces that deliver the value | agreed | item 2 |
+| 47 | **Trace rework to its cause.** Each rejection is classed as a design gap, a build slip or a check false alarm; the retro turns design gaps into design rules | agreed | items 8, 10 |
 
 ## Parked for theme 3 (the factory's checks)
 
-- The reply-end question check (`decision-in-chat`) treats any question mark as a decision asked in chat. In this retro it fired three times: twice fairly, once on a question the agreed format already covered. Its message, addressed to the agent, appears in the governor's chat as if he sent it. Example of a word-heuristic check producing false alarms.
+- The reply-end question check (`decision-in-chat`) treats any question mark as a decision asked in chat. In this retro it fired three times: twice fairly, once on a question the agreed format already covered. Its message, addressed to the agent, appears in the governor's chat as if he sent it. Example of a word-heuristic check producing false alarms. Covered by items 31 and 35.
