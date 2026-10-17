@@ -1,0 +1,20 @@
+# Orchestrator, 2026-10-17: the retro raises more governor decisions than the format one.
+# Owned paths widen to every retro decision folder. Goal unchanged.
+schema_version: 1
+kind: amendment
+id: wo-20261016-factory-wave1-retro-session.amend-02
+created: 2026-10-17T15:48:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - wo-20261016-factory-wave1-retro-session
+  - bus/decisions/wave1-retro-bootstrap-role/request.yaml
+supersedes: [owned_paths]
+values:
+  owned_paths:
+    - "bus/decisions/wave1-retro-*/**"
+    - "notes/retro/2026-10-wave1-items.md"
+    - "notes/retro/2026-10-harness-changes.md"
+    - "specs/001-factory-v2/PR_REVIEW_RETRO_SESSION.md"
+    - "bus/orders/wo-20261016-factory-wave1-retro-session/**"

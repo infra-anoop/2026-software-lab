@@ -1,0 +1,34 @@
+schema_version: 1
+kind: decision_request
+id: wave1-retro-bootstrap-role
+created: 2026-10-17T15:48:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/retro/2026-10-harness-changes.md
+owner: governor
+feature: 001-factory-v2
+blocking: false
+prompt: >
+  Why this is asked: in the retro you said the orchestrator currently wears three hats (your
+  coach, the workspace architect, and the manager of the sprint), and asked how to streamline
+  that role while the factory's automated control loop does not exist yet. This choice shapes how
+  Wave 1.5 is run, so it feeds the Wave 1.5 rescope.
+  Option A has two parts. First, split the hats: this session stays your coach and architect
+  (retro, design, decisions). When Wave 1.5 runs, a separate session manages the sprint from a
+  written brief and the list of work, reports through git, and this session reviews it at
+  milestones. Second, the first thing Wave 1.5 builds is a minimal version of the automated
+  control loop, so later Wave 1.5 work runs on it instead of on a chat session.
+  Option B does only the split: a separate session manages the sprint, but the work is run the
+  way Wave 1 was until the control loop is built later in the wave.
+  Option C keeps one session wearing all three hats for now, and revisits this after the
+  off-the-shelf survey.
+  Not blocking: the retro continues on the other topics while this is open.
+  What happens next: the orchestrator records the choice in the harness-change register and
+  uses it when the retro reaches the Wave 1.5 decisions.
+options:
+  - label: "A: Split the roles, and build a minimal control loop first"
+  - label: "B: Split the roles only; build the control loop later in the wave"
+  - label: "C: Keep one session for now; revisit after the survey"
+recommended: "A: Split the roles, and build a minimal control loop first"
