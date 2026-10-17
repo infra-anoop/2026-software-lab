@@ -142,7 +142,59 @@ amux, cezar, Orchestrator.inc, Agetor, Parallel Code, Conductor (paid, macOS), C
 
 Budget set by the governor: small personal subscriptions only, about $30 a month at most. Enterprise products are out: 8090, Factory.ai, Augment Cosmos, Blitzy, Warp Factories, GitLab Duo, Devin and similar. Personal tiers of Cursor (already paid), GitHub Copilot and Codex are checked against the budget in the survey.
 
-## Next
+## First cut (2026-10-17, proposed by the orchestrator, for discussion)
+
+Filters: open source or within about $30 a month; works with Cursor and GitHub; actively maintained; fits a light factory. One filter added by the orchestrator: **the operating burden fits one person** (no cluster or hosted platform to run), from principle P16.
+
+Facts checked for the cut (2026-10-17 searches):
+- **Spec Kit workflows** can dispatch Cursor's agent command-line tool headlessly, with a model per step (spec-kit change #2631). Still to check: that our installed 1.0.6 has it (upgrade if not), and that a Cursor API key can be added under the secrets rules.
+- **AI-SDLC**: Apache-2.0, created February 2026, about 400 stars, very active (orchestrator v0.35.0 released 2026-10-17). Cursor runs through its runner interface with a Cursor API key. The autonomous orchestrator is still experimental and off by default; its own bar for default-on is 95% unattended task completion. TypeScript.
+- **addyosmani/factory**: MIT. Installs an operating model, not a service: GitHub Issues as the queue, committed policy and skills, a deterministic gates script, each run fresh for one stage. Clock and compute come from Claude Code cloud routines; a thin Codex adapter exists; no Cursor adapter.
+- **Optio**: MIT, about 1,000 stars, a reconciliation control plane, but runs on Kubernetes with PostgreSQL and Redis.
+- **Mastra Factory**: open source, but uses the Mastra platform for auth, database and sandboxes; beta.
+
+### Shortlist: three paths, plus the baseline
+
+| Path | What it is | Why it is on the list | Main risk |
+|------|-----------|----------------------|-----------|
+| A. Spec Kit native | Spec Kit workflows (already installed) with our overlays for the culture layer, Cursor's agent per step, hosted on GitHub Actions | No switching cost; GitHub-backed; covers the deterministic loop, resume and run log | Glue still needed: host trigger, decision-to-resume, watchdog |
+| B. AI-SDLC on Spec Kit | Spec Kit in front; AI-SDLC's orchestrator, gates and cross-tool review behind | Closest to the whole register, including decisions and earned autonomy | Young; orchestrator experimental; a second tool and language to learn |
+| C. Repo-native operating model | The addyosmani/factory pattern: issues as queue, policy plus skills plus a gates script, scheduled fresh runs, no service | Thinnest option; nothing to operate | Built for Claude Code; Cursor would need an adapter or a Claude subscription |
+| D. Keep building on Wave 1 | Baseline for comparison | Works today | Not-invented-here; maintenance stays ours |
+
+Runners-up, surveyed only if path B fails: Spec Kitty, Fishhawk.
+
+### Parts every path still needs (narrow choice inside the survey)
+
+| Part | Candidates |
+|------|-----------|
+| Host and trigger | Plain GitHub Actions; GitHub Agentic Workflows; Cursor cloud agents through the API |
+| Reviewer from a different model family | Codex (codex-action); Copilot code review; Bugbot (same vendor as the builder; check its model family) |
+| Work queue | GitHub Issues and Projects; Spec Kit task lists as they are; Beads |
+| Merge controls | GitHub rulesets, code owners, secret scanning (commodity) |
+
+### Cut, with reasons
+
+| Cut | Reason |
+|-----|--------|
+| Optio | Kubernetes, PostgreSQL and Redis: operating burden |
+| Mastra Factory | Depends on the Mastra platform; beta |
+| Gas Town, Gas City, great_cto, control planes (amux, cezar and others) | Built for swarms of parallel agents; we split by role (P10) |
+| Odin | Every feature runs all 11 phases; database-backed |
+| Super Simple Software Factory, Kilroy | Pi-only agents; dark-factory aim. Kept as reference designs |
+| Anneal, Atomic, Miniforge, Taskplane, Squid, HAR, another-orchestrator, Sortie, Multica, Bernstein | Smaller or Claude-only; their ideas are covered by the shortlist. Revisit only if all paths fail |
+| Spec-layer alternatives (OpenSpec, Kiro, BMAD, GSD Core and others) | We are on Spec Kit, which is GitHub-backed; no sign that switching pays |
+| Durable workflow engines | Spec Kit's run state or AI-SDLC's orchestrator covers durability for our scale |
+| Commercial factories and enterprise tiers | Budget |
+
+## Next (after the first cut)
+
+1. The governor agrees or changes the shortlist.
+2. The governor sets the survey's appetite.
+3. GPT-5.6 Sol surveys paths A to D and the parts against the agreed criteria, desk research only.
+4. The governor decides the path; the top pick is tried on one real order in Wave 1.5 (item 15).
+
+## Next (widening, done)
 
 1. The governor adds names and reacts.
 2. First cut by quick filters: open source or within budget; works with Cursor and GitHub; maintained; fits a light factory.
