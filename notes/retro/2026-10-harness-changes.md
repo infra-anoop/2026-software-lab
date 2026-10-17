@@ -146,11 +146,11 @@ Items 2 (architecture phase, spikes, second-model review) and 3 (one-level desig
 
 ## Theme 4: How we work together
 
-**Status: draft, under discussion (opened 2026-10-17).** Nothing in this theme is agreed unless its row says so.
+**Status: draft, under discussion (opened 2026-10-17; restructured 11:12 PT after the governor's input).** Nothing in this theme is agreed unless its row says so.
 
-Evidence: rules spread over the constitution, `AGENTS.md`, `.cursorrules`, three Cursor rules, a dozen skills, `docs/agent-os/`, the architect backlog, the user's guide and the orchestrator's private notes; the constitution still describes packets, not orders (retro item B6); nine decisions waiting at Wave 1 close, one open since 10-07; the governor learned state by asking; a retro report without a stance; theme 2 recorded as agreed without explicit alignment; a long reply lost from the governor's chat when tool calls followed it; the reply-end question check firing on discussion.
+Evidence: rules spread over the constitution, `AGENTS.md`, `.cursorrules`, three Cursor rules, a dozen skills, `docs/agent-os/`, the architect backlog, the user's guide and the orchestrator's private notes; the constitution still describes packets, not orders (retro item B6); nine decisions waiting at Wave 1 close, one open since 10-07; the governor learned state by asking; a retro report without a stance; theme 2 recorded as agreed without explicit alignment; a long reply lost from the governor's chat when tool calls followed it; one session wearing coach, architect and sprint-manager hats. Not a defect (governor): Wave 1 growing from 94 to 110 tasks; scope change is a live event, and the response to it is what gets codified (theme 1, items 5, 8, 9).
 
-Sources consulted: OpenAI, [Harness engineering](https://openai.com/index/harness-engineering/) (a short `AGENTS.md` as a map into a structured docs folder as the system of record; knowledge the agent cannot see does not exist; a doc-gardening pass); Anthropic, [Claude Code best practices](https://code.claude.com/docs/en/best-practices) (keep the agent instruction file short and pruned; hooks for what must always happen, prose for guidance); architecture decision records; Amazon's written narratives; team working agreements revisited at retros.
+Sources consulted: OpenAI, [Harness engineering](https://openai.com/index/harness-engineering/) (a short `AGENTS.md` as a map into a structured docs folder; knowledge the agent cannot see does not exist; a doc-gardening pass); Anthropic, [Claude Code best practices](https://code.claude.com/docs/en/best-practices) (short, pruned instruction file; hooks for must-happen rules), [Building effective agents](https://www.anthropic.com/engineering/building-effective-agents) (start simple; add agents only when they measurably help) and [multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system) (orchestrator and short-lived workers on separable tasks); Cognition, "Don't Build Multi-Agents" (context loss between peer agents); architecture decision records; team working agreements revisited at retros.
 
 ### Principles
 
@@ -158,27 +158,40 @@ Sources consulted: OpenAI, [Harness engineering](https://openai.com/index/harnes
 |---|-----------|--------|
 | P8 | **The working agreement is designed, written in one place, and revisited at each retro,** not accreted where convenient | draft |
 | P9 | **What is not in git does not exist.** A new session, a new agent or you can pick up from git alone | draft |
+| P10 | **Roles are defined as a cast, not one at a time.** A role only makes sense next to the others; a role is a hat, and how many agents wear the hats is a separate, economic choice | draft (governor's point) |
+| P11 | **Codify how we respond to change, not the change.** Scope growth, failures and false alarms are live events; the response (re-estimate, restart rule, false-alarm limit) is what gets written down | draft (governor's point) |
 
-### A. One rulebook
-
-| # | Change | Status | Builds on |
-|---|--------|--------|-----------|
-| 48 | **`AGENTS.md` becomes a short map** (about 100 lines) pointing to one home per topic. Each rule lives in exactly one place; duplicates are removed | draft | `AGENTS.md`, `docs/agent-os/` |
-| 49 | **Nothing important lives only in private notes or chat.** The orchestrator's hard rules and state log move into git; each session ends with a state note in git and the next starts from it | draft | orchestrator store |
-| 50 | **Must-happen rules become mechanics; guidance stays prose; rules are pruned.** A rule the agents already follow without being told is deleted | draft | item 35 |
-| 51 | **Stale documents are fixed in the cleanup slot** (item 39), starting with the constitution's packet wording | draft | retro item B6 |
-
-### B. The interaction contract
+### A. The cast
 
 | # | Change | Status | Builds on |
 |---|--------|--------|-----------|
-| 52 | **Discussion in chat; decisions in git.** Choices that change scope, budget, architecture or rules go to a decision request. Confirmations inside an agreed process (like these theme lists) are given in chat and recorded in git by the orchestrator | draft | retro item B7 |
-| 53 | **Nothing is recorded as agreed without your explicit yes** | draft | — |
-| 54 | **Every report takes a stance:** position, options, recommendation | draft | — |
-| 55 | **Status comes to you; you don't have to ask.** A short written update at milestones and on red, from the run log (item 23) | draft | items 8, 23 |
-| 56 | **Decisions are batched and visible.** One list of open decisions with their age; anything open more than a week is raised again or closed; "later" decisions name their trigger | draft | `factory board` |
-| 57 | **One short escalation list:** missing decision, rule conflict, three turns, a substitute for something you locked, cost drift past the threshold | draft | items 7, 9 |
-| 58 | **The main content of a reply comes last,** after any tool calls, so it stays visible in your chat | draft | — |
+| 48 | **One page lists the cast:** you, the coach and chief architect, the sprint manager, the control loop, workers and reviewers. Each with purpose, inputs, outputs, decision rights and escalation path | draft | — |
+| 49 | **Few standing agents, many short-lived ones.** Standing: the coach and the sprint manager. Short-lived: one worker or reviewer per order, fresh context, self-contained task. Peer agents sharing tightly coupled work are avoided (item 19) | draft | item 19 |
+| 50 | **The coach and chief architect is defined by boundaries and outputs, not tasks:** a free agenda (the problem of the day), clear decision rights (what it settles alone, what goes to you), and a disciplined record (decisions and state in git). Its own designs still get a second-model review | draft (governor's point, refined) | item 2 |
+| 51 | **One front door.** You converse with the coach. The sprint manager reaches you only through decision requests and status in git, which the coach can read and explain | draft | — |
+| 52 | **The sprint manager shrinks as the control loop grows:** a session in Wave 1.5; in steady state it handles exceptions only (item 17) | draft | items 13, 17 |
+| 53 | **The cast is reviewed at each retro;** Wave 1.5's split is an experiment (decision `wave1-retro-bootstrap-role`) | draft | item 18 |
+
+### B. One rulebook
+
+| # | Change | Status | Builds on |
+|---|--------|--------|-----------|
+| 54 | **`AGENTS.md` becomes a short map** (about 100 lines) pointing to one page per role and one home per topic. Each rule lives in exactly one place; duplicates are removed | draft | `AGENTS.md`, `docs/agent-os/` |
+| 55 | **Nothing important lives only in private notes or chat.** The orchestrator's hard rules and state log move into git; each session ends with a state note in git and the next starts from it | draft | orchestrator store |
+| 56 | **Must-happen rules become mechanics; guidance stays prose; rules are pruned.** A rule the agents already follow without being told is deleted | draft | item 35 |
+| 57 | **Stale documents are fixed in the cleanup slot** (item 39), starting with the constitution's packet wording | draft | retro item B6 |
+
+### C. The interaction contract
+
+| # | Change | Status | Builds on |
+|---|--------|--------|-----------|
+| 58 | **Discussion in chat; decisions in git.** Choices that change scope, budget, architecture or rules go to a decision request. Confirmations inside an agreed process (like these theme lists) are given in chat and recorded in git | draft | retro item B7 |
+| 59 | **Nothing is recorded as agreed without your explicit yes** | draft | — |
+| 60 | **Every report takes a stance:** position, options, recommendation | draft | — |
+| 61 | **Status comes to you; you don't have to ask.** A short written update at milestones and on red, from the sprint manager and the run log (item 23) | draft | items 8, 23 |
+| 62 | **Decisions are batched and visible.** One list of open decisions with their age; anything open more than a week is raised again or closed; "later" decisions name their trigger | draft | `factory board` |
+| 63 | **One short escalation list:** missing decision, rule conflict, three turns, a substitute for something you locked, cost drift past the threshold | draft | items 7, 9 |
+| 64 | **The main content of a reply comes last,** after any tool calls, so it stays visible in your chat | draft | — |
 
 ## Parked for theme 3 (the factory's checks)
 
