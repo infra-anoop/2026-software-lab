@@ -1,0 +1,14 @@
+schema_version: 1
+kind: decision_lock
+id: wave1-retro-sprint-type.lock
+created: 2026-10-17T19:20:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - bus/decisions/wave1-retro-sprint-type/request.yaml
+chosen: "B: One primary type, with real product work as the test bench"
+governor_minutes: 3
+notes: >
+  The governor chose B in chat at 12:19 PT on 2026-10-17, with the condition that each sprint's
+  primary type is named. Recorded by the orchestrator.
