@@ -200,29 +200,37 @@ Sources consulted: OpenAI, [Harness engineering](https://openai.com/index/harnes
 
 ## Theme 5: Direction
 
-**Status: draft, under discussion (opened 2026-10-17).** Nothing in this theme is agreed unless its row says so.
+**Status: agreed (governor, 2026-10-17 12:25 PT), after two rounds of discussion.**
 
-Evidence: Wave 1 ran the factory only on itself; the workload (Smart Writer V2) was not touched; several stalls came from the factory checking its own unfinished parts (a plan sentence deadlocking `main`, checks blocking their own fixes); the planned Wave 2 (23 tasks) predates this register; the register now holds 67 changes.
+Evidence: Wave 1 ran the factory only on itself; the workload (Smart Writer V2) was not touched; several stalls came from the factory checking its own unfinished parts; Wave 1 started from a buy decision (GitHub Spec Kit) and became build-heavy (job queue, 25 checks, editor guards, claims, status board, a large process layer); the planned Wave 2 (23 tasks) predates this register.
 
-Sources consulted: OpenAI, [Harness engineering](https://openai.com/index/harness-engineering/) (the harness grew while shipping a real product); Anthropic, [Effective harnesses for long-running agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) (harness exercised on building a real application); build what differentiates, buy the commodity (Wardley mapping); compiler bootstrapping (a known-good stage builds the next); Shape Up (appetite and betting).
+Sources consulted: OpenAI, [Harness engineering](https://openai.com/index/harness-engineering/) (the harness grew while shipping a real product); Anthropic, [Effective harnesses for long-running agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents); Team Topologies (platform as a product, thinnest viable platform); build what differentiates, buy the commodity (Wardley mapping); Shape Up (appetite, cool-down); SAFe capacity allocation; Martin Fowler, strangler fig migration; compiler bootstrapping; DORA delivery measures.
 
 ### Principles
 
 | # | Principle | Status |
 |---|-----------|--------|
-| P14 | **The factory proves itself on real work, not only on itself** | draft |
-| P15 | **Ours is the governance layer; the plumbing is bought where it can be** | draft |
+| P14 | **The factory is the product, at least for a while.** Its first customer is real work: Smart Writer V2, then the governor's bigger projects | agreed (governor's point) |
+| P15 | **Buy over build, for code and practices alike.** Ours is the culture layer on top; no reinventing | agreed (governor's point) |
+| P16 | **A good-enough factory,** at proof-of-concept level; everything else to the backlog | agreed (governor's point) |
+| P17 | **No piece of Wave 1 is kept by default.** Keeping needs a reason (guard against not-invented-here) | agreed (governor's point) |
 
 ### Changes
 
 | # | Change | Status | Builds on |
 |---|--------|--------|-----------|
-| 68 | **A real workload in every wave.** From Wave 1.5 on, factory changes are tried on a slice of real product work (Smart Writer V2 or a small app), not only on the factory | draft | — |
-| 69 | **Survey framed as differentiate versus commodity.** Keep ours: intent, decisions, independent review, checks from design, the cast. Buy where possible: the control loop's runtime, agent hosting, durable state, notifications, code analysis | draft | items 2, 15, 40 |
-| 70 | **A known-good factory runs the sprint.** New factory changes are tried before they are promoted; the sprint never depends on the change it is building | draft | item 36 |
-| 71 | **Ambition stays a learning project for about 5 users.** Productizing questions wait until the factory has run a real workload | draft | item 6 |
-| 72 | **The register is sequenced, not built whole.** Wave 1.5 starts with the off-the-shelf survey and the Wave 1 failure inventory, then the minimal control loop; everything else is scheduled by the mission test (item 5) in stage 5 | draft | items 5, 11, 15, 18 |
-| 73 | **The planned Wave 2 is re-examined against this register** before any of it starts | draft | — |
+| 68 | **Three backlogs:** product, infrastructure, tooling | agreed (governor's point) | retro item A1 |
+| 69 | **Each sprint names its primary type;** work of another type is small and named explicitly | agreed (decision `wave1-retro-sprint-type`, B) | retro item A2 |
+| 70 | **Smart Writer V2 is built on the factory Wave 1.5 produces.** It is a conceptual test, not test cases; findings go to the tooling backlog | agreed (decision `wave1-retro-first-product-work`) | — |
+| 71 | **The funnel after the retro:** dedupe; assign value and importance; set the appetite; scan off-the-shelf and open source; build only glue and missing pieces; draw the good-enough line; everything else to the backlog | agreed (governor's point) | items 1, 2, 5 |
+| 72 | **The fork is decided consciously:** restart on a bought product, hybrid, or keep building. A time-boxed survey compares them against criteria agreed beforehand; the governor decides | agreed (governor's point) | item 2 |
+| 73 | **Burden of proof on keeping.** A Wave 1 piece stays only if it captures our culture with no product equivalent, or leads current practice in a way that matters, and is cheap to maintain; otherwise it is replaced piece by piece without breaking the working factory | agreed | — |
+| 74 | **A fresh agent from a different model family runs the survey,** because the orchestrator built Wave 1 and is biased toward keeping it | agreed | — |
+| 75 | **Survey framed as differentiate versus commodity.** Keep ours: intent, decisions, independent review policy, checks from design, the cast. Buy: the control loop's runtime, agent hosting, the job queue, durable state, notifications, code analysis | agreed | items 2, 15, 40 |
+| 76 | **A known-good factory runs the sprint;** the sprint never depends on the change it is building, whichever path the fork takes | agreed | item 36 |
+| 77 | **Ambition stays a learning project for about 5 users;** productizing questions wait until the factory has built real work | agreed | item 6 |
+| 78 | **Wave 1.5 is small:** the no-build habits are adopted at once; then the survey and the fork decision, and the Wave 1 failure inventory; then only glue and missing pieces | agreed | items 11, 71, 72 |
+| 79 | **The planned Wave 2 is re-examined against this register** before any of it starts | agreed | — |
 
 ## Parked for theme 3 (the factory's checks)
 
