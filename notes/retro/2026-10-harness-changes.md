@@ -5,9 +5,12 @@ A running register of harness changes the governor agrees during the Wave 1 retr
 2. Look for off-the-shelf tools that cover most of them.
 3. Then decide how to implement the rest.
 
+The retro has no time limit (governor, 2026-10-17); it may run over several sessions. Wave 1.5 will be rescoped from its outcome.
+
 Status values:
 - **agreed**: you said yes;
 - **proposed**: the orchestrator suggested it and you have not ruled on it yet;
+- **draft**: under discussion; not yet aligned with you;
 - **builds on**: names an existing part of the harness the change extends.
 
 ## Theme 1: Predictability
@@ -29,6 +32,8 @@ Principle (governor): cost saving comes from design that is correct the first ti
 
 ## Theme 2: Run reliability
 
+**Status: draft, reopened 2026-10-17.** The orchestrator recorded these as agreed on 2026-10-17 at 00:43 PT without the governor's explicit alignment; they stay draft until the discussion finishes.
+
 Principle (governor): attack both sides. Prevent failures by root-causing the error-prone parts and getting onto a platform that is not flaky and just runs. Recover automatically when failures still happen. With little hard data, root causes come from shared experience and from industry practice.
 
 Sources consulted: Anthropic, [Building effective agents](https://www.anthropic.com/engineering/building-effective-agents) (workflows vs agents), [Effective harnesses for long-running agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents), [multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system) (durable execution, checkpoints, tracing); OpenAI, [Harness engineering](https://openai.com/index/harness-engineering/).
@@ -37,19 +42,19 @@ Sources consulted: Anthropic, [Building effective agents](https://www.anthropic.
 
 | # | Change | Status | Builds on |
 |---|--------|--------|-----------|
-| 11 | **Deterministic control loop.** Code runs the predictable pipeline (order, build, review, triage, handoff, PR, merge). Models act only at judgment points: build, review, triage proposals. You act only at decision points. The chat session stops being the scheduler | agreed (governor's point) | the job board and the `factory` command |
-| 12 | **Your laptop is not part of the machinery.** The factory runs where it does not depend on your laptop or the chat window (codespace, cloud agents or CI). You watch and decide; you do not keep it alive | agreed (governor's point) | — |
-| 13 | **A platform that just runs.** The off-the-shelf survey judges the candidates (Cursor SDK and cloud agents, a durable workflow engine, GitHub Actions) first on whether they run unattended for a full day, then pilots one order | agreed | — |
-| 14 | **Root cause from experience and data.** Record stop and restart times from now on. Fix the known causes: the 30-minute idle timeout, laptop dependence, sandbox quirks. Write each environment quirk down once, and turn known traps into guards, for example refusing commits on the main checkout | agreed | `HARD-RULES` notes; the shell-guard hook |
-| 15 | **Git is the record; notices are only hints.** Every agent writes its start, progress and finish to git; nothing waits on a completion notice | agreed | claim, verdict and handoff records |
+| 11 | **Deterministic control loop.** Code runs the predictable pipeline (order, build, review, triage, handoff, PR, merge). Models act only at judgment points: build, review, triage proposals. You act only at decision points. The chat session stops being the scheduler | draft (governor's point) | the job board and the `factory` command |
+| 12 | **Your laptop is not part of the machinery.** The factory runs where it does not depend on your laptop or the chat window (codespace, cloud agents or CI). You watch and decide; you do not keep it alive | draft (governor's point) | — |
+| 13 | **A platform that just runs.** The off-the-shelf survey judges the candidates (Cursor SDK and cloud agents, a durable workflow engine, GitHub Actions) first on whether they run unattended for a full day, then pilots one order | draft | — |
+| 14 | **Root cause from experience and data.** Record stop and restart times from now on. Fix the known causes: the 30-minute idle timeout, laptop dependence, sandbox quirks. Write each environment quirk down once, and turn known traps into guards, for example refusing commits on the main checkout | draft | `HARD-RULES` notes; the shell-guard hook |
+| 15 | **Git is the record; notices are only hints.** Every agent writes its start, progress and finish to git; nothing waits on a completion notice | draft | claim, verdict and handoff records |
 
 ### B. Recover: assume failure
 
 | # | Change | Status | Builds on |
 |---|--------|--------|-----------|
-| 16 | **Leases.** Every claim and spawned agent gets a deadline from its task estimate (item 4). A missed deadline means presumed dead: restart fresh from the last push, never resume a hung session | agreed | `factory claim` |
-| 17 | **Supervisor** inside the deterministic loop: checks leases, CI, machine time and unacknowledged results; writes a short line every 30 minutes; interrupts only on red, so it costs almost no context. Replaces the 30-minute heartbeat idea | agreed | agenda 17, option B |
-| 18 | **Acknowledgements.** The orchestrator records that it picked up each finished result; the supervisor flags any it has not | agreed | — |
-| 19 | **Checkpoint and resume.** A progress file per order, a commit at every green step, and a stop hook as backstop, so any agent restarts from its last commit (Anthropic's long-running harness pattern) | agreed | push-after-green rule (PR #29) |
-| 20 | **Liveness you can see.** A one-screen status on demand, plus an outside watchdog that tells you when the factory went quiet, even with the codespace off | agreed | `factory board` |
-| 21 | **Tracing.** Per agent: start, last push, activity and tokens where available, so "busy-looping or idle?" always has an answer | agreed | — |
+| 16 | **Leases.** Every claim and spawned agent gets a deadline from its task estimate (item 4). A missed deadline means presumed dead: restart fresh from the last push, never resume a hung session | draft | `factory claim` |
+| 17 | **Supervisor** inside the deterministic loop: checks leases, CI, machine time and unacknowledged results; writes a short line every 30 minutes; interrupts only on red, so it costs almost no context. Replaces the 30-minute heartbeat idea | draft | agenda 17, option B |
+| 18 | **Acknowledgements.** The orchestrator records that it picked up each finished result; the supervisor flags any it has not | draft | — |
+| 19 | **Checkpoint and resume.** A progress file per order, a commit at every green step, and a stop hook as backstop, so any agent restarts from its last commit (Anthropic's long-running harness pattern) | draft | push-after-green rule (PR #29) |
+| 20 | **Liveness you can see.** A one-screen status on demand, plus an outside watchdog that tells you when the factory went quiet, even with the codespace off | draft | `factory board` |
+| 21 | **Tracing.** Per agent: start, last push, activity and tokens where available, so "busy-looping or idle?" always has an answer | draft | — |
