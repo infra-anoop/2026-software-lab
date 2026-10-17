@@ -233,6 +233,22 @@ Sources consulted: OpenAI, [Harness engineering](https://openai.com/index/harnes
 | 79 | **The planned Wave 2 is re-examined against this register** before any of it starts | agreed | — |
 | 80 | **Cost is an operating control, not a selection criterion.** Model prices change too often to choose an architecture by; portability (at least two first-class runtimes, each with at least two model families) is the hedge. Every run records tokens and cost, has a cap, and uses a model chosen per step. Feeds the cost and measures discussion and the open token-usage decision | agreed (governor's point, 2026-10-17 13:43 PT) | items 23, 72 |
 
+## Measures and guardrails (retro stage 4, discussion 2)
+
+**Status: items 82 to 85 and the measurement-cost rule in item 81 agreed (governor, 2026-10-17 14:24 PT). The scorecard's numbers and their units are still under discussion.**
+
+Evidence: Wave 1's cost was discovered from the plan tier, not from the factory; the token-usage request sat in git from Oct 7 without reaching the governor; the burn chart and run log were agreed but never built. The governor's usage export (Sep 8 to Oct 17) shows Wave 1 (Oct 3 to 7) used about 808M tokens, over three times all of September's pre-factory work, plus about $255 on-demand beyond the plan's included usage; 83% of Wave 1 tokens went to the builder model and 16% to the reviewer model. Review records show the three biggest orders needed 6 to 9 reviews each across their gates.
+
+Sources consulted: DORA (lead time, change failure rate, rework rate); SPACE (no single activity measure; Goodhart's law); FinOps unit economics (cost per unit of value, tagged spend); OpenTelemetry semantic conventions for generative AI (standard token and cost fields); Anthropic, multi-agent research system (token use explains most quality variance); AI-SDLC's earned-autonomy bar (about 95% unattended completion).
+
+| # | Change | Status | Builds on |
+|---|--------|--------|-----------|
+| 81 | **A small scorecard read from machine data,** for seeing, not targets, reviewed each retro. **Measurement costs at most 1% of factory spend, is computed by code and never by a model, and the 1% is checked each retro.** The numbers, the unit they are measured on and the acceptance-by-pass breakdown are under discussion | rule agreed (governor); numbers draft | items 8, 10, 80 |
+| 82 | **Telemetry by standard, bought.** Each agent run records model, tokens, cost, work item and role in the OpenTelemetry format, sent to a bought store (Logfire is already in the lab). No homemade token counters. Where a runtime exposes no per-run usage (Cursor on individual plans), the provider's usage export is joined by time and model | agreed | items 23, 80 |
+| 83 | **Model routing by evidence.** Top-tier models by default; a step moves to a cheaper model only when the scorecard shows its first-pass acceptance holds. Each step's model is written in the workflow file | agreed | item 80 |
+| 84 | **Runaway caps, not rationing.** Each run is capped at a generous multiple of its estimate; hitting a cap stops and reports under the restart rule | agreed | items 20, 80 |
+| 85 | **Wave 1 baseline, once,** from git, the agent records and the governor's usage export (received 2026-10-17, kept out of git). First reference class for calibration | agreed | items 10, 11 |
+
 ## Parked for theme 3 (the factory's checks)
 
 - The reply-end question check (`decision-in-chat`) treats any question mark as a decision asked in chat. In this retro it fired three times: twice fairly, once on a question the agreed format already covered. Its message, addressed to the agent, appears in the governor's chat as if he sent it. Example of a word-heuristic check producing false alarms. Covered by items 31 and 35.
