@@ -1,0 +1,21 @@
+# Orchestrator, 2026-10-17: the governor agreed to widen the off-the-shelf candidate list before
+# narrowing it. The longlist goes in one landscape file. Goal unchanged.
+schema_version: 1
+kind: amendment
+id: wo-20261016-factory-wave1-retro-session.amend-03
+created: 2026-10-17T20:05:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - wo-20261016-factory-wave1-retro-session
+  - notes/retro/2026-10-factory-landscape.md
+supersedes: [owned_paths]
+values:
+  owned_paths:
+    - "bus/decisions/wave1-retro-*/**"
+    - "notes/retro/2026-10-wave1-items.md"
+    - "notes/retro/2026-10-harness-changes.md"
+    - "notes/retro/2026-10-factory-landscape.md"
+    - "specs/001-factory-v2/PR_REVIEW_RETRO_SESSION.md"
+    - "bus/orders/wo-20261016-factory-wave1-retro-session/**"
