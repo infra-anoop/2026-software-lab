@@ -7,7 +7,7 @@ Spawned per `docs/agent-os/SPAWN_REVIEWER.md`. This is a survey, not a spec, pla
 | Field | Value |
 |-------|-------|
 | Packet id | 2026-10-17-factory-survey |
-| Status | ready |
+| Status | done (report at `notes/retro/2026-10-factory-survey.md`, reviewer commit 1572a04, copied to the retro branch 2026-10-17) |
 | Gate | Survey (desk research), register items 72 to 75 |
 | Brief | `notes/retro/2026-10-factory-landscape.md`, section "Survey brief" (agreed by the governor 2026-10-17 13:43 PT) |
 | Order | `wo-20261016-factory-wave1-retro-session` (amendment-04) |
