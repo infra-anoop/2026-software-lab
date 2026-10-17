@@ -32,29 +32,58 @@ Principle (governor): cost saving comes from design that is correct the first ti
 
 ## Theme 2: Run reliability
 
-**Status: draft, reopened 2026-10-17.** The orchestrator recorded these as agreed on 2026-10-17 at 00:43 PT without the governor's explicit alignment; they stay draft until the discussion finishes.
+**Status: draft, under discussion (reopened 2026-10-17).** Nothing in this theme is agreed unless its row says so.
 
-Principle (governor): attack both sides. Prevent failures by root-causing the error-prone parts and getting onto a platform that is not flaky and just runs. Recover automatically when failures still happen. With little hard data, root causes come from shared experience and from industry practice.
+Sources consulted: Anthropic, [Building effective agents](https://www.anthropic.com/engineering/building-effective-agents) (workflows vs agents), [Effective harnesses for long-running agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents), [multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system) (durable execution, checkpoints, tracing, token cost of multi-agent); OpenAI, [Harness engineering](https://openai.com/index/harness-engineering/); the Kubernetes controller (reconciler) pattern; Google SRE practice on detection and game days.
 
-Sources consulted: Anthropic, [Building effective agents](https://www.anthropic.com/engineering/building-effective-agents) (workflows vs agents), [Effective harnesses for long-running agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents), [multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system) (durable execution, checkpoints, tracing); OpenAI, [Harness engineering](https://openai.com/index/harness-engineering/).
+### Principles
 
-### A. Prevent: root causes and a stable platform
+| # | Principle | Status |
+|---|-----------|--------|
+| P1 | **Reliable by design.** Design or buy a system that does not stall. Tests and checks confirm the design; they never stand in for it | draft (governor's point) |
+| P2 | **Fix ladder.** Prefer the highest rung that works: (1) remove the cause through configuration or design; (2) route around the component; (3) recover automatically; (4) detect and report. A retry is a low rung, not a root-cause fix | draft (governor's point, ladder framing by the orchestrator) |
+| P3 | **Work around during a sprint; root-cause and redesign after it.** A continuum, not a choice | draft (governor's point) |
+| P4 | **Attack both sides:** prevent failures and recover from the ones that still happen | draft (governor's point) |
 
-| # | Change | Status | Builds on |
-|---|--------|--------|-----------|
-| 11 | **Deterministic control loop.** Code runs the predictable pipeline (order, build, review, triage, handoff, PR, merge). Models act only at judgment points: build, review, triage proposals. You act only at decision points. The chat session stops being the scheduler | draft (governor's point) | the job board and the `factory` command |
-| 12 | **Your laptop is not part of the machinery.** The factory runs where it does not depend on your laptop or the chat window (codespace, cloud agents or CI). You watch and decide; you do not keep it alive | draft (governor's point) | — |
-| 13 | **A platform that just runs.** The off-the-shelf survey judges the candidates (Cursor SDK and cloud agents, a durable workflow engine, GitHub Actions) first on whether they run unattended for a full day, then pilots one order | draft | — |
-| 14 | **Root cause from experience and data.** Record stop and restart times from now on. Fix the known causes: the 30-minute idle timeout, laptop dependence, sandbox quirks. Write each environment quirk down once, and turn known traps into guards, for example refusing commits on the main checkout | draft | `HARD-RULES` notes; the shell-guard hook |
-| 15 | **Git is the record; notices are only hints.** Every agent writes its start, progress and finish to git; nothing waits on a completion notice | draft | claim, verdict and handoff records |
-
-### B. Recover: assume failure
+### A. Learn from Wave 1
 
 | # | Change | Status | Builds on |
 |---|--------|--------|-----------|
-| 16 | **Leases.** Every claim and spawned agent gets a deadline from its task estimate (item 4). A missed deadline means presumed dead: restart fresh from the last push, never resume a hung session | draft | `factory claim` |
-| 17 | **Supervisor** inside the deterministic loop: checks leases, CI, machine time and unacknowledged results; writes a short line every 30 minutes; interrupts only on red, so it costs almost no context. Replaces the 30-minute heartbeat idea | draft | agenda 17, option B |
-| 18 | **Acknowledgements.** The orchestrator records that it picked up each finished result; the supervisor flags any it has not | draft | — |
-| 19 | **Checkpoint and resume.** A progress file per order, a commit at every green step, and a stop hook as backstop, so any agent restarts from its last commit (Anthropic's long-running harness pattern) | draft | push-after-green rule (PR #29) |
-| 20 | **Liveness you can see.** A one-screen status on demand, plus an outside watchdog that tells you when the factory went quiet, even with the codespace off | draft | `factory board` |
-| 21 | **Tracing.** Per agent: start, last push, activity and tokens where available, so "busy-looping or idle?" always has an answer | draft | — |
+| 11 | **Wave 1 failure inventory.** Every stall or failure in Wave 1, with evidence (bus timestamps, chat transcripts), its root cause, the rung of the fix ladder chosen, and the design change. Feeds the architecture phase (item 2) | draft | the retro facts (stage 2) |
+| 12 | **Reliability properties are design requirements, not monitors.** Runs 8 hours unattended with your laptop closed; survives a codespace restart without losing work; no silent stall; every stall recovered or reported; you are interrupted only for decisions. Used to judge designs and platforms, and confirmed by a few deliberate trials (stop the codespace mid-order, kill an agent, close the laptop) | draft (refined by governor) | — |
+
+### B. The control loop
+
+| # | Change | Status | Builds on |
+|---|--------|--------|-----------|
+| 13 | **Deterministic control loop.** Code runs the predictable pipeline. Models act only at judgment points; you act only at decision points | draft (governor's point) | the job board and the `factory` command |
+| 14 | **Your laptop is not part of the machinery.** You watch and decide; you do not keep it alive | draft (governor's point) | — |
+| 15 | **Control loop survey: where and in what form.** Where: codespace, GitHub Actions, cloud agents driven through the Cursor SDK, or a durable workflow engine. Form: a thin workflow file with the logic in Python, a state machine, a workflow engine, or agentic workflow definitions. Judged against item 12; the top pick is tried on one order. Part of item 2 | draft (governor: explore) | — |
+| 16 | **Reconciler shape.** On every pass the loop reads the wanted state and the actual state from git and takes the next safe, repeatable step. A missed notice is harmless because the next pass sees it. Replaces the earlier acknowledgement idea | proposed | claim, verdict and handoff records |
+
+### C. Roles and messages
+
+| # | Change | Status | Builds on |
+|---|--------|--------|-----------|
+| 17 | **Steady state: the orchestrator manages exceptions.** Day-to-day work is codified; judgment applies to corner cases, errors and violations | draft (governor's point) | — |
+| 18 | **Bootstrap: streamline the orchestrator's role while the harness does not exist yet.** Open; under discussion | draft (open) | — |
+| 19 | **Separate agents with typed messages.** Each agent role has defined input and output message formats, checked against policy at the boundary. A role is split out when its input and output fit a message and fresh context helps (review, triage, verification); tightly coupled work stays together | draft (governor's point, refined) | bus record schemas |
+
+### D. Recover
+
+| # | Change | Status | Builds on |
+|---|--------|--------|-----------|
+| 20 | **Restart rule.** Up to two automatic restarts from the last checkpoint; a third failure stops and reports to you. Never automatic: merging, deleting work, changing settings | agreed | the three-turn rule (item 7) |
+| 21 | **Checkpoint and resume.** A progress file per order and a commit at every green step, so a restart loses little | draft | push-after-green rule (PR #29) |
+| 22 | **Deadlines on every claim.** Set from the task estimate (item 4); the loop uses them to spot dead work | draft | `factory claim` |
+| 23 | **Run log.** Per agent: start, last push, activity and tokens where available. The data that root-cause work (item 11, principle P3) needs | draft | — |
+
+### E. Telling you
+
+| # | Change | Status | Builds on |
+|---|--------|--------|-----------|
+| 24 | **Outside watchdog via GitHub.** When the factory goes quiet, something outside the codespace opens an issue or mentions you | draft | — |
+
+### Future backlog (not this wave)
+
+- Messaging connectors (WhatsApp, Telegram, Slack) for alerts and decisions. Governor: later sprint. Reachable from our own code even where the agent platform has no connector.
