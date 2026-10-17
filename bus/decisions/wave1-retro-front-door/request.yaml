@@ -1,0 +1,30 @@
+schema_version: 1
+kind: decision_request
+id: wave1-retro-front-door
+created: 2026-10-17T18:15:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/retro/2026-10-harness-changes.md
+  - bus/decisions/wave1-retro-bootstrap-role/lock.yaml
+owner: governor
+feature: 001-factory-v2
+blocking: false
+prompt: >
+  Why this is asked: you chose to run Wave 1.5 with two standing sessions, this one as coach and
+  chief architect and a separate one managing the sprint. That raises how you talk to them.
+  Option A, one front door: you converse only with the coach. The sprint session reaches you only
+  through decision requests and status updates in git, which the coach can read and explain. You
+  keep one picture of everything; sprint questions take one extra step.
+  Option B, two conversations: you also talk to the sprint session directly during Wave 1.5.
+  Sprint questions are answered faster, but your picture is split across two chats, and the two
+  sessions can give you different accounts.
+  Either way it is an experiment, reviewed at the next retro.
+  Not blocking: the retro continues while this is open.
+  What happens next: the orchestrator records the choice in the harness-change register and in
+  the brief for the sprint session.
+options:
+  - label: "A: One front door: talk only to the coach"
+  - label: "B: Two conversations: also talk to the sprint session directly"
+recommended: "A: One front door: talk only to the coach"
