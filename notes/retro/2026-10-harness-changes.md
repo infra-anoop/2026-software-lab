@@ -32,7 +32,7 @@ Principle (governor): cost saving comes from design that is correct the first ti
 
 ## Theme 2: Run reliability
 
-**Status: draft, under discussion (reopened 2026-10-17).** Nothing in this theme is agreed unless its row says so.
+**Status: agreed (governor, 2026-10-17 10:34 PT), after reopening the discussion that morning.**
 
 Sources consulted: Anthropic, [Building effective agents](https://www.anthropic.com/engineering/building-effective-agents) (workflows vs agents), [Effective harnesses for long-running agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents), [multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system) (durable execution, checkpoints, tracing, token cost of multi-agent); OpenAI, [Harness engineering](https://openai.com/index/harness-engineering/); the Kubernetes controller (reconciler) pattern; Google SRE practice on detection and game days.
 
@@ -40,50 +40,54 @@ Sources consulted: Anthropic, [Building effective agents](https://www.anthropic.
 
 | # | Principle | Status |
 |---|-----------|--------|
-| P1 | **Reliable by design.** Design or buy a system that does not stall. Tests and checks confirm the design; they never stand in for it | draft (governor's point) |
-| P2 | **Fix ladder.** Prefer the highest rung that works: (1) remove the cause through configuration or design; (2) route around the component; (3) recover automatically; (4) detect and report. A retry is a low rung, not a root-cause fix | draft (governor's point, ladder framing by the orchestrator) |
-| P3 | **Work around during a sprint; root-cause and redesign after it.** A continuum, not a choice | draft (governor's point) |
-| P4 | **Attack both sides:** prevent failures and recover from the ones that still happen | draft (governor's point) |
+| P1 | **Reliable by design.** Design or buy a system that does not stall. Tests and checks confirm the design; they never stand in for it | agreed (governor's point) |
+| P2 | **Fix ladder.** Prefer the highest rung that works: (1) remove the cause through configuration or design; (2) route around the component; (3) recover automatically; (4) detect and report. A retry is a low rung, not a root-cause fix | agreed (governor's point, ladder framing by the orchestrator) |
+| P3 | **Work around during a sprint; root-cause and redesign after it.** A continuum, not a choice | agreed (governor's point) |
+| P4 | **Attack both sides:** prevent failures and recover from the ones that still happen | agreed (governor's point) |
 
 ### A. Learn from Wave 1
 
 | # | Change | Status | Builds on |
 |---|--------|--------|-----------|
-| 11 | **Wave 1 failure inventory.** Every stall or failure in Wave 1, with evidence (bus timestamps, chat transcripts), its root cause, the rung of the fix ladder chosen, and the design change. Feeds the architecture phase (item 2) | draft | the retro facts (stage 2) |
-| 12 | **Reliability properties are design requirements, not monitors.** Runs 8 hours unattended with your laptop closed; survives a codespace restart without losing work; no silent stall; every stall recovered or reported; you are interrupted only for decisions. Used to judge designs and platforms, and confirmed by a few deliberate trials (stop the codespace mid-order, kill an agent, close the laptop) | draft (refined by governor) | — |
+| 11 | **Wave 1 failure inventory.** Every stall or failure in Wave 1, with evidence (bus timestamps, chat transcripts), its root cause, the rung of the fix ladder chosen, and the design change. Feeds the architecture phase (item 2) | agreed | the retro facts (stage 2) |
+| 12 | **Reliability properties are design requirements, not monitors.** Runs 8 hours unattended with your laptop closed; survives a codespace restart without losing work; no silent stall; every stall recovered or reported; you are interrupted only for decisions. Used to judge designs and platforms, and confirmed by a few deliberate trials (stop the codespace mid-order, kill an agent, close the laptop). An outside watchdog stays as the bottom-rung safety net | agreed (refined by governor) | — |
 
 ### B. The control loop
 
 | # | Change | Status | Builds on |
 |---|--------|--------|-----------|
-| 13 | **Deterministic control loop.** Code runs the predictable pipeline. Models act only at judgment points; you act only at decision points | draft (governor's point) | the job board and the `factory` command |
-| 14 | **Your laptop is not part of the machinery.** You watch and decide; you do not keep it alive | draft (governor's point) | — |
-| 15 | **Control loop survey: where and in what form.** Where: codespace, GitHub Actions, cloud agents driven through the Cursor SDK, or a durable workflow engine. Form: a thin workflow file with the logic in Python, a state machine, a workflow engine, or agentic workflow definitions. Judged against item 12; the top pick is tried on one order. Part of item 2 | draft (governor: explore) | — |
-| 16 | **Reconciler shape.** On every pass the loop reads the wanted state and the actual state from git and takes the next safe, repeatable step. A missed notice is harmless because the next pass sees it. Replaces the earlier acknowledgement idea | proposed | claim, verdict and handoff records |
+| 13 | **Deterministic control loop.** Code runs the predictable pipeline. Models act only at judgment points; you act only at decision points | agreed (governor's point) | the job board and the `factory` command |
+| 14 | **Your laptop is not part of the machinery.** You watch and decide; you do not keep it alive | agreed (governor's point) | — |
+| 15 | **Control loop survey: where and in what form.** Where: codespace, GitHub Actions, cloud agents driven through the Cursor SDK, or a durable workflow engine. Form: a thin workflow file with the logic in Python, a state machine, a workflow engine, or agentic workflow definitions. Judged against item 12; the top pick is tried on one order. GitHub Actions is the trigger and scheduler, not the brain. Part of item 2 | agreed | — |
+| 16 | **Reconciler shape.** On every pass the loop reads the wanted state and the actual state from git and takes the next safe, repeatable step. A missed notice is harmless because the next pass sees it. Replaces the earlier acknowledgement idea | agreed | claim, verdict and handoff records |
 
 ### C. Roles and messages
 
 | # | Change | Status | Builds on |
 |---|--------|--------|-----------|
-| 17 | **Steady state: the orchestrator manages exceptions.** Day-to-day work is codified; judgment applies to corner cases, errors and violations | draft (governor's point) | — |
-| 18 | **Bootstrap: streamline the orchestrator's role while the harness does not exist yet.** Open; under discussion | draft (open) | — |
-| 19 | **Separate agents with typed messages.** Each agent role has defined input and output message formats, checked against policy at the boundary. A role is split out when its input and output fit a message and fresh context helps (review, triage, verification); tightly coupled work stays together | draft (governor's point, refined) | bus record schemas |
+| 17 | **Steady state: the orchestrator manages exceptions.** Day-to-day work is codified; judgment applies to corner cases, errors and violations | agreed (governor's point) | — |
+| 18 | **Bootstrap.** This session stays coach and architect; a separate session runs Wave 1.5, as an experiment. The first thing Wave 1.5 builds is a minimal control loop | agreed (decision `wave1-retro-bootstrap-role`, A) | — |
+| 19 | **Separate agents with typed messages.** Each agent role has defined input and output message formats, checked against policy at the boundary. A role is split out when its input and output fit a message and fresh context helps (review, triage, verification); tightly coupled work stays together, because each split costs tokens and context | agreed (governor's point, refined) | bus record schemas |
 
 ### D. Recover
 
 | # | Change | Status | Builds on |
 |---|--------|--------|-----------|
 | 20 | **Restart rule.** Up to two automatic restarts from the last checkpoint; a third failure stops and reports to you. Never automatic: merging, deleting work, changing settings | agreed | the three-turn rule (item 7) |
-| 21 | **Checkpoint and resume.** A progress file per order and a commit at every green step, so a restart loses little | draft | push-after-green rule (PR #29) |
-| 22 | **Deadlines on every claim.** Set from the task estimate (item 4); the loop uses them to spot dead work | draft | `factory claim` |
-| 23 | **Run log.** Per agent: start, last push, activity and tokens where available. The data that root-cause work (item 11, principle P3) needs | draft | — |
+| 21 | **Checkpoint and resume.** A progress file per order and a commit at every green step, so a restart loses little | agreed | push-after-green rule (PR #29) |
+| 22 | **Deadlines on every claim.** Set from the task estimate (item 4); the loop uses them to spot dead work | agreed | `factory claim` |
+| 23 | **Run log.** Per agent: start, last push, activity and tokens where available. The data that root-cause work (item 11, principle P3) needs | agreed | — |
 
 ### E. Telling you
 
 | # | Change | Status | Builds on |
 |---|--------|--------|-----------|
-| 24 | **Outside watchdog via GitHub.** When the factory goes quiet, something outside the codespace opens an issue or mentions you | draft | — |
+| 24 | **Outside watchdog via GitHub.** When the factory goes quiet, something outside the codespace opens an issue or mentions you | agreed | — |
 
 ### Future backlog (not this wave)
 
 - Messaging connectors (WhatsApp, Telegram, Slack) for alerts and decisions. Governor: later sprint. Reachable from our own code even where the agent platform has no connector.
+
+## Parked for theme 3 (the factory's checks)
+
+- The reply-end question check (`decision-in-chat`) treats any question mark as a decision asked in chat. In this retro it fired three times: twice fairly, once on a question the agreed format already covered. Its message, addressed to the agent, appears in the governor's chat as if he sent it. Example of a word-heuristic check producing false alarms.
