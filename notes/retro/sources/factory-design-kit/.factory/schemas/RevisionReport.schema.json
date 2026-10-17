@@ -1,0 +1,72 @@
+{
+  "$defs": {
+    "Disposition": {
+      "properties": {
+        "finding_id": {
+          "title": "Finding Id",
+          "type": "string"
+        },
+        "action": {
+          "enum": [
+            "fixed",
+            "rejected",
+            "needs_human"
+          ],
+          "title": "Action",
+          "type": "string"
+        },
+        "rationale": {
+          "description": "What changed, why the finding is wrong, or what decision you need.",
+          "maxLength": 400,
+          "title": "Rationale",
+          "type": "string"
+        }
+      },
+      "required": [
+        "finding_id",
+        "action",
+        "rationale"
+      ],
+      "title": "Disposition",
+      "type": "object"
+    }
+  },
+  "description": "Written by the reviser to reviews/<stage>/round-<n>/revision.json.",
+  "properties": {
+    "stage": {
+      "enum": [
+        "spec",
+        "plan"
+      ],
+      "title": "Stage",
+      "type": "string"
+    },
+    "round": {
+      "minimum": 1,
+      "title": "Round",
+      "type": "integer"
+    },
+    "dispositions": {
+      "items": {
+        "$ref": "#/$defs/Disposition"
+      },
+      "title": "Dispositions",
+      "type": "array"
+    },
+    "changed_files": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Changed Files",
+      "type": "array"
+    }
+  },
+  "required": [
+    "stage",
+    "round",
+    "dispositions",
+    "changed_files"
+  ],
+  "title": "RevisionReport",
+  "type": "object"
+}

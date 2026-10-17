@@ -1,0 +1,25 @@
+{
+  "max_rounds": 3,
+  "confidence_threshold": 80,
+  "blocking_severities": ["blocker", "major"],
+  "reviewer_integration": "cursor-agent",
+  "stages": {
+    "spec": {
+      "artifacts": ["specs/*/spec.md"],
+      "roles": [
+        {"name": "spec-critic", "model": "your-strong-model"},
+        {"name": "cost", "model": "your-mid-model"},
+        {"name": "competition", "model": "your-mid-model"}
+      ]
+    },
+    "plan": {
+      "artifacts": ["specs/*/spec.md", "specs/*/plan.md", "specs/*/research.md",
+                    "specs/*/data-model.md", "specs/*/tasks.md"],
+      "roles": [
+        {"name": "architecture", "model": "your-strong-model"},
+        {"name": "open-source", "model": "your-mid-model"},
+        {"name": "cost", "model": "your-mid-model"}
+      ]
+    }
+  }
+}
