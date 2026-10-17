@@ -88,6 +88,27 @@ Sources consulted: Anthropic, [Building effective agents](https://www.anthropic.
 
 - Messaging connectors (WhatsApp, Telegram, Slack) for alerts and decisions. Governor: later sprint. Reachable from our own code even where the agent platform has no connector.
 
+## Theme 3: The factory's own checks
+
+**Status: draft, under discussion (opened 2026-10-17).** Nothing in this theme is agreed unless its row says so.
+
+Evidence: Wave 1 retro items D1, D5 to D8, D11, D17 to D19 in `notes/retro/2026-10-wave1-items.md`; 25 checks; 5 overrides in Wave 1, 3 of them on one check.
+
+Sources consulted: OpenAI, [Harness engineering](https://openai.com/index/harness-engineering/) (few mechanically enforced invariants, fix-instructions in error messages, minimal blocking gates, continuous cleanup); Google Tricorder (analyzers kept under about 10% false positives or switched off); Anthropic, [Effective harnesses for long-running agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) (one default-fail contract judged by a fresh evaluator); policy as code (one policy, many enforcement points); GitHub rulesets' evaluate mode (observe before enforcing).
+
+| # | Change | Status | Builds on |
+|---|--------|--------|-----------|
+| 25 | **Checks come from the design.** Each blocking check maps to an invariant in the one-level design (item 3) or a rule you set; anything else is a warning by default | draft | the gate registry |
+| 26 | **One implementation per rule,** called from every enforcement point (editor hook, `factory` command, CI). Hooks become thin callers | draft | CI twins of hooks |
+| 27 | **Each check carries its reason, severity (block or warn) and track record** (fires, overrides, false alarms) | draft | `gates.yaml` |
+| 28 | **New checks start as warnings** and become blocking after a clean run | draft | — |
+| 29 | **False-alarm limit.** A check overridden three times in a wave is fixed or demoted, not overridden a fourth time | draft | the three-turn rule (item 7) |
+| 30 | **Structure over words.** Checks read structured records and typed messages (item 19), not prose; word lists only warn | draft | record schemas |
+| 31 | **Close the important holes first, by return on investment:** a reviewer's accept is required to merge now; claim and handoff honour amendments and overrides through item 26; the rest to backlog | draft | — |
+| 32 | **Audit all 25 checks:** keep, demote to warning, or retire, by items 25 and 27. Aim for fewer | draft | — |
+| 33 | **A broken check never blocks its own fix:** a recorded governor bypass plus item 28 prevent deadlocks | draft | override records |
+| 34 | **Continuous cleanup slot** for drift: duplicated code, stale branches, retired checks | draft | — |
+
 ## Parked for theme 3 (the factory's checks)
 
 - The reply-end question check (`decision-in-chat`) treats any question mark as a decision asked in chat. In this retro it fired three times: twice fairly, once on a question the agreed format already covered. Its message, addressed to the agent, appears in the governor's chat as if he sent it. Example of a word-heuristic check producing false alarms.
