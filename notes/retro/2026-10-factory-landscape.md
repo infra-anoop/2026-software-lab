@@ -123,7 +123,6 @@ amux, cezar, Orchestrator.inc, Agetor, Parallel Code, Conductor (paid, macOS), C
 | Superpowers; Compound Engineering plugin | Skills methodologies: brainstorm, plan, TDD, debug; plan-to-PR with a bounded repair loop | Compound Engineering supports Cursor |
 | Agent OS (Builder Methods) | Injects codebase standards into spec writing | Same name as our `docs/agent-os/` |
 | AWS AI-DLC Workflows | Workflow-steering rules for an AI-driven lifecycle | Supports Cursor |
-| Archon | Harness builder: agent steps, scripts, validation gates, approvals | — |
 | Beads; Backlog.md; Claude Task Master | Agent-friendly backlogs: git-backed issue graph; markdown tasks in the repo; PRD to task graph | Job queue candidates |
 
 ## Gates (parts)
@@ -178,6 +177,9 @@ Runners-up, surveyed only if path B fails: Spec Kitty, Fishhawk.
 | Cut | Reason |
 |-----|--------|
 | Optio | Kubernetes, PostgreSQL and Redis: operating burden |
+| Roast | Ruby; Claude Code and Pi only; a scripting library |
+| DoorDash Agentic Orchestrator | No Cursor; desktop-first. Kept as a reference design |
+| Archon | No Cursor. Conditional: becomes path E if the Cursor filter relaxes |
 | Mastra Factory | Depends on the Mastra platform; beta |
 | Gas Town, Gas City, great_cto, control planes (amux, cezar and others) | Built for swarms of parallel agents; we split by role (P10) |
 | Odin | Every feature runs all 11 phases; database-backed |
@@ -186,6 +188,26 @@ Runners-up, surveyed only if path B fails: Spec Kitty, Fishhawk.
 | Spec-layer alternatives (OpenSpec, Kiro, BMAD, GSD Core and others) | We are on Spec Kit, which is GitHub-backed; no sign that switching pays |
 | Durable workflow engines | Spec Kit's run state or AI-SDLC's orchestrator covers durability for our scale |
 | Commercial factories and enterprise tiers | Budget |
+
+### Cross-check: the governor's earlier shortlist (2026-10-17)
+
+The governor found six names shortlisted in an earlier AI discussion of workflow control planes. Checked the same day:
+
+| Name | What it is | Agents it runs | Verdict |
+|------|-----------|----------------|---------|
+| Spec Kit workflows (GitHub) | YAML steps, Python step types, resumable state | Cursor's agent supported, plus others | Already path A |
+| GitHub Agentic Workflows (GitHub, about 5,000 stars) | Markdown plus YAML compiled to locked-down GitHub Actions | Supported: Copilot (default), Claude Code, Codex, Gemini, Pi. Cursor only as an unsupported sample; custom engines removed in February 2026 | Stays a host candidate. Better fit as the home of the different-family reviewer than of the Cursor builder |
+| Archon (Cole Medin, about 24,000 stars) | YAML graph of steps: shell steps, agent loops, human approval gates, an isolated working copy per run; triggered from the command line, web, GitHub, Slack, Telegram or Discord | Claude Code, Codex, Pi; no Cursor | Misfiled in the first cut as a spec-layer tool. The strongest engine of the six, but no Cursor. Conditional (see below) |
+| Roast (Shopify, about 1,200 stars) | Ruby library chaining shell, chat and agent steps | Claude Code, Pi | Cut: Ruby, no Cursor, a scripting library rather than a factory |
+| Agentic Orchestrator (DoorDash, about 100 stars) | Go state machine: knowledge base, clarify, research, design, roadmap, per-phase plan and build, final review, publish; plan critics in parallel; crash resume with bounded retries (3 in a row, 10 in total); desktop app plus local server | Claude Code, Codex, OpenCode; no Cursor | Missed in the first cut. Reference design for lifecycle, critics and the retry rule (compare register item 20). Desktop-first conflicts with item 14 |
+| Super Simple Software Factory (IndyDevDan, about 1,000 stars) | Python owns the graph, retries and acceptance | Pi | Already a reference design |
+
+**What the cross-check shows.**
+1. All six follow one pattern: code owns the sequence, gates and retries; the agent does one bounded step. That confirms register item 13 from outside.
+2. Spec Kit workflows is the only one that officially runs Cursor's agent. Every other engine assumes Claude Code, Codex, Copilot or Pi.
+3. So "works with Cursor" is now the filter that decides the most. If it holds, path A stands almost alone among engines. If it relaxes (for example, a Claude or ChatGPT plan at about $20 a month), Archon becomes a serious path E, and the DoorDash orchestrator a weaker option.
+
+**Open for discussion: the Cursor question.** Orchestrator's stance: keep Cursor as the agent runtime. It is already paid for, and it gives several model families under one subscription (the builder and the different-family reviewer both run through it). A second subscription would take most of the $30 budget only to change engines. The governor decides.
 
 ## Next (after the first cut)
 
