@@ -146,7 +146,7 @@ Items 2 (architecture phase, spikes, second-model review) and 3 (one-level desig
 
 ## Theme 4: How we work together
 
-**Status: draft, under discussion (opened 2026-10-17; restructured 11:12 PT after the governor's input).** Nothing in this theme is agreed unless its row says so.
+**Status: agreed (governor, 2026-10-17 11:35 PT), after two rounds of discussion.**
 
 Evidence: rules spread over the constitution, `AGENTS.md`, `.cursorrules`, three Cursor rules, a dozen skills, `docs/agent-os/`, the architect backlog, the user's guide and the orchestrator's private notes; the constitution still describes packets, not orders (retro item B6); nine decisions waiting at Wave 1 close, one open since 10-07; the governor learned state by asking; a retro report without a stance; theme 2 recorded as agreed without explicit alignment; a long reply lost from the governor's chat when tool calls followed it; one session wearing coach, architect and sprint-manager hats. Not a defect (governor): Wave 1 growing from 94 to 110 tasks; scope change is a live event, and the response to it is what gets codified (theme 1, items 5, 8, 9).
 
@@ -156,47 +156,47 @@ Sources consulted: OpenAI, [Harness engineering](https://openai.com/index/harnes
 
 | # | Principle | Status |
 |---|-----------|--------|
-| P8 | **The working agreement is designed, written in one place, and revisited at each retro,** not accreted where convenient | draft |
-| P9 | **What is not in git does not exist.** A new session, a new agent or you can pick up from git alone. In git does not mean in an always-loaded rule file | draft |
-| P10 | **Roles are defined as a cast, not one at a time.** Split work by role (a factory manager and a coder); do not split the same work across parallel agents (one agent writing tests and another writing code for the same block) | draft (governor's point) |
-| P11 | **Codify how we respond to change, not the change.** Scope growth, failures and false alarms are live events; the response (re-estimate, restart rule, false-alarm limit) is what gets written down | draft (governor's point) |
-| P12 | **Every rulebook has a budget; what goes out matters as much as what comes in.** The pull to put top-of-mind rules into the constitution or `AGENTS.md` is resisted | draft (governor's point) |
-| P13 | **Prefer settled practice.** Where leading practitioners have iterated and settled on an approach, understand their reasoning and adopt it; our own experiments fill the gaps | draft (governor's point) |
+| P8 | **The working agreement is designed, written in one place, and revisited at each retro,** not accreted where convenient | agreed |
+| P9 | **What is not in git does not exist.** A new session, a new agent or you can pick up from git alone. In git does not mean in an always-loaded rule file | agreed |
+| P10 | **Roles are defined as a cast, not one at a time.** Split work by role (a factory manager and a coder); do not split the same work across parallel agents (one agent writing tests and another writing code for the same block) | agreed (governor's point) |
+| P11 | **Codify how we respond to change, not the change.** Scope growth, failures and false alarms are live events; the response (re-estimate, restart rule, false-alarm limit) is what gets written down | agreed (governor's point) |
+| P12 | **Every rulebook has a budget; what goes out matters as much as what comes in.** The pull to put top-of-mind rules into the constitution or `AGENTS.md` is resisted | agreed (governor's point) |
+| P13 | **Prefer settled practice.** Where leading practitioners have iterated and settled on an approach, understand their reasoning and adopt it; our own experiments fill the gaps | agreed (governor's point) |
 
 ### A. The cast
 
 | # | Change | Status | Builds on |
 |---|--------|--------|-----------|
-| 48 | **One page lists the cast:** you, the coach and chief architect, the sprint manager, the control loop, workers and reviewers. Each with purpose, inputs, outputs, decision rights and escalation path. Checked against how leading teams organise human and agent roles (P13) | draft | — |
-| 49 | **Few standing agents, many short-lived ones.** Standing: the coach and the sprint manager. Short-lived: one worker or reviewer per order, fresh context, self-contained task. The same work is not split across parallel agents. Exception: acceptance scenarios come from the spec, independent of the builder (item 41) | draft | item 19 |
-| 50 | **The coach and chief architect is defined by boundaries and outputs, not tasks:** a free agenda (the problem of the day), clear decision rights (what it settles alone, what goes to you), and a disciplined record (decisions and state in git). Its own designs still get a second-model review | draft (governor's point, refined) | item 2 |
+| 48 | **One page lists the cast:** you, the coach and chief architect, the sprint manager, the control loop, workers and reviewers. Each with purpose, inputs, outputs, decision rights and escalation path. Checked against how leading teams organise human and agent roles (P13) | agreed | — |
+| 49 | **Few standing agents, many short-lived ones.** Standing: the coach and the sprint manager. Short-lived: one worker or reviewer per order, fresh context, self-contained task. The same work is not split across parallel agents. Exception: acceptance scenarios come from the spec, independent of the builder (item 41) | agreed | item 19 |
+| 50 | **The coach and chief architect is defined by boundaries and outputs, not tasks:** a free agenda (the problem of the day), clear decision rights (what it settles alone, what goes to you), and a disciplined record (decisions and state in git). Its own designs still get a second-model review | agreed (governor's point, refined) | item 2 |
 | 51 | **Two conversations, three-way visibility.** You talk to the coach and to the sprint manager. Git is the shared surface: every conclusion reached in either chat is recorded there; each standing agent reads the other's records; when they disagree, the disagreement comes to you as one decision request carrying both views | agreed (decision `wave1-retro-front-door`, B) | — |
-| 52 | **The sprint manager shrinks as the control loop grows:** a session in Wave 1.5; in steady state it handles exceptions only (item 17) | draft | items 13, 17 |
-| 53 | **The cast is reviewed at each retro;** Wave 1.5's split is an experiment (decisions `wave1-retro-bootstrap-role`, `wave1-retro-front-door`) | draft | item 18 |
+| 52 | **The sprint manager shrinks as the control loop grows:** a session in Wave 1.5; in steady state it handles exceptions only (item 17) | agreed | items 13, 17 |
+| 53 | **The cast is reviewed at each retro;** Wave 1.5's split is an experiment (decisions `wave1-retro-bootstrap-role`, `wave1-retro-front-door`) | agreed | item 18 |
 
 ### B. Rulebooks
 
 | # | Change | Status | Builds on |
 |---|--------|--------|-----------|
-| 54 | **A size budget for always-loaded rule files:** `AGENTS.md` about 100 lines, the constitution capped. One in, one out: adding a rule means merging or removing one | draft | — |
-| 55 | **Rules live where they are needed.** Role pages and skills load only when relevant; always-loaded files hold only what every agent needs every time | draft | skills |
-| 56 | **A rule proposal passes the same tests as a new check** (items 26, 27): the failure it prevents, why it cannot be a mechanic or a role-page line, and what it replaces | draft | items 26, 27 |
-| 57 | **Must-happen rules become mechanics; guidance stays prose.** Rules the agents already follow without being told are deleted; removed rules are logged with the reason | draft | item 35 |
-| 58 | **The restructure only moves, merges and deletes;** it adds no new rules | draft | — |
-| 59 | **Nothing important lives only in private notes or chat.** The orchestrator's hard rules and state log move into git, on role pages and state notes, not into always-loaded files | draft | orchestrator store |
-| 60 | **Stale documents are fixed in the cleanup slot** (item 39), starting with the constitution's packet wording | draft | retro item B6 |
+| 54 | **A size budget for always-loaded rule files:** `AGENTS.md` about 100 lines, the constitution capped. One in, one out: adding a rule means merging or removing one | agreed | — |
+| 55 | **Rules live where they are needed.** Role pages and skills load only when relevant; always-loaded files hold only what every agent needs every time | agreed | skills |
+| 56 | **A rule proposal passes the same tests as a new check** (items 26, 27): the failure it prevents, why it cannot be a mechanic or a role-page line, and what it replaces | agreed | items 26, 27 |
+| 57 | **Must-happen rules become mechanics; guidance stays prose.** Rules the agents already follow without being told are deleted; removed rules are logged with the reason | agreed | item 35 |
+| 58 | **The restructure only moves, merges and deletes;** it adds no new rules | agreed | — |
+| 59 | **Nothing important lives only in private notes or chat.** The orchestrator's hard rules and state log move into git, on role pages and state notes, not into always-loaded files | agreed | orchestrator store |
+| 60 | **Stale documents are fixed in the cleanup slot** (item 39), starting with the constitution's packet wording | agreed | retro item B6 |
 
 ### C. The interaction contract
 
 | # | Change | Status | Builds on |
 |---|--------|--------|-----------|
-| 61 | **Discussion in chat; decisions in git.** Choices that change scope, budget, architecture or rules go to a decision request. Confirmations inside an agreed process (like these theme lists) are given in chat and recorded in git | draft | retro item B7 |
-| 62 | **Nothing is recorded as agreed without your explicit yes** | draft | — |
-| 63 | **Every report takes a stance:** position, options, recommendation | draft | — |
-| 64 | **Status comes to you; you don't have to ask.** A short written update at milestones and on red, from the sprint manager and the run log (item 23) | draft | items 8, 23 |
-| 65 | **Decisions are batched and visible.** One list of open decisions with their age; anything open more than a week is raised again or closed; "later" decisions name their trigger | draft | `factory board` |
-| 66 | **One short escalation list:** missing decision, rule conflict, three turns, a substitute for something you locked, cost drift past the threshold | draft | items 7, 9 |
-| 67 | **The main content of a reply comes last,** after any tool calls, so it stays visible in your chat | draft | — |
+| 61 | **Discussion in chat; decisions in git.** Choices that change scope, budget, architecture or rules go to a decision request. Confirmations inside an agreed process (like these theme lists) are given in chat and recorded in git | agreed | retro item B7 |
+| 62 | **Nothing is recorded as agreed without your explicit yes** | agreed | — |
+| 63 | **Every report takes a stance:** position, options, recommendation | agreed | — |
+| 64 | **Status comes to you; you don't have to ask.** A short written update at milestones and on red, from the sprint manager and the run log (item 23) | agreed | items 8, 23 |
+| 65 | **Decisions are batched and visible.** One list of open decisions with their age; anything open more than a week is raised again or closed; "later" decisions name their trigger | agreed | `factory board` |
+| 66 | **One short escalation list:** missing decision, rule conflict, three turns, a substitute for something you locked, cost drift past the threshold | agreed | items 7, 9 |
+| 67 | **The main content of a reply comes last,** after any tool calls, so it stays visible in your chat | agreed | — |
 
 ## Parked for theme 3 (the factory's checks)
 
