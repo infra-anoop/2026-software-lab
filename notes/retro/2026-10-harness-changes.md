@@ -198,6 +198,32 @@ Sources consulted: OpenAI, [Harness engineering](https://openai.com/index/harnes
 | 66 | **One short escalation list:** missing decision, rule conflict, three turns, a substitute for something you locked, cost drift past the threshold | agreed | items 7, 9 |
 | 67 | **The main content of a reply comes last,** after any tool calls, so it stays visible in your chat | agreed | — |
 
+## Theme 5: Direction
+
+**Status: draft, under discussion (opened 2026-10-17).** Nothing in this theme is agreed unless its row says so.
+
+Evidence: Wave 1 ran the factory only on itself; the workload (Smart Writer V2) was not touched; several stalls came from the factory checking its own unfinished parts (a plan sentence deadlocking `main`, checks blocking their own fixes); the planned Wave 2 (23 tasks) predates this register; the register now holds 67 changes.
+
+Sources consulted: OpenAI, [Harness engineering](https://openai.com/index/harness-engineering/) (the harness grew while shipping a real product); Anthropic, [Effective harnesses for long-running agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) (harness exercised on building a real application); build what differentiates, buy the commodity (Wardley mapping); compiler bootstrapping (a known-good stage builds the next); Shape Up (appetite and betting).
+
+### Principles
+
+| # | Principle | Status |
+|---|-----------|--------|
+| P14 | **The factory proves itself on real work, not only on itself** | draft |
+| P15 | **Ours is the governance layer; the plumbing is bought where it can be** | draft |
+
+### Changes
+
+| # | Change | Status | Builds on |
+|---|--------|--------|-----------|
+| 68 | **A real workload in every wave.** From Wave 1.5 on, factory changes are tried on a slice of real product work (Smart Writer V2 or a small app), not only on the factory | draft | — |
+| 69 | **Survey framed as differentiate versus commodity.** Keep ours: intent, decisions, independent review, checks from design, the cast. Buy where possible: the control loop's runtime, agent hosting, durable state, notifications, code analysis | draft | items 2, 15, 40 |
+| 70 | **A known-good factory runs the sprint.** New factory changes are tried before they are promoted; the sprint never depends on the change it is building | draft | item 36 |
+| 71 | **Ambition stays a learning project for about 5 users.** Productizing questions wait until the factory has run a real workload | draft | item 6 |
+| 72 | **The register is sequenced, not built whole.** Wave 1.5 starts with the off-the-shelf survey and the Wave 1 failure inventory, then the minimal control loop; everything else is scheduled by the mission test (item 5) in stage 5 | draft | items 5, 11, 15, 18 |
+| 73 | **The planned Wave 2 is re-examined against this register** before any of it starts | draft | — |
+
 ## Parked for theme 3 (the factory's checks)
 
 - The reply-end question check (`decision-in-chat`) treats any question mark as a decision asked in chat. In this retro it fired three times: twice fairly, once on a question the agreed format already covered. Its message, addressed to the agent, appears in the governor's chat as if he sent it. Example of a word-heuristic check producing false alarms. Covered by items 31 and 35.
