@@ -1,0 +1,16 @@
+schema_version: 1
+kind: decision_lock
+id: wave1-retro-front-door.lock
+created: 2026-10-17T18:31:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - bus/decisions/wave1-retro-front-door/request.yaml
+chosen: "B: Two conversations: also talk to the sprint session directly"
+governor_minutes: 5
+notes: >
+  The governor chose B in chat at 11:30 PT on 2026-10-17, for speed and above all triangulation:
+  he gets the sprint session's information and the coach's views. Condition: set up three-way
+  visibility. Treated as an experiment; where leading practitioners have settled on an approach,
+  understand their reasoning and adopt it. Recorded by the orchestrator.
