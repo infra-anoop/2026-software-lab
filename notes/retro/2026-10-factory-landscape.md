@@ -2,7 +2,7 @@
 
 Working file for the off-the-shelf survey agreed in the Wave 1 retro (register items 2, 15, 40, 72 to 75). Step 1 of "widen, discuss, narrow": the governor and the orchestrator widen and discuss here; the first cut and the shortlist come next; a fresh reviewer from a different model family (GPT-5.6 Sol) then surveys the shortlist only.
 
-**Status: widening (2026-10-17).** Entries are as described by their sources; nothing here is verified yet.
+**Status: survey brief agreed (2026-10-17, 13:43 PT).** See "Survey brief" near the end. Entries in the wide list are as described by their sources unless marked as checked.
 
 Sources:
 - [awesome-software-factories](https://github.com/varun1505/awesome-software-factories) (the governor's find; snapshot read 2026-10-17; the main source for the long list);
@@ -209,12 +209,43 @@ The governor found six names shortlisted in an earlier AI discussion of workflow
 
 **Open for discussion: the Cursor question.** Orchestrator's stance: keep Cursor as the agent runtime. It is already paid for, and it gives several model families under one subscription (the builder and the different-family reviewer both run through it). A second subscription would take most of the $30 budget only to change engines. The governor decides.
 
-## Next (after the first cut)
+## Survey brief (agreed 2026-10-17, 13:43 PT; supersedes the first-cut shortlist above)
 
-1. The governor agrees or changes the shortlist.
-2. The governor sets the survey's appetite.
-3. GPT-5.6 Sol surveys paths A to D and the parts against the agreed criteria, desk research only.
-4. The governor decides the path; the top pick is tried on one real order in Wave 1.5 (item 15).
+**What it decides:** which path to take at the fork (restart on a bought product, hybrid, or keep building), plus a keep, replace or adopt call for each Wave 1 piece. The governor decides; the survey recommends.
+
+**Filters (pass or fail):**
+1. **Portability.** The engine runs at least two agent runtimes, first-class and maintained by its own team (not a community or deprecated adapter). Each runtime offers at least two model families. Runtimes tied to one model vendor (Claude Code, Codex) do not count, because they remove cross-family review.
+2. **Tool cost.** Open source, or a small personal subscription for the factory software itself. Enterprise products are out. Model usage cost is not a selection criterion: prices change too often, and portability is the hedge. The governor already pays for top-tier Cursor and may take a top Copilot plan.
+3. **Operating burden fits one person.** No cluster or hosted platform to run.
+
+**Criteria (judged, for candidates that pass):**
+1. **Coverage:** the spec-driven flow (intent, spec, plan, tasks), independent review, decision records, orchestration and a control loop, and the theme 2 reliability properties.
+2. **Room for our culture:** whether our layer (rules, review policy, plain-language decisions) sits on top without forking the product.
+3. **Fit with our setup:** Cursor stays the home of the conversations (coach and sprint session); unattended steps run on whichever qualifying runtime the engine drives; GitHub and Codespaces.
+4. **Maturity and momentum:** users, release pace, backing, churn risk, including a record of dropping integrations.
+5. **Lock-in and exit:** whether our data stays in git or open formats.
+6. **Effort to adopt:** the glue needed and the learning curve.
+7. **Reliability by design:** whether it runs unattended, judged against the theme 2 properties.
+8. **Cost controls:** whether it can record tokens and cost per run, cap a run, and choose a model per step (register item 80). Replaces the earlier "cost" criterion.
+
+**Shortlist:**
+
+| Path | What it is |
+|------|-----------|
+| A. Spec Kit native | Spec Kit workflows (installed) with our overlays; Cursor and Copilot both dispatchable per step with a model per step; GitHub Actions as host |
+| B. AI-SDLC behind Spec Kit | Spec Kit for specs; AI-SDLC's orchestrator, gates and cross-tool review; Cursor, Copilot and Codex runners |
+| C. GitHub-native | GitHub Issues as the queue, GitHub Agentic Workflows for scheduled locked-down runs (Copilot is its default engine), Copilot's cloud agent from issue to PR; the addyosmani/factory pattern without the Claude dependency. Also a candidate for the lighter lane |
+| D. Keep building on Wave 1 | Baseline |
+
+Blends are allowed (for example A with C's queue). Reference designs, not candidates: Archon (its Copilot adapter is deprecated), DoorDash Agentic Orchestrator, Super Simple Software Factory, StrongDM, Symphony.
+
+**Parts, one pick each:** agent runtime (Cursor command line or cloud agents; Copilot command line or cloud agent); reviewer from a different model family (Copilot code review, Codex, Bugbot); host and trigger (plain GitHub Actions, GitHub Agentic Workflows, Cursor cloud agents through the API); work queue (GitHub Issues, Spec Kit task lists, Beads); merge controls (GitHub rulesets, code owners: commodity).
+
+**Method:** desk research only by a fresh GPT-5.6 Sol reviewer working from a brief in git; claims cited to sources dated 2026; no installs or runs. The hands-on trial of the top pick is one real order early in Wave 1.5 (item 15).
+
+**Output:** one comparison table (filters, then criteria, with evidence), a recommended path with the strongest argument against it, a keep, replace or adopt call for each Wave 1 piece, and the open questions only a trial can answer.
+
+**Appetite:** to be set by the governor; placeholder about half a day of reviewer time.
 
 ## Next (widening, done)
 

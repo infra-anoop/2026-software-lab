@@ -231,6 +231,7 @@ Sources consulted: OpenAI, [Harness engineering](https://openai.com/index/harnes
 | 77 | **Ambition stays a learning project for about 5 users;** productizing questions wait until the factory has built real work | agreed | item 6 |
 | 78 | **Wave 1.5 is small:** the no-build habits are adopted at once; then the survey and the fork decision, and the Wave 1 failure inventory; then only glue and missing pieces | agreed | items 11, 71, 72 |
 | 79 | **The planned Wave 2 is re-examined against this register** before any of it starts | agreed | — |
+| 80 | **Cost is an operating control, not a selection criterion.** Model prices change too often to choose an architecture by; portability (at least two first-class runtimes, each with at least two model families) is the hedge. Every run records tokens and cost, has a cap, and uses a model chosen per step. Feeds the cost and measures discussion and the open token-usage decision | agreed (governor's point, 2026-10-17 13:43 PT) | items 23, 72 |
 
 ## Parked for theme 3 (the factory's checks)
 
