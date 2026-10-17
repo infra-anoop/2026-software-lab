@@ -43,6 +43,31 @@ From Vaibhav Gupta and Dex Horthy ("Software Factory Design Patterns", 2026): co
 | Stripe, "Minions"; Shopify, Roast | Blueprints of deterministic steps with agent steps inside |
 | OpenAI, Symphony; Anthropic, harness articles | Vendor reference designs |
 
+## Lead candidate for the orchestration layer: Spec Kit workflows (governor's pointer, 2026-10-17)
+
+[Spec Kit workflows](https://github.github.com/spec-kit/reference/workflows.html): `specify workflow run` executes YAML workflows of steps: Spec Kit commands, agent prompts, shell commands, human gates, branches, loops, fan-out and fan-in. Runs persist state (`state.json`, `log.jsonl`) and resume from the exact step after a pause or failure. Overlays and slots let a project add, replace or remove steps of an installed workflow without editing it; custom step types are Python packages; `--json` gives machine-readable outcomes; a gate's verdict can be supplied as an input on resume.
+
+**Finding:** this engine is already installed in our repo. Spec Kit 1.0.6, initialised 2026-09-12, ships the bundled "Full SDD Cycle" workflow in `.specify/workflows/speckit/`, with `cursor-agent` as the configured integration. Wave 1 built its own orchestration next to it without using or comparing it.
+
+| Register item | What the engine offers | Gap or question |
+|---------------|------------------------|-----------------|
+| 13 deterministic control loop | The engine sequences steps; agents act only inside command and prompt steps | — |
+| 19, 21 checkpoint and resume | Persisted run state; resume from the exact step | — |
+| 23 run log | `log.jsonl` per run | Token use not recorded |
+| 58 decisions in git; your gates | Gate steps pause; a verdict can be supplied on resume | Glue: turn a decision lock into a resume |
+| P15, 54 to 58 culture on top, no forking | Overlays and slots on the base workflow | — |
+| 19 typed messages | Step outputs, `--json`, `from_json` | — |
+| 14 laptop not part of the machinery | A CLI, not a service | Needs a host, for example GitHub Actions: pause at a gate ends the job; your lock commit resumes it |
+| Cross-family review | Integration and model per step | Verify that `cursor-agent` works in workflow command steps (the bundled workflow lists other integrations) and which second integration gives a different model family |
+| 16, 22 reconciler, deadlines, watchdog | None | Glue |
+
+## Reference designs from the governor's reading (not endorsements)
+
+| Item | What to take from it | Fit |
+|------|---------------------|-----|
+| [Super Simple Software Factory](https://github.com/disler/super-simple-software-factory) | "Code owns sequencing, retries and acceptance; the agent owns only the work inside one bounded phase." Engineer, agent and code lanes; typed envelopes between phases; a failed gate re-prompts the same live session ("a correction costs one message") instead of a cold restart; every event in a SQLite trace | Version 1 runs agents only through the Pi CLI with separate provider API keys; a reference design, not a tool for us |
+| [Factory 2.0](https://factory.com/news/software-factory) | Model independence with routing by cost and speed; autonomy as a gradual spectrum (skills, automations, long-running missions); every stage instrumented so the factory learns from itself | Enterprise product; ideas only |
+
 ## Whole factories (open source)
 
 | Candidate | One line (from its source) | Notes for the first cut |
