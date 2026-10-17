@@ -7,7 +7,7 @@ Spawned per `docs/agent-os/SPAWN_REVIEWER.md`. This is a check of a sorting work
 | Field | Value |
 |-------|-------|
 | Packet id | 2026-10-17-funnel-review |
-| Status | spawned |
+| Status | done (report at `notes/retro/2026-10-wave1.5-funnel-review.md`, reviewer commit 8c49d4d, copied to the retro branch 2026-10-17; triage in the funnel, section 7) |
 | Gate | Funnel check (register item 71; stage 5 plan, step 3) |
 | Under review | `notes/retro/2026-10-wave1.5-funnel.md` |
 | Order | `wo-20261016-factory-wave1-retro-session` (amendment-07) |
