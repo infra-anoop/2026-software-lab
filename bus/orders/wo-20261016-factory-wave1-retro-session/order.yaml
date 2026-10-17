@@ -31,7 +31,7 @@ checks:
   - verdict.inputs-isolated
   - bus.schema
 locks: []
-size_minutes: 90
+size_minutes: 60
 stop_conditions:
   - Any edit needed outside Owned paths
   - Anything that marks Wave 1 as finished (bus/postmortems/wave1-retro.yaml) or starts Wave 1.5 or Wave 2 work before the governor approves its plan
