@@ -144,6 +144,42 @@ Items 2 (architecture phase, spikes, second-model review) and 3 (one-level desig
 | 46 | **Simplicity bias in design review:** the fewest blocks and interfaces that deliver the value | agreed | item 2 |
 | 47 | **Trace rework to its cause.** Each rejection is classed as a design gap, a build slip or a check false alarm; the retro turns design gaps into design rules | agreed | items 8, 10 |
 
+## Theme 4: How we work together
+
+**Status: draft, under discussion (opened 2026-10-17).** Nothing in this theme is agreed unless its row says so.
+
+Evidence: rules spread over the constitution, `AGENTS.md`, `.cursorrules`, three Cursor rules, a dozen skills, `docs/agent-os/`, the architect backlog, the user's guide and the orchestrator's private notes; the constitution still describes packets, not orders (retro item B6); nine decisions waiting at Wave 1 close, one open since 10-07; the governor learned state by asking; a retro report without a stance; theme 2 recorded as agreed without explicit alignment; a long reply lost from the governor's chat when tool calls followed it; the reply-end question check firing on discussion.
+
+Sources consulted: OpenAI, [Harness engineering](https://openai.com/index/harness-engineering/) (a short `AGENTS.md` as a map into a structured docs folder as the system of record; knowledge the agent cannot see does not exist; a doc-gardening pass); Anthropic, [Claude Code best practices](https://code.claude.com/docs/en/best-practices) (keep the agent instruction file short and pruned; hooks for what must always happen, prose for guidance); architecture decision records; Amazon's written narratives; team working agreements revisited at retros.
+
+### Principles
+
+| # | Principle | Status |
+|---|-----------|--------|
+| P8 | **The working agreement is designed, written in one place, and revisited at each retro,** not accreted where convenient | draft |
+| P9 | **What is not in git does not exist.** A new session, a new agent or you can pick up from git alone | draft |
+
+### A. One rulebook
+
+| # | Change | Status | Builds on |
+|---|--------|--------|-----------|
+| 48 | **`AGENTS.md` becomes a short map** (about 100 lines) pointing to one home per topic. Each rule lives in exactly one place; duplicates are removed | draft | `AGENTS.md`, `docs/agent-os/` |
+| 49 | **Nothing important lives only in private notes or chat.** The orchestrator's hard rules and state log move into git; each session ends with a state note in git and the next starts from it | draft | orchestrator store |
+| 50 | **Must-happen rules become mechanics; guidance stays prose; rules are pruned.** A rule the agents already follow without being told is deleted | draft | item 35 |
+| 51 | **Stale documents are fixed in the cleanup slot** (item 39), starting with the constitution's packet wording | draft | retro item B6 |
+
+### B. The interaction contract
+
+| # | Change | Status | Builds on |
+|---|--------|--------|-----------|
+| 52 | **Discussion in chat; decisions in git.** Choices that change scope, budget, architecture or rules go to a decision request. Confirmations inside an agreed process (like these theme lists) are given in chat and recorded in git by the orchestrator | draft | retro item B7 |
+| 53 | **Nothing is recorded as agreed without your explicit yes** | draft | — |
+| 54 | **Every report takes a stance:** position, options, recommendation | draft | — |
+| 55 | **Status comes to you; you don't have to ask.** A short written update at milestones and on red, from the run log (item 23) | draft | items 8, 23 |
+| 56 | **Decisions are batched and visible.** One list of open decisions with their age; anything open more than a week is raised again or closed; "later" decisions name their trigger | draft | `factory board` |
+| 57 | **One short escalation list:** missing decision, rule conflict, three turns, a substitute for something you locked, cost drift past the threshold | draft | items 7, 9 |
+| 58 | **The main content of a reply comes last,** after any tool calls, so it stays visible in your chat | draft | — |
+
 ## Parked for theme 3 (the factory's checks)
 
 - The reply-end question check (`decision-in-chat`) treats any question mark as a decision asked in chat. In this retro it fired three times: twice fairly, once on a question the agreed format already covered. Its message, addressed to the agent, appears in the governor's chat as if he sent it. Example of a word-heuristic check producing false alarms. Covered by items 31 and 35.
