@@ -1,0 +1,40 @@
+schema_version: 1
+kind: decision_request
+id: wave1-retro-format
+created: 2026-10-17T06:19:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/retro/2026-10-wave1-items.md
+owner: governor
+feature: 001-factory-v2
+blocking: true
+prompt: >
+  Why this is asked: you asked for a framework for the Wave 1 retro, then asked for a section on
+  architectural ideas from our earlier conversations before the decisions. The proposed format is
+  six stages, about 80 minutes in total:
+  1. Set the stage (5 min): the session produces the Wave 1.5 list with a fixed total budget, a few
+  rule changes that need no building, and a call on which architectural ideas to pursue; anything
+  not chosen goes to the backlog. We decide; we do not design.
+  2. What happened (10 min): the orchestrator presents the facts from git (timeline, how the task
+  count grew, review rejections, where time went, what was delivered); you correct them.
+  3. Why it happened (15 min), in five themes: predictability (no estimate or budget);
+  run reliability (silent failures around the agents); the factory's own checks (holes and
+  contradictions); how we work together (unwritten or scattered rules); direction (bigger
+  questions for later waves).
+  4. Explore architectural ideas (20 min), seven topics you raised between Sep 17 and Oct 7:
+  managing cost; revisiting the workflow (a lighter lane for low-risk work, root cause before more
+  tests); open-source and third-party tools (adopt, borrow or keep ours); the job board's design
+  against current practice; where agents run and true parallelism (cloud agents, running agents
+  from scripts outside the chat session, scheduled automations); measuring the factory as a
+  product; whether others could use it.
+  5. Decide (25 min): each item goes to Wave 1.5, a rule change now, or the backlog; then how
+  Wave 1.5 fits the process, and its total budget.
+  6. Close (5 min): the orchestrator reads the decisions back and records them in git in one change.
+  What happens next: with A, the orchestrator starts stage 2 in chat. With B, tell the orchestrator
+  in chat what to change.
+options:
+  - label: "A: Use this six-stage format and start with the facts"
+  - label: "B: Change the format first"
+recommended: "A: Use this six-stage format and start with the facts"
