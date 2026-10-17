@@ -253,6 +253,26 @@ Sources consulted: DORA (lead time, change failure rate, rework rate); SPACE (no
 | 84 | **Runaway caps, not rationing.** Each run is capped at a generous multiple of its estimate; hitting a cap stops and reports under the restart rule | agreed | items 20, 80 |
 | 85 | **Wave 1 baseline, once,** from git, the agent records and the governor's usage export (received 2026-10-17, kept out of git). First reference class for calibration | agreed | items 10, 11 |
 
+## The lighter lane (retro stage 4, discussion 3)
+
+**Status: agreed (governor, 2026-10-17 14:42 PT).**
+
+Evidence: Wave 1 had one lane. Every change, whatever its risk, went through an order, a claim, a handoff, gates and an independent review; 8 of the 18 orders with review records were notes, records or guides. The fixed cost per change was high, which pushes toward unnatural batching or working around the process.
+
+Sources consulted: ITIL change types (standard, normal, emergency); DoorDash Agentic Orchestrator profiles (Medium, Large, Moonshot, chosen at creation); AI-SDLC's routing by complexity; GitHub code owners and rulesets (review rules by path); Google's size-tuned code review.
+
+| # | Change | Status | Builds on |
+|---|--------|--------|-----------|
+| 86 | **Three lanes, chosen when work comes in.** **Light:** notes, records, docs, and config with no runtime effect; no spec or plan; one agent; a review by another model family; merges on green checks and an accepted review. **Normal:** an order of tasks under an existing plan, with the usual reviews. **Full:** new features or anything that changes the architecture; the whole spec-to-review flow and the architecture phase (item 2) | agreed (governor: three lanes) | items 2, 6 |
+| 87 | **The lane is decided by a written rule,** from which files change, the size, and whether anything irreversible is touched. Recorded on the work item. A change that grows moves up a lane under the mission test (item 5); moving down needs the governor's yes | agreed | item 5 |
+| 88 | **Irreversible-harm guards apply in every lane** (item 26): pushes to main, secrets, deletions, settings. The light lane removes ceremony, not protection | agreed | items 26, 35 |
+| 89 | **One workflow with a lane switch,** not three workflows. Scorecard numbers are split by lane too, to show whether the lanes sort work correctly | agreed | item 81 |
+| 90 | **Every review is done by another model family,** in every lane. If a review happens, it is cross-family | agreed (governor's point) | item 74 |
+
+### Future backlog (not this wave)
+
+- An "extra light" lane with no review, created only if the scorecard data shows reviews add nothing for some kinds of change. Governor: not now.
+
 ## Parked for theme 3 (the factory's checks)
 
 - The reply-end question check (`decision-in-chat`) treats any question mark as a decision asked in chat. In this retro it fired three times: twice fairly, once on a question the agreed format already covered. Its message, addressed to the agent, appears in the governor's chat as if he sent it. Example of a word-heuristic check producing false alarms. Covered by items 31 and 35.
