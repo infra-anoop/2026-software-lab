@@ -235,15 +235,19 @@ Sources consulted: OpenAI, [Harness engineering](https://openai.com/index/harnes
 
 ## Measures and guardrails (retro stage 4, discussion 2)
 
-**Status: items 82 to 85 and the measurement-cost rule in item 81 agreed (governor, 2026-10-17 14:24 PT). The scorecard's numbers and their units are still under discussion.**
+**Status: agreed (governor, 2026-10-17: items 82 to 85 and the measurement-cost rule at 14:24 PT; principle P18 and the scorecard at 14:36 PT).**
 
 Evidence: Wave 1's cost was discovered from the plan tier, not from the factory; the token-usage request sat in git from Oct 7 without reaching the governor; the burn chart and run log were agreed but never built. The governor's usage export (Sep 8 to Oct 17) shows Wave 1 (Oct 3 to 7) used about 808M tokens, over three times all of September's pre-factory work, plus about $255 on-demand beyond the plan's included usage; 83% of Wave 1 tokens went to the builder model and 16% to the reviewer model. Review records show the three biggest orders needed 6 to 9 reviews each across their gates.
 
 Sources consulted: DORA (lead time, change failure rate, rework rate); SPACE (no single activity measure; Goodhart's law); FinOps unit economics (cost per unit of value, tagged spend); OpenTelemetry semantic conventions for generative AI (standard token and cost fields); Anthropic, multi-agent research system (token use explains most quality variance); AI-SDLC's earned-autonomy bar (about 95% unattended completion).
 
+| # | Principle | Status |
+|---|-----------|--------|
+| P18 | **Measurement follows the work; the work is never reshaped for measurement.** Batching tasks into one order for one agent stays the natural unit | agreed (governor's point) |
+
 | # | Change | Status | Builds on |
 |---|--------|--------|-----------|
-| 81 | **A small scorecard read from machine data,** for seeing, not targets, reviewed each retro. **Measurement costs at most 1% of factory spend, is computed by code and never by a model, and the 1% is checked each retro.** The numbers, the unit they are measured on and the acceptance-by-pass breakdown are under discussion | rule agreed (governor); numbers draft | items 8, 10, 80 |
+| 81 | **A scorecard read from machine data,** for seeing, not targets, reviewed each retro. **Measurement costs at most 1% of factory spend, is computed by code and never by a model, and the 1% is checked each retro.** Four units: **wave, feature, order** (a batch of tasks delegated to one agent) **and task.** Every number is measured at all four units; none is pre-judged useless at a level. Numbers: (1) **acceptance by pass**, the share accepted on pass 1, 2 or 3 or sent to the governor under the three-turn rule, split by gate (spec, plan, test, code review, governor acceptance), with the cause of each rework; (2) **lead time**; (3) **unattended rate**, finished with no stall and no interruption except decisions; (4) **cost by role** (builder, reviewer, orchestrator); (5) **estimate against actual**. Beside them, the burn chart. Each figure is labelled measured or estimated (for example, task cost is split from its order by time window). For task-level acceptance, reviewers note which task each finding concerns | agreed (governor's points on units and coverage) | items 7, 8, 10, 47, 80 |
 | 82 | **Telemetry by standard, bought.** Each agent run records model, tokens, cost, work item and role in the OpenTelemetry format, sent to a bought store (Logfire is already in the lab). No homemade token counters. Where a runtime exposes no per-run usage (Cursor on individual plans), the provider's usage export is joined by time and model | agreed | items 23, 80 |
 | 83 | **Model routing by evidence.** Top-tier models by default; a step moves to a cheaper model only when the scorecard shows its first-pass acceptance holds. Each step's model is written in the workflow file | agreed | item 80 |
 | 84 | **Runaway caps, not rationing.** Each run is capped at a generous multiple of its estimate; hitting a cap stops and reports under the restart rule | agreed | items 20, 80 |
