@@ -1,0 +1,9 @@
+# Retro additions follow-up (2026-10-07 14:15 PT)
+
+- Governor item 18 (reliability beyond heartbeat: a 12h root cause, b cloud agents, c bigger machine, d keepalives, e agent handshake) added at f5ee83d on wo/wo-20261007-factory-retro-additions.
+- Reviewer f6e57db1 was spawned on 0087dbb (items 13-17 only). When it returns: cherry-pick, then RESUME it for a round 2 limited to section 18 (+ section 15 bullet and heading change) in a NEW worktree review-retro-additions-2 at origin head.
+- Evidence found: codespace 4 cores/16 GB/32 GB (70% disk), idle_timeout_minutes=30, retention 30 days; uptime shows restart ~12:37 PT on 10-07, inside the 90-min silence; last_used_at 12:39 PT. Hypothesis: idle timeout stopped the codespace while orchestrator waited idle.
+- Also: notes file pending-slice-b-notes.md append at 14:20 PT may not have completed (user backgrounded the command) - verify.
+- 14:25 PT decision-in-chat hook fired. Wrote bus/decisions/wave1-token-usage/request.yaml (A export CSV to downloads/ (git-ignored), B skip tokens) + amendment-01 (owns bus/decisions/wave1-token-usage/**) at fd53ba1 on retro-additions branch. decision-request-no-ids passes ('worktree' counted as jargon). `factory decisions` reads main -> shows only after merge. When governor answers, write lock.yaml (DecisionLock). Reviewer round 2 must also cover the request + amendment.
+- RULE: governor asks go to bus/decisions/<id>/request.yaml, not chat questions.
+- 14:30 PT retro-additions review r1 REJECT (R-RX1 blocker spec template not rule path; R-RX2/3 debates unverified numbers). Cherry-picked 767c986; fixes+triage 6a60e1f. Round 2 = resumed f6e57db1 in worktree review-retro-additions-2 (also covers section 18, decision request, amendment-01) -> verdict-02. Then orchestrator handoff.yaml, factory handoff, PR, merge on green. POLL git at ~15:00 PT if no notice.
