@@ -7,7 +7,7 @@ Spawned per `docs/agent-os/SPAWN_REVIEWER.md`. A focused review of one design de
 | Field | Value |
 |-------|-------|
 | Packet id | 2026-10-17-factory-whole-review |
-| Status | round 1 done ("not coherent", reviewer commit fa936a2, copied to the retro branch); all nine findings fixed; round 2 spawned (see "Round 2" below) |
+| Status | done. Round 1 "not coherent" (fa936a2); round 2 "not coherent" (b0ac1e8); round 3 "coherent" (5132a63). All reports copied to the retro branch; nothing left for the governor |
 | Gate | Coherence review (governor's addition to the stage 5 plan, 2026-10-17 15:41 PT) |
 | Under review | `notes/retro/2026-10-factory-whole.md` |
 | Order | `wo-20261016-factory-wave1-retro-session` (amendment-07) |
