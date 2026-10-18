@@ -1,6 +1,6 @@
 # The factory as one whole (end of Wave 1.5)
 
-**Status: draft by the orchestrator (coach and architect), 2026-10-17; focused review round 1 "not coherent" (2 blockers, 6 major, 1 minor), all nine findings fixed; round 2 "not coherent" (5 resolved, 4 partly; 1 new blocker, 3 major), all four fixed; round 3 "coherent" (all eight resolved, no new contradiction, nothing for the governor). Next: governor read (stage 5, step 6).**
+**Status: draft by the orchestrator (coach and architect), 2026-10-17; focused review round 1 "not coherent" (2 blockers, 6 major, 1 minor), all nine findings fixed; round 2 "not coherent" (5 resolved, 4 partly; 1 new blocker, 3 major), all four fixed; round 3 "coherent" (all eight resolved, no new contradiction, nothing for the governor). Governor read the file and the review and agreed (2026-10-18 00:56 PT). Stage 5, step 6 done.**
 
 Round 2 fixes: a trial state for switching a lane on (section 16); intake forms aligned with the funnel (funnel C1, C1.1); a worker turns rejected-feature reasons into tasks (4d step 11); the reviewer's flag and the author's "needs the governor" disposition kept as separate fields (4b step 6, section 5). Nothing here is built yet. Review: `notes/retro/2026-10-factory-whole-review.md`.
 
