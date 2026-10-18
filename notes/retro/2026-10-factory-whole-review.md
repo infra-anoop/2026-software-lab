@@ -197,3 +197,32 @@ The fixes also leave three material ownership or source-consistency gaps.
 - **Evidence:** Section 5 says every finding has a “needs the governor” flag that only a reviewer can set. Step 6 says the author may also raise “needs the governor” on a finding. The agreed ruling protects a reviewer's mark from author downgrade; it does not require both actors to write the same field.
 - **Why it matters:** Two careful schema authors will produce incompatible contracts, and one may accidentally let an author alter the protected reviewer field.
 - **Fix:** Keep the verdict flag reviewer-only. Give the revision report a separate `needs_governor` disposition that the author may set; convergence treats either signal as a stop, but only a governor lock clears the reviewer flag.
+
+## Round 3
+
+### Verdict
+
+**Verdict: coherent.**
+All four partly resolved round 1 findings are now resolved.
+All four round 2 findings are now resolved.
+The fixes introduce no new contradiction or ambiguity.
+No issue remains for governor choice under the three-turn rule.
+
+### Dispositions
+
+1. **Resolved — Round 1 finding 1, unplanned runtime routing.** Section 4a still supplies the total light/normal/full rule, while funnel C1 and C1.1 now name the same three intake forms: change, order and new feature. A builder following either source gets the inputs required by the routing rule.
+2. **Resolved — Round 1 finding 5, feature rejection.** Full-lane step 11 now assigns a worker to map each governor reason into amended or new tasks, runs the consistency check, lets code create corrective orders from those tasks, and loops back to acceptance. Architecture-changing reasons use step 10.
+3. **Resolved — Round 1 finding 6, governor escalation ownership.** Normal-lane step 6 and §5 now define two separate fields: a reviewer-only verdict flag and an author-owned revision disposition. Convergence stops on either, while only the governor's lock clears the protected reviewer flag.
+4. **Resolved — Round 1 finding 7, cutover before all lanes exist.** Section 16 keeps one temporary route after cutover and now adds a trial state that gives each new lane a first eligible issue, a pass transition to on, and a failure transition back to waiting or normal. Funnel §9 names the same trial.
+5. **Resolved — R2-1, circular lane activation.** Section 16 explicitly lets code run one eligible issue through a built but not-yet-on lane in `trial` state. That is the missing entry into both the light and full lane activation loops.
+6. **Resolved — R2-2, intake-form contradiction.** Funnel C1 and C1.1 now match whole-factory §4a exactly on the three forms, removing the competing build instructions.
+7. **Resolved — R2-3, rejected-feature task author.** Step 11 names the worker that produces corrective tasks and the checks and code steps that consume them; the rejection loop no longer has an unproduced input.
+8. **Resolved — R2-4, reviewer-only versus author-settable escalation.** The review verdict and revision report now carry distinct stop signals with distinct owners, and the actor table, steps 5–6 and §5 agree.
+
+### New contradictions introduced by these fixes
+
+None found. The trial state agrees with the funnel's cutover note; the intake sources agree; corrective work has an actor, input and consumer; and the two escalation paths have separate schema ownership.
+
+### Remaining issue for governor
+
+None.
