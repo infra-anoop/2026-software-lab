@@ -1,0 +1,19 @@
+schema_version: 1
+kind: decision_lock
+id: wave1-retro-wave15-appetite.lock
+created: 2026-10-18T00:15:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - bus/decisions/wave1-retro-wave15-appetite/request.yaml
+  - notes/retro/2026-10-wave1.5-funnel.md
+chosen: "A: Required plus worthwhile extras, about 89 to 182 agent-hours"
+governor_minutes: 20
+notes: >
+  The governor chose A in chat: at 16:38 PT on 2026-10-17, "Lets start with your recommendation.
+  Must have and should have", pending a look at the work items with their estimates; at 17:12 PT,
+  after reading the work-item list (funnel section 8), "It looks reasonable". Same session: the
+  three nice-to-haves go to the tooling backlog; coherence wins over a small wave; cutover to the
+  new way of working as soon as it is convenient; the phase earlier called "Trial" is renamed Core
+  (kept work, proven on the first real order). Recorded by the orchestrator.
