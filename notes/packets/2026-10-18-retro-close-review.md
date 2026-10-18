@@ -7,7 +7,7 @@ Spawned per `docs/agent-os/SPAWN_REVIEWER.md`. One cross-family pass over the re
 | Field | Value |
 |-------|-------|
 | Packet id | 2026-10-18-retro-close-review |
-| Status | spawned |
+| Status | done. "Ready with changes" (reviewer commit 8a2f19b, copied to the retro branch); all three findings fixed |
 | Gate | Retro close, one pass (no further rounds unless a blocker) |
 | Under review | everything the retro branch `wo/wo-20261016-factory-wave1-retro-session` changes against `origin/main` |
 | Order | `wo-20261016-factory-wave1-retro-session` (amendment-09) |

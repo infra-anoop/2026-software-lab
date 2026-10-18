@@ -34,11 +34,12 @@ You share git. Read each other's records. When you disagree, the governor gets o
 
 ## 3. State at handover
 
-- **Retro closed** (decision `wave1-retro-close`, governor 2026-10-18 00:56 PT). All five stages done. The whole-factory walk-through was reviewed by a second model family in three rounds (not coherent, not coherent, then coherent) and the governor read and agreed it. The retro's records reach `main` through the retro session's pull request.
+- **Retro closed** (decision `wave1-retro-close`, governor 2026-10-18 00:56 PT). All six stages done. The whole-factory walk-through was reviewed by a second model family in three rounds (not coherent, not coherent, then coherent) and the governor read and agreed it. The retro's records reach `main` through the retro session's pull request.
 - Decisions locked in the retro: bootstrap role, front door, sprint type, first product work, token usage, factory path (Spec Kit plus Issues), Wave 1.5 appetite (Must plus Should, about 89 to 182 agent-hours), retro close.
 - The Wave 1 items list (`notes/retro/2026-10-wave1-items.md`) is closed with an outcome table; rows not traced there are traced in the failure inventory.
 - **Wave 1 effort, rough:** about 808 million tokens over Oct 3 to 7 (usage export). No agent-hours were recorded; a rough reconstruction from commit activity (25 to 38 hours with an agent working, up to three agents plus the orchestrator in parallel) gives about 50 to 100 agent-hours. Unverified; the Wave 1 baseline (register item 85) replaces it. Wave 1.5's likely estimate is therefore about Wave 1's size, the pessimistic two to three times it.
 - Roles: architect and sprint manager are separate sessions from the start of Wave 1.5 (governor, 2026-10-17).
+- Housekeeping: about 60 Wave 1 working copies remain under `.worktree-home/.cursor/worktrees/`, plus merged remote branches (Wave 1 items list, D20). Harmless; clear them in Wave 1.5's removal phase. The retro's own review copies are already removed.
 - Wave 1.5: shape agreed (probe, core, cutover, build-out, removal); first real order is the workflow checker; cutover as early as convenient, never two ways of working.
 - Open decision `app-key-delivery`: likely closed when the GitHub App is set up in Wave 1.5 (the key becomes an Actions secret).
 - Not yet built: everything in the register. The Wave 1 failure inventory and baseline are Wave 1.5 work; evidence in `notes/retro/2026-10-wave1-items.md` and `notes/retro/sources/orchestrator-notes-wave1/`.
