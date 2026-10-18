@@ -137,3 +137,63 @@ A new session could run a normal planned order from the description. It could no
 - `.specify/memory/constitution.md`
 - `AGENTS.md`
 - `docs/agent-os/`
+
+## Round 2
+
+### Verdict
+
+**Verdict: not coherent.**
+Five round 1 findings are resolved and four are partly resolved.
+The end-state flow now covers routing, readiness, hand-in, held-back tests, acceptance, measurement and record ownership.
+The temporary lane switch has a circular entry condition, so build-out cannot reach its stated end without an unstated trial exception.
+The fixes also leave three material ownership or source-consistency gaps.
+
+### Dispositions of the nine round 1 findings
+
+1. **Partly resolved — Unplanned runtime work has no lane.** The whole-factory file now gives every issue a lane, with unplanned runtime work explicitly normal and an upward re-check at pull-request time (§4a; §4b step 1). However, the new three-form intake contradicts the still-agreed funnel's two-form capability and work item; see new finding R2-2.
+2. **Resolved — Decision readiness and architecture re-alignment were missing.** Full-lane step 8 now fails closed on unlocked decisions before dependent orders are created, step 10 re-aligns the plan and tasks after an architecture-changing lock, invariant 10 restates the dependency bar, and §12 names these as the successors to the retired documents.
+3. **Resolved — Chat-produced intent and spec had no engine handoff.** Full-lane step 3 now assigns a code-owned hand-in: the sprint manager invokes the small command, code validates, commits and pushes the drafts, and the `spec ready` issue transition starts the engine. Sections 3, 5 and invariant 1 use the same ownership.
+4. **Resolved — Held-back acceptance scenarios had no secure home.** Section 4e now names the producer, inaccessible storage rule, public manifest, evaluator, verdict path, revision consumer and feature-level result. Section 5 gives the scenarios one home, while §14 leaves only the store product to the plan.
+5. **Partly resolved — Feature acceptance had no rejection path.** Step 11 now separates merge from ship, keeps a rejected feature open and loops through corrective work before asking again. But it assigns creation of corrective orders to code without naming who produces their tasks from the governor's reasons; see new finding R2-3.
+6. **Partly resolved — Reviewer escalation was represented only as an author disposition.** Step 5 and the verdict contract now give reviewers a non-downgradable flag that stops before revision and resumes with the lock. Step 6 simultaneously lets the author raise the same condition, while §5 says only a reviewer can set it; see new finding R2-4.
+7. **Partly resolved — Cutover accepted work before two lanes existed.** Section 16 and the matching funnel §9 note now route light work through normal and hold full work, avoiding a return to the old queue. Their lane-activation condition is circular and has no stated trial transition; see new finding R2-1.
+8. **Resolved — The scorecard omitted lane splits.** Section 9 now requires every scorecard measure to be split by light, normal and full lane, in addition to the four aggregation units.
+9. **Resolved — Record-writing ownership conflicted.** Sections 2 and 5 plus invariant 1 now consistently distinguish agent-drafted payloads from code validation/persistence and code-authored state changes.
+
+### New findings
+
+#### R2-1. A lane must run before it may be switched on, but no work may use it before it is switched on
+
+- **Severity:** blocker
+- **Confidence:** 99
+- **Section:** `notes/retro/2026-10-factory-whole.md` §16; `notes/retro/2026-10-wave1.5-funnel.md` §9
+- **Evidence:** Until light is switched on, every light change runs in normal. Until full is switched on, every full item waits unprocessed. The final bullet then says each lane is switched on only after it “has run one real piece of work end to end.” No trial state or exception permits that first light/full run. The funnel repeats the wait/run-normal rules and says Build-out ends only when all three lanes run.
+- **Why it matters:** Both new lanes have a loop with no entry, so Build-out cannot meet its exit condition using the stated temporary rules.
+- **Fix:** Define an explicit trial transition: once a lane is built, code selects one queued eligible issue, marks the lane `trial`, runs that issue end to end through the candidate lane, and switches the lane on only if it passes. On failure, return the issue to waiting (full) or normal (light) and keep the lane off.
+
+#### R2-2. Intake now requires three forms while the agreed capability still requires two
+
+- **Severity:** major
+- **Confidence:** 99
+- **Section:** `notes/retro/2026-10-factory-whole.md` §4a versus `notes/retro/2026-10-wave1.5-funnel.md` C1 and C1.1
+- **Evidence:** The whole-factory fix requires separate change, order and new-feature forms. Funnel C1 and work item C1.1 still require only “an order and a light change” form. The funnel's cutover note was amended in this round, but the intake capability was not.
+- **Why it matters:** A builder following the agreed work list will omit the change or feature intake needed by the total routing rule.
+- **Fix:** Make both sources name the same forms. The smallest change is to update C1 and C1.1 to the three forms in §4a, or explicitly define one general intake form whose type field covers change and feature.
+
+#### R2-3. Rejected feature reasons have no task author
+
+- **Severity:** major
+- **Confidence:** 94
+- **Section:** `notes/retro/2026-10-factory-whole.md` §4d step 11
+- **Evidence:** On rejection, the governor's reasons become a lock and code creates corrective orders. An order is a batch of tasks (§1), but no worker or standing actor converts those reasons into amended tasks when the plan itself does not change. Step 10 names an amendment worker only for architecture-changing reasons.
+- **Why it matters:** Code can persist and route structured work, but the description gives it no task input for an ordinary product correction. The rejection loop can stop before corrective work exists.
+- **Fix:** After rejection, have a worker map each reason to amended or new tasks under the approved plan; run the consistency check; then let code create linked corrective orders. Reuse step 10 when architecture changes.
+
+#### R2-4. The same governor-needed condition is both reviewer-only and author-settable
+
+- **Severity:** major
+- **Confidence:** 99
+- **Section:** `notes/retro/2026-10-factory-whole.md` §4b steps 5–6 and §5
+- **Evidence:** Section 5 says every finding has a “needs the governor” flag that only a reviewer can set. Step 6 says the author may also raise “needs the governor” on a finding. The agreed ruling protects a reviewer's mark from author downgrade; it does not require both actors to write the same field.
+- **Why it matters:** Two careful schema authors will produce incompatible contracts, and one may accidentally let an author alter the protected reviewer field.
+- **Fix:** Keep the verdict flag reviewer-only. Give the revision report a separate `needs_governor` disposition that the author may set; convergence treats either signal as a stop, but only a governor lock clears the reviewer flag.
