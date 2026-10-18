@@ -96,6 +96,13 @@ Severity per finding: blocker (the factory does not hold together as described),
 - **Deposit:** append a "Round 2" section to `notes/retro/2026-10-factory-whole-review.md` in your new worktree: verdict (coherent, coherent with changes, or not coherent), the nine dispositions, any new findings in the same format.
 - **Appetite:** 45 minutes; hard stop at 1 hour.
 
+## Round 3 (final scoped re-review; after this, open issues go to the governor)
+
+- **Your worktree:** `/workspaces/2026-software-lab/.worktree-home/.cursor/worktrees/retro-whole-review-3`, branch `review/wo-20261016-factory-wave1-retro-session-whole-3`, already created at the retro commit that adds this section. Same git rules.
+- **Job:** for the four round 2 items that were not fully resolved (round 1 findings 1, 5, 6, 7) and your four new findings (R2-1 to R2-4), say resolved, partly resolved or not resolved, with evidence. The file's status block lists where each fix landed. Then check only whether these fixes introduced a new contradiction. Raise nothing on unchanged text. Under the three-turn rule, anything still open after this round goes to the governor, so state each remaining issue as a plain choice with your recommendation.
+- **Deposit:** append a "Round 3" section to `notes/retro/2026-10-factory-whole-review.md` in your new worktree: verdict, dispositions, any remaining issues as choices.
+- **Appetite:** 30 minutes; hard stop at 45 minutes.
+
 ## Stop and report if
 
 - A file named in "Read first" is missing.
