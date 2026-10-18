@@ -1,0 +1,137 @@
+# Critical review loop with convergence, used for both the spec and the plan.
+#
+# Control flow is owned by the workflow engine and by .factory/bin/factory.py.
+# Agents only read files and write files; they never decide what runs next.
+# Install:  specify workflow add --dev .factory/workflows/review-loop.yml
+#
+# NOTE: written from Spec Kit's workflow reference and engine source, not yet
+# executed. Run `specify workflow validate` (or the install above) first.
+schema_version: "1.0"
+workflow:
+  id: "factory-review-loop"
+  name: "Role-seeded review loop"
+  version: "0.1.0"
+  author: "you"
+  description: "Reviewers critique an artifact, a reviser responds, code decides convergence."
+
+inputs:
+  stage:
+    type: string
+    enum: [spec, plan]           # constrained, so it is safe to interpolate into shell `run` fields
+    required: true
+  integration:
+    type: string
+    default: "auto"
+  reviser_model:
+    type: string
+    default: ""
+  approval:                      # verdict for the escalation gate, mapped from the parent
+    type: string
+    default: ""
+
+steps:
+  # 0. Code: archive any earlier history for this stage so rounds restart at 1.
+  - id: reset
+    type: shell
+    run: "python .factory/bin/factory.py reset {{ inputs.stage }}"
+    output_format: json
+
+  - id: loop
+    type: do-while
+    max_iterations: 6            # safety backstop only; the real cap is max_rounds in .factory/config.json
+    condition: "{{ steps.converge.output.data.continue_loop }}"
+    steps:
+      # 1. Code: start the round, write context.md, return the reviewer roster.
+      - id: prepare
+        type: shell
+        run: "python .factory/bin/factory.py prepare {{ inputs.stage }}"
+        output_format: json
+
+      # 2. Agents: one reviewer per role, in parallel, each seeded with its role brief.
+      - id: review
+        type: fan-out
+        items: "{{ steps.prepare.output.data.roles }}"
+        max_concurrency: 3
+        step:
+          id: reviewer
+          type: prompt
+          integration: "{{ inputs.integration }}"
+          model: "{{ item.model }}"
+          timeout: 900
+          prompt: |
+            You are the "{{ item.name }}" reviewer for stage "{{ inputs.stage }}",
+            round {{ steps.prepare.output.data.round }}.
+            1. Read .factory/roles/_shared.md, then .factory/roles/{{ item.name }}.md.
+            2. Read .factory/reviews/{{ inputs.stage }}/round-{{ steps.prepare.output.data.round }}/context.md
+               and the artifacts it lists.
+            3. Write your verdict as JSON to
+               .factory/reviews/{{ inputs.stage }}/round-{{ steps.prepare.output.data.round }}/{{ item.name }}.json
+               conforming exactly to .factory/schemas/ReviewVerdict.schema.json,
+               with role "{{ item.name }}", stage "{{ inputs.stage }}",
+               round {{ steps.prepare.output.data.round }}.
+            Do not modify any other file.
+
+      # 3. Code: validate every verdict against the Pydantic model (never fails the run).
+      - id: check
+        type: shell
+        run: "python .factory/bin/factory.py check {{ inputs.stage }}"
+        output_format: json
+
+      # 4. Agent, only if needed: one repair attempt, fed the exact validation errors.
+      - id: repair
+        type: if
+        condition: "{{ steps.check.output.data.invalid_files | length }}"
+        then:
+          - id: fix-json
+            type: prompt
+            integration: "{{ inputs.integration }}"
+            timeout: 300
+            prompt: |
+              Some review files failed schema validation. Read
+              .factory/reviews/{{ inputs.stage }}/round-{{ steps.prepare.output.data.round }}/errors.md
+              and fix only the listed JSON files so they conform to
+              .factory/schemas/ReviewVerdict.schema.json. Do not change any finding's meaning.
+
+      # 5. Code: strict check (fails the run if still invalid), records the round,
+      #    and decides converged / continue / escalate.
+      - id: converge
+        type: shell
+        run: "python .factory/bin/factory.py check {{ inputs.stage }} --strict --record"
+        output_format: json
+
+      # 6. Agent, only if the loop continues: address findings and report dispositions.
+      - id: revise
+        type: if
+        condition: "{{ steps.converge.output.data.continue_loop }}"
+        then:
+          - id: reviser
+            type: prompt
+            integration: "{{ inputs.integration }}"
+            model: "{{ inputs.reviser_model }}"
+            timeout: 1200
+            prompt: |
+              You are the author of the {{ inputs.stage }} artifacts.
+              1. Read .factory/reviews/{{ inputs.stage }}/round-{{ steps.prepare.output.data.round }}/open-findings.md.
+              2. For each finding: fix the artifact, or reject it with a reason, or mark it
+                 needs_human if it requires a product decision you cannot make.
+                 Edit only the artifacts listed in context.md in the same directory.
+              3. Write your report as JSON to
+                 .factory/reviews/{{ inputs.stage }}/round-{{ steps.prepare.output.data.round }}/revision.json
+                 conforming to .factory/schemas/RevisionReport.schema.json.
+
+  # 7. Human: only when code says the loop could not converge.
+  - id: escalate
+    type: if
+    condition: "{{ steps.converge.output.data.needs_escalation }}"
+    then:
+      - id: human-decision
+        type: gate
+        message: "Review did not converge. Read the escalation file, edit the artifacts if needed, then decide."
+        show_file: ".factory/reviews/{{ inputs.stage }}/escalation.md"
+        options: [approve, reject]
+        on_reject: abort
+        verdict_input: approval
+
+outputs:
+  converged:
+    value: "{{ steps.converge.output.data.converged }}"

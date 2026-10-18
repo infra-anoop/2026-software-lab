@@ -1,0 +1,28 @@
+# FR-037 bootstrap handoff for the Wave 1 retro session (notes and decision records only).
+schema_version: 1
+kind: handoff
+id: wo-20261016-factory-wave1-retro-session.handoff
+created: 2026-10-18T08:25:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - wo-20261016-factory-wave1-retro-session
+  - bus/decisions/wave1-retro-close/lock.yaml
+  - notes/retro/2026-10-architect-handover.md
+summary: |
+  The Wave 1 retro's records, closed by the governor (decision wave1-retro-close, 2026-10-18).
+  Adds the agreed register of harness changes, the factory landscape and survey, the Wave 1.5 funnel
+  and agreed shape, the whole-factory walk-through (three cross-family review rounds, final
+  "coherent", agreed by the governor), the closed Wave 1 items list with outcomes, the architect
+  handover for the two new sessions, evidence copies under notes/retro/sources/, and the retro's
+  decision requests and locks. A final cross-family pass over the whole branch returned "ready with
+  changes"; all three findings are fixed. No code and no rule paths change.
+checks_run:
+  - gate_or_test: "factory check schema"
+    result: "schema ok"
+  - gate_or_test: "pull request #40 checks"
+    result: "all gates passed except the two that need this handoff and the review verdict"
+deviations: []
+open_questions: []
+author_model: claude-opus-5.5

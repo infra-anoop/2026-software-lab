@@ -1,0 +1,19 @@
+schema_version: 1
+kind: decision_lock
+id: wave1-retro-front-door.lock
+created: 2026-10-17T18:31:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - bus/decisions/wave1-retro-front-door/request.yaml
+chosen: "B: Two conversations: also talk to the sprint session directly"
+governor_minutes: 5
+notes: >
+  The governor chose B in chat at 11:30 PT on 2026-10-17: "On your question about front door, I
+  actually prefer B. In addition to faster, my main attraction is triangulation. I get the
+  information. And I get your views. That helps me decide. What we need to do is to set up, so that
+  there is 3 way visibility. I agree either way it is an experiment and we learn. But on that note,
+  we should also learn from the SOTA practioners. If they have already iterated and settled on one
+  SOTA approach, that counts for something, and we should understand the reasoning and adopt it."
+  Recorded by the orchestrator.

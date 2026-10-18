@@ -1,0 +1,26 @@
+# Orchestrator, 2026-10-17: the governor shared source material (a design kit, a report and a
+# chat transcript) that the register now cites. Copies are kept as reference so a codespace
+# rebuild cannot lose them. Not adopted code. Goal unchanged.
+schema_version: 1
+kind: amendment
+id: wo-20261016-factory-wave1-retro-session.amend-06
+created: 2026-10-17T22:40:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - wo-20261016-factory-wave1-retro-session
+  - notes/retro/2026-10-harness-changes.md
+supersedes: [owned_paths]
+values:
+  owned_paths:
+    - "bus/decisions/wave1-retro-*/**"
+    - "bus/decisions/wave1-token-usage/**"
+    - "notes/retro/2026-10-wave1-items.md"
+    - "notes/retro/2026-10-harness-changes.md"
+    - "notes/retro/2026-10-factory-landscape.md"
+    - "notes/retro/2026-10-factory-survey.md"
+    - "notes/retro/sources/**"
+    - "notes/packets/2026-10-17-factory-survey.md"
+    - "specs/001-factory-v2/PR_REVIEW_RETRO_SESSION.md"
+    - "bus/orders/wo-20261016-factory-wave1-retro-session/**"

@@ -1,0 +1,30 @@
+schema_version: 1
+kind: decision_request
+id: wave1-retro-close
+created: 2026-10-18T07:30:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/retro/2026-10-harness-changes.md
+  - notes/retro/2026-10-wave1.5-funnel.md
+  - notes/retro/2026-10-factory-whole.md
+  - notes/retro/2026-10-factory-whole-review.md
+  - notes/retro/2026-10-wave1-items.md
+  - notes/retro/2026-10-architect-handover.md
+owner: governor
+feature: 001-factory-v2
+blocking: false
+prompt: >
+  Why this is asked: closing the Wave 1 retro fixes the direction for Wave 1.5 (scope and rules).
+  What closing means: the register of agreed changes, the Wave 1.5 funnel and shape, and the
+  whole-factory walk-through (reviewed coherent after three rounds) stand as the basis for Wave 1.5;
+  the Wave 1 items list is closed with its outcomes; and the long-running session hands over to two
+  new sessions, an architect and a Wave 1.5 sprint manager, through the handover note.
+  Option A, close: merge the retro records and start the two new sessions. Wave 1.5 work still
+  waits for its own plan approval.
+  Option B, not yet: name what must change first.
+options:
+  - label: "A: Close the retro and hand over to the two new sessions"
+  - label: "B: Not yet; changes first"
+recommended: "A: Close the retro and hand over to the two new sessions"

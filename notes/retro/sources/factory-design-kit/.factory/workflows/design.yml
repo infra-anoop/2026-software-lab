@@ -1,0 +1,91 @@
+# Design pipeline: your steps 3 to 6.
+#
+# Steps 1 and 2 (your problem statement, then probing questions) are a
+# conversation, so run them interactively in Cursor before this workflow:
+#   /speckit.specify <your problem statement>
+#   /speckit.clarify          (repeat until you run out of answers)
+#
+# Install and run:
+#   specify workflow add --dev .factory/workflows/review-loop.yml
+#   specify workflow add --dev .factory/workflows/design.yml
+#   python .factory/bin/factory.py schemas
+#   specify workflow run factory-design
+#
+# NOTE: written from Spec Kit's workflow reference and engine source, not yet
+# executed. Validate before relying on it.
+schema_version: "1.0"
+workflow:
+  id: "factory-design"
+  name: "Spec review, plan, plan review"
+  version: "0.1.0"
+  author: "you"
+  description: "Critical spec review loop, then plan + tasks, then plan review loop."
+
+inputs:
+  integration:
+    type: string
+    default: "cursor-agent"
+  planner_model:
+    type: string
+    default: ""
+  reviser_model:
+    type: string
+    default: ""
+  plan_guidance:
+    type: string
+    default: "Follow the constitution. Prefer open-source components."
+  spec_approval:           # escalation verdicts, supplied on resume if a loop escalates
+    type: string
+    default: ""
+  plan_approval:
+    type: string
+    default: ""
+
+steps:
+  # Step 3: critical review of the clarified spec, looped to convergence.
+  - id: spec-review
+    type: workflow
+    workflow: factory-review-loop
+    input:
+      stage: "spec"
+      integration: "{{ inputs.integration }}"
+      reviser_model: "{{ inputs.reviser_model }}"
+      approval: "{{ inputs.spec_approval }}"
+
+  # Step 4: functional spec -> architecture (plan.md, research, data model) and execution plan (tasks.md).
+  - id: plan
+    command: speckit.plan
+    integration: "{{ inputs.integration }}"
+    model: "{{ inputs.planner_model }}"
+    input:
+      args: "{{ inputs.plan_guidance }}"
+
+  - id: tasks
+    command: speckit.tasks
+    integration: "{{ inputs.integration }}"
+    model: "{{ inputs.planner_model }}"
+    input:
+      args: ""
+
+  # Cheap built-in consistency check across spec, plan and tasks before paying for reviewers.
+  - id: analyze
+    command: speckit.analyze
+    integration: "{{ inputs.integration }}"
+    input:
+      args: ""
+
+  # Steps 5 and 6: role-seeded plan review, looped with a cap, escalating to you.
+  - id: plan-review
+    type: workflow
+    workflow: factory-review-loop
+    input:
+      stage: "plan"
+      integration: "{{ inputs.integration }}"
+      reviser_model: "{{ inputs.reviser_model }}"
+      approval: "{{ inputs.plan_approval }}"
+
+  - id: ready
+    type: gate
+    message: "Design reviewed. Proceed to implementation?"
+    options: [approve, reject]
+    on_reject: abort

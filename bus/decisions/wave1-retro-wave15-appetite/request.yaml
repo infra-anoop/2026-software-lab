@@ -1,0 +1,39 @@
+schema_version: 1
+kind: decision_request
+id: wave1-retro-wave15-appetite
+created: 2026-10-17T23:45:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/retro/2026-10-wave1.5-funnel.md
+  - notes/retro/2026-10-wave1.5-funnel-review.md
+  - notes/retro/2026-10-harness-changes.md
+owner: governor
+feature: 001-factory-v2
+blocking: false
+prompt: >
+  Why this is asked: how much Wave 1.5 may spend is a budget decision. You said to start from the
+  recommendation (everything required plus the cheap worthwhile extras) and to look one level deeper
+  first. The deeper list is section 8 of the funnel file: 62 pieces of work, each with its rank,
+  phase and hours. Estimates are in agent-hours, likely and pessimistic, and are not yet
+  calibrated against Wave 1.
+  Option A, required plus worthwhile extras: about 89 likely, 182 pessimistic agent-hours, plus 3
+  to 5 hours of your own time (GitHub settings, the app, the Cursor key, reviewing the rewritten
+  rules, decisions during the trial). The three nice-to-haves (burn chart, import-layer lint,
+  example code, about 3 to 6 hours) go to the tooling backlog.
+  Option B, required only: about 81 likely, 165 pessimistic agent-hours. Drops proving the second
+  agent tool (Copilot) once, two review refinements, check track records, the Wave 1 baseline and
+  two of your views (open decisions with age; the acceptance view).
+  Option C, A with your changes: name the pieces to add, cut or re-size, and the orchestrator
+  updates the funnel before recording.
+  In every option the rulebook rewrite and the removal of Wave 1 machinery stay in (you ruled that
+  coherence wins), and a binding stop after the trial re-estimates the rest before migration.
+  Not blocking: answer after reading section 8.
+  What happens next: the orchestrator records the lock, then drafts the Wave 1.5 intent and phasing,
+  including a short early check of the unknowns that could force a switch of engine.
+options:
+  - label: "A: Required plus worthwhile extras, about 89 to 182 agent-hours"
+  - label: "B: Required only, about 81 to 165 agent-hours"
+  - label: "C: A with my changes to named pieces"
+recommended: "A: Required plus worthwhile extras, about 89 to 182 agent-hours"

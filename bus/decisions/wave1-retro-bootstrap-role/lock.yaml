@@ -1,0 +1,17 @@
+schema_version: 1
+kind: decision_lock
+id: wave1-retro-bootstrap-role.lock
+created: 2026-10-17T17:21:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - bus/decisions/wave1-retro-bootstrap-role/request.yaml
+chosen: "A: Split the roles, and build a minimal control loop first"
+governor_minutes: 5
+notes: >
+  The governor chose A in chat at 10:21 PT on 2026-10-17: "I am good with your recommendation of
+  this session stays coach and architect. A seperate session runs Wave 1.5. We can experiment to
+  see how it works. So your recommendation (A)." At retro close (2026-10-18, decision
+  wave1-retro-close) the coach role passes to a fresh architect session through the handover note.
+  Recorded by the orchestrator.

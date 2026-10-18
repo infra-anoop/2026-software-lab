@@ -1,0 +1,17 @@
+schema_version: 1
+kind: decision_lock
+id: wave1-retro-factory-path.lock
+created: 2026-10-17T21:55:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - bus/decisions/wave1-retro-factory-path/request.yaml
+  - notes/retro/2026-10-factory-survey.md
+chosen: "A: Spec Kit as the engine, GitHub Issues for work, tried on one real order first"
+governor_minutes: 5
+notes: >
+  The governor chose A in chat at 14:50 PT on 2026-10-17: "go with the Spec Kit family"; it was
+  the top choice independently in three conversations (two earlier AI discussions and the
+  cross-family survey). The governor asked for a plain summary of the parts involved (Spec Kit,
+  GitHub Actions, Issues and the rest), given in chat. Recorded by the orchestrator.

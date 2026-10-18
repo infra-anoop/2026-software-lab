@@ -1,0 +1,121 @@
+{
+  "$defs": {
+    "Finding": {
+      "properties": {
+        "id": {
+          "description": "Stable across rounds: '<role>-<n>'. Reuse the id if the issue persists.",
+          "pattern": "^[a-z0-9-]+-\\d+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "blocker",
+            "major",
+            "minor"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "confidence": {
+          "description": "How sure you are this is a real problem.",
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "integer"
+        },
+        "artifact": {
+          "description": "Path of the file the finding is about.",
+          "maxLength": 200,
+          "title": "Artifact",
+          "type": "string"
+        },
+        "section": {
+          "description": "Heading or requirement id within that file.",
+          "maxLength": 120,
+          "title": "Section",
+          "type": "string"
+        },
+        "issue": {
+          "maxLength": 400,
+          "title": "Issue",
+          "type": "string"
+        },
+        "recommendation": {
+          "maxLength": 400,
+          "title": "Recommendation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "severity",
+        "confidence",
+        "artifact",
+        "section",
+        "issue",
+        "recommendation"
+      ],
+      "title": "Finding",
+      "type": "object"
+    }
+  },
+  "description": "Written by each reviewer to reviews/<stage>/round-<n>/<role>.json.",
+  "properties": {
+    "role": {
+      "title": "Role",
+      "type": "string"
+    },
+    "stage": {
+      "enum": [
+        "spec",
+        "plan"
+      ],
+      "title": "Stage",
+      "type": "string"
+    },
+    "round": {
+      "minimum": 1,
+      "title": "Round",
+      "type": "integer"
+    },
+    "verdict": {
+      "enum": [
+        "approve",
+        "revise"
+      ],
+      "title": "Verdict",
+      "type": "string"
+    },
+    "findings": {
+      "description": "All findings still open after this round. No count cap.",
+      "items": {
+        "$ref": "#/$defs/Finding"
+      },
+      "title": "Findings",
+      "type": "array"
+    },
+    "resolved": {
+      "description": "Ids from the previous round you now consider resolved.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Resolved",
+      "type": "array"
+    },
+    "summary": {
+      "maxLength": 300,
+      "title": "Summary",
+      "type": "string"
+    }
+  },
+  "required": [
+    "role",
+    "stage",
+    "round",
+    "verdict",
+    "summary"
+  ],
+  "title": "ReviewVerdict",
+  "type": "object"
+}

@@ -1,0 +1,17 @@
+schema_version: 1
+kind: decision_lock
+id: wave1-token-usage.lock
+created: 2026-10-17T21:00:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - bus/decisions/wave1-token-usage/request.yaml
+chosen: "A: I will export the usage file and put it in the downloads folder"
+governor_minutes: 2
+notes: >
+  The governor chose A in chat at 13:55 PT on 2026-10-17 ("we absolutely must have it"). The
+  date range is widened from Oct 3 to Oct 7 to Sep 1 to Oct 17 2026, covering all of Wave 1,
+  the retro, and pre-factory work as a comparison. The request sat in git from Oct 7 without
+  being put in front of the governor; that gap goes into the Wave 1 failure inventory
+  (register item 11). Recorded by the orchestrator.

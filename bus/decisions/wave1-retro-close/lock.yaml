@@ -1,0 +1,18 @@
+schema_version: 1
+kind: decision_lock
+id: wave1-retro-close.lock
+created: 2026-10-18T07:30:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - bus/decisions/wave1-retro-close/request.yaml
+  - notes/retro/2026-10-factory-whole.md
+chosen: "A: Close the retro and hand over to the two new sessions"
+governor_minutes: 30
+notes: >
+  The governor chose A in chat at 00:56 PT on 2026-10-18: "I have reviewed the walk through
+  factory-whole and also the factory-whole-review. Agree with the plan. Proceed to close the retro
+  and create opening messages for two new chats". Recorded with his words, as announced at
+  17:52 PT on 2026-10-17 (one sign-off at close). Governor minutes are the orchestrator's estimate of the reading time.
+  Recorded by the orchestrator.

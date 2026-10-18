@@ -1,5 +1,7 @@
 # Wave 1 retro: every item collected
 
+**Status: closed at the retro close (2026-10-18, decision `wave1-retro-close`).** This list was the retro's input. The outcomes live in the register (`notes/retro/2026-10-harness-changes.md`), the Wave 1.5 funnel (`notes/retro/2026-10-wave1.5-funnel.md`) and the retro's decisions (`bus/decisions/wave1-retro-*/`). See "Retro outcome" at the end. The suggestions below are kept as they were written before the retro.
+
 Prepared by the orchestrator on 2026-10-07 at 16:30 PT, for the governor's one-hour retro session. Your decision `wave1-scope` (option C) closed Wave 1's build work. This file is the single list. It points to `notes/retro/2026-10-wave1-agenda.md` (the agenda, with the detail) and to `docs/factory/USERS_GUIDE.md`. It does not mark Wave 1 as finished.
 
 Each row has one suggestion:
@@ -92,3 +94,33 @@ Every Wave 1.5 suggestion is tested the same way: would it have prevented a stal
 ## Suggested Wave 1.5 list (for you to cut)
 
 A1 backlog file and grooming, A4 burndown, A8 estimate step, A10 heartbeat, A11 (a)(d)(e), D1 accept check, D3–D4 commit guard, D5 handoff and overrides, D6 claim and amendments, D7 deferral check. The orchestrator's rough size: 1.5 to 2 days, with a total estimate fixed up front (A8 applied to Wave 1.5 itself).
+
+## Retro outcome (2026-10-18)
+
+The retro went wider than this list: rather than patch Wave 1's machinery, it agreed a rebuilt factory on Spec Kit's workflow engine with GitHub Issues as the queue (decision `wave1-retro-factory-path`). No Wave 1 piece is kept by default. Every Wave 1 check, rule and record was binned in the funnel (sections 2 and 3 and its appendix) as habit, glue, bought, retire or done.
+
+**The suggested Wave 1.5 list above is superseded** by the funnel's section 8 (62 work items with estimates) and section 9 (the agreed shape), within the appetite in decision `wave1-retro-wave15-appetite` (about 89 likely, 182 pessimistic agent-hours).
+
+**The items that needed the governor's answer:**
+
+| # | Outcome |
+|---|---------|
+| A1 | Three backlogs (product, infrastructure, tooling); register item 68 |
+| A2 | Each sprint names its primary type; decision `wave1-retro-sprint-type`, register item 69 |
+| A3 | Replaced by good-enough judgement for a learning project of about 5 users; register item 6 |
+| A6 | Overtaken: Wave 1's plan and machinery are replaced, not carried forward |
+| A7 | Done in the retro: factory survey and decision `wave1-retro-factory-path` |
+| A8, D23 | Estimate at intent time and per task, in agent-hours; register items 1 and 4 |
+| A9, D22, B8 | Token usage export received and locked (`wave1-token-usage`); the Wave 1 baseline is a Wave 1.5 work item (register item 85) |
+| A12 | Wave 1.5 agreed as its own sprint, run by a new sprint manager session |
+| A14, B3, B9 | The factory's GitHub App is a Wave 1.5 core item (funnel C10.1); `app-key-delivery` stays open until it is set up |
+| B1 | Replaced: after three review rounds the item comes to the governor (funnel governor rulings) |
+| B2 | Retired with the lock-word check (funnel section 3b) |
+| B4 | Relabelling a reviewer's finding needs the governor; the product and process tags retire |
+| B5 | Closed: the finishing order becomes code-owned procedure |
+| B6 | Stale documents fixed in the cleanup slot, starting with the constitution; register item 60, Wave 1.5 cutover |
+| B7 | Discussion in chat, decisions in git; register item 61 |
+| D1, D5 to D8, D11, D17 to D19 | Covered by the checks theme and the 29-check audit (register theme 3, funnel section 3b) |
+| D10 | The first real order of Wave 1.5: a workflow checker in CI |
+
+Rows not listed carry over through the funnel's bins or the three backlogs. Tracing each remaining row to its new home is part of the Wave 1 failure inventory, a Wave 1.5 item (register item 11).
