@@ -1,6 +1,8 @@
 # The factory as one whole (end of Wave 1.5)
 
-**Status: draft by the orchestrator (coach and architect), 2026-10-17, for a focused review of logic, consistency and ambiguity (stage 5, step 6).** Nothing here is built yet.
+**Status: draft by the orchestrator (coach and architect), 2026-10-17; focused review round 1 "not coherent" (2 blockers, 6 major, 1 minor), all nine findings fixed; round 2 checks the fixes (stage 5, step 6).** Nothing here is built yet. Review: `notes/retro/2026-10-factory-whole-review.md`.
+
+Round 1 fixes: a total routing rule, so unplanned runtime work lands in the normal lane (section 4a); a readiness step and a re-align step replacing the finish bar and plan deltas (4d steps 8 and 10); a code-owned hand-in from chat to the engine (4d step 3); custody rules for held-back scenarios (4e); feature acceptance before ship with a rejection path (4d step 11); a reviewer-owned "needs the governor" flag that stops the loop before revision (4b step 5, section 5); temporary rules between cutover and the light and full lanes (section 16); the scorecard split by lane (section 9); clearer wording on what agents draft and what code authors (section 5, invariant 1).
 
 This describes the software factory as it should stand when Wave 1.5 ends: what Wave 1 keeps, what Wave 1.5 adds, and what is removed, read as one working system. It is the architect's design input to the Wave 1.5 sprint and the basis for the rewritten rulebooks and user's guide. Where this file and a source disagree, the source wins and this file is corrected.
 
@@ -20,7 +22,8 @@ Sources: the agreed register (`notes/retro/2026-10-harness-changes.md`, items 1 
 | Feature | A spec folder under `specs/` with its spec, plan and tasks |
 | Order | A batch of tasks handed to one worker. A GitHub issue; its tasks are sub-issues |
 | Task | One unit of work inside an order |
-| Lane | How much process a piece of work gets: light, normal or full. Chosen when the work comes in |
+| Lane | How much process a piece of work gets: light, normal or full. Chosen when the work comes in by the routing rule in section 4a; every piece of work lands in exactly one |
+| Ship | Releasing merged work to production (the lab's existing ship command); separate from merging |
 | Step | One action of the engine: an agent call, a code action, or a pause |
 | Gate | A step where the engine pauses for the governor |
 | Decision | A choice that belongs to the governor: scope, budget, architecture or rules. Asked as a request in git, answered as a lock in git |
@@ -43,7 +46,7 @@ Sources: the agreed register (`notes/retro/2026-10-harness-changes.md`, items 1 
 | GitHub App | Bought (configured once by the governor) | The factory's robot identity. Its token lets code push, open pull requests, move labels and post statuses, and makes checks start without manual approval |
 | Rulesets and CODEOWNERS | Bought | Merge rules on `main`; governor approval on rule paths |
 | Logfire | Bought | Stores one record per step in the OpenTelemetry format |
-| Factory code | Ours (Python, small) | Validates message formats, writes all records, generates briefs, runs the review controller, the reconciler, the watchdog and the scorecard |
+| Factory code | Ours (Python, small) | Validates and persists what agents draft; authors every state change itself; generates briefs; runs the review controller, the readiness check, the reconciler, the watchdog and the scorecard |
 | Role briefs and templates | Ours | What each worker and reviewer role is told; the spec, plan and tasks templates |
 | Rulebooks | Ours | The constitution, `AGENTS.md` and the Cursor rules, rewritten to describe only this factory |
 
@@ -53,7 +56,7 @@ Sources: the agreed register (`notes/retro/2026-10-harness-changes.md`, items 1 
 |-------|------|---------------|---------------------------|
 | Governor | Intent, decisions, rule approvals, acceptance of features | Everything on the escalation list (section 7) | — |
 | Architect | Factory design; reviews the architecture of plans before the governor sees them; answers design questions from the sprint manager; runs retros | Design details inside agreed principles | Anything that changes scope, budget, architecture or rules |
-| Sprint manager | Runs the wave: intent session, spec drafting with the governor, turning tasks into orders, watching status, handling exceptions | Order of work inside the approved plan | The escalation list |
+| Sprint manager | Runs the wave: intent session, spec drafting with the governor and its hand-in to the engine, watching status, handling exceptions. Code, not the sprint manager, turns tasks into orders | Order of work inside the approved plan | The escalation list |
 | Engine | Runs every step in order; waits; retries within limits | Nothing: it follows the workflow and the state computed by code | Through gates and alerts |
 | Workers | Build or write one step's output | How to do the step inside the brief | By reporting NEEDS_CONTEXT or BLOCKED |
 | Reviewers | Review one artifact against its rubric | Their findings and severities | By marking a finding "needs the governor" |
@@ -66,23 +69,28 @@ Each conclusion reached in a chat session is recorded in git by that session. Af
 
 ### 4a. Work comes in
 
-1. Work enters as a GitHub issue, through one of two issue forms: an order, or a light change. The governor, the architect or the sprint manager may open one. Orders from a feature are created by code from its `tasks.md`.
-2. The lane is set on the issue by a written rule: which files change, the size, and whether anything irreversible is touched. Code re-checks the lane against the actual changes when the pull request opens. Moving up a lane is allowed under the mission test; moving down needs the governor's yes.
-3. Labelling the issue ready starts the engine through Actions.
+1. Work enters as a GitHub issue, through one of three issue forms: a change (anything not yet planned), an order (created by code from a feature's `tasks.md`), or a new feature. The governor, the architect or the sprint manager may open a change or a feature.
+2. **Routing rule** (total: every issue lands in exactly one lane), applied in this order:
+   - **Full:** it adds a feature, or changes the architecture (new building blocks, interfaces between them, data contracts, dependencies or hosting).
+   - **Light:** it changes only notes, records, docs, or config with no runtime effect.
+   - **Normal:** everything else. That covers an order under an approved plan, and any runtime change that adds no feature and changes no architecture: a bug fix, a dependency repair, a small behaviour change. For a change, the issue itself is its one-task plan, linked to the feature it touches when one exists.
+   The rule also weighs the size and whether anything irreversible is touched; its thresholds are set in the Wave 1.5 plan.
+3. Code records the lane on the issue and re-checks it against the actual changes when the pull request opens. On a mismatch upward, the run stops, code moves the issue up a lane, restarts it there, and posts a status comment. Moving down a lane needs the governor's yes.
+4. Labelling the issue ready starts the engine through Actions.
 
-### 4b. Normal lane (an order under an approved plan)
+### 4b. Normal lane (an order under an approved plan, or an unplanned runtime change)
 
 | # | Step | Who | Output, and how it is checked |
 |---|------|-----|-------------------------------|
-| 1 | Generate the brief from the order's tasks: references to the spec, plan, acceptance criteria and reviewer rubric; a named model | Code | Brief file, validated against its format |
+| 1 | Generate the brief from the order's tasks (or, for a change, from the issue): references to the spec, plan, acceptance criteria and reviewer rubric that apply; a named model | Code | Brief file, validated against its format |
 | 2 | Build: tests first, then code | Worker | Commits on the order's branch; a report file. Code validates the report (one repair, then strict), checks there is a new commit and that tests pass |
 | 3 | Open the pull request; enable GitHub auto-merge | Code, with the App token | Pull request linked to the issue; checks start |
-| 4 | Review | Reviewers (cross-family seats from the roster for this stage and lane) | Verdict files: findings, plus two verdicts at code review (meets the spec; quality). Some acceptance scenarios are held back from the worker and run here by a fresh evaluator |
-| 5 | Converge | Code | Open blocker or major findings with confidence 80 or more block. Low-confidence blockers are listed for the governor but do not block. A "needs the governor" mark stops the loop at once |
-| 6 | Revise (if blocked) | Worker | Revision report: each finding fixed, rejected with reason, or needs the governor. Back to step 4, which checks only the fix against open findings. At most three rounds; then a gate |
+| 4 | Review | Reviewers (cross-family seats from the roster for this stage and lane) | Verdict files: findings, plus two verdicts at code review (meets the spec; quality). For orders of a feature that has held-back scenarios, a fresh evaluator runs them here (section 4e) and reports failures as findings |
+| 5 | Converge | Code | First, any finding a reviewer marked "needs the governor" stops the loop at once, before any revision: code opens a decision (section 7); the governor's lock is attached to the finding, and the loop resumes at step 6 with the lock as input. The author cannot remove the mark. Then: open blocker or major findings with confidence 80 or more block. Low-confidence blockers are listed for the governor but do not block |
+| 6 | Revise (if blocked) | Worker | Revision report: each finding fixed, or rejected with reason; findings with a governor's lock follow the lock. The author may also raise "needs the governor" on a finding it cannot settle, which stops the loop as in step 5. Back to step 4, which checks only the fix against open findings. At most three rounds; then a gate |
 | 7 | Accept | Code | Posts the review-accepted status (only the trusted job can) |
 | 8 | Merge | GitHub | Auto-merge when the rules hold (section 8) |
-| 9 | Close out | Code | Issue closed, status comment, step records complete |
+| 9 | Close out | Code | Issue closed, status comment, step records complete. For an order of a feature, the feature's progress is updated; the feature stays open until accepted (section 4d) |
 
 ### 4c. Light lane (notes, records, docs, config with no runtime effect)
 
@@ -91,13 +99,24 @@ The same as the normal lane, minus the plan and tasks behind it: the brief is ge
 ### 4d. Full lane (a new feature, or anything that changes the architecture)
 
 1. **Intent** (chat): the sprint manager runs the intent session with the governor. Output: the feature's intent file, with the value statement and the estimate range.
-2. **Spec** (chat): the sprint manager drafts the spec with the governor, including examples per requirement. Thinking happens in chat.
-3. **Spec review** (engine): the review loop over the spec, with product seats. Gate: the governor approves the spec.
-4. **Plan** (engine): a worker writes the plan, including the architecture and buy-vs-build section, the one-level design and the phasing. The held-back acceptance scenarios are written here, from the requirements, and kept out of the builders' briefs.
-5. **Plan review** (engine): Spec Kit's consistency check first, then the review loop with architecture seats. The architect reads the result before the gate. Gate: the governor approves the architecture and phasing.
-6. **Tasks** (engine): a worker writes the tasks with estimates; the consistency check runs again; code turns the tasks into orders.
-7. Each order then runs the normal lane.
-8. **Feature acceptance** (gate): the governor sees the spec, acceptance criteria and test names, not diffs.
+2. **Spec** (chat): the sprint manager drafts the spec with the governor, including examples per requirement and any open decisions the spec depends on (each written as a decision request). Thinking happens in chat; the drafts are local files.
+3. **Hand-in** (code): the sprint manager runs the factory's small command on the drafts. Code validates the intent and spec files, commits them to the feature's branch, pushes, and moves the feature issue to "spec ready". That event starts the engine for the feature. Nothing drafted in chat reaches the engine any other way.
+4. **Spec review** (engine): the review loop over the spec, with product seats. Gate: the governor approves the spec.
+5. **Plan** (engine): a worker writes the plan, including the architecture and buy-vs-build section, the one-level design and the phasing. A separate worker derives the held-back acceptance scenarios from the written requirements (section 4e).
+6. **Plan review** (engine): Spec Kit's consistency check first, then the review loop with architecture seats. The architect reads the result before the gate. Gate: the governor approves the architecture and phasing.
+7. **Tasks** (engine): a worker writes the tasks with estimates, each task naming any open decision it depends on; the consistency check runs again.
+8. **Readiness** (code, fails closed): before any order is created, code lists the feature's decision requests without a lock. If any task depends on one, the engine pauses at a gate until it is locked; tasks that depend on none may proceed only if the plan says they are independent. Then code turns the tasks into orders.
+9. Each order then runs the normal lane.
+10. **Re-align after an architecture lock** (engine): when a lock arrives that changes the architecture (its request is marked as affecting architecture), orders not yet started are held. A worker amends the plan and tasks in place, the consistency check runs, and a review round checks only the amendment. Held orders are then re-created or released. Orders already merged are left alone unless the amendment names them, in which case code opens corrective orders.
+11. **Feature acceptance** (gate, after the feature's orders merge and before the feature ships): the governor sees the spec, acceptance criteria, test names and the held-back results, not diffs. **Accept:** the feature is closed and may ship. **Reject:** the feature stays open; the governor's reasons become a decision lock; code creates linked corrective orders under the same plan (or, if the reasons change the plan, step 10 runs first); acceptance is asked again when they merge.
+
+### 4e. Held-back acceptance scenarios
+
+- **Derived** by a dedicated worker from the written requirements at plan time; every scenario names the requirement it tests (hide test cases, never requirements).
+- **Stored** where builder steps cannot read them: outside the repository the builders check out, readable only by the evaluator's step. A public manifest in the feature folder lists each scenario's name and requirement, without its content, so coverage stays inspectable. The exact store is chosen in the Wave 1.5 plan (section 14); keeping them only out of the brief does not count as held back.
+- **Run** by a fresh evaluator during code review of each order that implements the requirements they cover.
+- **Reported** as findings in the evaluator's verdict (cause: acceptance), so they enter the same convergence and revision loop. A failing scenario's requirement and the observed behaviour are given to the worker; once a scenario has failed and been shown, it is no longer counted as held back.
+- **Results** for the whole feature are shown at feature acceptance.
 
 ## 5. Records: one home per fact
 
@@ -105,13 +124,16 @@ The same as the normal lane, minus the plan and tasks behind it: the brief is ge
 |------|------|------------|
 | Work and its state | GitHub Issues (labels: ready, claimed, blocked, done) | Code |
 | Run state | Spec Kit's saved state, kept across Actions jobs (exact place set in the Wave 1.5 plan) | Engine |
-| Decisions | `bus/decisions/<id>/request.yaml` and `lock.yaml` | Request: drafted by the engine's agent or a chat session, validated and committed by code. Lock: code, from the governor's answer |
+| Decisions | `bus/decisions/<id>/request.yaml` and `lock.yaml`. A request names its feature and whether it affects scope, content or architecture; tasks name the decisions they depend on | Request: drafted by the engine's agent or a chat session, validated and committed by code. Lock: code, from the governor's answer |
+| Feature state (open, accepted, rejected) | The feature's GitHub issue | Code, from the acceptance gate |
+| Held-back scenarios | A store builder steps cannot read (section 4e); a public manifest in the feature folder | The dedicated worker drafts; code stores |
+| Intent and spec drafts from chat | Local files until the hand-in; then the feature's branch | Chat session drafts; code validates, commits and pushes |
 | Reviews | Verdict and revision files in git, one per round (exact path set in the Wave 1.5 plan) | Drafted by the agents, validated and committed by code |
 | Code and docs | Git, through pull requests | Workers commit on the order's branch inside their step; code pushes and opens the pull request |
 | Step records | Logfire | Code |
 | Rules | Rulebooks and role briefs in git | Through the light lane; rule paths need the governor's approval |
 
-The message formats, defined once in Pydantic with generated JSON Schemas: **brief**; **report** (DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT, BLOCKED); **review verdict**; **revision report**; **decision request and lock**; **status**. Agents write a named file or reply. Code validates at once, gives one repair attempt with the exact errors, then checks strictly. The engine branches only on state computed by code. Fields that code acts on are strict; judgment lives in bounded free text.
+The message formats, defined once in Pydantic with generated JSON Schemas: **brief**; **report** (DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT, BLOCKED); **review verdict** (each finding carries a "needs the governor" flag that only a reviewer can set and no one but the governor's lock can clear); **revision report**; **decision request and lock**; **status**. Agents draft the payloads of reports, verdicts, revision reports and decision requests in a named file or reply; code validates and persists them. Code itself authors every state change: issue updates, labels, statuses, pushes, pull requests and locks. Code validates at once, gives one repair attempt with the exact errors, then checks strictly. The engine branches only on state computed by code. Fields that code acts on are strict; judgment lives in bounded free text.
 
 ## 6. Done means checked
 
@@ -125,7 +147,7 @@ Only for:
 3. three turns without resolution (review rounds, fix attempts, debates);
 4. a proposed substitute for something the governor locked;
 5. cost or effort drift past the threshold (about 30% over the estimate), which triggers a re-plan, not a cut;
-6. the gates in section 4 (spec, plan, feature acceptance);
+6. the gates in section 4 (spec, plan, readiness, feature acceptance);
 7. a stall the factory could not recover (section 10).
 
 How a decision works: the engine (or a chat session) writes the request in git: why it is asked, plain labelled options, a recommendation, what happens next. Code opens an issue that mentions the governor and links the request. The governor answers on that issue, or tells a chat session, which posts his words to the issue. Code writes the lock from the answer and the engine resumes. Requests are written in plain language; this is guidance for whoever writes them, and the request's required structure is enforced by its format. Open decisions are listed with their age; anything open more than a week is raised again or closed.
@@ -146,7 +168,7 @@ Status comes to the governor without asking: a short comment on the order at mil
 
 Each step writes one record to Logfire: model, role, work item (wave, feature, order, task), time, tokens and cost. Where the runtime reports no usage (Cursor on individual plans), tokens and cost are estimated by joining the governor's Cursor usage export on time window and model, and labelled estimated.
 
-The scorecard, computed by code and never by a model, at four units (wave, feature, order, task):
+The scorecard, computed by code and never by a model, at four units (wave, feature, order, task) and split by lane (light, normal, full), so it also shows whether the lanes sort work correctly:
 1. acceptance by pass (1, 2, 3, or sent to the governor), by gate, with the cause of each rework;
 2. lead time;
 3. unattended rate;
@@ -187,7 +209,9 @@ The governor's laptop is not part of the machinery: runs continue with it closed
 | 4 editor hooks | 1 kept: the guard against committing or pushing to `main` | Nudges moved to the engine or CI, or dropped |
 | Packets (briefs written by hand) | Removed | Briefs generated by code from the order's tasks |
 | Spawning workers and reviewers from chat | Removed after cutover | The engine starts workers and reviewers |
-| The finish bar, plan deltas and similar process documents | Folded into the templates and the workflow's gates, or removed in the rulebook rewrite | Gates and the consistency check |
+| The finish bar (no implementing while governor decisions are open) | Removed as a document | The readiness step (section 4d, step 8), fed by decision requests that name their feature and the tasks that depend on them |
+| Plan deltas (re-align the plan after an architecture-changing decision) | Removed as a document | The re-align step (section 4d, step 10) |
+| Other process documents (plan-authoring gates, stack posture, review prompts) | Folded into the templates and role briefs in the rulebook rewrite | Templates, role briefs and the consistency check |
 | Constitution, `AGENTS.md`, rules, skills, review prompts | Rewritten and pruned | Rulebooks describing only this factory; role briefs |
 | Factory v2 spec and contracts | Kept as history | This file, the rulebooks and the user's guide |
 | The orchestrator's private notes | Moved into git | Role pages and state notes |
@@ -206,6 +230,8 @@ The governor's laptop is not part of the machinery: runs continue with it closed
 ## 14. Left to the Wave 1.5 plan (deliberately not decided here)
 
 - Where run state is kept between Actions jobs (a git branch or an Actions artifact), and how duplicate triggers are made harmless.
+- The store for held-back scenarios, within the rule in section 4e (for example a separate private repository readable only by the evaluator's step).
+- The routing rule's size and irreversibility thresholds (section 4a).
 - The exact path of review records, and the name of the small new command.
 - How the governor's answer on a decision issue is read (comment wording or a reaction).
 - Whether the normal lane has a separate test-review step before the build finishes, or reviews tests at code review only.
@@ -214,7 +240,7 @@ The governor's laptop is not part of the machinery: runs continue with it closed
 
 ## 15. Invariants (must always hold)
 
-1. Agents and chat sessions draft files (briefs are the exception: code generates them); nothing they draft counts until code has validated it. Code alone pushes, opens pull requests, moves labels, posts statuses and writes locks.
+1. Agents and chat sessions draft payloads (reports, verdicts, revision reports, decision requests, intent and spec); nothing they draft counts until code has validated and persisted it. Code generates briefs and authors every state change: issue updates, labels, statuses, pushes, pull requests and locks. Workers commit only on their order's branch inside their step.
 2. Every review is by another model family; code refuses a seat in the author's family.
 3. `main` changes only through a pull request with green checks and an accepted review; rule paths also need the governor.
 4. Agents never wait; the engine waits.
@@ -223,3 +249,12 @@ The governor's laptop is not part of the machinery: runs continue with it closed
 7. One way of working; one home per fact.
 8. Secret values never enter git.
 9. The sprint never depends on the change it is building.
+10. No order starts while a decision it depends on is open.
+
+## 16. During Wave 1.5 (temporary rules, part of the one way of working)
+
+The sections above describe the end state. Until the build-out finishes, these rules apply, and they are written into the cutover rulebooks so no older way creeps back:
+- **Before cutover:** Wave 1's process runs Wave 1.5 (the known-good factory). The new path runs only the probe and the first real order.
+- **From cutover, until the light lane is switched on:** light changes run in the normal lane as changes (the issue is the one-task plan). That is more process than they need, never less.
+- **From cutover, until the full lane is switched on:** a new feature or architecture change is accepted as an issue and labelled as waiting for the full lane; it is not processed. Wave 1.5's own remaining work is orders under its approved plan, so it runs in the normal lane. No Smart Writer V2 feature starts before the full lane is on (register item 70).
+- **Each lane is switched on** when it has run one real piece of work end to end; the switch is announced in a status comment and in the rulebooks.

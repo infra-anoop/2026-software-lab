@@ -7,7 +7,7 @@ Spawned per `docs/agent-os/SPAWN_REVIEWER.md`. A focused review of one design de
 | Field | Value |
 |-------|-------|
 | Packet id | 2026-10-17-factory-whole-review |
-| Status | spawned |
+| Status | round 1 done ("not coherent", reviewer commit fa936a2, copied to the retro branch); all nine findings fixed; round 2 spawned (see "Round 2" below) |
 | Gate | Coherence review (governor's addition to the stage 5 plan, 2026-10-17 15:41 PT) |
 | Under review | `notes/retro/2026-10-factory-whole.md` |
 | Order | `wo-20261016-factory-wave1-retro-session` (amendment-07) |
@@ -88,6 +88,13 @@ Severity per finding: blocker (the factory does not hold together as described),
 |------|------------------|-------|
 | Reviewer from a different model family | letter | GPT-5.6 Sol |
 | Scope: logic, consistency, ambiguity only | letter | No estimates, no product value, no re-arguing locks |
+
+## Round 2 (scoped re-review)
+
+- **Your worktree:** `/workspaces/2026-software-lab/.worktree-home/.cursor/worktrees/retro-whole-review-2`, branch `review/wo-20261016-factory-wave1-retro-session-whole-2`, already created at the retro commit that adds this section. Same git rules as above, with this path and branch.
+- **Job:** for each of your nine round 1 findings, say whether the fix in `notes/retro/2026-10-factory-whole.md` resolves it (resolved, partly resolved, not resolved), with evidence. The file's status block lists where each fix landed. Then check only whether the fixes introduced new contradictions or ambiguities, including the new section 16 and the funnel's section 9 note. Do not raise new findings on unchanged text unless the fixes make them matter.
+- **Deposit:** append a "Round 2" section to `notes/retro/2026-10-factory-whole-review.md` in your new worktree: verdict (coherent, coherent with changes, or not coherent), the nine dispositions, any new findings in the same format.
+- **Appetite:** 45 minutes; hard stop at 1 hour.
 
 ## Stop and report if
 
