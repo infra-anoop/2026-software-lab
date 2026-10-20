@@ -9,22 +9,23 @@ One cross-family pass over a design note written by the architect, before it goe
 | Packet id | 2026-10-19-implementation-approach-review |
 | Status | open |
 | Gate | Before the governor's decision on the approach; one pass, a second only for a blocker |
-| Under review | `notes/wave1.5/2026-10-implementation-approach.md` on branch `wo/wo-20261019-wave15-implementation-approach` |
+| Under review | `notes/wave1.5/2026-10-implementation-approach.md` and the sprint manager's `notes/wave1.5/2026-10-layer-sizing.md`, on branch `wo/wo-20261019-wave15-implementation-approach` |
 | Order | `wo-20261019-wave15-implementation-approach` |
 | Agent mode | spawned reviewer, background |
 | Reviewer | GPT-5.6 Sol (a different model family from the author, Claude Opus 5.5) |
-| Appetite | 45 minutes. Hard stop at 75 minutes; commit a partial report at 45 |
+| Appetite | 45 minutes. Hard stop at 75 minutes. Commit and push a skeleton report (headings only) within your first 10 minutes, then a partial report at 45; an earlier reviewer stalled silently, so progress must show in git |
 
 ## Why this review exists
 
-The Wave 1 retro agreed a product shape for the factory at the end of Wave 1.5 and a plan to build it. On 2026-10-19 the governor kept the product shape but rejected the build plan as too heavy and too late to judge. He set a new direction with the architect: start from today's `main` and remove Wave 1's machinery; build in layers (install, configure, policy, glue) with fewer intermediate tests; use Spec Kit workflows run as short workflows cut wherever they would wait; use the Superpowers packet set as shipped. The note under review turns that into nine layers and lists every variation from the product shape. The architect's own designs get a second-model review before the governor sees them.
+The Wave 1 retro agreed a product shape for the factory at the end of Wave 1.5 and a plan to build it. On 2026-10-19 the governor kept the product shape but rejected the build plan as too heavy and too late to judge. He set a new direction with the architect: start from today's `main` and remove Wave 1's machinery; build in layers (install, configure, policy, glue) with fewer intermediate tests; use Spec Kit workflows run as short workflows cut wherever they would wait; use the Superpowers packet set as shipped. The note under review turns that into nine layers and lists every variation from the product shape. Later the same evening the governor and the architect agreed a test-first shape aimed at faster convergence (the note's section 2.6 and section 5 row 10), replacing the held-back acceptance set. The sprint manager sized the layers before that change. The governor will go through the note, the sizing and this review's fixes together, so the review covers costs as well as design. The architect's own designs get a second-model review before the governor sees them.
 
 ## Read first
 
 1. The note under review, in full.
 2. `notes/retro/2026-10-factory-whole.md` (the product shape) and `notes/retro/2026-10-wave1.5-funnel.md` sections 8 and 9 (the plan being replaced, its value statement and exit criteria).
 3. `notes/retro/2026-10-harness-changes.md`, only where the note cites items, and `notes/retro/2026-10-factory-survey.md` for the earlier stack choice.
-4. Spec Kit's workflow reference (https://github.github.com/spec-kit/reference/workflows.html) and the Superpowers subagent-driven-development skill (https://github.com/obra/superpowers/tree/main/skills/subagent-driven-development), if your network allows; otherwise mark the related claims unverified.
+4. Spec Kit's workflow reference (https://github.github.com/spec-kit/reference/workflows.html) and the Superpowers subagent-driven-development skill (https://github.com/obra/superpowers/tree/main/skills/subagent-driven-development), if your network allows. One attempt per address, about two minutes each; if a fetch fails or hangs, mark the related claims unverified and move on.
+5. `notes/wave1.5/2026-10-layer-sizing.md` (the sprint manager's sizing).
 
 ## Job
 
@@ -35,8 +36,10 @@ Answer these, each with evidence (file and section, or source URL):
 4. **Layer order.** Does each layer run only on parts proven in earlier layers? Is each "done when" something that can fail? Is anything needed earlier than where it is placed, or missing altogether?
 5. **Facts.** Check the note's factual claims: Spec Kit workflow capabilities and where a paused run keeps its state; the contents and licence of the Superpowers packet set; the claim that Wave 1 only added files (`git diff --shortstat 19a06d3 origin/main`); that pull requests opened with the default Actions token wait for approval before their checks run.
 6. **Clarity.** Could the governor read the note and know what each layer gives him and when he is asked to act?
+7. **The test-first shape (section 2.6, row 10).** Does it make first-time-right code more likely and lower the cost per change? Name any gap: for example, how the example-id check works when an example cannot be a single automated test, whether the builder can weaken its own tests unseen, whether the tests-against-spec verdict fits Superpowers' reviewer as shipped, and whether the default of 3 examples per requirement is a sensible start.
+8. **The sizing as a cost picture.** Without re-estimating: is the arithmetic consistent, does every task in the note have a size, and is anything sized that the note no longer contains (the held-back store) or missing that it now contains (the test-first shape)? Name what the sprint manager should re-size.
 
-Do not re-argue the governor's direction listed above, the product shape itself, or estimates (sizing belongs to the sprint manager). Severity per finding: blocker (approving the note would mislead the governor or build something unsafe), major (a gap or contradiction the build would trip on), minor (wording). Give a concrete fix for each.
+Do not re-argue the governor's direction listed above or the product shape itself. Do not replace the sprint manager's estimates with your own; point out gaps and inconsistencies. Severity per finding: blocker (approving the note would mislead the governor or build something unsafe), major (a gap or contradiction the build would trip on), minor (wording). Give a concrete fix for each.
 
 ## Deposit
 
@@ -65,7 +68,7 @@ Do not re-argue the governor's direction listed above, the product shape itself,
 ## Definition of done
 
 - [ ] Report committed (and pushed if allowed) with all sections above.
-- [ ] All six questions answered, each with evidence or "found fine".
+- [ ] All eight questions answered, each with evidence or "found fine".
 - [ ] Stop. Do not ask the governor anything; the architect presents the result.
 
 ## Stop and report if

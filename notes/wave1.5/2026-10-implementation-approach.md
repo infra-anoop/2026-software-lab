@@ -1,6 +1,6 @@
 # Wave 1.5 implementation approach
 
-**Status: proposed (architect, 2026-10-19).** Sized by the sprint manager (section 4); waiting for a cross-family review and the governor's approval through a decision request. Until it is approved, the retro records stand unchanged.
+**Status: proposed (architect, 2026-10-19).** Sized by the sprint manager (section 4); the test-first shape (section 2.6) added after sizing, so Layers 4 and 7 need a re-size; waiting for a cross-family review and the governor's approval through a decision request. Until it is approved, the retro records stand unchanged.
 
 This note says **how** Wave 1.5 is built. **What** is built does not change: the product shape stays the end-state description in `notes/retro/2026-10-factory-whole.md`, and the value statement and exit criteria stay those of `notes/retro/2026-10-wave1.5-funnel.md` section 9. Once approved, this note replaces the funnel's work-item list and phases (sections 8 and 9's phase table) as the plan of record for how to build. Every place where it varies from the product shape is listed in section 5 for the governor's approval; nothing varies silently.
 
@@ -15,7 +15,7 @@ The architect's diagnosis, which the governor accepted:
 
 Governor's direction (chat, 2026-10-19, 19:35 to 20:32 PT): start from today's `main` (not rolled back), remove Wave 1's machinery, then build in layers (install, configure, policy, glue) with fewer intermediate tests; use Spec Kit workflows (a YAML file per job, run by Spec Kit's common Python runner, calling the Cursor or Copilot command-line agent); use the Superpowers packet set as shipped instead of designing our own formats; "for the most part, we are not planning to deviate from the overall product shape". He agreed to this note's form: a new note that replaces named parts of the retro records, one section per layer.
 
-## 2. Five decisions that shape the build
+## 2. Six decisions that shape the build
 
 ### 2.1 Clean slate on today's `main`
 
@@ -47,7 +47,22 @@ Superpowers (version 7.0.0, MIT licence) ships no software kit for its formats, 
 
 Its own loop (fix rounds, escalation, model choice run as a skill the agent follows) is not used between steps: code owns that, under the governor's principle that code runs the loop and agents do the work inside one step. Inside one agent step, Superpowers' discipline (tests first, self-review, the short status reply) applies as shipped.
 
-The one small build: a thin reader that checks the implementer's status reply and the reviewer's verdict, field for field as Superpowers defines them, so code can decide the next step. Additions only where our rules need a slot Superpowers lacks, each tied to its rule: the reviewer's model family (every review by another family) and a "needs the governor" mark on a finding. Our decision request and lock format stays; Superpowers has no equivalent.
+The one small build: a thin reader that checks the implementer's status reply and the reviewer's verdict, field for field as Superpowers defines them, so code can decide the next step. Additions only where our rules need a slot Superpowers lacks, each tied to its rule: the reviewer's model family (every review by another family), a "needs the governor" mark on a finding, the tests-against-spec verdict and each finding's cause (section 2.6). Our decision request and lock format stays; Superpowers has no equivalent.
+
+### 2.6 Tests first, shaped for fast convergence
+
+The goal is code that is right on the first or second try. Secrecy is not a goal (governor, 2026-10-19: "Secrecy was never the goal. Faster convergence is the goal."), so there are no held-back test cases. Agreed with the governor on 2026-10-19:
+
+1. **Examples in the spec.** For each requirement the spec writer gives k concrete examples in "given, when, then" form. k is a tunable setting: 3 by default (the main case, the boundary that matters most, the refusal or error case), at least 1, about 5 at most, and 1 for a light change. An invariant is stated once as a rule, not as more examples. The examples come from a different author than the builder, before any code, and the governor approves them with the spec: they are the independent tests.
+2. **The builder writes the rest of the tests** from the spec and its examples. Every example becomes a test carrying the example's id. Its own tests check public behaviour, not internals; few and strong, relevant at two nines.
+3. **Test review.** Normal and light lanes: inside the one code review, the reviewer first judges the tests against the spec (every example covered, the tests match the requirements) as its own verdict; if that verdict fails, the round fails before the code is judged. Full lane: a separate test review of the feature's examples and tests before any code, because a wrong test there would spread across many orders.
+4. **Types and interfaces before code.** In the full lane the plan names the data models and signatures; otherwise the builder writes them as stubs with the tests.
+5. **The builder writes the code,** running the tests and a strict type checker inside its own step and trying again freely within the step's time limit. No GitHub Actions round trip per try.
+6. **Small orders:** one behaviour, a handful of files, about an hour of agent work.
+7. **A way out for a wrong test.** The builder may not change or delete a test made from a spec example; it may flag it as wrong with its reason (Superpowers' `DONE_WITH_CONCERNS`) and stop. Changes to its own tests are visible to the reviewer with their reasons. Code checks that every example id still has its test.
+8. **Three review rounds,** then the governor. The inner loop (run tests, fix, run again inside the step) is capped by time, not by a count.
+
+Two architect additions, for the governor's approval with this note: **one exemplar per kind of block**, a reference implementation builders copy the shape of; and **the cause of each finding** recorded in the verdict (misread requirement, build slip, wrong test), so k and the other settings are tuned from evidence.
 
 ## 3. The stack
 
@@ -105,9 +120,9 @@ Sizes are the sprint manager's (agent-hours, likely / pessimistic, uncalibrated)
 
 **Purpose.** Every bought part present, at a pinned version, where it will run.
 
-**Contents.** Spec Kit upgraded from 1.0.6 to the current release with the Cursor and Copilot integrations, checking first whether the upgrade overwrites the lab's template overrides; the Cursor and Copilot command-line agents available in the Nix environment and in Actions; the Superpowers packet set copied in at a pinned version; the GitHub App created by the governor.
+**Contents.** Spec Kit upgraded from 1.0.6 to the current release with the Cursor and Copilot integrations, checking first whether the upgrade overwrites the lab's template overrides; the Cursor and Copilot command-line agents available in the Nix environment and in Actions; the Superpowers packet set copied in at a pinned version; the GitHub App created by the governor. The build step's environment: it must run an app's tests and a strict type checker in seconds (section 2.6, point 5), so decide here whether agent steps need the full Nix environment or only the agent tools and uv.
 
-**Done when.** Each part runs a trivial command in an Actions job and in the codespace, and its version is pinned in git.
+**Done when.** Each part runs a trivial command in an Actions job and in the codespace, and its version is pinned in git; an agent step runs an app's tests and type checker inside its own job.
 
 **Proof.** Running it. No tests.
 
@@ -130,7 +145,7 @@ Sizes are the sprint manager's (agent-hours, likely / pessimistic, uncalibrated)
 **Purpose.** The core experience, as early as possible: an issue in, a reviewed pull request out. The policy layer is designed from what this run shows.
 
 **Contents.**
-- A build workflow, started when an issue is labelled ready: Superpowers' brief script, implementer prompt on the builder model, the tests run by a shell step, code checking there is a new commit and a valid status reply, then the pull request opened with the App token.
+- A build workflow, started when an issue is labelled ready: Superpowers' brief script, implementer prompt on the builder model (tests first, run inside its step as it works), the tests run again by a shell step, code checking there is a new commit and a valid status reply, then the pull request opened with the App token.
 - A review workflow, started when the pull request opens: Superpowers' review package script, its task reviewer prompt on another model family, the verdict posted on the pull request.
 - Merge by the governor's click at this layer; it becomes automatic in Layer 4.
 - First real order: the workflow checker in CI (Wave 1 item D10), starting as a warning.
@@ -145,7 +160,8 @@ Sizes are the sprint manager's (agent-hours, likely / pessimistic, uncalibrated)
 
 **Contents.**
 - Role briefs: Superpowers' prompts plus one shared page of our reviewer rules (the good-enough judgement, distrust the report, what not to flag, the "needs the governor" mark for anything about what the user sees or about scope).
-- The thin reader (section 2.5). Code decides from it: open Critical or Important findings send the change back for revision; after three rounds it goes to the governor; a "needs the governor" mark stops the loop at once and opens a decision.
+- The thin reader (section 2.5). Code decides from it: a failed tests-against-spec verdict or open Critical or Important findings send the change back for revision; after three rounds it goes to the governor; a "needs the governor" mark stops the loop at once and opens a decision.
+- The test-first shape for changes (section 2.6): examples in the issue form and spec template (k as a setting), the example-id check, the way out for a wrong test, the tests-against-spec verdict first in the code review, each finding's cause, and the first exemplars.
 - Cross-family review enforced by code: a reviewer seat in the builder's model family is refused.
 - The review-accepted status, posted only by the trusted job; GitHub auto-merge; the ruleset requiring that status (the governor applies it).
 - The decision pause as two workflows: one writes the request in git and opens an issue mentioning the governor; his answer on that issue starts the next, which writes the lock and continues.
@@ -154,9 +170,9 @@ Sizes are the sprint manager's (agent-hours, likely / pessimistic, uncalibrated)
 - Issue forms for a change and for a new feature (the feature form waits for Layer 7).
 - Second job through the path: a small real Smart Writer V2 change, such as a bug fix or a behaviour change. Not a feature, so it fits the rule that no Smart Writer V2 feature starts before the design path is on.
 
-**Done when.** A normal change and a light change both merge with no governor action other than a decision; a deliberately flawed change is sent back and does not merge; a same-family reviewer is refused.
+**Done when.** A normal change and a light change both merge with no governor action other than a decision; a deliberately flawed change is sent back and does not merge; a same-family reviewer is refused; a change that deletes an example's test is sent back.
 
-**Proof.** Those three runs, plus tests for the thin reader and the routing rule (code we wrote).
+**Proof.** Those runs, plus tests for the thin reader, the routing rule and the example-id check (code we wrote).
 
 ### Layer 5. Running unattended
 
@@ -184,11 +200,10 @@ Sizes are the sprint manager's (agent-hours, likely / pessimistic, uncalibrated)
 
 **Contents.**
 - Intent and spec drafted in chat (Cursor) with the governor; a small hand-in command validates and commits the drafts and labels the feature issue "spec ready".
-- Short workflows for each stage, each started by a label: spec review (product seats); plan (Spec Kit's plan, plus a separate worker deriving held-back acceptance scenarios from the written requirements); plan review (Spec Kit's consistency check first, then architecture seats; the architect reads the result); tasks (with estimates, and the consistency check again). The governor's approvals of the spec and of the plan's architecture and phasing are labels that start the next workflow.
+- Short workflows for each stage, each started by a label: spec review (product seats, including whether the examples match the requirements); plan (Spec Kit's plan, naming the data models and signatures); plan review (Spec Kit's consistency check first, then architecture seats; the architect reads the result); tasks (with estimates, and the consistency check again); then the feature's test review before any code (section 2.6, point 3). The governor's approvals of the spec and of the plan's architecture and phasing are labels that start the next workflow.
 - Readiness: before orders are created, code lists the feature's unanswered decisions; a task that depends on one waits. Then the tasks become issues with sub-issues (Spec Kit's tasks-to-issues command), and each runs the normal lane.
 - Re-align after a decision that changes the architecture: orders not started are held, the plan and tasks are amended in place, the consistency check runs, and a review round checks only the amendment.
-- Feature acceptance: the governor sees the spec, acceptance criteria, test names and the held-back results, not diffs; accept closes the feature, reject turns his reasons into corrective tasks.
-- The held-back scenario store, outside what builder steps can read; the choice of store (for example a separate private repository) comes to the governor as a plain option.
+- Feature acceptance: the governor sees the spec, its examples with their test results, acceptance criteria and test names, not diffs; accept closes the feature, reject turns his reasons into corrective tasks.
 - Trial: one real Smart Writer V2 feature, chosen with the governor, end to end through the lane.
 
 **Done when.** That feature passes feature acceptance through the lane, and the full lane is switched on.
@@ -220,12 +235,13 @@ Each row is a variation from `notes/retro/2026-10-factory-whole.md` or the funne
 | 7 | A probe, then a Core phase ending in one binding stop (funnel section 9) | The probe's four unknowns are Layer 2; the governor judges after every layer, each with its own appetite | Earlier and more frequent judgement |
 | 8 | Switch the engine to AI-SDLC if the trial shows more than a few days of reliability glue (funnel section 4) | Any fail in Layer 2 or Layer 3 stops for the governor: fix, other runtime, or rethink the engine | The short-workflow design removes most of that glue; the decision stays the governor's |
 | 9 | Exit criterion 3: the scorecard covers every Wave 1.5 order | Unchanged, with work done before Layer 6 covered from the usage export and git, labelled estimated | Makes the criterion achievable as written |
+| 10 | A held-back set of acceptance scenarios: a separate worker derives them, a store builders cannot read, a fresh evaluator runs them at code review (section 4e; funnel C3.3; register item 41) | No held-back scenarios. The test-first shape of section 2.6 instead: k examples per requirement in the spec (3 by default), the builder writes the rest of the tests, the tests are reviewed against the spec (inside the code review for changes, before code for features), tests run inside the build step, small orders, types first, a way out for a wrong test, three rounds; plus an exemplar per kind of block and each finding's cause | The governor's aim was faster convergence, not secrecy; the builder writes its own tests, so there is nothing to hide from it; the examples are the independent tests. Saves the store, the evaluator and the governor's private-repository step |
 
 ## 6. What changes in the records when this note is approved
 
 - `notes/retro/2026-10-wave1.5-funnel.md`: a pointer at the top of sections 8 and 9 saying this note replaces them as the plan of record for how to build.
 - `notes/retro/2026-10-factory-whole.md`: a pointer under the status line naming the parts this note varies (section 5 above); the file otherwise stays the product shape, and Layer 8 corrects it to match what runs.
-- `notes/retro/2026-10-harness-changes.md`: an "amended by" pointer on items 16 (reconciler), 21 (checkpoint and resume), 76 (known-good factory), 92 (six formats), 94 (convergence rule) and 104 (design kit as the starting point).
+- `notes/retro/2026-10-harness-changes.md`: an "amended by" pointer on items 16 (reconciler), 21 (checkpoint and resume), 41 (held-back set), 76 (known-good factory), 92 (six formats), 94 (convergence rule) and 104 (design kit as the starting point).
 - A new decision record amending `wave1-retro-factory-path`: Spec Kit stays the engine, run as short workflows; the Superpowers packet set is adopted as shipped.
 - `notes/retro/2026-10-architect-handover.md`: the state section points here.
 
@@ -235,7 +251,7 @@ Each row is a variation from `notes/retro/2026-10-factory-whole.md` or the funne
 - The interim rulebook (Layer 0): a rule-path change needing his approving review.
 - Settings only he can change: the ruleset update (Layer 0), the GitHub App and the Actions secrets (Layers 1 and 2), the merge rule requiring the review-accepted status (Layer 4).
 - Whether to buy a Copilot plan for the second runtime (Layer 2).
-- The held-back scenario store (Layer 7), and which Smart Writer V2 feature is the full-lane trial.
+- Which Smart Writer V2 feature is the full-lane trial (Layer 7).
 
 ## 8. Who does what
 
