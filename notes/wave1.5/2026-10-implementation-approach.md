@@ -1,6 +1,6 @@
 # Wave 1.5 implementation approach
 
-**Status: proposed (architect, 2026-10-19).** Sized by the sprint manager (section 4), and re-sized for the test-first shape (section 2.6); cross-family review done and triaged (section 9), and the work it added re-sized; then the governor's approval through a decision request. Until it is approved, the retro records stand unchanged.
+**Status: proposed (architect, 2026-10-19).** Sized by the sprint manager (section 4), and re-sized for the test-first shape (section 2.6); cross-family review done and triaged (section 9), and the work it added re-sized; the governor's funding calls recorded (section 4); waiting for the governor's approval of the whole note through a decision request. Until it is approved, the retro records stand unchanged.
 
 This note says **how** Wave 1.5 is built. **What** is built does not change: the product shape stays the end-state description in `notes/retro/2026-10-factory-whole.md`, and the value statement and exit criteria stay those of `notes/retro/2026-10-wave1.5-funnel.md` section 9. Once approved, this note replaces the funnel's work-item list and phases (sections 8 and 9's phase table) as the plan of record for how to build. Every place where it varies from the product shape is listed in section 5 for the governor's approval; nothing varies silently.
 
@@ -82,7 +82,7 @@ Two architect additions, for the governor's approval with this note: **one exemp
 | Trigger between runs, host, schedules | GitHub Actions | Bought |
 | Work queue and state between runs | GitHub Issues, labels, pull requests | Bought |
 | Builder agent | Cursor command-line agent, model pinned per step | Bought |
-| Second runtime | Copilot command-line agent, proven once and kept ready | Bought |
+| Second runtime | Copilot command-line agent, proven only if the Cursor agent fails in Layer 2 (cross-family review does not need it: the Cursor agent runs models from more than one family) | Bought, if needed |
 | Packet formats and role prompts | Superpowers packet set, pinned version | Bought (open source) |
 | Merge rules | GitHub rulesets and code owners | Bought |
 | Robot identity for code that opens pull requests | GitHub App (created by the governor) | Bought |
@@ -100,7 +100,16 @@ Three numbers, shown together because they tell different things:
 - **Realistic bad case: about 170,** the likely figure times about 1.6, since not every task goes badly at once. Under the 182 ceiling.
 - **Every task going badly: about 243,** the sum of each task's pessimistic figure, including the Spec Kit fallback. About 61 over the 182 ceiling.
 
-The appetite's likely figure cannot be met with the whole product shape kept; that is a choice for the governor (section 7). After Layer 3 the sprint manager compares actual with estimate and re-estimates the remaining layers with that correction.
+The appetite's likely figure cannot be met with the whole product shape kept. After Layer 3 the sprint manager compares actual with estimate and re-estimates the remaining layers with that correction.
+
+**Funding, decided by the governor (chat, 2026-10-19, about 23:50 PT).** The whole product shape is kept, and the wave is funded in three tranches, each committed only when the one before it is done:
+- **Tranche 1: Layers 0 to 3,** about 33 likely (about 31 after the Copilot trim). Committed with this note's approval.
+- **Tranche 2: Layers 4 to 6,** about 39 likely. Committed after Layer 3, on the sprint manager's re-estimate from measured numbers.
+- **Tranche 3: Layers 7 and 8,** about 28 likely. Committed after Layer 6, the same way.
+
+Walkthroughs and sprint management (about 5.5) run across all three. The provisional total is about 97 likely if every trim below is taken; the realistic bad case stays under the 182 ceiling.
+- **Overrun rule:** a layer that passes 1.5 times its likely figure stops for a rethink with the governor; it does not quietly extend.
+- **Trims:** the Copilot proof runs only if the Cursor agent fails in Layer 2 (taken now; section 5 row 13). The other seven trims in the sizing note (re-align waits for its first real use; scorecard per issue first; checks' track record by hand; Wave 1 baseline as one total; no separate hand-in command; user's guide folded into the cast page; competition seat waits) are decided at the tranche gates, with measured numbers. Until then they stay in scope.
 
 | Layer | What the governor gets | Size (sprint manager) |
 |-------|------------------------|-----------------------|
@@ -135,7 +144,7 @@ The appetite's likely figure cannot be met with the whole product shape kept; th
 
 **Purpose.** Every bought part present, at a pinned version, where it will run.
 
-**Contents.** Spec Kit upgraded from 1.0.6 to the current release with the Cursor and Copilot integrations, checking first whether the upgrade overwrites the lab's template overrides; the Cursor and Copilot command-line agents available in the Nix environment and in Actions; the Superpowers packet set copied in at a pinned version; the GitHub App created by the governor. The build step's environment: it must run an app's tests and a strict type checker in seconds (section 2.6, point 5), so decide here whether agent steps need the full Nix environment or only the agent tools and uv.
+**Contents.** Spec Kit upgraded from 1.0.6 to the current release with the Cursor integration (Copilot's only if Layer 2 needs it), checking first whether the upgrade overwrites the lab's template overrides; the Cursor command-line agent available in the Nix environment and in Actions; the Superpowers packet set copied in at a pinned version; the GitHub App created by the governor. The build step's environment: it must run an app's tests and a strict type checker in seconds (section 2.6, point 5), so decide here whether agent steps need the full Nix environment or only the agent tools and uv.
 
 **Done when.** Each part runs a trivial command in an Actions job and in the codespace, and its version is pinned in git; an agent step runs an app's tests and type checker inside its own job.
 
@@ -147,7 +156,7 @@ The appetite's likely figure cannot be met with the whole product shape kept; th
 
 **Contents.** Actions secrets for the Cursor key and the App key (this closes the open decision on how the App key is delivered); Spec Kit integration settings and a model per step; Actions permissions; the labels and a first issue form. The four unknowns:
 1. A Spec Kit workflow step calls the Cursor command-line agent unattended in Actions, with a pinned model.
-2. The same with the Copilot command-line agent (the second runtime). This likely needs a paid Copilot plan, which is the governor's call.
+2. Only if unknown 1 fails: the same with the Copilot command-line agent (the second runtime). That needs a paid Copilot plan, the governor's call at that point.
 3. A pull request opened with the App's token starts its checks without anyone clicking approve.
 4. Usage per run is visible, or can be joined from the governor's usage export.
 
@@ -256,6 +265,7 @@ Each row is a variation from `notes/retro/2026-10-factory-whole.md` or the funne
 | 10 | A held-back set of acceptance scenarios: a separate worker derives them, a store builders cannot read, a fresh evaluator runs them at code review (section 4e; funnel C3.3; register item 41) | No held-back scenarios. The test-first shape of section 2.6 instead: k examples per requirement in the spec (3 by default), the builder writes the rest of the tests, the tests are reviewed against the spec (inside the code review for changes, before code for features), tests run inside the build step, small orders, types first, a way out for a wrong test, three rounds; plus an exemplar per kind of block and each finding's cause | The governor's aim was faster convergence, not secrecy; the builder writes its own tests, so there is nothing to hide from it; the examples are the independent tests. Saves the store, the evaluator and the governor's private-repository step |
 | 11 | One lab workflow with a lane switch, plus sub-workflows (section 3; register item 89) | Several short workflows, each started by a GitHub event (an issue labelled, a pull request opened, a decision answered); the lane is a label each one reads | Follows from row 1: a single workflow would have to wait across events |
 | 12 | Intake forms for a change, an order and a new feature (section 4a; funnel C1) | Forms for a change and a new feature only. Orders are created by code from a feature's tasks; ad hoc work enters as a change | No person writes an order by hand in this design |
+| 13 | The second runtime (Copilot) proven once and kept ready (funnel, Copilot fallback) | Proven only if the Cursor agent fails in Layer 2; no Copilot plan bought before then | The governor's trim (2026-10-19). Its purpose was a fallback if Cursor cannot run unattended, which Layer 2 tests; cross-family review runs through the Cursor agent's other model families |
 
 ## 6. What changes in the records when this note is approved
 
@@ -270,10 +280,10 @@ Each row is a variation from `notes/retro/2026-10-factory-whole.md` or the funne
 - Approval of this note and its section 5 (decision request after sizing and review).
 - The interim rulebook (Layer 0): a rule-path change needing his approving review.
 - Settings only he can change: the ruleset update (Layer 0), the GitHub App and the Actions secrets (Layers 1 and 2), the merge rule requiring the review-accepted status (Layer 4).
-- Whether to buy a Copilot plan for the second runtime (Layer 2).
+- A Copilot plan, only if the Cursor agent fails in Layer 2.
 - Which Smart Writer V2 feature is the full-lane trial (Layer 7).
-- Whether the re-align step in Layer 7 (amending plan and tasks after an architecture decision, about 2 to 4 hours) waits until a real run needs it, as the sprint manager recommends.
-- How to read the cost picture: the likely figure is about 16.5 over the appetite, the realistic bad case about 12 under its ceiling, and the every-task-goes-badly figure about 61 over it (section 4). The plain choices: set the likely appetite at about 105 and keep the whole shape (the sprint manager's recommendation, with the re-align lever taken regardless); take the six levers and land near 99; or cut deeper, such as moving the full lane to a later wave, which breaks the one-usable-whole requirement.
+- At each tranche gate: commit the next tranche on the re-estimate, and decide the trims that fall in it (section 4).
+- Decided on 2026-10-19 (about 23:50 PT), recorded in section 4: the whole shape kept, funded in three tranches; the 1.5-times overrun rule; the Copilot trim; the other trims decided at the gates.
 
 ## 8. Who does what
 
