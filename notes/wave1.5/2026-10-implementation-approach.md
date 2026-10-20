@@ -1,6 +1,6 @@
 # Wave 1.5 implementation approach
 
-**Status: proposed (architect, 2026-10-19).** Sized by the sprint manager (section 4), and re-sized for the test-first shape (section 2.6); cross-family review done and triaged (section 9), with the work it added waiting for the sprint manager's re-size; then the governor's approval through a decision request. Until it is approved, the retro records stand unchanged.
+**Status: proposed (architect, 2026-10-19).** Sized by the sprint manager (section 4), and re-sized for the test-first shape (section 2.6); cross-family review done and triaged (section 9), and the work it added re-sized; then the governor's approval through a decision request. Until it is approved, the retro records stand unchanged.
 
 This note says **how** Wave 1.5 is built. **What** is built does not change: the product shape stays the end-state description in `notes/retro/2026-10-factory-whole.md`, and the value statement and exit criteria stay those of `notes/retro/2026-10-wave1.5-funnel.md` section 9. Once approved, this note replaces the funnel's work-item list and phases (sections 8 and 9's phase table) as the plan of record for how to build. Every place where it varies from the product shape is listed in section 5 for the governor's approval; nothing varies silently.
 
@@ -93,25 +93,25 @@ GitHub Agentic Workflows and Copilot's coding agent are not needed in this desig
 
 ## 4. The layers
 
-Sizes are the sprint manager's (agent-hours, likely / pessimistic, uncalibrated), task by task in `notes/wave1.5/2026-10-layer-sizing.md`, with its recommendations. Across the layers: about 90 likely, plus about 5.5 for walkthroughs and sprint management, so about 95.5 for the wave; governor about 8 to 16 hours. The test-first shape added about 5 of those hours (Layers 1 and 4 gain its checks, Layer 7 loses the held-back store); its saving is in running orders, expected but not yet measured or booked. The locked appetite (89 likely, 182 pessimistic agent-hours) stays the ceiling; it is not a target.
+Sizes are the sprint manager's (agent-hours, likely / pessimistic, uncalibrated), task by task in `notes/wave1.5/2026-10-layer-sizing.md`, with its recommendations. Across the layers: about 100 likely, plus about 5.5 for walkthroughs and sprint management, so about 105.5 for the wave; governor about 8 to 16 hours. The test-first shape added about 5 of those hours (Layers 1 and 4 gain its checks, Layer 7 loses the held-back store); its saving is in running orders, expected but not yet measured or booked. The cross-family review's triage (section 9) added about 10 more: about 5 for its fixes (safe repeat designed and proved in Layer 3, the lab profile, the tests-and-stubs step, the stronger example checks) and about 5 for items of the retro's own plan that this note had dropped (the failure inventory, each check's reason, severity and track record, the Wave 1 baseline, open decisions by age, the reviewer roster with the competition seat). The locked appetite (89 likely, 182 pessimistic agent-hours) stays the ceiling; it is not a target.
 
 Three numbers, shown together because they tell different things:
-- **Likely: about 95.5,** about 6.5 over the appetite's 89; the levers in the sizing note recover about 4.
-- **Realistic bad case: about 155,** the likely figure times about 1.6, since not every task goes badly at once. Under the 182 ceiling.
-- **Every task going badly: about 217,** the sum of each task's pessimistic figure. About 35 over the 182 ceiling.
+- **Likely: about 105.5,** about 16.5 over the appetite's 89; all six levers in the sizing note together recover about 6.
+- **Realistic bad case: about 170,** the likely figure times about 1.6, since not every task goes badly at once. Under the 182 ceiling.
+- **Every task going badly: about 243,** the sum of each task's pessimistic figure, including the Spec Kit fallback. About 61 over the 182 ceiling.
 
-These do not yet include the work the cross-family review added (section 9): the safe-repeat conventions and trials, the full lane's tests-and-stubs step, the test-integrity checks and the restored product-shape items. The sprint manager re-sizes those before the decision request. After Layer 3 the sprint manager compares actual with estimate and re-estimates the remaining layers with that correction.
+The appetite's likely figure cannot be met with the whole product shape kept; that is a choice for the governor (section 7). After Layer 3 the sprint manager compares actual with estimate and re-estimates the remaining layers with that correction.
 
 | Layer | What the governor gets | Size (sprint manager) |
 |-------|------------------------|-----------------------|
-| 0. Clean slate | Wave 1's machinery and rules gone; a one-page interim rulebook | 6.75 / 15 |
+| 0. Clean slate | Wave 1's machinery and rules gone; a one-page interim rulebook | 7 / 15.5 |
 | 1. Install | The bought parts present and pinned | 6.5 / 15.75 |
-| 2. Configure | The parts wired together; the four unknowns that could change the stack answered | 6.2 / 15.75 |
-| 3. First end-to-end run | An issue labelled, a reviewed pull request back, using the parts as they come | 7.75 / 17.75 |
-| 4. Policy for changes | Our rules on every change: reviews, decisions, guards, the light and normal lanes | 22 / 48.25 |
-| 5. Running unattended | Nothing to watch: time limits, re-runs, an alert on silence, status comments, the deliberate trials | 8 / 19.25 |
-| 6. Cost and quality numbers | A record per run and the scorecard | 6.8 / 15.75 |
-| 7. The design path for features | The full lane, proved on one real Smart Writer V2 feature | 18.95 / 42.75 |
+| 2. Configure | The parts wired together; the four unknowns that could change the stack answered | 6.2 / 19.75 |
+| 3. First end-to-end run | An issue labelled, a reviewed pull request back, using the parts as they come | 13.1 / 30.25 |
+| 4. Policy for changes | Our rules on every change: reviews, decisions, guards, the light and normal lanes | 24.65 / 53.75 |
+| 5. Running unattended | Nothing to watch: time limits, re-runs, an alert on silence, status comments, the deliberate trials | 7 / 16.75 |
+| 6. Cost and quality numbers | A record per run and the scorecard | 7.2 / 16.75 |
+| 7. The design path for features | The full lane, proved on one real Smart Writer V2 feature | 21.25 / 48 |
 | 8. Finish | Rulebooks and guide describing what runs; the end-state description matching reality | 7.05 / 16.25 |
 
 **How work gets done before the new path can carry it (Layers 0 to 2).** The plain known-good way: a chat session starts a worker on a branch, the worker opens a pull request, a reviewer from another model family is started from the same session with a pointer to a note in git, and the change merges on green checks and an accepted review. That is safer than Wave 1's machinery and needs none of it. From Layer 3, the new path takes every piece of work it can handle.
@@ -273,7 +273,7 @@ Each row is a variation from `notes/retro/2026-10-factory-whole.md` or the funne
 - Whether to buy a Copilot plan for the second runtime (Layer 2).
 - Which Smart Writer V2 feature is the full-lane trial (Layer 7).
 - Whether the re-align step in Layer 7 (amending plan and tasks after an architecture decision, about 2 to 4 hours) waits until a real run needs it, as the sprint manager recommends.
-- How to read the cost picture: the likely figure is about 6.5 over the appetite, and the every-task-goes-badly figure about 35 over its ceiling (section 4).
+- How to read the cost picture: the likely figure is about 16.5 over the appetite, the realistic bad case about 12 under its ceiling, and the every-task-goes-badly figure about 61 over it (section 4). The plain choices: set the likely appetite at about 105 and keep the whole shape (the sprint manager's recommendation, with the re-align lever taken regardless); take the six levers and land near 99; or cut deeper, such as moving the full lane to a later wave, which breaks the one-usable-whole requirement.
 
 ## 8. Who does what
 
