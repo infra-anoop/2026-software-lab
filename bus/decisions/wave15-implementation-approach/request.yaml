@@ -1,0 +1,49 @@
+schema_version: 1
+kind: decision_request
+id: wave15-implementation-approach
+created: 2026-10-20T06:45:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/wave1.5/2026-10-implementation-approach.md
+  - notes/wave1.5/2026-10-layer-sizing.md
+  - notes/wave1.5/2026-10-implementation-approach-review.md
+  - notes/retro/2026-10-factory-whole.md
+  - notes/retro/2026-10-wave1.5-funnel.md
+  - bus/decisions/wave1-retro-factory-path/lock.yaml
+  - bus/decisions/wave1-retro-wave15-appetite/lock.yaml
+owner: governor
+feature: 001-factory-v2
+blocking: true
+prompt: >
+  Why this is asked: Wave 1.5 cannot start until you approve how it is built. The approach note
+  says how: start from today's main and remove Wave 1's machinery first; build in nine layers
+  (clean slate, install, configure, a first end-to-end run, policy for changes, running unattended,
+  cost and quality numbers, the feature lane, finish), each judged by you on real work; Spec Kit
+  workflows run as short workflows cut wherever they would wait; Superpowers' prompts as shipped
+  with a thin profile so code can read them; tests first, with examples in the spec, for faster
+  convergence. What is built does not change: the product shape stays, and the thirteen places
+  where the build varies from it are listed in the note's section 5.
+  It has been sized by the sprint manager, reviewed by a second model family (sound with changes,
+  all findings acted on, section 9) and re-sized: about 105.5 likely agent-hours with every trim
+  left in, about 97 with all of them; a realistic bad case under the 182 ceiling; 8 to 16 hours of
+  your time. You already decided the funding tonight (section 4): three tranches, each committed
+  only after the one before it, with a re-estimate from measured numbers after Layer 3; a layer
+  that passes 1.5 times its likely figure stops for a rethink; Copilot is proven only if Cursor
+  fails; the other trims are decided at the tranche gates.
+  Option A, approve the note as written: tranche 1 (Layers 0 to 3, about 31 likely agent-hours) is
+  committed. The architect records the lock, adds the pointers the note's section 6 lists to the
+  retro records, and records a decision amending the factory path (Spec Kit stays the engine, run
+  as short workflows; Superpowers' prompts adopted as shipped). The sprint manager then writes the
+  Layer 0 walkthrough for your approval.
+  Option B, approve with changes: name the sections or rows to change; the architect amends the
+  note and asks again.
+  Option C, not yet: say what is missing.
+  What happens next on A: nothing is built before the Layer 0 walkthrough is approved; the first
+  rule-path change (the interim rulebook and the removal) needs your approving review on GitHub.
+options:
+  - label: "A: Approve the note as written; commit tranche 1"
+  - label: "B: Approve with my changes to named sections"
+  - label: "C: Not yet"
+recommended: "A: Approve the note as written; commit tranche 1"
