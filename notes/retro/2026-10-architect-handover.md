@@ -66,7 +66,7 @@ You share git. Read each other's records. When you disagree, the governor gets o
 7. Records check: `nix develop /workspaces/2026-software-lab -c bash -c 'cd scripts/factory && uv run --locked factory check schema'`. Decision ids allow letters, digits, `-` and `_` only.
 
 **Agents**
-8. Workers run on Claude Opus 5.5 (high); reviewers on GPT-5.6 Sol (medium); at most 3 agents at once. Spawned agents never pass `required_permissions` and never use the primary checkout. Completion notices can be lost: check the review branch in git after about 30 quiet minutes.
+8. Workers run on Claude Opus 5.5 (high); reviewers on GPT-5.6 Sol (medium); at most 3 agents at once. Spawned agents never pass `required_permissions` and never use the primary checkout. Spawned agents make no web requests and read no files outside their worktree: either can raise an approval prompt that shows only on the agent's own card, and the agent waits silently (two reviews stalled this way on 2026-10-19). The spawning session fetches outside sources first and commits dated copies for the agent to read. Have spawned agents push a first version within 10 minutes, so a stall shows in git. Completion notices can be lost: check the review branch in git after about 30 quiet minutes.
 9. On a usage limit, stop and tell the governor.
 
 **Secrets and data**
