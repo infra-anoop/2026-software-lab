@@ -1,6 +1,6 @@
 # Wave 1.5 implementation approach
 
-**Status: proposed (architect, 2026-10-19).** Sized by the sprint manager (section 4), and re-sized for the test-first shape (section 2.6); cross-family review done and triaged (section 9), and the work it added re-sized; the governor's funding calls recorded (section 4); waiting for the governor's approval of the whole note through a decision request. Until it is approved, the retro records stand unchanged.
+**Status: approved by the governor, 2026-10-19 (decision `wave15-implementation-approach`, option A); written by the architect, 2026-10-19.** Sized by the sprint manager (section 4) and re-sized twice; cross-family review done and triaged (section 9); the governor's funding calls in section 4. Tranche 1 (Layers 0 to 3) is committed. The retro records carry pointers to this note (section 6).
 
 This note says **how** Wave 1.5 is built. **What** is built does not change: the product shape stays the end-state description in `notes/retro/2026-10-factory-whole.md`, and the value statement and exit criteria stay those of `notes/retro/2026-10-wave1.5-funnel.md` section 9. Once approved, this note replaces the funnel's work-item list and phases (sections 8 and 9's phase table) as the plan of record for how to build. Every place where it varies from the product shape is listed in section 5 for the governor's approval; nothing varies silently.
 
@@ -102,7 +102,7 @@ Three numbers, shown together because they tell different things:
 
 The appetite's likely figure cannot be met with the whole product shape kept. After Layer 3 the sprint manager compares actual with estimate and re-estimates the remaining layers with that correction.
 
-**Funding, decided by the governor (chat, 2026-10-19, about 23:50 PT).** The whole product shape is kept, and the wave is funded in three tranches, each committed only when the one before it is done:
+**Funding, decided by the governor (chat, 2026-10-19, about 23:45 PT).** The whole product shape is kept, and the wave is funded in three tranches, each committed only when the one before it is done:
 - **Tranche 1: Layers 0 to 3,** about 33 likely (about 31 after the Copilot trim). Committed with this note's approval.
 - **Tranche 2: Layers 4 to 6,** about 39 likely. Committed after Layer 3, on the sprint manager's re-estimate from measured numbers.
 - **Tranche 3: Layers 7 and 8,** about 28 likely. Committed after Layer 6, the same way.
@@ -283,7 +283,7 @@ Each row is a variation from `notes/retro/2026-10-factory-whole.md` or the funne
 - A Copilot plan, only if the Cursor agent fails in Layer 2.
 - Which Smart Writer V2 feature is the full-lane trial (Layer 7).
 - At each tranche gate: commit the next tranche on the re-estimate, and decide the trims that fall in it (section 4).
-- Decided on 2026-10-19 (about 23:50 PT), recorded in section 4: the whole shape kept, funded in three tranches; the 1.5-times overrun rule; the Copilot trim; the other trims decided at the gates.
+- Decided on 2026-10-19 (about 23:45 PT), recorded in section 4: the whole shape kept, funded in three tranches; the 1.5-times overrun rule; the Copilot trim; the other trims decided at the gates.
 
 ## 8. Who does what
 

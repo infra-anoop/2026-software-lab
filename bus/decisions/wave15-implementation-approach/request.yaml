@@ -1,7 +1,7 @@
 schema_version: 1
 kind: decision_request
 id: wave15-implementation-approach
-created: 2026-10-20T07:00:00Z
+created: 2026-10-20T06:45:00Z
 actor: orchestrator
 actor_model: claude-opus-5.5
 actor_verified: false
