@@ -34,6 +34,8 @@ You share git. Read each other's records. When you disagree, the governor gets o
 
 ## 3. State at handover
 
+> **Update 2026-10-19:** the Wave 1.5 implementation approach is approved (decision `wave15-implementation-approach`; `notes/wave1.5/2026-10-implementation-approach.md`, sizing in `notes/wave1.5/2026-10-layer-sizing.md`). It replaces the phase plan below: clean slate on today's `main`, nine layers, three funding tranches (Layers 0 to 3 committed), a 1.5-times overrun stop. Next: the sprint manager's Layer 0 walkthrough for the governor's approval. The bullets below are the state at retro close.
+
 - **Retro closed** (decision `wave1-retro-close`, governor 2026-10-18 00:56 PT). All six stages done. The whole-factory walk-through was reviewed by a second model family in three rounds (not coherent, not coherent, then coherent) and the governor read and agreed it. The retro's records reach `main` through the retro session's pull request.
 - Decisions locked in the retro: bootstrap role, front door, sprint type, first product work, token usage, factory path (Spec Kit plus Issues), Wave 1.5 appetite (Must plus Should, about 89 to 182 agent-hours), retro close.
 - The Wave 1 items list (`notes/retro/2026-10-wave1-items.md`) is closed with an outcome table; rows not traced there are traced in the failure inventory.
@@ -66,7 +68,7 @@ You share git. Read each other's records. When you disagree, the governor gets o
 7. Records check: `nix develop /workspaces/2026-software-lab -c bash -c 'cd scripts/factory && uv run --locked factory check schema'`. Decision ids allow letters, digits, `-` and `_` only.
 
 **Agents**
-8. Workers run on Claude Opus 5.5 (high); reviewers on GPT-5.6 Sol (medium); at most 3 agents at once. Spawned agents never pass `required_permissions` and never use the primary checkout. Completion notices can be lost: check the review branch in git after about 30 quiet minutes.
+8. Workers run on Claude Opus 5.5 (high); reviewers on GPT-5.6 Sol (medium); at most 3 agents at once. Spawned agents never pass `required_permissions` and never use the primary checkout. Spawned agents make no web requests and read no files outside their worktree: either can raise an approval prompt that shows only on the agent's own card, and the agent waits silently (two reviews stalled this way on 2026-10-19). The spawning session fetches outside sources first and commits dated copies for the agent to read. Have spawned agents push a first version within 10 minutes, so a stall shows in git. Completion notices can be lost: check the review branch in git after about 30 quiet minutes.
 9. On a usage limit, stop and tell the governor.
 
 **Secrets and data**

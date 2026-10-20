@@ -1,0 +1,28 @@
+schema_version: 1
+kind: decision_lock
+id: wave15-implementation-approach.lock
+created: 2026-10-20T06:52:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - bus/decisions/wave15-implementation-approach/request.yaml
+  - notes/wave1.5/2026-10-implementation-approach.md
+  - notes/wave1.5/2026-10-layer-sizing.md
+  - bus/decisions/wave1-retro-factory-path/lock.yaml
+  - bus/decisions/wave1-retro-wave15-appetite/lock.yaml
+chosen: "A: Approve the note as written; commit tranche 1"
+governor_minutes: 240
+notes: >
+  The governor chose A in the architect's chat at about 23:50 PT on 2026-10-19, after an evening
+  of discussion (19:35 PT onward) that set the direction, the test-first shape and the funding.
+  Funding, chosen in the same chat at about 23:45 PT: the whole product shape kept,
+  funded in three tranches (Layers 0 to 3 committed now; Layers 4 to 6 after Layer 3's measured
+  re-estimate; Layers 7 and 8 after Layer 6); a layer that passes 1.5 times its likely figure stops
+  for a rethink; Copilot is proven only if the Cursor agent fails in Layer 2; the other seven trims
+  are decided at the tranche gates.
+  This lock amends wave1-retro-factory-path: Spec Kit stays the engine, run as short workflows
+  started by GitHub events with state in GitHub; the Superpowers prompts are adopted as shipped,
+  with a thin lab profile. It amends wave1-retro-wave15-appetite: the 182 pessimistic ceiling
+  stays; the 89 likely figure is replaced by tranche funding, provisionally about 97 to 105.5
+  likely. Recorded by the architect.

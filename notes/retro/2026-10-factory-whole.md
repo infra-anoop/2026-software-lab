@@ -1,5 +1,7 @@
 # The factory as one whole (end of Wave 1.5)
 
+> **Varied by** `notes/wave1.5/2026-10-implementation-approach.md` section 5 (approved 2026-10-19, decision `wave15-implementation-approach`): short event-started workflows with state in GitHub instead of saved run state and a reconciler; Superpowers' prompts with a thin profile instead of our own formats; Superpowers' severities instead of confidence scores; the test-first shape instead of held-back scenarios; no order form; Copilot only if Cursor fails; and the rest of its thirteen rows. Otherwise this file stays the product shape; Layer 8 corrects it to match what runs.
+
 **Status: final at retro close (2026-10-18, decision `wave1-retro-close`); written by the orchestrator (coach and architect), 2026-10-17; focused review round 1 "not coherent" (2 blockers, 6 major, 1 minor), all nine findings fixed; round 2 "not coherent" (5 resolved, 4 partly; 1 new blocker, 3 major), all four fixed; round 3 "coherent" (all eight resolved, no new contradiction, nothing for the governor). Governor read the file and the review and agreed (2026-10-18 00:56 PT). Stage 5, step 6 done.**
 
 Round 2 fixes: a trial state for switching a lane on (section 16); intake forms aligned with the funnel (funnel C1, C1.1); a worker turns rejected-feature reasons into tasks (4d step 11); the reviewer's flag and the author's "needs the governor" disposition kept as separate fields (4b step 6, section 5). Nothing here is built yet. Review: `notes/retro/2026-10-factory-whole-review.md`.
