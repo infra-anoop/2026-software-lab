@@ -77,3 +77,13 @@ There are no blockers; the fixes are bounded amendments to this approach and its
 - **Test-first shape:** Independent examples, small orders, fast in-step test loops, interfaces first, a wrong-test escape and cause tracking are coherent ways to seek faster convergence. Three examples per requirement is a reasonable tunable starting point, subject to finding 4.
 - **Sizing:** Every currently named implementation block has a recognizable task except the gaps identified in findings 1, 3 and 5. The columns, layer totals, test-first delta and likely total reconcile, and the held-back store has been removed rather than double-counted. Finding 6 is the required correction to the risk presentation.
 
+## Re-check of the triage
+
+1. **Closed.** Per-issue concurrency, a stage label moved last, read-before-write markers and the two Layer 3 failure trials form a sufficient small idempotency design; attempt records, leases and a separate state machine are not needed to close the original gap.
+2. **Closed.** Section 2.5 now calls the parseable addition a lab-owned profile over unmodified upstream prompts, defines repair/failure behaviour, and the sizing counts it as ours.
+3. **Closed.** The full lane now has a sized tests-and-stubs step after tasks, and implementation cannot start until its separate test review accepts.
+4. **Closed.** Each example names automated or observed proof; protected tests cannot be removed, skipped or expected to fail; wrong examples go to the governor; and reviewer-visible reports and diffs cover changes to builder-authored tests. Separate provenance records are unnecessary for this workflow.
+5. **Closed.** The omitted obligations are restored and sized, while the multi-workflow topology and automation-only order intake are explicit variation rows.
+6. **Closed.** The note and sizing show likely, correlated bad-case and all-pessimistic totals together, disclose the ceiling overrun, size the added work and move first-run telemetry into Layer 3.
+7. **Closed.** Section 2.1 now says Wave 1 was “almost entirely additive,” matching the measured insertions and deletions.
+
