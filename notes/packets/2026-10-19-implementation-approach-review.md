@@ -24,7 +24,7 @@ The Wave 1 retro agreed a product shape for the factory at the end of Wave 1.5 a
 1. The note under review, in full.
 2. `notes/retro/2026-10-factory-whole.md` (the product shape) and `notes/retro/2026-10-wave1.5-funnel.md` sections 8 and 9 (the plan being replaced, its value statement and exit criteria).
 3. `notes/retro/2026-10-harness-changes.md`, only where the note cites items, and `notes/retro/2026-10-factory-survey.md` for the earlier stack choice.
-4. Spec Kit's workflow reference (https://github.github.com/spec-kit/reference/workflows.html) and the Superpowers subagent-driven-development skill (https://github.com/obra/superpowers/tree/main/skills/subagent-driven-development), if your network allows. One attempt per address, about two minutes each; if a fetch fails or hangs, mark the related claims unverified and move on.
+4. The outside sources, copied into git under `notes/wave1.5/sources/` (see its README): Spec Kit's workflow reference, the Superpowers v7.0.0 subagent-driven-development skill (licence, prompts, scripts), and GitHub's changelog entry on bot-created pull requests. **Do not fetch anything from the web, and do not read any file outside your worktree:** both can wait on an approval prompt nobody sees, which stalled two earlier reviews. If a claim needs a source that is not in the copies, mark it unverified.
 5. `notes/wave1.5/2026-10-layer-sizing.md` (the sprint manager's sizing).
 
 ## Job
@@ -64,6 +64,7 @@ Do not re-argue the governor's direction listed above or the product shape itsel
 - Every other file.
 - Product and application code (`apps/`, `modules/`), `deploy/secrets/`, GitHub settings.
 - Installing, running or signing up for anything; starting any Wave 1.5 work.
+- Web requests of any kind, and reading files outside your worktree.
 
 ## Definition of done
 
