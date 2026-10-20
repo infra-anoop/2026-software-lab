@@ -1,6 +1,6 @@
 # Wave 1.5 implementation approach
 
-**Status: proposed (architect, 2026-10-19).** Sized by the sprint manager (section 4); the test-first shape (section 2.6) added after sizing, so Layers 4 and 7 need a re-size; waiting for a cross-family review and the governor's approval through a decision request. Until it is approved, the retro records stand unchanged.
+**Status: proposed (architect, 2026-10-19).** Sized by the sprint manager (section 4), and re-sized for the test-first shape (section 2.6); waiting for a cross-family review and the governor's approval through a decision request. Until it is approved, the retro records stand unchanged.
 
 This note says **how** Wave 1.5 is built. **What** is built does not change: the product shape stays the end-state description in `notes/retro/2026-10-factory-whole.md`, and the value statement and exit criteria stay those of `notes/retro/2026-10-wave1.5-funnel.md` section 9. Once approved, this note replaces the funnel's work-item list and phases (sections 8 and 9's phase table) as the plan of record for how to build. Every place where it varies from the product shape is listed in section 5 for the governor's approval; nothing varies silently.
 
@@ -85,18 +85,18 @@ GitHub Agentic Workflows and Copilot's coding agent are not needed in this desig
 
 ## 4. The layers
 
-Sizes are the sprint manager's (agent-hours, likely / pessimistic, uncalibrated), task by task in `notes/wave1.5/2026-10-layer-sizing.md`, with its recommendations. Across the layers: about 85 likely, plus about 5.5 for walkthroughs and sprint management, so about 90 for the wave; a realistic bad case of about 145; governor about 8 to 16 hours. The locked appetite (89 likely, 182 pessimistic agent-hours) stays the ceiling; it is not a target. After Layer 3 the sprint manager compares actual with estimate and re-estimates the remaining layers with that correction.
+Sizes are the sprint manager's (agent-hours, likely / pessimistic, uncalibrated), task by task in `notes/wave1.5/2026-10-layer-sizing.md`, with its recommendations. Across the layers: about 90 likely, plus about 5.5 for walkthroughs and sprint management, so about 95.5 for the wave; a realistic bad case of about 155; governor about 8 to 16 hours. The test-first shape added about 5 of those hours (Layers 1 and 4 gain its checks, Layer 7 loses the held-back store); its saving is in running orders, expected but not yet measured or booked. The locked appetite (89 likely, 182 pessimistic agent-hours) stays the ceiling; it is not a target. The likely figure is now about 6.5 over the appetite's 89 and the bad case under its 182; the levers in the sizing note recover about 4. After Layer 3 the sprint manager compares actual with estimate and re-estimates the remaining layers with that correction.
 
 | Layer | What the governor gets | Size (sprint manager) |
 |-------|------------------------|-----------------------|
 | 0. Clean slate | Wave 1's machinery and rules gone; a one-page interim rulebook | 6.75 / 15 |
-| 1. Install | The bought parts present and pinned | 4.5 / 10.5 |
+| 1. Install | The bought parts present and pinned | 6.5 / 15.75 |
 | 2. Configure | The parts wired together; the four unknowns that could change the stack answered | 6.2 / 15.75 |
 | 3. First end-to-end run | An issue labelled, a reviewed pull request back, using the parts as they come | 7.75 / 17.75 |
-| 4. Policy for changes | Our rules on every change: reviews, decisions, guards, the light and normal lanes | 17.6 / 38.25 |
+| 4. Policy for changes | Our rules on every change: reviews, decisions, guards, the light and normal lanes | 22 / 48.25 |
 | 5. Running unattended | Nothing to watch: time limits, re-runs, an alert on silence, status comments, the deliberate trials | 8 / 19.25 |
 | 6. Cost and quality numbers | A record per run and the scorecard | 6.8 / 15.75 |
-| 7. The design path for features | The full lane, proved on one real Smart Writer V2 feature | 20.1 / 45.5 |
+| 7. The design path for features | The full lane, proved on one real Smart Writer V2 feature | 18.95 / 42.75 |
 | 8. Finish | Rulebooks and guide describing what runs; the end-state description matching reality | 7.05 / 16.25 |
 
 **How work gets done before the new path can carry it (Layers 0 to 2).** The plain known-good way: a chat session starts a worker on a branch, the worker opens a pull request, a reviewer from another model family is started from the same session with a pointer to a note in git, and the change merges on green checks and an accepted review. That is safer than Wave 1's machinery and needs none of it. From Layer 3, the new path takes every piece of work it can handle.
