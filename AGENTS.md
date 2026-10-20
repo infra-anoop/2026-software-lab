@@ -34,6 +34,18 @@ Registry: `apps/registry.yaml` (+ committed `apps/registry.json`).
 - **Secrets**: never commit. Schema in `deploy/secrets/schema.yaml`; values in Infisical → runtime env.
 - Codespaces: rebuild via Codespaces, not Cursor “Reopen in Container”.
 
+### Cloud Agent
+
+The Cloud Agent image has no systemd, so Nix is single-user (`~/.nix-profile`; `nix` is on `PATH`). Node 22 is on `/usr/local/bin` for `apps/smart-writer-v2/web` (the dev shell does not include Node). `research-auditor` dev tools need `uv sync --locked --extra dev`. On boot, uvicorn serves:
+
+| App | Port |
+|-----|------|
+| smart-writer-v2 | 8080 |
+| research-auditor | 8081 |
+| smart-writer | 8082 |
+
+`GET /health` is public. Preview and LLM routes need the names in `deploy/secrets/schema.yaml`; those values are not in the image.
+
 ### Golden commands
 
 ```bash
