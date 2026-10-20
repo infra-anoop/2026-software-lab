@@ -1,0 +1,24 @@
+schema_version: 1
+kind: decision_lock
+id: wave15-reliability-rules-first.lock
+created: 2026-10-20T15:33:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - bus/decisions/wave15-reliability-rules-first/request.yaml
+  - notes/wave1.5/2026-10-implementation-approach.md
+  - bus/decisions/wave15-implementation-approach/lock.yaml
+chosen: "A: Both before Layer 0 builds anything; architect leads; amend the note now"
+governor_minutes: 30
+notes: >
+  The governor chose all three recommended options in the architect's chat at about 08:30 PT on
+  2026-10-20. In the same conversation he directed: keep what is good in Wave 1, since rules are
+  likely more useful than machinery, and review all the rules as the starting point of the policy
+  layer; unattended reliability is the most important item and is fixed earliest, through a
+  mini investigation side wave reporting back to this sprint, with the agents' allowed commands
+  and similar reliability pieces in Layer 0; a deep, lengthy policy session after tranche 1,
+  before Layer 4; iterating on the design before building is accepted.
+  This lock amends wave15-implementation-approach: section 2.1, a new section 2.7, Layers 0, 2,
+  4 and 5, the tranche 1 figures (about 13 likely hours added, not yet sized by the sprint
+  manager), row 5, sections 7, 8 and 10. Recorded by the architect.
