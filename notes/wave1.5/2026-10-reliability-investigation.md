@@ -7,7 +7,7 @@
 1. **Most "Cursor disconnected" events were the codespace stopping, for two different reasons.**
    - **The 30-minute idle timeout (confirmed).** The governor changed the default on 2026-10-05, but a default applies only to codespaces created afterwards; this codespace still has 30 minutes, and an existing codespace's timeout cannot be changed. Fix: a new codespace created with a longer timeout.
    - **A stop at about 12 hours of uptime (pattern seen four times, cause unconfirmed).** A trial tonight confirms or rejects it.
-2. **Yesterday's two reviewer freezes happened during web requests, not during reads outside the worktree.** The second reviewer read a file outside its worktree without trouble, then froze on its next web request; the governor saw a question on its card. Both freezes came on a Cursor version installed about two hours earlier. The rule added last night (no web requests) is right; its second half (no reads outside the worktree) rests on a wrong reading and can be relaxed.
+2. **Yesterday's two reviewer freezes were web requests waiting for a click nobody saw (confirmed by trial on 2026-10-20).** On the Cursor version installed on 10-19, every web request from a spawned agent stops with a "Skip / Run" box on that agent's own card, with no "always allow" choice; three requests to three sites each needed their own click. Reads outside the worktree were not the cause. The rule added last night (no web requests) is the fix and should be enforced by configuration, not only by the brief; its second half (no reads outside the worktree) can be relaxed.
 3. **One Wave 1 worker hung inside Cursor's agent runner.** It had finished its last command and simply never took its next step. Interrupting it hung too. This is a vendor fault we cannot remove; we can only detect it and restart from the last push.
 4. **Completion notices were lost at least four times on 2026-10-07.** Cause unknown. Git already holds every result; nothing was reading it.
 5. **The pattern behind all of these:** a chat-spawned agent depends on the governor's Cursor window, on the codespace staying up, and on someone seeing its card. It can be made to fail loudly and recover cheaply, but not to run unattended. Truly unattended work means agents that run off the laptop and the codespace's lifetime.
@@ -36,7 +36,7 @@ Times are Pacific. "Lost" is wall time the work stood still, not agent hours.
 | 7 | Before 10-05 | Agents stalled on permission prompts and on a sandbox-blocked command form while the governor was away | Hours, across several runs | Agents asked for elevated permissions. **Fixed** in Wave 1: spawned agents never ask; the allowed command form is written down |
 | 8 | 2026-09-20 | The codespace's own token cannot start workflows; the sandbox sometimes refused GitHub's API | A session | Codespace token scope and sandbox network rules. **Handled** by the ship playbook (no `gh workflow run`) |
 | 9 | 10-19 20:38 to 22:27 | Reviewer 1 sent six web requests at once (Spec Kit's site, the Superpowers repository and raw files, the GitHub blog, GitHub's documentation) and never continued | About 1 hour 50 minutes, plus a restart | See incident 10 |
-| 10 | 10-19 22:32 to 23:10 | Reviewer 2 pushed its skeleton, fetched two pages (Spec Kit's site, GitHub) successfully, read a file outside its worktree successfully, then sent two more web requests (the GitHub blog, GitHub's documentation) and never continued. The governor saw a question on its card and answered it | About 40 minutes, a third reviewer, and the governor's attention | A web request waiting on an approval shown only on the agent's card. **Best-supported hypothesis** (trial 1). Not the outside read |
+| 10 | 10-19 22:32 to 23:10 | Reviewer 2 pushed its skeleton, fetched two pages (Spec Kit's site, GitHub) successfully, read a file outside its worktree successfully, then sent two more web requests (the GitHub blog, GitHub's documentation) and never continued. The governor saw a question on its card and answered it | About 40 minutes, a third reviewer, and the governor's attention | A web request waiting on an approval shown only on the agent's card. **Confirmed** by trial 1. Not the outside read |
 
 Also in Wave 1, not a hang: long review loops that burned tokens. The three-round rule covers them.
 
@@ -57,7 +57,11 @@ What the records show:
 - A new Cursor version was installed on this machine at 18:33 on 10-19, about two hours before the first freeze. Both freezes ran on it.
 - The agent configuration on this machine has approval mode "allowlist", with automatic acceptance of web searches off.
 
-Two hypotheses fit, and trial 1 separates them: (a) the new Cursor version asks approval for web requests from spawned agents, where the old one did not; (b) a site not seen before raises an approval, and the approval shows only on the agent's card. Either way, the agent waits for a click nobody sees, and the cure is the same: spawned agents make no web requests, and the spawning session commits dated copies of what they need (done since 10-19; the third reviewer finished in about 7 minutes this way).
+Two hypotheses fitted: (a) the new Cursor version asks approval for web requests from spawned agents, where the old one did not; (b) only a site not seen before raises an approval.
+
+**Trial 1 result (2026-10-20, 08:56 to 09:05, governor watching the card): hypothesis (a).** A spawned agent fetched three pages one at a time: a GitHub documentation page Wave 1 agents had fetched without any prompt, `example.com`, and the GitHub blog's changelog. Each request stopped with "Fetching page ..." and two buttons, Skip and Run, on the agent's own card, and waited until the governor clicked Run. There is no "always allow" choice on the card, and approving one request did not cover the next. Nothing outside the card shows that the agent is waiting.
+
+The cure: spawned agents make no web requests, and the spawning session commits dated copies of what they need (done since 10-19; the third reviewer finished in about 7 minutes this way). Because a brief can be ignored, Layer 0 should also remove the web tools from spawned agents' allowed tools where the configuration allows it.
 
 Correction for the handover's operating rule 8: reading outside the worktree did not cause a freeze. That half of the rule can stay as hygiene (the primary checkout is off limits) but is not a reliability rule.
 
@@ -73,7 +77,7 @@ A spawned chat agent in this codespace needs four things nobody guarantees: the 
 
 Each takes minutes, and each can fail.
 
-1. **Web request from a spawned agent.** Spawn a small agent that fetches one page from GitHub's documentation (fetched often in Wave 1) and one from a site never fetched before. If both freeze, hypothesis (a): the new version. If only the new site freezes, hypothesis (b). The governor watches the card once and reports what it asks.
+1. **Web request from a spawned agent. Done 2026-10-20: every request waits for a click (section 4.2).**
 2. **The 12-hour stop.** Passive: the machine booted at 06:12 today. If it restarts at about 18:12 while in use, the pattern is confirmed. Read from `uptime` and the server's log folders afterwards.
 3. **Laptop closed.** With one small agent running, the governor closes the laptop for 20 minutes. Afterwards: did the agent keep working (its record grew, it pushed)? Did the codespace stop? Repeat once with a plain script printing a line every minute, to see whether terminal output keeps the codespace awake.
 4. **A headless agent.** Run the Cursor command-line agent in this codespace on one small review, with its allowed commands in a committed configuration file. It must finish unattended, and a command outside its list must be refused at once, not left waiting. If the command-line agent is not installed, this is the first install of Layer 1, done early.
@@ -82,7 +86,7 @@ Each takes minutes, and each can fail.
 
 **Remove the cause**
 - **A new codespace with a 240-minute idle timeout** (the maximum), created by the governor: `gh codespace create --repo infra-anoop/2026-software-lab --idle-timeout 240m` or the equivalent in the Codespaces page. Before it, save what lives only on this machine: the chat records (the evidence for this report) and the agent stores. Closes incident 2.
-- **No web requests by spawned agents;** the spawning session commits dated copies of outside sources. Closes incidents 9 and 10 whichever hypothesis trial 1 confirms. Already in force.
+- **No web requests by spawned agents;** the spawning session commits dated copies of outside sources. Closes incidents 9 and 10 (cause confirmed by trial 1). Already in force by brief; enforced by configuration in Layer 0 where possible.
 - **No permission requests by spawned agents,** and each agent's allowed commands in a committed configuration file, so a command is allowed or refused, never left waiting. Closes incident 7 for the command-line agent as well.
 
 **Route around**
@@ -111,5 +115,4 @@ Layer 0's reliability done-when then reads: an agent is silenced on purpose and 
 
 - Why the codespace stops at about 12 hours (trial 2 confirms only whether it does).
 - Why Cursor's runner hangs and loses notices; that is the vendor's to fix, and the watcher makes it survivable.
-- Which of the two web-request hypotheses holds (trial 1).
 - Whether a Cursor cloud agent can run the lab's Nix and git commands; one trial review would tell.
