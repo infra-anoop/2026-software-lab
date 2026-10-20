@@ -38,6 +38,8 @@ Times are Pacific. "Lost" is wall time the work stood still, not agent hours.
 | 9 | 10-19 20:38 to 22:27 | Reviewer 1 sent six web requests at once (Spec Kit's site, the Superpowers repository and raw files, the GitHub blog, GitHub's documentation) and never continued | About 1 hour 50 minutes, plus a restart | See incident 10 |
 | 10 | 10-19 22:32 to 23:10 | Reviewer 2 pushed its skeleton, fetched two pages (Spec Kit's site, GitHub) successfully, read a file outside its worktree successfully, then sent two more web requests (the GitHub blog, GitHub's documentation) and never continued. The governor saw a question on its card and answered it | About 40 minutes, a third reviewer, and the governor's attention | A web request waiting on an approval shown only on the agent's card. **Confirmed** by trial 1. Not the outside read |
 
+| 11 | 10-20 08:48 to 09:25 | Downloads from the Python package index timed out twice (2 minutes each) when a new worktree set up the factory's environment; during trial 4, each git command waited about 60 seconds on Wave 1's shell-guard hook, which runs that same setup before every command | Minutes per command; a worker would stall on it | Wave 1's hooks depend on a network download at every command. **Removed by Layer 0** (the hooks go, a small standalone guard stays) |
+
 Also in Wave 1, not a hang: long review loops that burned tokens. The three-round rule covers them.
 
 ## 4. What the evidence says
@@ -79,8 +81,8 @@ Each takes minutes, and each can fail.
 
 1. **Web request from a spawned agent. Done 2026-10-20: every request waits for a click (section 4.2).**
 2. **The 12-hour stop.** Passive: the machine booted at 06:12 today. If it restarts at about 18:12 while in use, the pattern is confirmed. Read from `uptime` and the server's log folders afterwards.
-3. **Laptop closed.** With one small agent running, the governor closes the laptop for 20 minutes. Afterwards: did the agent keep working (its record grew, it pushed)? Did the codespace stop? Repeat once with a plain script printing a line every minute, to see whether terminal output keeps the codespace awake.
-4. **A headless agent.** Run the Cursor command-line agent in this codespace on one small review, with its allowed commands in a committed configuration file. It must finish unattended, and a command outside its list must be refused at once, not left waiting. If the command-line agent is not installed, this is the first install of Layer 1, done early.
+3. **Laptop closed.** With one headless agent running (it pushes a small commit every 3 minutes for 45 minutes), the governor closes the laptop for 40 minutes, longer than the 30-minute idle timeout. Afterwards, from git and `uptime`: did the agent keep pushing, and did the codespace stop?
+4. **A headless agent. Done 2026-10-20, passed.** The Cursor command-line agent (version 2026.10.19, installed in the home folder, signed in once by the governor) ran in a background process in its own worktree, with GPT-5.6 Sol and a committed allowed-commands file (`.cursor/cli.json` on branch `trial/20261020-headless-agent`). Unattended, it read this report, wrote a correct five-line summary, committed and pushed (`ddbf5d4`) in about 7.5 minutes. A `curl` command was refused at once ("Command blocked by permissions configuration") and a web fetch was refused at once ("Web fetch rejected"); neither waited for anyone. One finding: each git command took about 60 seconds, because the agent also runs the repository's editor hooks, and Wave 1's shell-guard hook first builds the factory's Python environment, which was slow to download this morning (incident 11).
 
 ## 6. Proposed design, by the fix ladder
 
@@ -90,7 +92,7 @@ Each takes minutes, and each can fail.
 - **No permission requests by spawned agents,** and each agent's allowed commands in a committed configuration file, so a command is allowed or refused, never left waiting. Closes incident 7 for the command-line agent as well.
 
 **Route around**
-- **Run spawned agents as command-line processes, not chat cards** (after trial 4). The orchestrator starts a worker or reviewer with the Cursor command-line agent: model pinned, allowed commands set, its output written to a log file, in its own worktree. A process has no card to wait on, a script can see whether it is alive, and the same agent is what the approved design runs in GitHub Actions, so this is Layer 1's install brought forward rather than new machinery.
+- **Run spawned agents as command-line processes, not chat cards** (trial 4 passed). The orchestrator starts a worker or reviewer with the Cursor command-line agent: model pinned, allowed commands set, its output written to a log file, in its own worktree. A process has no card to wait on, a script can see whether it is alive, and the same agent is what the approved design runs in GitHub Actions, so this is Layer 1's install brought forward rather than new machinery.
 - **Long unattended runs leave the codespace.** Overnight and away-from-desk work goes to the GitHub Actions path as soon as Layer 3 carries it, or meanwhile to a Cursor cloud agent for one trial review.
 
 **Recover automatically**
