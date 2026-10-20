@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Write(notes/trials/**)",
+      "Shell(git)",
+      "Shell(ls)",
+      "Shell(rg)",
+      "Shell(cat)"
+    ],
+    "deny": [
+      "Shell(curl)",
+      "Shell(wget)",
+      "WebFetch",
+      "WebFetch(*)"
+    ]
+  }
+}
