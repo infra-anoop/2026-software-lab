@@ -79,3 +79,17 @@ You share git. Read each other's records. When you disagree, the governor gets o
 14. Each change has an order in `bus/orders/<id>/`; widen its files by an amendment with `supersedes: [owned_paths]`. Rule paths (constitution, `AGENTS.md`, `.cursor/rules/`, `docs/agent-os/`, the factory's checks and rubrics, workflows, CODEOWNERS) need the governor's approving review.
 15. Independent reviews: write a review note under `notes/packets/`, create the reviewer's worktree, and start the reviewer with a pointer to the note, never a pasted brief.
 16. Do not start Wave 1.5 work before its plan is approved. Do not land `bus/postmortems/wave1-retro.yaml`.
+
+## 6. Session channel: each session reads the other's chat (adopted 2026-10-19)
+
+The governor adopted this on 2026-10-19 (19:06 PT to the architect, "I like this channel"; 19:12 PT to the sprint manager, "Lets adopt it"), so he does not repeat himself between the two sessions.
+
+- **Where.** Cursor writes each chat's live transcript to `~/.cursor/projects/workspaces-2026-software-lab/agent-transcripts/<chat-id>/<chat-id>.jsonl` in the codespace. It holds the governor's messages and the session's replies and tool calls, not tool output.
+- **Who is who.** Architect: chat `1c20d7e6-e6a4-4327-bc5b-ff7879f06151`. Sprint manager: chat `47a3626f-fcf9-4bfb-b2e4-57423a199602`. A session that replaces either one adds its chat id here.
+- **Habit.** Before replying to the governor, read the other session's new turns since your last read. To see only the conversation (the governor's messages and replies without tool calls):
+
+  ```bash
+  jq -r 'select(.role=="user" or (.role=="assistant" and ([.message.content[].type]|index("tool_use")|not))) | "### \(.role)\n" + ([.message.content[]|select(.type=="text")|.text]|join("\n"))' <transcript>.jsonl
+  ```
+- **Limits.** Transcripts live only in this codespace and are lost if it is deleted or rebuilt; never commit them (they can carry personal data). They are a broadcast, not a record: every conclusion still goes into git. A session sees the other's news on its own next turn.
+- **Direct messages** between the sessions (GitHub issues) are for later, when needed.

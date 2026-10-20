@@ -1,0 +1,38 @@
+# Written by the architect on wo/wo-20261019-wave15-implementation-approach (from origin/main
+# 02ecc6e). Records the Wave 1.5 implementation approach agreed in direction with the governor on
+# 2026-10-19, and the session channel he adopted the same evening. size_minutes is an estimate.
+schema_version: 1
+kind: order
+id: wo-20261019-wave15-implementation-approach
+created: 2026-10-20T03:40:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/retro/2026-10-architect-handover.md
+  - notes/retro/2026-10-factory-whole.md
+  - notes/retro/2026-10-wave1.5-funnel.md
+feature: 001-factory-v2
+goal: Record the Wave 1.5 implementation approach (clean slate, layers, short workflows, Superpowers packet set) for sizing, cross-family review and the governor's approval, plus the session channel.
+intents: [I-P8]
+owned_paths:
+  - "notes/wave1.5/**"
+  - "notes/retro/2026-10-architect-handover.md"
+  - "notes/retro/2026-10-wave1.5-funnel.md"
+  - "notes/retro/2026-10-factory-whole.md"
+  - "notes/retro/2026-10-harness-changes.md"
+  - "notes/packets/2026-10-19-implementation-approach-review.md"
+  - "bus/decisions/wave15-implementation-approach/**"
+  - "bus/orders/wo-20261019-wave15-implementation-approach/**"
+checks:
+  - pr-links-order
+  - diff-within-owned-paths
+  - bus.schema
+locks: []
+size_minutes: 60
+stop_conditions:
+  - Any edit needed outside Owned paths
+  - Any build work for Wave 1.5 before the governor approves the approach
+depends_on_decisions: []
+tasks: []
+worker_runtime: local_subagent
