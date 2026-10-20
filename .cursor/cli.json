@@ -6,7 +6,9 @@
       "Shell(git)",
       "Shell(ls)",
       "Shell(rg)",
-      "Shell(cat)"
+      "Shell(cat)",
+      "Shell(date)",
+      "Shell(sleep)"
     ],
     "deny": [
       "Shell(curl)",
