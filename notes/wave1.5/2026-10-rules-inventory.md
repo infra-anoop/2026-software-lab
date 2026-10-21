@@ -271,3 +271,40 @@ All sources the packet lists were read from this worktree; none was missing or u
 For reasons and conflicts: `notes/retro/2026-10-harness-changes.md` (register items and principles), `notes/retro/2026-10-wave1-items.md` (by search), the approach note and the reliability report (both read from their branches with `git show`, since neither is on this branch), and `notes/wave1.5/sources/README.md`.
 
 No secret values or personal data were found in the sources. `db-bootstrap-tests.yml` holds passwords for a throwaway Postgres test container that exists only for the job; they are not secrets, and none is reproduced here.
+
+## Architect's comments (2026-10-21)
+
+Added by the architect at the governor's request, after his reading: "a mine field of insights". These are the architect's comments, not the worker's findings; sections 1 to 5 above are unchanged. Not yet independently reviewed: the single combined review covers this inventory, the reliability report and the approach amendment together.
+
+### A. How the work was done
+
+- The worker finished in about 23 minutes against an estimate of 2 to 3 hours (claim 23:58 PT, handoff accepted 00:21 PT). Speed is not a sign of skimming here: it names every partial read (two gate files, one intent module, the `speckit-*` skills by search, eight deploy and ops workflows by triggers and headers only), and every hard row cites the configuration or code behind it. The estimate, not the work, was off; worth noting for the sprint manager's sizing of read-and-classify tasks.
+- The four-type tag (hard, warned, prose, habit) was the governor's refinement of 2026-10-20: a rule a machine enforces is a different kind of thing from a sentence an AI may follow. It is what made the most valuable section possible, the list of rules presented as enforced that are not.
+
+### B. Spot-check of the most consequential claims (against the code, 2026-10-21)
+
+All three hold:
+1. **The review check never reads accept or reject.** Verdict files carry `decision: accept` or `reject` (for example `bus/orders/wo-20261007-factory-record-wave1/verdict-01.yaml`). `scripts/factory/src/factory/gates/pr/verdict.py`, `run_reviewer_family_differs`, compares only the reviewer's and author's model families; it never reads `decision`. A rejected change passes (R27).
+2. **"Governor" on an override is not verified.** `factory.toml` `[identity]` sets `mode = "recorded"`: the written name is taken as given (bypass legend; R29).
+3. **The cited enforcing checks do not exist.** `codeowners-governor-on-rule-paths`, `od.plain-options` and `od.arch-options-have-consequences` do not appear in `scripts/factory/gates.yaml` (R76, R92).
+
+The full line-by-line check is the combined review's.
+
+### C. What stands out
+
+1. **The most-cited prose rule is the least enforced.** "Rule files need the governor's approval" is stated in five places, two of which name checks; GitHub requires zero approvals and no code-owner review, so any agent that opens a pull request can merge it once checks are green (R76). This is the one finding worth acting on before the policy session: it is a GitHub setting the governor controls (require one approving review, or the code owner's review, on `main`, or on rule paths through a ruleset), and it turns the most-cited prose rule into a hard one. To weigh first: an approval requirement also binds the orchestrator's own merges, so every merge would wait for the governor unless rule paths are scoped separately.
+2. **Review is the factory's central safety rule, and its enforcement trusts what agents write about themselves.** Accept or reject is unread; model families are self-declared; override authorship is unverified (R27, R29). Whatever replaces the factory should read the verdict and derive identity from something an agent cannot write, such as the GitHub account or app that made the commit or review.
+3. **Most hard rules are Wave 1 paperwork.** Twenty-four of the 39 hard rules depend on the factory. What must survive its removal is a short list, mostly irreversible-harm guards: `main` only through pull requests (R1), no force-push (R2, R3), secrets out of git (R6), deploys and secret changes only through deliberate triggers (R37, R38), plus the existing source checks (R5, R7 to R10). That list is a natural core for the interim rulebook.
+4. **Fourteen contradictions,** among them where questions to the governor go (chat or decision files) and five disagreeing lists of which files are rule files. The first was seen live on 2026-10-20: the `decision-in-chat` hook (R42) fired on an exploratory question in an architecture conversation, after the governor had asked for no forced decision forms during exploration, and its message appeared in his chat as if he had written it. Evidence for R42's recommendation (keep the rule, drop the hook).
+5. **Retro agreements written down nowhere** (section 4.2): change control by the mission test, new checks start as warnings, the restart rule, among others. These are the interim rulebook's additions, not the inventory's omissions.
+
+### D. Connections to the reliability work
+
+- **The wrong reason for the outside-reads rule** (conflict 6) is still stated in the approach amendment (pull request #42: section 2.7 and Layer 0) and in `notes/wave1.5/sources/README.md`. The architect corrects both when folding the reliability findings into the amendment.
+- **Hard versus prose applies to reliability rules too.** "No web requests" is prose for an agent started from chat and hard for the command-line agent under a committed allowed-commands file (reliability trial 4). "Push within 10 minutes" is prose until a watcher enforces it. A goal for Layer 0: every reliability rule either becomes hard or the design stops depending on it.
+- **Hooks bind only Cursor agents** (bypass legend). With GitHub Actions as the baseline host for unattended work (decision `wave15-unattended-host`), what binds an agent there is its allowed-commands file, the job's token permissions and time limit, and GitHub's rulesets; the inventory's "would live in: configuration" column is the starting list for those.
+
+### E. Next
+
+1. The single combined review (this inventory, the reliability report, the approach amendment), then the governor's yes.
+2. The governor decides keep, rewrite or drop at the policy session, with this inventory as its starting point; the governor-approval setting (C.1) may be brought forward.
