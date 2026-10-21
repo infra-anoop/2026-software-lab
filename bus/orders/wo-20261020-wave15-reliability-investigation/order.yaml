@@ -22,6 +22,7 @@ owned_paths:
   - "notes/wave1.5/2026-10-reliability-investigation.md"
   - "bus/orders/wo-20261020-wave15-reliability-investigation/**"
   - "bus/decisions/wave15-unattended-host/**"
+  - "bus/decisions/wave15-runner-and-chunks/**"
 checks:
   - pr-links-order
   - diff-within-owned-paths

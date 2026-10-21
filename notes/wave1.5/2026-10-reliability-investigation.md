@@ -140,4 +140,37 @@ Two of the comparison articles come from vendors of agent platforms, and details
 2. Chunks are estimated at 30 minutes, with a hard 60-minute limit per job; estimates are tuned from measured times.
 3. Spec Kit workflows stay the process; GitHub Actions triggers their steps, each step one or more chunks.
 
+**Further direction (governor, 2026-10-21 10:20 PT, decision `wave15-runner-and-chunks`).** The session is gathering decisions; nothing is implemented yet.
+
+4. **Copilot is designed in from day one, behind a switch.** A setting (for example `AI_ENV`, default `cursor`) chooses the agent per role, with one default and per-step overrides, so a builder can run on Cursor and its reviewer on Copilot. Because the workflow configuration, not the agent's own record, decides which tool runs the reviewer, cross-family review becomes a hard rule (the rules inventory found it is today checked only by self-declared model names). The switch selects Copilot's command-line agent inside the lab's own Actions job, the same shape as Cursor's, so the chunk steps, time limit, watcher and notifications stay identical; GitHub's Copilot cloud agent (assigned an issue, run on GitHub's terms with a 59-minute cap) stays a later option. The allowed-commands policy is written once and generated into each tool's format, so switching tools cannot loosen it. A Copilot-enabled token, stored like the Cursor key, comes at build time.
+5. **Chunk size is a factory requirement fed into Spec Kit's plan.** The plan is shaped so work can be cut into thin pieces that are each testable; the task list carries each task's estimate, at most 30 minutes, with a simple check (starting as a warning) that every task has one and none is larger; the reviewer judges realism. Each chunk must also leave the code working and have its own done-check. Every step is a chunk, not only implementation: specify, plan and review can overrun too. Each chunk reports time used against its estimate; the sprint manager watches the ratio and tightens sizing guidance if tasks routinely run past about 1.5 times their estimate.
+6. **The exception path is automatic first, then the sprint manager.** On a chunk that hits the 60-minute limit: retry once from its last push with a note; on a second overrun, park the task with a clear note and continue with the next task that does not depend on it; the sprint manager takes parked tasks in the morning (split, re-plan, or escalate to the governor). A night loses at most one task's progress, not the whole run. An overnight sprint-manager job in Actions that splits parked tasks is a later option.
+
+## 10. The unattended chunk: design agreed in principle (2026-10-21)
+
+The governor agreed this narrative at 10:16 PT ("all looks good to me, including notifications and cursor API key"). Design only; nothing is built.
+
+**Life of a chunk**
+1. **Start.** A trigger (a merged plan, the previous chunk finishing, a schedule) starts a job on a fresh GitHub machine with a 60-minute hard limit.
+2. **Bearings.** Read the work item's progress note and recent git history; check the code works before changing anything (Anthropic's harness pattern).
+3. **Work.** One task from the Spec Kit task list, estimated at 30 minutes; commit and push at each green step, so a kill loses minutes.
+4. **Hand off.** Update the progress note (done, next, learned); comment on the work item's GitHub issue with time used against the estimate.
+5. **Chain.** Start the next chunk, or hand over to review when the task list is done. GitHub does not let a job's built-in token start workflows through ordinary pushes (loop protection); an explicit workflow-start call is allowed, so chunk N starts chunk N+1 that way. The lab rule "never `gh workflow run`" (rules inventory R35) exists because the codespace's token cannot dispatch; it is reworded to "not from the codespace".
+
+**Failures and responses**
+| Failure | Response | Type |
+|---------|----------|------|
+| Chunk passes 60 minutes | GitHub kills it; one retry from the last push with a note; a second overrun parks the task (section 9 item 6) | hard |
+| Agent hangs | The same time limit; hangs stop being a special case | hard |
+| Cursor or Copilot service failure | Short retry | hard |
+| Usage limit | Stop the chain; alert the governor | hard |
+| Two chunks on one work item | GitHub's one-job-per-group setting; the second waits | hard |
+| Runaway cost | Caps on chunks per work item per day and on concurrent jobs; "at most 3 agents" becomes configuration | hard |
+| The chain goes silent (a job never started, a lost dispatch) | A scheduled watcher workflow every 15 minutes: an item in progress with no running job and no recent push is restarted, at most twice, then the governor is alerted | hard |
+| Finished but wrong | Not a reliability failure; review catches it | (review) |
+
+**Notifications.** Comments and mentions on the work item's GitHub issue, reaching the governor's phone through GitHub's notifications; no need to open the codespace to learn a run is stuck.
+
+**Proof, in three trials that can fail** (at build time): one chunk in Actions (trial 4's equivalent); a chain of three chunks with no one touching anything; deliberate sabotage (one chunk killed midway, one made to stall) recovered by the watcher, with an alert after the second failure. All three need only a Cursor API key stored as a GitHub secret (governor action at build time).
+
 Effects on sections 6 and 7, to settle in the Layer 0 walkthrough: the codespace watcher shrinks to daytime use, the long-term watcher is the scheduled GitHub workflow, and the 240-minute codespace protects supervised sessions rather than overnight runs.
