@@ -6,13 +6,15 @@
 
 1. **Most "Cursor disconnected" events were the codespace stopping, for two different reasons.**
    - **The 30-minute idle timeout (confirmed).** The governor changed the default on 2026-10-05, but a default applies only to codespaces created afterwards; this codespace still has 30 minutes, and an existing codespace's timeout cannot be changed. Fix: a new codespace created with a longer timeout.
-   - **A stop at about 12 hours of uptime (pattern seen four times, cause unconfirmed).** A trial tonight confirms or rejects it.
+   - **A stop at 12 hours of uptime (pattern seen four times; confirmed by GitHub's documentation on 2026-10-21).** "A codespace has a maximum lifetime of 12 hours, regardless of your idle timeout policy or settings. This limit applies even while you are actively using the codespace." No setting changes it.
 2. **Yesterday's two reviewer freezes were web requests waiting for a click nobody saw (confirmed by trial on 2026-10-20).** On the Cursor version installed on 10-19, every web request from a spawned agent stops with a "Skip / Run" box on that agent's own card, with no "always allow" choice; three requests to three sites each needed their own click. Reads outside the worktree were not the cause. The rule added last night (no web requests) is the fix and should be enforced by configuration, not only by the brief; its second half (no reads outside the worktree) can be relaxed.
 3. **One Wave 1 worker hung inside Cursor's agent runner.** It had finished its last command and simply never took its next step. Interrupting it hung too. This is a vendor fault we cannot remove; we can only detect it and restart from the last push.
 4. **Completion notices were lost at least four times on 2026-10-07.** Cause unknown. Git already holds every result; nothing was reading it.
 5. **The pattern behind all of these:** a chat-spawned agent depends on the governor's Cursor window, on the codespace staying up, and on someone seeing its card. Trials on 2026-10-20 settled the parts that can be settled. A headless command-line agent needs no card and no laptop (trials 3 and 4). But anything in the codespace stops 30 minutes after the governor's window goes away, however busy the agents are (trial 3), and 240 minutes is the most a new codespace allows. **Runs longer than about 4 hours unattended, such as overnight, cannot live in a codespace;** they need GitHub Actions or a cloud agent.
 
 **Recommendation in one line:** remove the confirmed causes now (a new codespace with a 240-minute timeout; no web requests by spawned agents, enforced by configuration; Wave 1's network-dependent hooks gone); run spawned agents as headless command-line processes that a plain watcher script can see and restart; and treat GitHub Actions as the only home for overnight runs.
+
+**Governor direction, 2026-10-21 (decision `wave15-unattended-host`, section 9):** GitHub Actions is the baseline host for all unattended work, on its own merits and not only to escape the codespace's limits. Unattended work is cut into chunks estimated at 30 minutes, under a hard limit of 60 minutes per job, so a chunk that takes twice its estimate still finishes; estimates are tuned from measured times. Spec Kit workflows remain the process; GitHub Actions starts their steps.
 
 ## 2. Sources
 
@@ -80,7 +82,7 @@ A spawned chat agent in this codespace needs four things nobody guarantees: the 
 Each takes minutes, and each can fail.
 
 1. **Web request from a spawned agent. Done 2026-10-20: every request waits for a click (section 4.2).**
-2. **The 12-hour stop.** Passive: on a day the codespace stays in use, note the boot time and check whether it restarts 12 hours later. Not observed on 2026-10-20, because trial 3 stopped the codespace at about 09:56; to be rerun.
+2. **The 12-hour stop. Closed without a trial on 2026-10-21:** GitHub documents a 12-hour maximum lifetime for every codespace, even in active use ([Understanding the codespace lifecycle](https://docs.github.com/en/codespaces/about-codespaces/understanding-the-codespace-lifecycle)). The same documentation defines activity as typing, mouse use, or terminal input or output ([Setting your timeout period](https://docs.github.com/en/codespaces/setting-your-user-preferences/setting-your-timeout-period-for-github-codespaces)), which agrees with trial 3.
 3. **Laptop closed. Done 2026-10-20: the agent kept working, and the codespace stopped 30 minutes after the laptop closed anyway.** A headless agent pushed a heartbeat commit every 3 minutes (branch `trial/20261020-headless-agent`). The governor closed the laptop at about 09:26 and left it closed until the evening. Heartbeats 1 to 11 arrived on time, from 09:23:57 to 09:55:17; heartbeat 12, due at about 09:58, never came. On reconnecting, the machine had a new boot time and its temporary folder was empty. So the codespace stopped between 28 and 32 minutes after the laptop closed, while the agent was running commands and pushing every 3 minutes: **the idle timeout does not count an agent's work as activity.** A headless agent does not need the laptop; it does need the codespace, and the codespace stops 30 minutes after the governor's window goes away.
 4. **A headless agent. Done 2026-10-20, passed.** The Cursor command-line agent (version 2026.10.19, installed in the home folder, signed in once by the governor) ran in a background process in its own worktree, with GPT-5.6 Sol and a committed allowed-commands file (`.cursor/cli.json` on branch `trial/20261020-headless-agent`). Unattended, it read this report, wrote a correct five-line summary, committed and pushed (`ddbf5d4`) in about 7.5 minutes. A `curl` command was refused at once ("Command blocked by permissions configuration") and a web fetch was refused at once ("Web fetch rejected"); neither waited for anyone. One finding: each git command took about 60 seconds, because the agent also runs the repository's editor hooks, and Wave 1's shell-guard hook first builds the factory's Python environment, which was slow to download this morning (incident 11).
 
@@ -115,6 +117,27 @@ Layer 0's reliability done-when then reads: an agent is silenced on purpose and 
 
 ## 8. What this report could not settle
 
-- Why the codespace stops at about 12 hours (trial 2 confirms only whether it does).
 - Why Cursor's runner hangs and loses notices; that is the vendor's to fix, and the watcher makes it survivable.
-- Whether a Cursor cloud agent can run the lab's Nix and git commands; one trial review would tell.
+- Whether the Cursor command-line agent runs our chunks in GitHub Actions as it did in the codespace (the approved plan's Layer 2 unknown 1, now the baseline's first proof).
+- Where, after section 9, the codespace watcher and the GitHub-side watcher each sit in Layers 0 to 3; for the Layer 0 walkthrough.
+- Cursor cloud agents: the governor's 2026-10-20 experiment found they check the repository out onto Cursor's own machines and cannot use the codespace; a possible second host, not the baseline.
+
+## 9. How others run unattended agents, and the direction taken (2026-10-21)
+
+The governor asked for a benchmark against current practice before choosing where unattended work runs. Research on 2026-10-21, from primary documentation where possible:
+
+- **Unattended agent factories are not built on Codespaces.** Comparisons position Codespaces as environments "for humans first", and the 12-hour lifetime rules out overnight work. One hobbyist design drives an agent inside a codespace over SSH from an always-on server, for single requests.
+- **The common shape is a fresh machine per task:** the task arrives, a new machine copies the repository, the agent works, opens a pull request, and the machine is discarded; git and pull requests carry all state. GitHub's Copilot cloud agent runs on GitHub Actions ([About Copilot cloud agent](https://docs.github.com/en/copilot/concepts/agents/coding-agent/about-coding-agent)); Cursor documents its command-line agent in GitHub Actions ([Cursor CLI in GitHub Actions](https://cursor.com/docs/cli/github-actions)) and runs cloud agents on its own machines; Anthropic ships an official GitHub Action for Claude Code; OpenAI's Codex, Google's Jules and Devin each use a vendor machine per task.
+- **The reasons are scale and safety, not time limits:** one machine per task in parallel; each task gets only the secrets and network it needs; setup is written down; any machine can die and the next resumes from git.
+- **GitHub caps its own agent at one hour:** "Each Copilot cloud agent session has a maximum execution time of 59 minutes. This limit cannot be extended or bypassed… Break complex tasks into smaller, focused tasks." GitHub Actions jobs themselves may run 6 hours; the one-hour cap here is the lab's own choice, set as each job's time limit.
+- **Long runs are many short sessions with a written handoff.** Anthropic's published harness ([Effective harnesses for long-running agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents)): each session starts fresh, reads a progress file and recent git history, does one feature, commits, updates the progress file; a separate evaluator judges the work. Durable-workflow tools take the same stance ("We assume the process will die", Temporal).
+- **What does not fit a throwaway machine:** work needing a person, a service that must stay up, personal sign-ins, or several repositories at once. Leading products keep a long-lived environment for that alongside; here, the codespace.
+
+Two of the comparison articles come from vendors of agent platforms, and details change monthly; the points above rest on GitHub's, Cursor's and Anthropic's own pages.
+
+**Direction (governor, 2026-10-21, decision `wave15-unattended-host`):**
+1. GitHub Actions is the baseline host for unattended work; the codespace is the workbench for conversation and supervised work.
+2. Chunks are estimated at 30 minutes, with a hard 60-minute limit per job; estimates are tuned from measured times.
+3. Spec Kit workflows stay the process; GitHub Actions triggers their steps, each step one or more chunks.
+
+Effects on sections 6 and 7, to settle in the Layer 0 walkthrough: the codespace watcher shrinks to daytime use, the long-term watcher is the scheduled GitHub workflow, and the 240-minute codespace protects supervised sessions rather than overnight runs.
