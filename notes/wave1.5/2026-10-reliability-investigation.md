@@ -2,6 +2,8 @@
 
 **Status: first report, written by the architect, 2026-10-20 (decision `wave15-reliability-rules-first`).** It covers every hang and stall on record from Wave 1 and from 2026-10-19. Four short trials (section 5) confirm or reject the main hypotheses before the Layer 0 design is final. Not yet reviewed; the cross-family review covers this report together with the approach amendment ([pull request #42](https://github.com/infra-anoop/2026-software-lab/pull/42)).
 
+**Decisions and actions:** one line each in [`2026-10-reliability-register.md`](./2026-10-reliability-register.md). This report holds the evidence and reasoning behind them.
+
 ## 1. Summary
 
 1. **Most "Cursor disconnected" events were the codespace stopping, for two different reasons.**
