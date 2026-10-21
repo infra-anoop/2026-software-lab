@@ -1,8 +1,9 @@
 # Written by the architect on wo/wo-20261020-wave15-rules-inventory (from origin/main e911e34).
 # The rules inventory the governor asked for on 2026-10-20 (decision wave15-reliability-rules-first):
 # every Wave 1 rule listed with its reason and a keep, rewrite or drop recommendation, before
-# Layer 0 removes anything. size_minutes is held at the Wave 1 order cap of 60; the sprint manager
-# sizes the whole inventory (architect's rough figure about 4 agent-hours).
+# Layer 0 removes anything. size_minutes is held at the Wave 1 order cap of 60; the architect sizes
+# the whole inventory at 2 to 3 agent-hours (about 8,300 source lines), hard stop 4.5 hours.
+# Governor 2026-10-20: one worker; every rule tagged hard, warned, prose or habit.
 schema_version: 1
 kind: order
 id: wo-20261020-wave15-rules-inventory
@@ -20,6 +21,7 @@ intents: [I-P8]
 owned_paths:
   - "notes/wave1.5/2026-10-rules-inventory.md"
   - "notes/packets/2026-10-20-rules-inventory.md"
+  - "notes/wave1.5/sources/github-settings/**"
   - "bus/orders/wo-20261020-wave15-rules-inventory/**"
 checks:
   - pr-links-order
