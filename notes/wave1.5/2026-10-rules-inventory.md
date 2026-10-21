@@ -154,8 +154,89 @@ Habits are rules that live only in the handover, private orchestrator notes or b
 
 ## 3. Machinery versus rules
 
+These checks and hooks enforce only Wave 1's own records (work orders, claims, verdict files, handoffs, override files, the status board, the gate registry) rather than a rule about the work. Each goes with the machinery in Layer 0. Where a rule underneath should survive, it is named, with the row that carries it.
+
+| Check or hook | What it really checks | Rule underneath that should survive | Carried by |
+|---------------|-----------------------|-------------------------------------|------------|
+| `Factory tests` (required context) | The factory package's own tests | None | R11 (drop) |
+| `bus.schema` | Bus files match their schemas and paths | Decision records are well-formed | R12 (a small check for `bus/decisions/` only) |
+| `bus.immutable` | Bus files are never edited or deleted | A locked decision is never edited; it is superseded | R13 (one line in the decision check) |
+| `bus.no-handwritten-status` | No status keys in bus messages | State is derived, never hand-written | R14, R91 (the issue's label is the one state record) |
+| `factory-check-intent` | Each intent maps to a check row or `kind: human` | Each intent says how it is proved | R15 |
+| `order-fidelity-declared` | An order lists a lock entry for each locked decision it touches | Locks are honored to the letter | R20 → R69 |
+| `pr-links-order` | Each PR carries a work order | Each PR links its issue (later, Layer 3) | R24 |
+| `order-blocked-on-open-human-od` | Order dependencies are locked decisions | No work on an open governor decision | R25 → R66 |
+| `spawn-concurrency-cap` | Claim records: at most 3 active at claim time | At most 3 agents at once | R26 (configuration of the watcher or runner) |
+| `verdict.reviewer-family-differs` | A verdict and a handoff exist; the self-declared model families differ | Every review by another model family, and an accepted review before merge | R27, R65 |
+| `verdict.inputs-isolated` | The paths a verdict lists exist | Reviewers work from git, not from the author's thread | R28 → R65 |
+| `message.override` | Override files name a gate, its class and the PR | A recorded, governor-only bypass for a broken check (retro 36) | R29 |
+| `gate.fail-mode-category` | The gate registry's own rows | None (a check of checks, retro 34) | R30 |
+| `hook-has-ci-twin` | Every hook has a registry twin | None (a check of checks) | R31 |
+| `factory-status-test` | The derived status board lists every order | None | R32 |
+| `branch-protection-require-pr` | A committed copy of the ruleset | The live ruleset requires a PR and blocks force-push and deletion | R33 (scheduled read-back of the live ruleset) |
+| Trusted/untrusted workflow split (`factory-gates.yml`, `factory-pr-evidence.yml`) | Judges PRs with `main`'s factory code | Least privilege; required checks judged by trusted code | R39 |
+| `spawn-guard` hook | Logs launches against claim records | At most 3 agents at once | R40 → R26 |
+| `owned-path-warn` hook | Writes outside an order's owned paths | A change stays inside the files its work item names | R41 → R18 |
+| `decision-in-chat` hook | A question mark in a reply with no new request file | Decisions in git, discussion in chat (retro 61) | R42, R109 |
+| `factory claim` and `factory handoff` commands | Write the order's start and finish records | Work items have a start and a result in git (retro 91, 98) | not a rule row; replaced by the issue and a code-validated report (approach §2.5) |
+
+Not machinery (they enforce a rule about the work, though some share the factory's runner): `red-first-proof` (R16), `test-seam-ban` (R17), `diff-within-owned-paths` (R18), `deferral-words-need-od` (R19), `lock.letter-tokens` (R21), `decision-request-no-ids` (R22), `catalog-test-linkage` (R23), `validate-secrets-schema` (R6), `validate-deploy-env` (R7), `uv-sync-locked` (R10), and the `shell-guard` hook (R1, R3, R34–R36). All 29 registry rows in `gates.yaml` (25 CI gates plus the four hook mirrors) and all four hooks in `.cursor/hooks.json` appear above or in section 2.
+
 ## 4. Conflicts and gaps
+
+### 4.1 Rules that contradict each other
+
+1. **Where questions to the governor go.** HARD-RULES 4, handover §4 and the `decision-in-chat` hook (R42) put decisions in `bus/decisions/` files, not chat questions; `lab-kickoff` §5, `lab-intent-session` and constitution §F (R92) tell the session to ask in the chat's AskQuestion tool. Retro 61 resolves it: discussion in chat, decisions in git.
+2. **Mandatory parallelism.** Constitution §H, `AGENTS.md` rule 9 and `SPAWN_WORKER` say `[P]` tasks MUST be fanned out to parallel workers automatically (R64); retro P10 and 49 keep one block with one agent, and the 3-agent cap (R26) and review bandwidth limit fan-out.
+3. **Blocking word lists.** R19 and R22 block merges on word lists; retro 31 ("structure over words") and 33 (a small blocking set) say word lists only warn.
+4. **Nudge hooks.** Three of the four hooks (R40–R42) only nudge, inside the editor; retro 35 allows editor hooks only for irreversible harm.
+5. **Checks of checks.** R30 and R31 check the gate registry; retro 34 says no checks of checks.
+6. **Why agents may not read outside their worktree.** Handover §5 rule 8, `notes/wave1.5/sources/README.md` and the approach note (§2.7 incident list; Layer 0 "Spawned agents read only git") give the reason that an outside read can raise an unseen approval prompt. The reliability report (§1 item 2, §4.2) shows the freezes came from web requests and that an outside read returned normally. The rule stays as hygiene (R78, R103); its reliability reason is wrong in three places.
+7. **How to reach GitHub.** `lab-kickoff` §2 says `gh` is absent and to use `curl` with `$GITHUB_TOKEN`; handover §5 rule 6 and `SPAWN_WORKER` step 8 say run `gh` through Nix; this order's brief forbids `curl` entirely.
+8. **Review severities.** Wave 1's briefs use Blocker, Debate, Later and Nit (R54, R60); the approved approach (§2.5) adopts Superpowers' Critical, Important and Minor.
+9. **Tests.** Constitution §V and §C (R49, R57: acceptance catalog, separate test review) conflict with approach §2.6 (examples in the spec; tests judged inside the code review in light and normal lanes).
+10. **Corrections become checks.** `lab-kickoff` §5 says propose the check that would have caught each correction (R93); retro 26, 29 and 56 and the governor's dislike of eager checks (handover §4) say a check must first pass a relevance and consistency test.
+11. **Which paths are rule paths.** Five lists disagree: `AGENTS.md` rule 11 (constitution, `AGENTS.md`, `.cursor/rules/`, `docs/agent-os/`, factory gates and rubrics); `lab-kickoff` §6 adds `.cursor/skills/`; handover §5 rule 14 adds workflows and CODEOWNERS; `.github/CODEOWNERS` adds the gate code and two factory workflows but not `.cursor/skills/` or other workflows; `factory.toml` `rule_paths` has neither skills, gate code, workflows nor CODEOWNERS.
+12. **Revisiting process.** "Do not re-argue process per product" (R74) against retro P8 (the working agreement is revisited at each retro) and P17 (no piece of Wave 1 kept by default).
+13. **Merge on green.** `AGENTS.md` rule 11 and `lab-kickoff` §6 let the orchestrator merge its own PRs on green checks; retro 37 and the approach (light lane: "merges on green checks and an accepted review") require an accepted review, which nothing checks today (R27).
+14. **Stale names.** The constitution and `docs/agent-os/` speak of packets, slices and `FINISH_BAR.md`; Wave 1 ran on work orders in `bus/orders/`. Handover §2 item 7 already notes that `AGENTS.md` and the constitution "still describe Wave 1's process".
+
+### 4.2 Rules the retro agreed that appear in no source
+
+Searched in the sources this packet lists (section "Sources read"). "Partly" means a source says something close but weaker.
+
+- **Not stated anywhere:** change control by the mission test (5); restart rule (20); relevance check (26); consistency check (27); each check carries its reason, severity and track record (28); new checks start as warnings (29); false-alarm limit (32); no checks of checks (34, contradicted by R30, R31); editor hooks only for irreversible harm (35, contradicted by R40–R42); size budget for always-loaded rule files (54) and the rulebook budget (P12); rules live where they are needed (55); a rule proposal passes the check tests (56); must-happen rules become mechanics (57); three backlogs (68); each sprint names its primary type (69); three lanes and the lane rule (86, 87); status comes to the governor without asking (64).
+- **Partly stated:** good-enough judgement and the three-turn rule (6, 7: constitution §J's round budget, for reviews only); deadlines on every claim (22: a timebox per agent run, R81); runaway caps (84: the same timebox); a broken check never blocks its own fix (36: overrides exist, but the actor is unverified); discussion in chat, decisions in git (61: HARD-RULES 4 and a hook, contradicted by R92); explicit yes before recording, a stance in every report, main content last (62, 63, 67: habit in handover §4 and `lab-kickoff` §3, not lab policy); decisions batched (65: the finish-bar batch, R68); the escalation list (66: a different, longer list, R75); every review by another model family (90: checked only for work-order verdicts, R27, by self-declared names); done means checked (98: constitution §V asks for named commands, R50); least privilege for agent steps (100: read-only CI tokens, R39; agents themselves hold whatever the codespace holds); cost as an operating control (80: handover §4 only); no piece of Wave 1 kept by default (P17: handover §4 only).
 
 ## 5. Candidates the approach note names
 
+From approach §2.7 ("Candidates from the retro to include").
+
+| Candidate | Retro item | Does a Wave 1 source already state it | Note |
+|-----------|-----------|----------------------------------------|------|
+| Change control by the mission test (required for the core value: in, with the estimate updated; weakly related: backlog; unclear: the governor) | 5 | **No.** The closest are constitution §G ("waived" means out of this version) and §J's "cut scope", which govern deferrals and review loops, not incoming change. | Listed for the interim rulebook in approach Layer 0; would replace R73's version-bump governance as the rule for scope change |
+| New checks start as warnings and become blocking after a clean run | 29 | **No** as a rule. `lab-intent-session` offers "shadow mode first" only as one answer option for gate strictness. Every Wave 1 gate was blocking from its first day. | Approach Layer 3 already applies it (the workflow checker "starting as a warning"); R16 and R17 above are recommended to restart as warnings |
+| A relevance and consistency check on each proposed check | 26, 27 (and 56 for rules) | **No.** `lab-kickoff` §5 says the opposite in spirit (propose a check for each correction, R93). | Would sit with the rule-proposal test in the rulebook's change-control section |
+| One backlog, groomed at each sprint start | 68 (as "three backlogs") | **No.** `notes/architect-backlog.md` is the only backlog and is the architect's own ("Other agents … do not pick from this list unless asked"); no source has a grooming step. | Conflicts with retro 68 (three backlogs: product, infrastructure, tooling) unless "one backlog" means one list with three labels, as approach Layer 8 suggests ("the three backlog labels"); the architect should settle the wording |
+| One primary domain per sprint | 69 (decision `wave1-retro-sprint-type`, B) | **No.** Only the retro decision states it. | A one-line sprint-charter rule for the sprint manager's brief |
+
 ## Sources read
+
+All sources the packet lists were read from this worktree; none was missing or unreadable.
+
+1. `.specify/memory/constitution.md` (v1.10.0): all of it.
+2. `AGENTS.md`, `.cursorrules`: all.
+3. `.cursor/rules/agent-os.mdc`, `lab-invariants.mdc`, `python-apps.mdc`: all.
+4. `docs/agent-os/`: `README.md`, `SPAWN_WORKER.md`, `SPAWN_REVIEWER.md`, `PLAN_AUTHORING_GATES.md`, `STACK_POSTURE.md`, `SPEC_REVIEW_PROMPT.md`, `PROCESS_REVIEW_PROMPT.md`, `PLAN_REVIEW_PROMPT.md`, `TEST_REVIEW_PROMPT.md`, `FINISH_BAR_TEMPLATE.md`, `PLAN_DELTA_TEMPLATE.md`, `acceptance-catalog-template.md`, `research-template.md`: all.
+5. `scripts/factory/gates.yaml`: all 29 rows. Gate code under `scripts/factory/src/factory/gates/` (`repo/`, `pr/`, `drift/`), `runner.py`, `registry.py`, `overrides.py`: read for what each gate enforces. **Partly read:** `red_first.py` and `evidence.py` (docstrings, the judging function and the evidence contract, not every line); `intent/coverage.py` (docstring and the presence check).
+6. `.cursor/hooks.json`, `.cursor/hooks/factory-hook.sh` and the hook modules (`shell_guard`, `spawn_guard`, `owned_path`, `decision_chat`, `entry`): all.
+7. `.github/CODEOWNERS`: all. Workflows: `factory-gates.yml`, `factory-pr-evidence.yml`, `verify-source.yml`, `ci-cd-pipeline.yml`, `db-bootstrap-tests.yml` read fully; **partly read** (triggers, permissions and header rules only): `deploy.yml`, `ops-runtime.yml`, `provision-runtime.yml`, `ship-one.yml`, `ship-registry.yml`, `smoke-test.yml`, `sync-runtime-secrets.yml`, `verify-runtime-bootstrap.yml`. Also `factory.toml` and the `flake.nix` checks (by search).
+8. `notes/retro/2026-10-architect-handover.md`: §5, plus §3, §4 and §6, which also state working rules (R104–R110).
+9. `notes/retro/sources/orchestrator-notes-wave1/HARD-RULES.md`: all.
+10. `notes/architect-backlog.md`: all.
+11. `.cursor/skills/lab-kickoff`, `lab-intent-session`, `sdd-*`: all. `speckit-*`: **searched, not read line by line**, for lab additions beyond stock Spec Kit (found in `speckit-specify`, `-clarify`, `-plan`, `-tasks`, `-analyze`, `-implement`; none in `-converge`, `-checklist`, `-constitution`, `-taskstoissues`).
+12. `notes/wave1.5/sources/github-settings/`: all three files.
+
+For reasons and conflicts: `notes/retro/2026-10-harness-changes.md` (register items and principles), `notes/retro/2026-10-wave1-items.md` (by search), the approach note and the reliability report (both read from their branches with `git show`, since neither is on this branch), and `notes/wave1.5/sources/README.md`.
+
+No secret values or personal data were found in the sources. `db-bootstrap-tests.yml` holds passwords for a throwaway Postgres test container that exists only for the job; they are not secrets, and none is reproduced here.
