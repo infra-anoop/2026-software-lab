@@ -1,10 +1,41 @@
 # Wave 1 rules inventory
 
-Order `wo-20261020-wave15-rules-inventory` · packet `notes/packets/2026-10-20-rules-inventory.md` · decision `wave15-reliability-rules-first` · written by a spawned worker (Claude Opus 5.5), 2026-10-21 · status: in progress
+Order `wo-20261020-wave15-rules-inventory` · packet `notes/packets/2026-10-20-rules-inventory.md` · decision `wave15-reliability-rules-first` · written by a spawned worker (Claude Opus 5.5), 2026-10-21 · status: complete, for the architect's check and the governor's decisions
 
 This is a list and a first recommendation. Nothing here changes a rule; the architect checks it and the governor decides.
 
 ## 1. Summary
+
+**110 rules** after merging duplicates: **39 hard**, **4 warned**, **54 prose**, **13 habit**.
+
+**Recommendations:** **keep 50**, **rewrite 33**, **drop 19**, **merge 8**.
+
+| Type | Keep | Rewrite | Drop | Merge | Total |
+|------|------|---------|------|-------|-------|
+| hard | 13 | 10 | 11 | 5 | 39 |
+| warned | 1 | 1 | 2 | 0 | 4 |
+| prose | 29 | 20 | 3 | 2 | 54 |
+| habit | 7 | 2 | 3 | 1 | 13 |
+| **all** | **50** | **33** | **19** | **8** | **110** |
+
+**Where the hard rules are enforced:** the GitHub ruleset 3 (R1, R2, R4); the `Verify Source` job 5 (R5–R9); gates inside `factory/gates` 23 (R10, R12–R33); the `Factory tests` job 1 (R11); the `shell-guard` hook 4 (R3, R34–R36); workflow triggers and permissions 3 (R37–R39). Twenty-four of the 39 depend on Wave 1's factory (its gates or its own tests). Ten of those are dropped as machinery (section 3). One (R10, `uv.lock`) is kept as a standalone step. The rest are rewritten or merged into rules that survive without the factory.
+
+**Where the rules are stated** (rows citing each source, counted by search of the "Stated in" column; a row can cite several sources): the constitution 44 rows; `docs/agent-os/` 45; the skills 43; `AGENTS.md` 39; the handover 33; `.cursorrules` and `.cursor/rules/` 28; the architect backlog 10; HARD-RULES 5.
+
+**What the recommendations do.** Keep the irreversible-harm guards: `main` only through PRs, no force-push, secrets out of git, deploys and secrets only through conscious triggers. Keep the lab invariants and the CI that already enforces them. Move must-hold rules from prose into configuration: the ruleset, an allowed-commands file for agents, lint configuration and a watcher. Rewrite Wave 1's process rules into the approved approach's shapes (three lanes, Superpowers briefs, examples in the spec, a round count in code). Drop the checks that only police Wave 1's own records.
+
+**Rules prose presents as enforced but the evidence shows are not:**
+
+1. **The governor's approving review on rule paths.** `AGENTS.md` rule 11 tags it `[check: shell-guard]` and `[check: branch-protection-require-pr]`. `lab-kickoff` §6 tags it `[check: codeowners-governor-on-rule-paths]`. Handover §5 rule 14 and `.github/CODEOWNERS` also state it. The live ruleset requires **0 approvals and no code-owner review**. `codeowners-governor-on-rule-paths` is not a registered check, and the two cited checks do not test reviews (R76).
+2. **An accepted review before merge.** `SPAWN_REVIEWER`, retro 37 and the approach say a PR needs an accepted review. `verdict.reviewer-family-differs` checks only that a verdict and a handoff exist; it **never reads accept or reject** (R27).
+3. **Governor-only overrides.** Gates of class `governor-only` accept an override only from `governor`. With `identity.mode = "recorded"` the actor is not verified, so any agent can write `actor: governor` (bypass legend).
+4. **Cross-family review.** It is checked only by comparing model names that the author and reviewer write themselves (R27).
+5. **Two checks cited in `lab-kickoff` §5 are not registered:** `od.plain-options` and `od.arch-options-have-consequences` (R92).
+6. **The plan authoring gates.** `PLAN_AUTHORING_GATES` is headed "Hard rules … ERROR if violated" and the README calls it a hard gate. No machine check exists (R52).
+7. **The constitution's NON-NEGOTIABLE §G.1, §G.2 and §J** (plan-delta reconcile, finish-bar batch, review round budget) have no machine check (R67, R68, R70).
+8. **Red-first proof.** `main`'s code judges it, but from evidence that the PR's own code produces and labels "self-reported" (R16).
+9. **"Never commit to `main`" as `branch-protection-require-pr`.** That check reads a committed copy of the ruleset, not GitHub. The live ruleset is the real enforcement (R33, R1).
+10. **Hooks with "authoritative CI twins."** `shell-guard`'s registered twin checks a ruleset file. Its force-push, pip, `gh workflow run` and system-path denials have no CI counterpart, and every hook fails open (R3, R34–R36, bypass legend).
 
 ## 2. Inventory
 
