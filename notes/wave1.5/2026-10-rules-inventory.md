@@ -274,7 +274,7 @@ No secret values or personal data were found in the sources. `db-bootstrap-tests
 
 ## Architect's comments (2026-10-21)
 
-Added by the architect at the governor's request, after his reading: "a mine field of insights". These are the architect's comments, not the worker's findings; sections 1 to 5 above are the worker's, except two amendments of 2026-10-22 after the combined review, each marked where it stands (R35; conflict 6). Not yet independently reviewed: the single combined review covers this inventory, the reliability report and the approach amendment together.
+Added by the architect at the governor's request, after his reading: "a mine field of insights". These are the architect's comments, not the worker's findings; sections 1 to 5 above are the worker's, except two amendments of 2026-10-22 after the combined review, each marked where it stands (R35; conflict 6). Reviewed with the reliability report and the approach amendment in one combined cross-family review (round 1, 2026-10-22; section E).
 
 ### A. How the work was done
 
