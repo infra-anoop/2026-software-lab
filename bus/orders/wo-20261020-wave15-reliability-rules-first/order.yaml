@@ -18,7 +18,7 @@ refs:
   - notes/wave1.5/2026-10-reliability-register.md
   - notes/wave1.5/2026-10-reliability-investigation.md
 feature: 001-factory-v2
-goal: Amend the Wave 1.5 implementation approach so Wave 1's rules are inventoried and reviewed before Layer 0 removes anything, unattended reliability comes first (an investigation before Layer 0, early reliability pieces in Layer 0), and the policy session is set before Layer 4; record the governor's decision. Extended 2026-10-22 by register action A3 to fold the reliability decisions D2 to D24 into the approach, and correct the stale reason for the 2026-10-19 freezes here and in the outside-sources note.
+goal: Amend the Wave 1.5 implementation approach so Wave 1's rules are inventoried and reviewed before Layer 0 removes anything, unattended reliability comes first (an investigation before Layer 0, early reliability pieces in Layer 0), and the policy session is set before Layer 4; record the governor's decision. Extended 2026-10-22 by register action A3 to fold the reliability register's decisions into the approach, and correct the stale reason for the 2026-10-19 freezes here and in the outside-sources note.
 intents: [I-P8]
 owned_paths:
   - "notes/wave1.5/2026-10-implementation-approach.md"
