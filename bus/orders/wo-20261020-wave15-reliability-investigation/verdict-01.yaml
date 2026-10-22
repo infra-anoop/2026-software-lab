@@ -1,0 +1,93 @@
+# Translated into the Wave 1 verdict schema by the architect, 2026-10-22: the reviewer wrote
+# decision revise and severities blocker, major and minor, as the review packet asked; the schema
+# allows accept or reject and blocker, debate, later or nit. revise -> reject, major -> blocker,
+# minor -> nit; each finding's text keeps the reviewer's severity. Original at reviewer commit 810a69f.
+schema_version: 1
+kind: verdict
+id: wo-20261020-wave15-reliability-investigation.verdict-01
+created: 2026-10-22T08:45:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - notes/packets/2026-10-20-reliability-rules-first-review.md
+  - notes/wave1.5/2026-10-reliability-rules-first-review.md
+decision: reject
+findings:
+  - id: F1
+    severity: blocker
+    tag: product
+    text: "Reviewer's severity: blocker. D9 is presented as locked, but its named lock does not lock its life cycle, notifications or Cursor-key details."
+  - id: F3
+    severity: blocker
+    tag: arch
+    text: "Reviewer's severity: major. The report leaves superseded incident status and task-routing instructions as current."
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: docs/agent-os/SPAWN_REVIEWER.md
+    sha: fc0b2f9
+  - path: notes/packets/2026-10-20-reliability-rules-first-review.md
+    sha: fc0b2f9
+  - path: bus/orders/wo-20261019-wave15-implementation-approach/verdict-01.yaml
+    sha: fc0b2f9
+  - path: notes/wave1.5/2026-10-reliability-register.md
+    sha: fc0b2f9
+  - path: notes/wave1.5/2026-10-reliability-investigation.md
+    sha: fc0b2f9
+  - path: notes/wave1.5/2026-10-implementation-approach.md
+    sha: fc0b2f9
+  - path: notes/wave1.5/2026-10-rules-inventory.md
+    sha: fc0b2f9
+  - path: bus/decisions/wave15-reliability-rules-first/request.yaml
+    sha: fc0b2f9
+  - path: bus/decisions/wave15-reliability-rules-first/lock.yaml
+    sha: fc0b2f9
+  - path: bus/decisions/wave15-unattended-host/request.yaml
+    sha: fc0b2f9
+  - path: bus/decisions/wave15-unattended-host/lock.yaml
+    sha: fc0b2f9
+  - path: bus/decisions/wave15-runner-and-chunks/request.yaml
+    sha: fc0b2f9
+  - path: bus/decisions/wave15-runner-and-chunks/lock.yaml
+    sha: fc0b2f9
+  - path: bus/decisions/wave15-task-modes/request.yaml
+    sha: fc0b2f9
+  - path: bus/decisions/wave15-task-modes/lock.yaml
+    sha: fc0b2f9
+  - path: bus/decisions/wave15-permission-policy/request.yaml
+    sha: fc0b2f9
+  - path: bus/decisions/wave15-permission-policy/lock.yaml
+    sha: fc0b2f9
+  - path: bus/decisions/wave15-batch-environment/request.yaml
+    sha: fc0b2f9
+  - path: bus/decisions/wave15-batch-environment/lock.yaml
+    sha: fc0b2f9
+  - path: AGENTS.md
+    sha: fc0b2f9
+  - path: .specify/memory/constitution.md
+    sha: fc0b2f9
+  - path: notes/wave1.5/sources/README.md
+    sha: fc0b2f9
+  - path: notes/retro/2026-10-harness-changes.md
+    sha: fc0b2f9
+  - path: notes/retro/2026-10-wave1-agenda.md
+    sha: fc0b2f9
+  - path: notes/wave1.5/sources/github-settings/effective-rules-main.json
+    sha: fc0b2f9
+  - path: notes/wave1.5/sources/github-settings/repo-merge-settings.json
+    sha: fc0b2f9
+  - path: notes/wave1.5/sources/github-settings/ruleset-main-protection.json
+    sha: fc0b2f9
+  - path: .github/CODEOWNERS
+    sha: fc0b2f9
+  - path: scripts/factory/src/factory/gates/pr/verdict.py
+    sha: fc0b2f9
+  - path: factory.toml
+    sha: fc0b2f9
+  - path: .cursor/hooks.json
+    sha: fc0b2f9
+  - path: .github/workflows/db-bootstrap-tests.yml
+    sha: fc0b2f9
+  - path: scripts/factory/src/factory/bus/models.py
+    sha: fc0b2f9

@@ -1,0 +1,45 @@
+# Written by the architect on wo/wo-20261020-wave15-reliability-investigation (from origin/main
+# e911e34). The reliability investigation the governor asked for on 2026-10-20 (decision
+# wave15-reliability-rules-first): root causes of Wave 1's hangs and the 2026-10-19 reviewer
+# freezes, automatic recovery, and the Layer 0 list. size_minutes is held at the Wave 1 order cap
+# of 60; the whole investigation is larger (architect's rough figure about 6 agent-hours) and is
+# sized by the sprint manager.
+schema_version: 1
+kind: order
+id: wo-20261020-wave15-reliability-investigation
+created: 2026-10-20T15:45:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/wave1.5/2026-10-implementation-approach.md
+  - notes/retro/2026-10-wave1-agenda.md
+  - notes/retro/2026-10-harness-changes.md
+feature: 001-factory-v2
+goal: Investigate every hang and stall on record (Wave 1 and 2026-10-19), give each a root cause or best hypothesis, a fix-ladder rung and a design change, define the trials that settle the open hypotheses, and propose the reliability list for Layer 0.
+intents: [I-P8]
+owned_paths:
+  - "notes/wave1.5/2026-10-reliability-investigation.md"
+  - "bus/orders/wo-20261020-wave15-reliability-investigation/**"
+  - "bus/decisions/wave15-unattended-host/**"
+  - "bus/decisions/wave15-runner-and-chunks/**"
+  - "bus/decisions/wave15-chunk-lifecycle/**"
+  - "bus/decisions/wave15-task-modes/**"
+  - "bus/decisions/wave15-permission-policy/**"
+  - "bus/decisions/wave15-batch-environment/**"
+  - "notes/wave1.5/2026-10-reliability-register.md"
+  - "notes/retro/2026-10-architect-handover.md"
+checks:
+  - pr-links-order
+  - diff-within-owned-paths
+  - bus.schema
+locks: []
+size_minutes: 60
+stop_conditions:
+  - Any edit needed outside Owned paths
+  - Any change to settings, the codespace or Cursor configuration (the governor's)
+  - Committing raw chat records or any personal data
+depends_on_decisions:
+  - wave15-reliability-rules-first
+tasks: []
+worker_runtime: local_subagent

@@ -1,0 +1,19 @@
+schema_version: 1
+kind: decision_lock
+id: wave15-batch-environment.lock
+created: 2026-10-22T07:22:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - bus/decisions/wave15-batch-environment/request.yaml
+  - notes/wave1.5/2026-10-reliability-register.md
+chosen: "A: A ready-made image named by a lock-file fingerprint as the baseline; setup failures retried apart from work failures; retries and caches for the image build; lock changes mid-chunk install only the difference"
+governor_minutes: 5
+notes: >
+  The governor confirmed at about 00:20 PT on 2026-10-22 ("This matches"), after naming the image
+  as the strongest baseline and raising drift on every new package. Drift is designed out: a chunk
+  looks up the image by the fingerprint of its own lock files, so a stale image is never found.
+  One environment definition shared with the codespace is the direction, not a first step (A14).
+  Whether PyPI times out from GitHub's runners is measured at build (A13). Register entries D21 to
+  D24. Recorded by the architect.
