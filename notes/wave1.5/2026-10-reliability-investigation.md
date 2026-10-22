@@ -193,3 +193,25 @@ Findings so far:
 3. **Cursor's editor has no zero-wait setting short of "Run Everything".** Prompts there are acceptable only because a person is present (decision D13). Inline subtasks must stay short and attended (D14), and must not make web requests unless the domain is allowlisted (unified domain allowlisting for web search and fetch, per Cursor's changelog).
 4. **A fifth kind of block: the agent asking a question mid-task.** Copilot has a switch for it (`--no-ask-user`); Cursor's headless equivalent is unknown. Added to the table's action kinds for the trials.
 5. **Policy files are "not a security boundary"** in Cursor's own words. The hard boundaries for batch work stay the job's token permissions, time limit and GitHub rulesets (rules inventory, architect's comment D).
+
+### 11.1 Trials: Cursor command-line agent, headless, 2026-10-21 23:50 PT
+
+Version 2026.10.19-6bbf2c4, model composer-2.5-fast (permission handling is the program's, not the model's), each case in its own folder with its own `.cursor/cli.json`, a 300-second timer (a run reaching it would mean "waits"). Thirteen runs; scripts, permission files and logs on branch `trial/20261020-headless-agent`, folder `notes/trials/a1/` (commit `4fa04ac`).
+
+| Action | On the allow list | On the deny list | On neither list, no `--force` | On neither list, with `--force` |
+|--------|-------------------|------------------|-------------------------------|---------------------------------|
+| Shell command | runs | **refused**, also with `--force` ("Command blocked by permissions configuration") | **refused** ("Rejected") | **runs** |
+| Web fetch | (not tested) | refused (trial 4) | **refused** ("Web fetch rejected: User Rejected") | **runs** |
+| File write (editing tool) | runs, no `--force` needed | **refused only with an absolute or `**/`-prefixed pattern** ("Write permission denied … Blocked by permissions configuration"); the relative pattern `scratch/**` did not match, with or without `--force` (in a folder that is not a git repository) | **runs** | runs |
+| Question to the user mid-task | n/a | n/a | the run **ends**, its final message being the question; nothing waits | (not tested) |
+
+**No case waited.** Every run ended within 17 seconds.
+
+Findings:
+1. **The Cursor headless agent never waits;** "on neither list" means refused for shell and web fetch. Together with Copilot's documented behavior, both batch tools fail closed. Incidents 7, 9 and 10 cannot recur in batch work.
+2. **`--force` turns "on neither list" into "allowed"** for shell and web fetch; only the deny list survives it. Batch runs do not use `--force`; writes do not need it.
+3. **File writes are open by default.** The allow list does not fence them; only deny entries in absolute or `**/` form do. The real boundary for writes is on the git side: what a chunk may push (its token and branch), a changed-paths check, and the rulesets.
+4. **A question ends the run.** "Block and report" (D11) needs no special machinery from the tool: the workflow must tell "finished" from "stopped to ask". That should come from a structured status the chunk writes (done, blocked with a question, failed), not from reading prose.
+5. **Behavior is version-specific** (the relative write pattern is one surprise). The CLI version is pinned, and these cases become a conformance test rerun on every upgrade.
+
+Not tested: external tools (no MCP servers configured); Copilot (no access yet; its documentation says unlisted tools are refused in programmatic mode).

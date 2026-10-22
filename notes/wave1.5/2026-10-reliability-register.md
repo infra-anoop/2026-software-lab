@@ -16,9 +16,9 @@ Each incident in the report (section 3) against what closes it. Updated 2026-10-
 | 4 | Worker hung inside Cursor's runner | 60-minute hard limit; retry, then park (D3, D8) | decided |
 | 5 | 10-minute step took 90 | Same as 4 | decided |
 | 6 | Completion notices lost | Results through git and the issue; watcher (D9, D15) | decided |
-| 7 | Permission prompts stalled agents | Run, refuse, or block and report (D10, D11) | decided; A1 open |
+| 7 | Permission prompts stalled agents | Run, refuse, or block and report (D10, D11); A1 trials: batch tools never wait | decided; P1 to P4 proposed |
 | 8 | Codespace token cannot start workflows | Chunks dispatch each other inside Actions (report section 10) | decided |
-| 9, 10 | Web-request approvals froze reviewers | As 7; editor prompts only in attended sessions (D10, D13, D14) | decided; A1 open |
+| 9, 10 | Web-request approvals froze reviewers | As 7; unlisted web fetch refused at once in headless mode; editor prompts only in attended sessions (D10, D13, D14) | decided; P1 to P4 proposed |
 | 11 | Package downloads timed out; hooks ran them per command | Layer 0 removes the hooks; Actions environment (A8) | open |
 
 ## Decisions
@@ -42,11 +42,22 @@ Each incident in the report (section 3) against what closes it. Updated 2026-10-
 | D15 | Interactive and batch tasks hand over through git only: interactive sessions end in decisions and artifacts that start batch tasks; a batch task needing a person creates an interactive task. | 10-21 | `wave15-task-modes` |
 | D16 | Nothing is implemented in this phase; the session gathers decisions until the Layer 0 walkthrough is approved. | 10-21 | `wave15-runner-and-chunks` (notes) |
 
+## Proposed decisions (awaiting the governor)
+
+From action A1's trials (report section 11.1).
+
+| ID | Proposed decision |
+|----|-------------------|
+| P1 | Batch runs never use `--force` (or Copilot's `--allow-all`); unlisted actions then stay refused. |
+| P2 | The generated policy (D6) writes deny entries for files in absolute or `**/` form, and treats git-side checks (token, branch, changed paths, rulesets) as the boundary for writes. |
+| P3 | Every chunk ends by writing a structured status: done, blocked with a question, or failed. The workflow acts on that status, not on the agent's prose; "blocked" triggers D11. |
+| P4 | Agent program versions are pinned; the A1 cases become a conformance test rerun on every upgrade. |
+
 ## Actions
 
 | ID | Action | Owner | Done when | Status | Depends on |
 |----|--------|-------|-----------|--------|------------|
-| A1 | **Research the permission blocks in each agent tool.** Tools: Cursor editor (chat-spawned agents), Cursor command-line agent (headless), Copilot command-line agent. Actions: shell command, file write, web request, external tools (MCP). Cases: allowed, refused, on neither list. | architect | A table where every cell is "runs", "refused" or "blocks and reports", each with evidence (documentation or a trial), plus the settings that remove every silent wait. The headless "on neither list" case is tested first. | in progress: documentation pass done (report section 11); Cursor headless trials and the "asks a question" case remain | — |
+| A1 | **Research the permission blocks in each agent tool.** Tools: Cursor editor (chat-spawned agents), Cursor command-line agent (headless), Copilot command-line agent. Actions: shell command, file write, web request, external tools (MCP). Cases: allowed, refused, on neither list. | architect | A table where every cell is "runs", "refused" or "blocks and reports", each with evidence (documentation or a trial), plus the settings that remove every silent wait. The headless "on neither list" case is tested first. | done for Cursor (report section 11; 13 trial runs, none waited); Copilot by documentation only, trial at build (A12) | — |
 | A2 | Create a new codespace with a 240-minute idle timeout (`gh codespace create --repo infra-anoop/2026-software-lab --idle-timeout 240m`), after saving the chat records and agent stores. | governor (architect gives exact steps) | The new codespace's idle timeout reads 240 through the API. | open | — |
 | A3 | Fold the reliability findings and decisions D2 to D16 into the approach amendment (pull request #42): corrected Layer 0 list; the outside-reads reason corrected there and in `notes/wave1.5/sources/README.md`. | architect | The amendment cites this register and contains no stale reliability reason. | open | A1 |
 | A4 | Open pull requests for the reliability report and the rules inventory. | architect | Both pull requests open with checks green. | open | — |
