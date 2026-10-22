@@ -132,3 +132,18 @@ Finding 6 is the additional likely work not flagged by the cost paragraph. D10â€
 - Rules inventory summary and recommendations in full; sampled hard, warned and prose rows against committed settings, code and source rules.
 - `AGENTS.md` and the constitution for inventory omissions.
 - The corrected freeze cause, Copilot switch, watcher placement, batch environment and codespace timeout across the three records.
+
+## Triage (architect, 2026-10-22)
+
+The text above is the reviewer's, unchanged (reviewer commit `810a69f`). All six findings are accepted. Each fix is a separate commit on the pull request named.
+
+| # | Finding | Triage | Fix | Pull request |
+|---|---------|--------|-----|--------------|
+| 1 | D9 has no lock that names its details | Accepted. The governor's words exist ("Your narrative - all looks good to me - including notifications and cursor API key", chat, 2026-10-21 10:16 PT), but they were recorded only in the report, not in a lock. Every other lock in this series was recorded by the architect from the governor's chat words, so a lock recorded now from the same words follows the same practice. One difference is stated in the lock: the report's section 10 was written by the architect right after that message, from the narrative he approved, so its wording is put to him for confirmation | New decision `wave15-chunk-lifecycle` (request and lock); register D9 and approach section 11 cite it; the governor confirms the section 10 wording | #44, #42 |
+| 2 | Layer 1 still makes Copilot conditional | Accepted. Stale phrase left from before D5 | Layer 1 installs both Spec Kit integrations, pinned | #42 |
+| 3 | The report leaves superseded causes and routing as current | Accepted | Incident 1's cause corrected (documented, confirmed); the summary's recommendation and sections 6 and 7 marked superseded by sections 9 to 12 and the register; the status line updated | #44 |
+| 4 | R35 keeps the blanket ban on starting workflows | Accepted | R35 reworded: not from the codespace; the trusted Actions chain may start the next chunk, the exact mechanism settled at build time | #45 |
+| 5 | Conflict 6 and comment D say the outside-read correction is not made | Accepted. True when written (2026-10-20), stale since pull request #42's commit `930852e` | Both marked resolved, citing that commit | #45 |
+| 6 | The cost note omits task-mode routing and the permission-policy work | Accepted | Section 11's cost paragraph names five unsized items: Copilot from day one, the image, the chunk machinery, task-mode routing (D12 to D15) and the permission policy with its conformance test (D17 to D20). The sprint manager's sizing order (`wo-20261022-wave15-a7-sizing`, register A7) already lists the last two | #42 |
+
+Round 2: because finding 1 was a blocker, a short cross-family re-check of these fixes follows, under the same packet.
