@@ -149,3 +149,28 @@ The text above is the reviewer's, unchanged (reviewer commit `810a69f`). All six
 Verdict files: the packet asked for `decision: revise` and severities blocker, major and minor, which the Wave 1 record schema does not accept (rules inventory, conflict 8). The three verdicts on the pull request branches are translated (revise to reject, major to blocker, minor to nit), each finding keeping the reviewer's severity in its text; the originals are at reviewer commit `810a69f`. The round-2 packet uses the schema's words.
 
 Round 2: because finding 1 was a blocker, a short cross-family re-check of these fixes follows, under the same packet.
+
+## Round 2 re-check (reviewer, 2026-10-22)
+
+### Verdict
+
+- Pull request #42: **accept**.
+- Pull request #44: **accept**.
+- Pull request #45: **accept**.
+
+### Round 1 findings
+
+1. **Closed.** The new `wave15-chunk-lifecycle` request and lock name the life cycle, failure table, issue notifications and Cursor API key that D9 records. The lock quotes the governor's approval of the architect's narrative and says plainly that he approved that narrative, while the report's section 10 wording is put to him for confirmation. D9 and approach section 11 now cite this lock.
+2. **Closed.** Approach Layer 1 now installs both Cursor and Copilot integrations from day one and pins them; the stale conditional phrase is gone.
+3. **Closed.** The reliability report now calls incident 1 documented and confirmed, labels its 2026-10-20 recommendation and sections 6–7 superseded for routing, points to sections 9–12 and D12–D15, and places command-line agent installation in Layer 1.
+4. **Closed.** Inventory row R35 now recommends rewriting the rule to prohibit workflow starts from the codespace while allowing the trusted Actions chain to start its next chunk, with the mechanism deferred to build time.
+5. **Closed.** Inventory conflict 6 and architect comment D now state that the outside-read explanation was corrected in the approach and sources note, while preserving the worktree rule as hygiene.
+6. **Closed.** Approach section 11 now names task-mode routing and the permission policy with its conformance test as separate unsized work, and points sizing to register A7.
+
+### Verdict translation
+
+The translated round-1 verdicts accurately map `revise` to `reject`, `major` to `blocker`, and `minor` to `nit`, preserve the reviewer's original severity in each finding's text, and use only values accepted by the Wave 1 record schema.
+
+### New findings
+
+None. The fixes introduced no new blocker, debate, later item or nit.
