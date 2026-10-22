@@ -13,28 +13,28 @@ All figures are agent-hours, likely / pessimistic, and **uncalibrated**: no Wave
 
 **What was sized.** The Layer 0 additions (approach Layer 0, "Reliability pieces"); the reliability decisions D2 to D24 wherever they land; the three items the approach's section 11 names as unsized (Copilot from day one, the ready-made image, the chunk machinery); and the two items the combined review's cost finding adds (review finding 6: task-mode routing, and the permission policy with its conformance test). Nothing here changes a decision; it prices them.
 
-**Tranche 1 (Layers 0 to 3) goes from about 33 to about 60 likely agent-hours** (32.8 / 81.25 to 60.4 / 144.5; realistic bad case about 97). Of the 27.6 added, 1.95 moved in from Layer 5 (the scheduled watcher and the kill trial, which the chunk trials in Layer 2 need); the rest is new work:
+**Tranche 1 (Layers 0 to 3) goes from about 33 to about 57 likely agent-hours** (32.8 / 81.25 to 57.2 / 137; realistic bad case about 92). The first draft said about 60; the architect then placed the overrun rule, setup-failure handling and caps in Layer 5, which moves 3.2 / 7.5 to tranche 2. Of the 24.4 added, 1.95 moved in from Layer 5 (the scheduled watcher and the kill trial, which the chunk trials in Layer 2 need); the rest is new work:
 
 | Layer | Before | Now | What drives the change |
 |-------|------:|------:|------------------------|
 | 0. Clean slate | 7 / 15.5 | 17.85 / 39.5 | One permission policy generated for both tools (D6, D17, D18); the Cursor conformance suite from the 13 trial cases (D20); refusal log (D17); a watcher for agents in the codespace; time limits; the interim rulebook now written from 83 kept or rewritten rules, not a guessed handful; rule checks that run on the factory today and that the governor may keep standalone; a read-back of the live ruleset (inventory R33); the command-line agent moved forward from Layer 1 |
 | 1. Install | 6.5 / 15.75 | 9 / 22.25 | The ready-made image named by the lock-file fingerprint (D21, D22, D24) replaces the simpler build-step environment; measuring downloads and setup time on GitHub's machines (A13) |
 | 2. Configure | 6.2 / 19.75 | 14.15 / 38.5 | `AI_ENV` per role with one adapter per tool (D5); Copilot's conformance cases; the chunk chain of three (chunk N starts N+1, the progress note, time against estimate on the issue; D9, A12); the scheduled watcher moved here from Layer 5 and taught to restart; the kill and stall trials (A12) |
-| 3. First end-to-end run | 13.1 / 30.25 | 19.4 / 44.25 | Interactive or batch tag and routing (D12 to D15); the "blocked" status posts its question and stops (D11, D19); setup failures apart from work failures (D23); one retry then park and continue with the next independent task (D8); caps per work item and on concurrent jobs |
-| 5. Running unattended | 7 / 16.75 | 5.05 / 12.5 | The watcher and the kill trial moved to Layer 2 |
+| 3. First end-to-end run | 13.1 / 30.25 | 16.2 / 36.75 | Interactive or batch tag and routing (D12 to D15); the "blocked" status posts its question and stops (D11, D19) |
+| 5. Running unattended | 7 / 16.75 | 8.25 / 20 | Setup failures apart from work failures (D23); one retry then park and continue with the next independent task (D8); caps per work item and on concurrent jobs; less the watcher and the kill trial, moved to Layer 2 |
 | 7. Full lane | 21.25 / 48 | 21.85 / 49.25 | The warning-first check that every task carries an estimate of at most 30 minutes (D7) |
 | Sprint management | 3 / 6 | 4 / 8.5 | Tagging every task interactive or batch at planning (D12); parked tasks each morning (D8); the refusal-log review (D17); time against estimate per chunk (D3) |
 
 **The wave goes from about 105.5 to about 133 likely.** The realistic bad case (likely times 1.6) is about 212, **now above the 182 ceiling**; every task going badly is about 306. The six levers further down the note and the three later in this section together recover about 10, to about 123, with the bad case still near 197. Keeping the ceiling would take either a cut in the product shape or the reliability decisions, which are the governor's; this sizing does not propose either.
 
-**Against the approach's own figures.** The 2026-10-20 amendment put tranche 1 at about 44: 33, plus a rough 13 for the investigation, the rules inventory and Layer 0's reliability pieces. The investigation and inventory are now done (below). Layer 0's reliability pieces, rough 3, came to about 10.85 bottom-up, and the section 11 items add about 17 more.
+**Against the approach's own figures.** The 2026-10-20 amendment put tranche 1 at about 44: 33, plus a rough 13 for the investigation, the rules inventory and Layer 0's reliability pieces. The investigation and inventory are now done (below). Layer 0's reliability pieces, rough 3, came to about 10.85 bottom-up, and the section 11 items that stay in tranche 1 add about 13.5 more.
 
 **Done before Layer 0, recorded as spent, not sized.** The rough figure was about 10 / 20.
 - **Rules inventory:** the worker ran 23 minutes (claim 06:58 UTC, finish 07:21 UTC on 2026-10-21) against the architect's 2 to 3 hour estimate, plus about an hour of the architect's preparation and spot-check.
 - **Reliability investigation:** about 6 hours of the architect's session time with the governor over 2026-10-20 to 22, trials included, by the chat timestamps. It is interactive time, not separable into agent-hours.
 - **The combined review, round 1:** the reviewer pushed its whole report within about 3 minutes of its skeleton. Triage and a second round are still to come, about 1 / 2.
 
-**What the inventory's 23 minutes says, and what it does not.** It is one data point, for read-and-write work with no test loop. It suggests the design-test and design-code columns are the most likely to be high, perhaps by a factor of two or more, for prose and configuration in particular. It says nothing about the test-and-pass loop, which waits on real GitHub Actions runs and agent runs. The sensitivity: if the writing columns ran at half, tranche 1 would be about 43 instead of 60, and the wave about 95 instead of 133. That is not booked. The measured re-estimate after Layer 3 replaces both figures.
+**What the inventory's 23 minutes says, and what it does not.** It is one data point, for read-and-write work with no test loop. It suggests the design-test and design-code columns are the most likely to be high, perhaps by a factor of two or more, for prose and configuration in particular. It says nothing about the test-and-pass loop, which waits on real GitHub Actions runs and agent runs. The sensitivity: if the writing columns ran at half, tranche 1 would be about 41 instead of 57, and the wave about 95 instead of 133. That is not booked. The measured re-estimate after Layer 3 replaces both figures.
 
 **Three more levers, specific to this re-size.** None of them touches a decision; two are placement or design choices the Layer 0 walkthrough settles.
 
@@ -42,16 +42,77 @@ All figures are agent-hours, likely / pessimistic, and **uncalibrated**: no Wave
 |-------|------:|-----------|
 | No watcher for codespace agents: Layers 0 to 2 keep agent work short and attended, and the Actions watcher arrives in Layer 2 with the chunk trials | 2.5 / 5.5 | Until Layer 2, a silent agent in the codespace is noticed by its missed push deadline, not restarted automatically |
 | Rule checks that run on the factory today (red-first proof, test-seam ban, changes within owned paths, deferral words, letter tokens, decision requests without ids, catalog-test linkage) fold into Layer 4's guards rather than being carried standalone through Layer 0 | up to 1.5 / 4 in Layer 0, partly reappearing in Layer 4 | Those rules go unenforced between Layer 0 and Layer 4; the governor's review of the inventory decides |
-| The overrun rule, setup-failure handling and caps stay in Layer 5, as Layer 5's contents say, rather than tranche 1, as section 11's cost paragraph says | moves 3.2 / 7.5 from tranche 1 to tranche 2; no saving for the wave | The first unattended chains in Layers 2 and 3 run with the 60-minute kill and the alert only |
+| **Taken (architect, 10-22):** the overrun rule, setup-failure handling and caps stay in Layer 5 | moves 3.2 / 7.5 from tranche 1 to tranche 2; no saving for the wave | The first unattended chains in Layers 2 and 3 run with the 60-minute kill and the alert only |
 
 **For the architect** (inputs to the triage of pull request #42; none edits its files):
-1. **Placement conflict.** Section 11's cost paragraph puts the chunk machinery (overrun, setup failures, caps) in tranche 1; Layer 5's contents still list it. This sizing follows section 11 and puts it in Layer 3. The third lever above is the other reading.
+1. **Placement conflict.** Section 11's cost paragraph put the chunk machinery (overrun, setup failures, caps) in tranche 1, while Layer 5's contents still list it. *Resolved by the architect (handover, 10-22 01:45 PT): Layer 5; applied to the tables above.* Points 2 to 5 are answered in the same place.
 2. **Two watchers.** Layer 0 has one for codespace agents, and the chunk trials need the scheduled one in Layer 2. With batch work in Actions (D13) and attended subtasks short (D14), the codespace one serves only Layers 0 to 2. My recommendation is the first lever above; report section 8 left this to the walkthrough.
 3. **The governor's review of the inventory before Layer 0.** Section 2.7 has the governor reviewing the list before Layer 0, and the deep policy session after tranche 1. The interim rulebook and the kept checks above assume that short review happens first (about 1 to 2 of the governor's hours, counted in Layer 0's governor column).
 4. **The approach's figures.** Its layer table's size column and the tranche figures in sections 4 and 11 should point to this re-size once it is read and reviewed.
 5. **Two units.** Chunk estimates (D3, D7) are minutes of one job; these sizes are agent-hours of building, including waiting on runs. Layer 3's per-step record should capture both, so the re-estimate after Layer 3 calibrates both.
 
-**For the governor, once the architect has read this.** Tranche 1 was committed at about 33 with the approach, and the 2026-10-20 amendment raised it to about 44. It is now about 60, so its overrun stop (1.5 times) moves from about 66 to about 90. That is a budget change, so it comes to you as one decision request carrying both sessions' views, together with the ceiling question above. Until then, nothing is built (D16).
+**For the governor, once the architect has read this.** Tranche 1 was committed at about 33 with the approach, and the 2026-10-20 amendment raised it to about 44. It is now about 57, so its overrun stop (1.5 times) moves from about 66 to about 86. That is a budget change, so it comes to you as one decision request carrying both sessions' views, together with the ceiling question above and a plain yes or no on the codespace watcher, which you asked for by name on 2026-10-20 and which both sessions now think is not needed. Until then, nothing is built (D16).
+
+## Sprint manager's review of Layers 0 to 2 (2026-10-22, at the governor's request)
+
+Layers 0 to 2 are **41 / 100.25** agent-hours, 72% of tranche 1, up from 19.7 / 51 before this re-size. About half of the 41 arrived on 10-22. The work is sound item by item, but it no longer has the shape its layer names promise: "clean slate", "install" and "configure" now carry about 20 hours of our own new code. Proposals below are the sprint manager's; the architect owns the design ones, and the governor owns the ones marked so.
+
+**How the 41 hours divide.**
+
+| By column | Likely | Pessimistic | Pessimistic over likely |
+|-----------|------:|------:|------:|
+| Design test | 6 (15%) | 12.5 | 2.1 |
+| Design code | 17 (41%) | 36.5 | 2.1 |
+| Test-and-pass loop | 14.05 (34%) | 42 | 3.0 |
+| Review | 3.95 (10%) | 9.25 | 2.3 |
+
+| By kind of work | Likely | Pessimistic | Rows |
+|-----------------|------:|------:|------|
+| Our own new code | 20.2 (49%) | 46.5 | Image, both watchers, chain of three, adapters, permission generator, conformance suite, refusal log, kept and carried checks, ruleset read-back, time limits |
+| Trials that answer a question | 7.8 (19%) | 24 | The four unknowns and their record, Copilot conformance, sabotage trials, the setup-time measurement, the contingency |
+| Installing and configuring | 6.75 (16%) | 15.75 | Spec Kit, the command-line agents, App, secrets, type checker, Superpowers, ruleset strings |
+| Writing for people and agents | 4 (10%) | 8.75 | Rulebook, overlay stripping, reasons per check, the inventory put as choices |
+| Removing | 2.25 (5%) | 5.25 | Deleting and archiving Wave 1 |
+
+What this says. Tests are about half of the time: design test plus the loop is 49%. The uncertainty is concentrated: 28 of the 59-hour spread between likely and pessimistic sits in the test-and-pass loop, and mostly in the trials and the image, which wait on real Actions runs and real agent runs. The writing columns are where the inventory's 23 minutes suggests we over-estimate; the loop is where we may under-estimate. Review at 10% is thin for 20 hours of new code that the rest of the wave runs on. Separately, the Wave 1 gates (a claim, a verdict, a handoff and a run-complete record per order of at most 60 minutes) apply until Layer 0's deleting merge lands. Under them, 41 hours would mean 40 or more orders, and that overhead is not in any row.
+
+**(a) Cohesion and tightness.**
+
+1. Layer 0 is now two things. One is the clean slate: deleting, archiving, the kept pieces made standalone, stripping, the rulebook, the ruleset flip and its read-back, and the inventory put as choices, about 9.25. The other is a runner safety kit: the permission policy, refusal log, conformance suite, time limits, the command-line agent and the watcher, about 7.1, or 4.6 without the watcher. The kit has nothing to do with the slate and belongs beside Layer 2's adapters. Proposal: Layer 0a is the slate, landed first as one merge with the ruleset flip. Layer 0b is the kit.
+2. One thread is spread over three layers: the permission policy (Layer 0), the agents in Actions (Layer 1), and Copilot's conformance and the adapters (Layer 2). It is one design, a policy, two adapters and one conformance suite run against both tools, so it should be one owner and one review.
+3. Layer 2 is no longer "configure and answer the four unknowns". The unknowns and their record are 5.45 of its 14.15; the rest is building: adapters, the chain of three, the watcher and the sabotage trials. The chain of three is half of Layer 3's runner. Proposal: name it as the runner skeleton that Layer 3 extends, so Layer 3 is not sized to rebuild it.
+4. Two watchers with the same restart rule. If the governor keeps the codespace watcher, it shares one restart routine with the scheduled one and gets two triggers.
+5. The Spec Kit upgrade (Layer 1) and the overlay stripping (Layer 0) edit the same templates. Do the upgrade first, or both in one change, so the templates are touched once.
+6. Layer 1's "done when" includes a type checker for Smart Writer V2. That is product work in an install layer; it belongs where Smart Writer is first exercised (Layer 3 or 4).
+7. Two inputs are unscheduled: the rulebook waits on the governor's inventory review, and the kept factory checks wait on his keep-or-drop. Neither has a slot yet.
+
+**(b) Saving agent-hours (likely figures, Layers 0 to 2).**
+
+| Proposal | Saves | Owner |
+|----------|------:|-------|
+| No codespace watcher (both sessions' view) | 2.5 | Governor |
+| Factory rule checks: keep only the ones the governor names, folded into Layer 4's checks | up to 1.5 | Governor |
+| Answer unknowns 1 and 2 through the adapters' first runs, not separate harnesses | about 1 | Architect |
+| Sabotage trials as the watcher's own test, not a separate loop | about 0.5 | Architect |
+| Policy, refusal log and conformance as one order with one review | about 0.5 | Architect |
+| Spec Kit upgrade and overlay stripping in one change | about 0.5 | Architect |
+| Ruleset read-back built with the ruleset flip (same interface, same test pull request) | about 0.25 | Architect |
+| Type checker moved to the layer that first runs Smart Writer | 0.75 moved, not saved | Architect |
+| Deleting merge first, so the rest of Layers 0 to 2 runs without the Wave 1 per-order gates | sprint management time, not booked | Sprint manager |
+
+Together: Layers 0 to 2 from about 41 to about 33.5 likely, or about 37.5 if the governor keeps the watcher and the checks. Naming the chain of three as the runner skeleton should also save about 1 in Layer 3. None of these cuts a decision of 10-22. They change where and how often things are built, not what is built.
+
+**(c) Parallelism.** Three streams, with at most 3 agents at once:
+
+| Stream | Contents | Likely | Paths |
+|--------|----------|------:|-------|
+| Slate | Inventory choices to the governor, then delete, archive, kept pieces standalone, ruleset flip with read-back, Spec Kit upgrade with stripping, rulebook | about 11 | Existing rules, workflows, templates, AGENTS.md |
+| Safety kit | Command-line agent in the codespace, permission policy, refusal log, Cursor conformance, time limits; then the adapters and Copilot conformance | about 7 | New files only |
+| Actions | Setup-time measurement, then the image, agents in Actions, App and secrets, the four unknowns, the chain of three, the scheduled watcher, sabotage trials | about 18 | New workflows and image only |
+
+The Actions stream is the critical path, at about 18 of 41. Its unknowns need the safety kit's policy and adapters, which finish in time if the kit starts on day one. Three conditions make it work: the slate's deleting merge lands first, the other two streams add only new files until it does, and the governor's own steps (the inventory choices, the App, the Actions secrets, the ruleset flip) are front-loaded into one sitting. Parallel running cuts calendar time to about half; it does not cut agent-hours, and it adds some rebase and coordination cost. It needs one combined walkthrough of Layers 0 to 2 instead of a walkthrough per layer. That is the governor's call, because the approach walks him through each layer before it starts.
+
+**(d) Other cuts.** By person: the governor's column for Layers 0 to 2 is 3.25 / 7 hours, most of it the inventory review and the App and secrets. By risk: the trials and the image are 11.8 / 33.5. They are where a pessimistic outcome comes from, so they should start first, not last. By whether it was in the 10-19 plan: about 21 of the 41 hours are new on 10-22. That growth is the real budget question in the decision request, and the sensitivity above suggests part of it is estimation, not work.
 
 ## How to read it
 
@@ -70,15 +131,15 @@ Tasks where agents of the new factory do the work (the proof runs, the workflow 
 | 0. Clean slate | 3.35 / 6.5 | 8 / 16.5 | 4.5 / 12.25 | 2 / 4.25 | **17.85 / 39.5** | 2 / 4 |
 | 1. Install | 0.75 / 1.5 | 4 / 8 | 3.5 / 11 | 0.75 / 1.75 | **9 / 22.25** | 0.5 / 1 |
 | 2. Configure, and answer the four unknowns | 1.9 / 4.5 | 5 / 12 | 6.05 / 18.75 | 1.2 / 3.25 | **14.15 / 38.5** | 0.75 / 2 |
-| 3. First end-to-end run, with defaults | 3.1 / 6 | 8 / 16.5 | 6.4 / 17.25 | 1.9 / 4.5 | **19.4 / 44.25** | 0.5 / 1 |
+| 3. First end-to-end run, with defaults | 2.5 / 4.75 | 6.75 / 13.75 | 5.25 / 14.25 | 1.7 / 4 | **16.2 / 36.75** | 0.5 / 1 |
 | 4. Policy for changes (normal and light lanes) | 5.35 / 9.75 | 10.35 / 21 | 6.4 / 17.25 | 2.55 / 5.75 | **24.65 / 53.75** | 0.75 / 1.5 |
-| 5. Running unattended | 1.2 / 2.25 | 1.65 / 3.75 | 1.9 / 5.25 | 0.3 / 1.25 | **5.05 / 12.5** | 0.5 / 1 |
+| 5. Running unattended | 1.8 / 3.5 | 2.9 / 6.5 | 3.05 / 8.25 | 0.5 / 1.75 | **8.25 / 20** | 0.5 / 1 |
 | 6. Cost and quality numbers | 1.6 / 2.75 | 2.9 / 6.5 | 2 / 5.75 | 0.7 / 1.75 | **7.2 / 16.75** | 0.25 / 0.5 |
 | 7. The design path for features (full lane) | 3.85 / 7 | 10 / 21 | 5.85 / 16 | 2.15 / 5.25 | **21.85 / 49.25** | 1.75 / 3.25 |
 | 8. Finish | 0.25 / 0.5 | 5 / 11 | 1.1 / 3.25 | 0.7 / 1.5 | **7.05 / 16.25** | 1 / 2 |
 | **Layers 0 to 8** | 21.35 / 40.75 | 54.9 / 116.25 | 37.7 / 106.75 | 12.25 / 29.25 | **126.2 / 293** | 8 / 16.25 |
 
-By tranche: **tranche 1 (Layers 0 to 3) about 60.4 / 144.5** (33 before this re-size); tranche 2 (Layers 4 to 6) about 36.9 / 83; tranche 3 (Layers 7 and 8) about 28.9 / 65.5.
+By tranche: **tranche 1 (Layers 0 to 3) about 57.2 / 137** (33 before this re-size); tranche 2 (Layers 4 to 6) about 40.1 / 90.5; tranche 3 (Layers 7 and 8) about 28.9 / 65.5.
 
 Across all layers:
 
@@ -95,7 +156,7 @@ Across all layers:
 
 - **The first sizing's "about the same as 89" was flattering.** The retro's 89 was its must-have plus should-have band, and five of those should-have items, plus the must-have failure inventory, had dropped out of the layer note without a row; this sizing followed the note, so it left them out too. The cross-family review caught it. Restored, they cost about 4.75 likely, against roughly 6 in the retro's own plan, because Layer 6's usage-export join and the decision pause already carry most of the work.
 - **The review's fixes are worth their 5 hours.** Each closes a gap that would have surfaced in the first runs: safe repeat was named but not designed (Wave 1's runs failed exactly there), the shipped formats are prompts that code cannot parse without a fixed profile, the full lane reviewed tests that no step wrote, and a skipped test would have passed the example check. The architect took the smallest fix each time and declined attempt records, leases, a state machine and provenance files; this sizing agrees with those refusals, since each would have rebuilt something the approach removed.
-- **Layer 3 is now about 13 hours, so the first real judgement comes after about 33 hours (Layers 0 to 3), not 25.** (After the 2026-10-22 re-size: about 19 and about 60.) It still comes well before the retro plan's 50 to 90, and it is now a better judgement: safe repeat and the per-step cost record are proved there, so the re-estimate after Layer 3 uses measured numbers.
+- **Layer 3 is now about 13 hours, so the first real judgement comes after about 33 hours (Layers 0 to 3), not 25.** (After the 2026-10-22 re-size: about 16 and about 57.) It still comes well before the retro plan's 50 to 90, and it is now a better judgement: safe repeat and the per-step cost record are proved there, so the re-estimate after Layer 3 uses measured numbers.
 - **The test-first shape costs about 5 more hours to build and should cost less to run.** It removes the held-back store and adds a fast build-step environment, a type checker for Smart Writer V2, the example checks, the tests-first verdict with a cause per finding, the way out for a wrong test, examples in the forms, first exemplars and the feature's test review. The saving is per order once the factory runs: requirements arrive unambiguous, tests run inside the step instead of as Actions round trips, and review starts from a verdict on the tests. In Wave 1 one slice's tests went through seven review rounds and others reached four (Wave 1 orchestrator notes); if one round is saved per order, the 5 hours come back within this wave. That saving is expected, not measured, and is not booked; the review and loop columns of Layers 5 to 8 are re-estimated after Layer 4 shows whether it happens.
 - **The policy is where the hours are.** Layer 4 (about 25) and Layer 7 (about 21) carry the most, because the product shape asks for a lot of policy: lanes, decisions, the review loop, guards, the test-first checks, approval stops and feature acceptance. That is the part of the factory that is ours by design. Install and configure (Layers 1 and 2) stay under 13.
 - **Writing is the biggest block; the loop is where the uncertainty is.** Design code is about 44 likely hours. The test-and-pass loop is about 29 likely, but its pessimistic figure is nearly three times that, because each try in Layers 1 to 3 and 5 is a real Actions run.
@@ -211,10 +272,9 @@ Grew most in the review: safe repeat is now designed and proved here, the per-st
 | Gap list from the run | – | 0.25 / 0.5 | – | – | 0.25 / 0.5 |
 | Interactive or batch: the tag on every work item, set at planning from defaults; workflows start only batch items; a long interactive subtask is filed as a batch item; a batch item needing a person creates an interactive one (new 10-22: D12 to D15) | 0.25 / 0.5 | 0.75 / 1.5 | 0.5 / 1.25 | 0.25 / 0.5 | 1.75 / 3.75 |
 | "Blocked" status: the chunk's question is posted on its issue and the item stops; the answer restarts it by hand until Layer 4's decision workflows exist (new 10-22: D11, D19) | 0.25 / 0.5 | 0.5 / 1 | 0.5 / 1 | 0.1 / 0.25 | 1.35 / 2.75 |
-| "Setup failed" apart from work failures: retried on its own, not counted as the task's retry, the governor alerted when it repeats (new 10-22: D23; placement, see the re-size section) | 0.25 / 0.5 | 0.5 / 1 | 0.5 / 1.25 | 0.1 / 0.25 | 1.35 / 3 |
-| Overrun rule: one retry from the last push, then park the task and continue with the next independent one (new 10-22: D8; placement, see the re-size section) | 0.25 / 0.5 | 0.5 / 1.25 | 0.5 / 1.25 | 0.1 / 0.25 | 1.35 / 3.25 |
-| Caps on chunks per work item per day and on concurrent jobs (new 10-22; placement, see the re-size section) | 0.1 / 0.25 | 0.25 / 0.5 | 0.15 / 0.5 | – | 0.5 / 1.25 |
-| **Layer total** | 3.1 / 6 | 8 / 16.5 | 6.4 / 17.25 | 1.9 / 4.5 | **19.4 / 44.25** |
+| **Layer total** | 2.5 / 4.75 | 6.75 / 13.75 | 5.25 / 14.25 | 1.7 / 4 | **16.2 / 36.75** |
+
+The overrun rule, setup-failure handling and caps are sized in Layer 5 (architect's placement, 10-22).
 
 Governor: 0.5 / 1 hours.
 
@@ -255,7 +315,10 @@ The trials are cheap to write and expensive when they fail; that is the loop ran
 | Safe repeat extended to the later workflows (conventions now built and proved in Layer 3; shrank) | 0.25 / 0.5 | 0.25 / 0.75 | 0.25 / 0.5 | 0 / 0.25 | 0.75 / 2 |
 | Done means checked after every agent step | 0.25 / 0.5 | 0.25 / 0.75 | 0.25 / 0.75 | 0 / 0.25 | 0.75 / 2.25 |
 | The two remaining deliberate trials: laptop closed, decision overnight (the kill trial moved 10-22 to Layer 2) | 0.35 / 0.5 | 0.15 / 0.25 | 0.65 / 2 | 0.1 / 0.25 | 1.25 / 3 |
-| **Layer total** | 1.2 / 2.25 | 1.65 / 3.75 | 1.9 / 5.25 | 0.3 / 1.25 | **5.05 / 12.5** |
+| "Setup failed" apart from work failures: retried on its own, not counted as the task's retry, the governor alerted when it repeats (new 10-22: D23) | 0.25 / 0.5 | 0.5 / 1 | 0.5 / 1.25 | 0.1 / 0.25 | 1.35 / 3 |
+| Overrun rule: one retry from the last push, then park the task and continue with the next independent one (new 10-22: D8) | 0.25 / 0.5 | 0.5 / 1.25 | 0.5 / 1.25 | 0.1 / 0.25 | 1.35 / 3.25 |
+| Caps on chunks per work item per day and on concurrent jobs (new 10-22) | 0.1 / 0.25 | 0.25 / 0.5 | 0.15 / 0.5 | – | 0.5 / 1.25 |
+| **Layer total** | 1.8 / 3.5 | 2.9 / 6.5 | 3.05 / 8.25 | 0.5 / 1.75 | **8.25 / 20** |
 
 The scheduled watchdog (1.35 / 2.75) moved 10-22 to Layer 2, where the chunk trials need it.
 
