@@ -4,6 +4,23 @@ The register for the Wave 1.5 reliability thread. One line per decision, one lin
 
 Status values: open, in progress, done, at build (waits for Layer 0 approval), later.
 
+## Incident coverage
+
+Each incident in the report (section 3) against what closes it. Updated 2026-10-21 23:50 PT: 8 of 11 decided; the rest wait on A1 and A8.
+
+| # | Incident | Closed by | State |
+|---|----------|-----------|-------|
+| 1 | Codespace stops at 12 hours | Documented limit; batch work in Actions (D2); chunks restart from last push (D3) | decided |
+| 2 | Codespace stops after 30 idle minutes | Batch work off the codespace (D2, D13); 240-minute codespace for interactive sessions (A2) | decided; A2 pending |
+| 3 | Restart wiped working copies | Fixed in Wave 1; Actions machines are fresh | closed |
+| 4 | Worker hung inside Cursor's runner | 60-minute hard limit; retry, then park (D3, D8) | decided |
+| 5 | 10-minute step took 90 | Same as 4 | decided |
+| 6 | Completion notices lost | Results through git and the issue; watcher (D9, D15) | decided |
+| 7 | Permission prompts stalled agents | Run, refuse, or block and report (D10, D11) | decided; A1 open |
+| 8 | Codespace token cannot start workflows | Chunks dispatch each other inside Actions (report section 10) | decided |
+| 9, 10 | Web-request approvals froze reviewers | As 7; editor prompts only in attended sessions (D10, D13, D14) | decided; A1 open |
+| 11 | Package downloads timed out; hooks ran them per command | Layer 0 removes the hooks; Actions environment (A8) | open |
+
 ## Decisions
 
 | ID | Decision | Date | Lock |
