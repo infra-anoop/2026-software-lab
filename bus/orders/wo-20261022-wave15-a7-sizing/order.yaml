@@ -1,0 +1,38 @@
+# Written by the sprint manager on wo/wo-20261022-wave15-a7-sizing (from origin/main e911e34).
+# Register action A7: size the Layer 0 additions and the reliability decisions, and re-size
+# tranche 1. size_minutes is an estimate.
+schema_version: 1
+kind: order
+id: wo-20261022-wave15-a7-sizing
+created: 2026-10-22T08:45:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/wave1.5/2026-10-layer-sizing.md
+  - notes/wave1.5/2026-10-implementation-approach.md
+  - notes/wave1.5/2026-10-reliability-register.md
+  - notes/wave1.5/2026-10-reliability-investigation.md
+  - notes/wave1.5/2026-10-rules-inventory.md
+  - notes/wave1.5/2026-10-reliability-rules-first-review.md
+feature: 001-factory-v2
+goal: Register action A7. Size the Layer 0 additions and the reliability decisions D2 to D24, re-size tranche 1 for the work the approach's section 11 names as unsized (Copilot from day one, the ready-made image, the chunk machinery) plus what the combined review's cost finding adds (task-mode routing; the permission policy and its conformance test), and note the rules inventory's 23-minute run against its 2 to 3 hour estimate. Sizes only; no build work.
+intents: [I-P8]
+owned_paths:
+  - "notes/wave1.5/2026-10-layer-sizing.md"
+  - "notes/packets/2026-10-22-a7-sizing-review.md"
+  - "notes/wave1.5/2026-10-a7-sizing-review.md"
+  - "bus/orders/wo-20261022-wave15-a7-sizing/**"
+checks:
+  - pr-links-order
+  - diff-within-owned-paths
+  - bus.schema
+locks: []
+size_minutes: 60
+stop_conditions:
+  - Any edit needed outside Owned paths
+  - Any build work for Wave 1.5 before the Layer 0 walkthrough is approved
+  - A size that would change one of the governor's decisions rather than cost it
+depends_on_decisions: []
+tasks: []
+worker_runtime: local_subagent
