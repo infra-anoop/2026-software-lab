@@ -1,0 +1,1 @@
+{"permissions":{"allow":["Read(**)","Write(out/**)","Shell(ls)","Shell(cat)","Shell(date)"],"deny":["Shell(curl)","Write(**/scratch/**)","Write(scratch)","Write(scratch/hello.txt)"]}}
