@@ -7,7 +7,7 @@ One cross-family pass over three pieces of work the architect led with the gover
 | Field | Value |
 |-------|-------|
 | Packet id | 2026-10-20-reliability-rules-first-review |
-| Status | open (round 1, 2026-10-22) |
+| Status | open (round 1 deposited and triaged, 2026-10-22; round 2 below) |
 | Gate | Before pull requests #42, #44 and #45 merge; one pass, a second only for a blocker |
 | Under review | Pull request #42 (approach amendment, branch `wo/wo-20261020-wave15-reliability-rules-first`), #44 (reliability report, register and decisions, branch `wo/wo-20261020-wave15-reliability-investigation`), #45 (rules inventory, branch `wo/wo-20261020-wave15-rules-inventory`). Your review branch merges all three onto `main` (e911e34); they touch no common file |
 | Orders | `wo-20261020-wave15-reliability-rules-first`, `wo-20261020-wave15-reliability-investigation`, `wo-20261020-wave15-rules-inventory` |
@@ -82,3 +82,21 @@ Do not re-argue the governor's decisions or the approved approach. Severity per 
 ## Stop and report if
 
 - You find a secret value or personal data (report the file and line, never the value).
+
+## Round 2 (2026-10-22): re-check of the fixes
+
+Round 1 found one blocker, so one short second pass checks the architect's triage and fixes. Everything above still applies, except where this section says otherwise.
+
+| Field | Value |
+|-------|-------|
+| Appetite | 25 minutes. Hard stop at 40 minutes. Push a first commit within 10 minutes |
+| Worktree | `/workspaces/2026-software-lab/.worktree-home/.cursor/worktrees/wave15-combined-review-r2`, branch `review/wo-20261020-wave15-combined-r2` (the three pull request branches merged onto `main`, already created). Use this path wherever the sections above name the round 1 worktree or branch |
+
+**Read.** The round 1 report and the architect's triage at its end (`notes/wave1.5/2026-10-reliability-rules-first-review.md`). Then each fix the triage names, by its diff against round 1's inputs: `git diff 810a69f -- <file>` for each changed file, and the new decision `bus/decisions/wave15-chunk-lifecycle/`. The governor's 2026-10-21 10:16 PT words are quoted in that lock and in the report's section 10; you cannot see the chat, so judge whether the lock records them faithfully as quoted and says plainly what he approved and what is put to him for confirmation.
+
+**Job.** For each of the six round 1 findings: closed, partly closed, or not closed, with evidence. Also check the verdict translation described in the triage. Raise a new finding only if a fix introduced it; do not re-review the rest.
+
+**Deposit.**
+- Append a section `## Round 2 re-check (reviewer, 2026-10-22)` to the end of the report. Do not edit anything above it.
+- Write `verdict-02.yaml` in each of the three order folders, in the shape of the translated `verdict-01.yaml` there. Use the record schema's words: `decision: accept` or `decision: reject`; severities `blocker`, `debate`, `later` or `nit` (blocker for anything that must be fixed before merging; nit for wording). `accept` if that pull request has no open blocker.
+- May edit: the report (append only) and the three `verdict-02.yaml` files.
