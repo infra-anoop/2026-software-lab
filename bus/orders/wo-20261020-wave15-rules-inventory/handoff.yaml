@@ -1,0 +1,28 @@
+schema_version: 1
+kind: handoff
+id: wo-20261020-wave15-rules-inventory.handoff
+created: 2026-10-21T07:25:00Z
+actor: worker
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - wo-20261020-wave15-rules-inventory
+  - notes/packets/2026-10-20-rules-inventory.md
+  - notes/wave1.5/2026-10-rules-inventory.md
+summary: |
+  Wave 1 rules inventory: 110 rules (39 hard, 4 warned, 54 prose, 13 habit), each with where it
+  is stated, its enforcement point and bypasses or how it could be made hard, its reason, and a
+  recommendation (keep 50, rewrite 33, drop 19, merge 8). Hard rules proven from the exported
+  ruleset, CI and hook code. Ten rules prose presents as enforced but are not, led by the
+  governor's review on rule paths (ruleset requires 0 approvals) and "accepted review" (verdict
+  decision never read). Machinery list covers all 29 registry rows and four hooks. Conflicts,
+  retro gaps and the approach's five candidates (none stated in a Wave 1 source) included.
+  Handover rule 8 recorded with the corrected reason. No rule file changed.
+checks_run:
+  - gate_or_test: "29 registry ids and four hooks searched in the inventory"
+    result: "every id present"
+  - gate_or_test: "row counts by type and recommendation (rg over the tables)"
+    result: "110 rows; totals match the summary"
+deviations: []
+open_questions: []
+author_model: claude-opus-5.5

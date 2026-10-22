@@ -1,0 +1,37 @@
+# Written by the architect on wo/wo-20261020-wave15-rules-inventory (from origin/main e911e34).
+# The rules inventory the governor asked for on 2026-10-20 (decision wave15-reliability-rules-first):
+# every Wave 1 rule listed with its reason and a keep, rewrite or drop recommendation, before
+# Layer 0 removes anything. size_minutes is held at the Wave 1 order cap of 60; the architect sizes
+# the whole inventory at 2 to 3 agent-hours (about 8,300 source lines), hard stop 4.5 hours.
+# Governor 2026-10-20: one worker; every rule tagged hard, warned, prose or habit.
+schema_version: 1
+kind: order
+id: wo-20261020-wave15-rules-inventory
+created: 2026-10-20T15:55:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/packets/2026-10-20-rules-inventory.md
+  - notes/wave1.5/2026-10-implementation-approach.md
+  - notes/retro/2026-10-harness-changes.md
+feature: 001-factory-v2
+goal: List every rule the factory ran on in Wave 1, with where it is stated, how it is enforced, why it exists and a keep, rewrite or drop recommendation, for the architect's check and the governor's decision.
+intents: [I-P8]
+owned_paths:
+  - "notes/wave1.5/2026-10-rules-inventory.md"
+  - "notes/packets/2026-10-20-rules-inventory.md"
+  - "notes/wave1.5/sources/github-settings/**"
+  - "bus/orders/wo-20261020-wave15-rules-inventory/**"
+checks:
+  - pr-links-order
+  - diff-within-owned-paths
+  - bus.schema
+locks: []
+size_minutes: 60
+stop_conditions:
+  - Any edit needed outside Owned paths
+  - Any change to a rule file before the governor decides
+depends_on_decisions: []
+tasks: []
+worker_runtime: local_subagent
