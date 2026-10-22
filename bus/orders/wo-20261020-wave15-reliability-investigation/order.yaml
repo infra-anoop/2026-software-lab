@@ -25,6 +25,7 @@ owned_paths:
   - "bus/decisions/wave15-runner-and-chunks/**"
   - "bus/decisions/wave15-task-modes/**"
   - "bus/decisions/wave15-permission-policy/**"
+  - "bus/decisions/wave15-batch-environment/**"
   - "notes/wave1.5/2026-10-reliability-register.md"
 checks:
   - pr-links-order

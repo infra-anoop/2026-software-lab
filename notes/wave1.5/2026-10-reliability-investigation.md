@@ -215,3 +215,13 @@ Findings:
 5. **Behavior is version-specific** (the relative write pattern is one surprise). The CLI version is pinned, and these cases become a conformance test rerun on every upgrade.
 
 Not tested: external tools (no MCP servers configured); Copilot (no access yet; its documentation says unlisted tools are refused in programmatic mode).
+
+## 12. The environment for batch chunks (incident 11, action A8), 2026-10-22
+
+The problem has two halves. Reliability: a download timeout fails a chunk that did nothing wrong. Time: a cold install spends the 30-minute budget. Current CI shows both: the main check installs Nix from scratch on every run with no binary cache, and the architect backlog already records that the full test run downloads from PyPI and "can fail falsely" (O1).
+
+Options considered: (1) retries, longer timeouts and caches keyed on lock files; (2) setup failures classified apart from work failures; (3) a ready-made image holding Nix and every dependency; (4) one environment definition shared by the codespace and Actions. The industry pattern is (3): Codespaces prebuilds, Copilot's setup steps, Ona's prebuilt environments. The lab already builds and publishes images to GitHub's registry for deploys.
+
+Decided (D21 to D24): (3) as the baseline, made drift-proof by naming each image after a fingerprint of the lock files, so a stale image is never found rather than relying on anyone to rebuild it; (2) from the start, so an outage does not get good tasks parked; (1) protects the image build, now the only place a download can fail. A chunk whose task changes a lock file mid-run installs only the difference on top of the image. (4) is the direction, not a first step.
+
+Unknown, settled at build: whether PyPI times out from GitHub's runners at all; the timeouts on record came from the codespace. If downloads are reliable there, the image still pays for itself in setup time.

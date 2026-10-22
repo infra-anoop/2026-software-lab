@@ -6,7 +6,7 @@ Status values: open, in progress, done, at build (waits for Layer 0 approval), l
 
 ## Incident coverage
 
-Each incident in the report (section 3) against what closes it. Updated 2026-10-22 00:12 PT: 10 of 11 decided; incident 11 waits on A8.
+Each incident in the report (section 3) against what closes it. Updated 2026-10-22 00:22 PT: all 11 decided or closed.
 
 | # | Incident | Closed by | State |
 |---|----------|-----------|-------|
@@ -19,7 +19,7 @@ Each incident in the report (section 3) against what closes it. Updated 2026-10-
 | 7 | Permission prompts stalled agents | Run, refuse, or block and report (D10, D11); A1 trials: batch tools never wait; fail-closed policy (D17 to D20) | decided |
 | 8 | Codespace token cannot start workflows | Chunks dispatch each other inside Actions (report section 10) | decided |
 | 9, 10 | Web-request approvals froze reviewers | As 7; unlisted web fetch refused at once in headless mode; editor prompts only in attended sessions (D10, D13, D14, D17) | decided |
-| 11 | Package downloads timed out; hooks ran them per command | Layer 0 removes the hooks; Actions environment (A8) | open |
+| 11 | Package downloads timed out; hooks ran them per command | Layer 0 removes the hooks; ready-made image named by lock-file fingerprint; setup failures retried apart from work (D21 to D24) | decided |
 
 ## Decisions
 
@@ -45,6 +45,10 @@ Each incident in the report (section 3) against what closes it. Updated 2026-10-
 | D18 | The generated policy writes file deny entries in absolute or `**/` form; git-side checks (token, branch, changed paths, rulesets) are the boundary for writes. | 10-22 | `wave15-permission-policy` |
 | D19 | Every chunk ends by writing a structured status: done, blocked with a question, or failed. The workflow acts on the status, not on the agent's prose; "blocked" triggers D11. Chunk instructions say: decide and record the assumption; ask only what needs the governor. | 10-22 | `wave15-permission-policy` |
 | D20 | Agent program versions are pinned; the A1 trial cases become a conformance test rerun on every upgrade. | 10-22 | `wave15-permission-policy` |
+| D21 | Batch chunks run inside a ready-made image holding Nix and every dependency; a chunk downloads nothing at start. | 10-22 | `wave15-batch-environment` |
+| D22 | The image is named by a fingerprint of `flake.lock` and every `uv.lock`. A chunk uses only the image matching its own checkout; a merged lock-file change triggers a rebuild. A stale image is never used. | 10-22 | `wave15-batch-environment` |
+| D23 | Setup failures are reported as "setup failed", retried on their own, and do not count toward the D8 retry; repeated setup failures alert the governor. | 10-22 | `wave15-batch-environment` |
+| D24 | Image builds use retries, longer timeouts and caches keyed on lock files. A chunk whose task changes a lock file installs only the difference on top of the image. | 10-22 | `wave15-batch-environment` |
 
 ## Actions
 
@@ -57,8 +61,10 @@ Each incident in the report (section 3) against what closes it. Updated 2026-10-
 | A5 | One combined cross-family review: rules inventory, reliability report and register, approach amendment. | architect spawns a reviewer | A verdict in git; findings triaged; the governor's yes recorded. | open | A1, A3, A4 |
 | A6 | Decide whether to require the governor's approval on rule paths now (a GitHub setting), before the policy session. | governor | Decision recorded; if yes, the setting read back through the API. | open | — |
 | A7 | Size the Layer 0 additions and the reliability items; note that the rules inventory took 23 minutes against a 2 to 3 hour estimate. | sprint manager | Sizes recorded in the sprint manager's plan. | open | A3 |
-| A8 | Discuss the next reliability item: the environment in Actions (cold installs, PyPI timeouts; caches and pinned downloads). | architect with governor | Decisions recorded here. | open | — |
+| A8 | Discuss the next reliability item: the environment in Actions (cold installs, PyPI timeouts; caches and pinned downloads). | architect with governor | Decisions recorded here. | done (D21 to D24, report section 12) | — |
 | A9 | Delete the trial branch `trial/20261020-headless-agent` and the stopped reviewer's branch `review/wo-20261020-wave15-reliability-rules-first`. | architect | Both branches gone. | later | A5 |
 | A10 | Policy session: keep, rewrite or drop each Wave 1 rule, starting from the rules inventory; reword "never `gh workflow run`" to "not from the codespace". | governor with architect | The interim rulebook is recorded. | later | tranche 1 |
 | A11 | Store the Cursor API key and a Copilot-enabled token as GitHub secrets. | governor | Both secrets exist (names only in `deploy/secrets/schema.yaml` or the workflow docs). | at build | Layer 0 approval |
 | A12 | Run the three proof trials: one chunk in Actions; a chain of three; deliberate kill and stall recovered by the watcher with an alert after the second failure. | architect | All three pass, recorded in the report. | at build | A11 |
+| A13 | Measure from GitHub's runners: PyPI and Nix download failures, cold setup time, setup time with the image. | architect | Figures recorded in report section 12. | at build | Layer 0 approval |
+| A14 | Consider one environment definition shared by the codespace and Actions. | architect | Proposal or a recorded "not now". | later | D21 built |
