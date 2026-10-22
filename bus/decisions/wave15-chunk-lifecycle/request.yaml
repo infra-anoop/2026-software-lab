@@ -1,0 +1,25 @@
+schema_version: 1
+kind: decision_request
+id: wave15-chunk-lifecycle
+created: 2026-10-22T08:50:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/wave1.5/2026-10-reliability-investigation.md
+  - notes/wave1.5/2026-10-reliability-register.md
+  - bus/decisions/wave15-runner-and-chunks/lock.yaml
+  - notes/wave1.5/2026-10-reliability-rules-first-review.md
+owner: governor
+feature: 001-factory-v2
+blocking: false
+prompt: >
+  Why this is asked: register decision D9 (the unattended chunk's life cycle, its failure responses,
+  notifications through the work item's GitHub issue, and the Cursor API key stored as a GitHub
+  secret) was agreed in conversation on 2026-10-21 but never locked; the combined cross-family
+  review (finding 1) flagged that D9 cited a lock that does not name these details. Recorded after
+  the fact, from the governor's words in the architect's chat; nothing is asked anew.
+options:
+  - label: "A: The chunk design as narrated and agreed on 2026-10-21 (report section 10): start on a fresh GitHub machine with a 60-minute limit, read the progress note and git, one task, push at each green step, hand off on the issue, chunk N starts chunk N+1 by an explicit workflow start; the failure table; notifications on the work item's issue; a Cursor API key as a GitHub secret"
+  - label: "B: Treat the chunk design as proposed, pending a lock"
+recommended: "A: The chunk design as narrated and agreed on 2026-10-21 (report section 10): start on a fresh GitHub machine with a 60-minute limit, read the progress note and git, one task, push at each green step, hand off on the issue, chunk N starts chunk N+1 by an explicit workflow start; the failure table; notifications on the work item's issue; a Cursor API key as a GitHub secret"

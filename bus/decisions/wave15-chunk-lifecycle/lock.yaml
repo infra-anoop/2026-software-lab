@@ -1,0 +1,21 @@
+schema_version: 1
+kind: decision_lock
+id: wave15-chunk-lifecycle.lock
+created: 2026-10-22T08:50:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - bus/decisions/wave15-chunk-lifecycle/request.yaml
+  - notes/wave1.5/2026-10-reliability-investigation.md
+chosen: "A: The chunk design as narrated and agreed on 2026-10-21 (report section 10): start on a fresh GitHub machine with a 60-minute limit, read the progress note and git, one task, push at each green step, hand off on the issue, chunk N starts chunk N+1 by an explicit workflow start; the failure table; notifications on the work item's issue; a Cursor API key as a GitHub secret"
+governor_minutes: 5
+notes: >
+  The governor, in the architect's chat at 10:16 PT on 2026-10-21, replying to the architect's
+  narrative of the unattended chunk: "Your narrative - all looks good to me - including
+  notifications and cursor API key." The same message began the refinements locked in
+  wave15-runner-and-chunks. The architect wrote the report's section 10 right after, from that
+  narrative; the governor approved the narrative, not the section's final wording, so the wording
+  is put to him for confirmation with the combined review's triage. Recorded by the architect on
+  2026-10-22 after the combined review (finding 1) found D9 citing a lock that does not name these
+  details. Register entry D9.
