@@ -27,6 +27,7 @@ owned_paths:
   - "bus/decisions/wave15-permission-policy/**"
   - "bus/decisions/wave15-batch-environment/**"
   - "notes/wave1.5/2026-10-reliability-register.md"
+  - "notes/retro/2026-10-architect-handover.md"
 checks:
   - pr-links-order
   - diff-within-owned-paths
