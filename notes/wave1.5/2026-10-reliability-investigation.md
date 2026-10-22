@@ -1,6 +1,6 @@
 # Reliability investigation: why runs hang, and what to change
 
-**Status: first report, written by the architect, 2026-10-20 (decision `wave15-reliability-rules-first`).** It covers every hang and stall on record from Wave 1 and from 2026-10-19. Four short trials (section 5) confirm or reject the main hypotheses before the Layer 0 design is final. Not yet reviewed; the cross-family review covers this report together with the approach amendment ([pull request #42](https://github.com/infra-anoop/2026-software-lab/pull/42)).
+**Status: first report, written by the architect, 2026-10-20 (decision `wave15-reliability-rules-first`).** It covers every hang and stall on record from Wave 1 and from 2026-10-19. Four short trials (section 5) confirm or reject the main hypotheses before the Layer 0 design is final. Extended with the governor through 2026-10-22 (sections 9 to 12); all 11 incidents decided. Reviewed in one combined cross-family review with the approach amendment ([pull request #42](https://github.com/infra-anoop/2026-software-lab/pull/42)) and the rules inventory, round 1 on 2026-10-22; report and triage in `notes/wave1.5/2026-10-reliability-rules-first-review.md`.
 
 **Decisions and actions:** one line each in [`2026-10-reliability-register.md`](./2026-10-reliability-register.md). This report holds the evidence and reasoning behind them.
 
@@ -14,7 +14,7 @@
 4. **Completion notices were lost at least four times on 2026-10-07.** Cause unknown. Git already holds every result; nothing was reading it.
 5. **The pattern behind all of these:** a chat-spawned agent depends on the governor's Cursor window, on the codespace staying up, and on someone seeing its card. Trials on 2026-10-20 settled the parts that can be settled. A headless command-line agent needs no card and no laptop (trials 3 and 4). But anything in the codespace stops 30 minutes after the governor's window goes away, however busy the agents are (trial 3), and 240 minutes is the most a new codespace allows. **Runs longer than about 4 hours unattended, such as overnight, cannot live in a codespace;** they need GitHub Actions or a cloud agent.
 
-**Recommendation in one line:** remove the confirmed causes now (a new codespace with a 240-minute timeout; no web requests by spawned agents, enforced by configuration; Wave 1's network-dependent hooks gone); run spawned agents as headless command-line processes that a plain watcher script can see and restart; and treat GitHub Actions as the only home for overnight runs.
+**Recommendation in one line (2026-10-20; superseded for routing by the direction below and by register D12 to D15: batch tasks run in GitHub Actions, the codespace keeps interactive work and short attended subtasks):** remove the confirmed causes now (a new codespace with a 240-minute timeout; no web requests by spawned agents, enforced by configuration; Wave 1's network-dependent hooks gone); run spawned agents as headless command-line processes that a plain watcher script can see and restart; and treat GitHub Actions as the only home for overnight runs.
 
 **Governor direction, 2026-10-21 (decision `wave15-unattended-host`, section 9):** GitHub Actions is the baseline host for all unattended work, on its own merits and not only to escape the codespace's limits. Unattended work is cut into chunks estimated at 30 minutes, under a hard limit of 60 minutes per job, so a chunk that takes twice its estimate still finishes; estimates are tuned from measured times. Spec Kit workflows remain the process; GitHub Actions starts their steps.
 
@@ -90,6 +90,8 @@ Each takes minutes, and each can fail.
 
 ## 6. Proposed design, by the fix ladder
 
+**Superseded (2026-10-22).** This section and section 7 are the first proposal of 2026-10-20, kept as the record of how the design developed. The design of record is sections 9 to 12 and the register's decisions D2 to D24, folded into the approach note's section 11. What changed: batch tasks, including reviews, inventories and research write-ups, run in GitHub Actions, not as headless processes in the codespace (D12 to D15); the codespace watcher is for daytime work and the long-term watcher is a scheduled GitHub workflow; the command-line agents are installed in Layer 1, not Layer 0; the new codespace is done (register A2).
+
 **Remove the cause**
 - **A new codespace with a 240-minute idle timeout** (the maximum), created by the governor: `gh codespace create --repo infra-anoop/2026-software-lab --idle-timeout 240m` or the equivalent in the Codespaces page. Before it, save what lives only on this machine: the chat records (the evidence for this report) and the agent stores. Closes incident 2.
 - **No web requests by spawned agents;** the spawning session commits dated copies of outside sources. Closes incidents 9 and 10 (cause confirmed by trial 1). Already in force by brief; enforced by configuration in Layer 0 where possible.
@@ -107,6 +109,8 @@ Each takes minutes, and each can fail.
 - **A scheduled GitHub workflow** that opens an issue mentioning the governor when an active branch has had no push for longer than its deadline, so a stopped codespace is reported even when nothing in it can run (the retro's option C). This is a small, early version of Layer 5's watchdog.
 
 ## 7. Proposed Layer 0 list
+
+**Superseded (2026-10-22)** by the approach note's Layer 0 and Layer 1; see the note at the head of section 6.
 
 For the approach note's Layer 0 (section 2.7 of the amendment), subject to the trials:
 1. The new codespace (governor), with chat records and agent stores saved first.
@@ -152,7 +156,7 @@ Effects on sections 6 and 7, to settle in the Layer 0 walkthrough: the codespace
 
 ## 10. The unattended chunk: design agreed in principle (2026-10-21)
 
-The governor agreed this narrative at 10:16 PT ("all looks good to me, including notifications and cursor API key"). Design only; nothing is built.
+The governor agreed this narrative at 10:16 PT ("all looks good to me, including notifications and cursor API key"). Design only; nothing is built. Locked as decision `wave15-chunk-lifecycle`, recorded on 2026-10-22; this section was written right after that message, and its wording is put to the governor for confirmation.
 
 **Life of a chunk**
 1. **Start.** A trigger (a merged plan, the previous chunk finishing, a schedule) starts a job on a fresh GitHub machine with a 60-minute hard limit.
