@@ -1,0 +1,25 @@
+schema_version: 1
+kind: decision_request
+id: wave15-runner-and-chunks
+created: 2026-10-21T17:16:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/wave1.5/2026-10-reliability-investigation.md
+  - bus/decisions/wave15-unattended-host/lock.yaml
+  - notes/wave1.5/2026-10-rules-inventory.md
+owner: governor
+feature: 001-factory-v2
+blocking: false
+prompt: >
+  Why this is asked: with GitHub Actions as the baseline host for unattended work, three design
+  points follow. Which agent runs each step: Cursor only, or Cursor and Copilot behind a switch from
+  day one. Where the 30-minute chunk size is enforced: left to the builder, or a factory requirement
+  on Spec Kit's plan and task list, judged by the reviewer. What happens when a chunk overruns the
+  60-minute limit at night, when no one is watching. Settled in open conversation on 2026-10-21, not
+  by a form; the governor proposed the first two and agreed the architect's refinements.
+options:
+  - label: "A: Copilot and Cursor behind a per-role switch from day one; chunk size a factory requirement on plan and tasks; on overrun retry once, then park and continue, the sprint manager handling parked tasks"
+  - label: "B: Cursor only for now; chunk size left to the builder; a stopped chain waits for the morning"
+recommended: "A: Copilot and Cursor behind a per-role switch from day one; chunk size a factory requirement on plan and tasks; on overrun retry once, then park and continue, the sprint manager handling parked tasks"

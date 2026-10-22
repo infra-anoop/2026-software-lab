@@ -1,0 +1,23 @@
+schema_version: 1
+kind: decision_lock
+id: wave15-unattended-host.lock
+created: 2026-10-21T07:36:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - bus/decisions/wave15-unattended-host/request.yaml
+  - notes/wave1.5/2026-10-reliability-investigation.md
+chosen: "A: GitHub Actions is the baseline host for unattended work; chunks estimated at 30 minutes under a hard 60-minute job limit; Spec Kit workflows triggered by GitHub Actions"
+governor_minutes: 40
+notes: >
+  The governor directed this in the architect's chat at about 00:36 PT on 2026-10-21, after the
+  benchmark: GitHub Actions is a good choice even without the 12-hour limit, and is the baseline;
+  chunk at 30-minute estimates because real time can be twice the estimate, iterating on measured
+  times; Spec Kit workflows are not replaced, they are triggered by GitHub Actions. Earlier in the
+  same conversation he set the chunk principle (about one hour of work at most, so the most that
+  can be lost is about an hour), and that a long run means the task progressing unattended, not one
+  agent running long. The architect noted that the one-hour cap is GitHub's for its Copilot agent;
+  ordinary Actions jobs may run 6 hours, so the 60-minute limit is the lab's own, set per job.
+  Layer placement of the GitHub-side pieces is for the Layer 0 walkthrough. Recorded by the
+  architect; the report's section 9 carries the research.

@@ -1,0 +1,23 @@
+schema_version: 1
+kind: decision_request
+id: wave15-task-modes
+created: 2026-10-21T17:30:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/wave1.5/2026-10-reliability-register.md
+  - notes/wave1.5/2026-10-reliability-investigation.md
+owner: governor
+feature: 001-factory-v2
+blocking: false
+prompt: >
+  Why this is asked: the architect proposed running every spawned agent in GitHub Actions, daytime
+  too. The governor separated two issues. Permission prompts belong to the agent tool, not the host,
+  so they need a root-cause configuration in which every action runs, is refused, or blocks the task
+  and reports. And some tasks are worth more interactive, such as brainstorming or a resolution
+  session after a review. Settled in open conversation on 2026-10-21, not by a form.
+options:
+  - label: "A: Every action runs, is refused, or blocks and reports, with blocking the same as pausing for the governor; every task tagged interactive (codespace) or batch (Actions), inline subtasks of interactive sessions in the codespace while short, handover through git"
+  - label: "B: Every spawned agent runs in GitHub Actions, daytime too"
+recommended: "A: Every action runs, is refused, or blocks and reports, with blocking the same as pausing for the governor; every task tagged interactive (codespace) or batch (Actions), inline subtasks of interactive sessions in the codespace while short, handover through git"
