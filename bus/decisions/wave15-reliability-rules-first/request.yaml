@@ -1,0 +1,33 @@
+schema_version: 1
+kind: decision_request
+id: wave15-reliability-rules-first
+created: 2026-10-20T15:25:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/wave1.5/2026-10-implementation-approach.md
+  - bus/decisions/wave15-implementation-approach/lock.yaml
+  - notes/retro/2026-10-harness-changes.md
+  - notes/retro/2026-10-wave1-items.md
+  - notes/retro/2026-10-wave1-agenda.md
+owner: governor
+feature: 001-factory-v2
+blocking: true
+prompt: >
+  Why this is asked: after approving the implementation approach, you recalibrated two points.
+  Keep Wave 1's good rules: review them all before anything is removed, as the starting point of
+  the policy layer. Make unattended runs reliable first: investigate the root causes of the
+  2026-10-19 reviewer freezes and of Wave 1's hangs, design automatic recovery, and move
+  reliability pieces such as the agents' allowed commands into Layer 0.
+  Three choices. When the rules inventory and the reliability investigation run against Layer 0:
+  both finish before Layer 0 builds anything, with the Layer 0 walkthrough waiting for them
+  (recommended), or alongside the walkthrough with nothing deleted until the rules review is done.
+  Who leads them: the architect, with a spawned worker for evidence, the sprint manager sizing and
+  tracking (recommended); the sprint manager, with the architect reviewing; or split.
+  Recording: amend the approved note now on its own pull request (recommended), or after both
+  report back.
+options:
+  - label: "A: Both before Layer 0 builds anything; architect leads; amend the note now"
+  - label: "B: Another combination of sequence, lead and recording, named by the governor"
+recommended: "A: Both before Layer 0 builds anything; architect leads; amend the note now"
