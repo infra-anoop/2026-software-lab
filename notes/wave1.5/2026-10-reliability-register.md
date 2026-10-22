@@ -6,7 +6,7 @@ Status values: open, in progress, done, at build (waits for Layer 0 approval), l
 
 ## Incident coverage
 
-Each incident in the report (section 3) against what closes it. Updated 2026-10-21 23:50 PT: 8 of 11 decided; the rest wait on A1 and A8.
+Each incident in the report (section 3) against what closes it. Updated 2026-10-22 00:12 PT: 10 of 11 decided; incident 11 waits on A8.
 
 | # | Incident | Closed by | State |
 |---|----------|-----------|-------|
@@ -16,9 +16,9 @@ Each incident in the report (section 3) against what closes it. Updated 2026-10-
 | 4 | Worker hung inside Cursor's runner | 60-minute hard limit; retry, then park (D3, D8) | decided |
 | 5 | 10-minute step took 90 | Same as 4 | decided |
 | 6 | Completion notices lost | Results through git and the issue; watcher (D9, D15) | decided |
-| 7 | Permission prompts stalled agents | Run, refuse, or block and report (D10, D11); A1 trials: batch tools never wait | decided; P1 to P4 proposed |
+| 7 | Permission prompts stalled agents | Run, refuse, or block and report (D10, D11); A1 trials: batch tools never wait; fail-closed policy (D17 to D20) | decided |
 | 8 | Codespace token cannot start workflows | Chunks dispatch each other inside Actions (report section 10) | decided |
-| 9, 10 | Web-request approvals froze reviewers | As 7; unlisted web fetch refused at once in headless mode; editor prompts only in attended sessions (D10, D13, D14) | decided; P1 to P4 proposed |
+| 9, 10 | Web-request approvals froze reviewers | As 7; unlisted web fetch refused at once in headless mode; editor prompts only in attended sessions (D10, D13, D14, D17) | decided |
 | 11 | Package downloads timed out; hooks ran them per command | Layer 0 removes the hooks; Actions environment (A8) | open |
 
 ## Decisions
@@ -41,17 +41,10 @@ Each incident in the report (section 3) against what closes it. Updated 2026-10-
 | D14 | Subtasks spawned inside an interactive session run in the codespace while short and attended; a subtask that turns out long or unattended is promoted to a batch task. | 10-21 | `wave15-task-modes` |
 | D15 | Interactive and batch tasks hand over through git only: interactive sessions end in decisions and artifacts that start batch tasks; a batch task needing a person creates an interactive task. | 10-21 | `wave15-task-modes` |
 | D16 | Nothing is implemented in this phase; the session gathers decisions until the Layer 0 walkthrough is approved. | 10-21 | `wave15-runner-and-chunks` (notes) |
-
-## Proposed decisions (awaiting the governor)
-
-From action A1's trials (report section 11.1).
-
-| ID | Proposed decision |
-|----|-------------------|
-| P1 | Batch runs never use `--force` (or Copilot's `--allow-all`); unlisted actions then stay refused. |
-| P2 | The generated policy (D6) writes deny entries for files in absolute or `**/` form, and treats git-side checks (token, branch, changed paths, rulesets) as the boundary for writes. |
-| P3 | Every chunk ends by writing a structured status: done, blocked with a question, or failed. The workflow acts on that status, not on the agent's prose; "blocked" triggers D11. |
-| P4 | Agent program versions are pinned; the A1 cases become a conformance test rerun on every upgrade. |
+| D17 | Batch runs start fail-closed: a generous allow list, a short deny list, no override flag (`--force`, Copilot's `--allow-all`). Every refusal is logged and reviewed; the allow list grows from that record; the override is reconsidered only if refusals prove frequent and costly. | 10-22 | `wave15-permission-policy` |
+| D18 | The generated policy writes file deny entries in absolute or `**/` form; git-side checks (token, branch, changed paths, rulesets) are the boundary for writes. | 10-22 | `wave15-permission-policy` |
+| D19 | Every chunk ends by writing a structured status: done, blocked with a question, or failed. The workflow acts on the status, not on the agent's prose; "blocked" triggers D11. Chunk instructions say: decide and record the assumption; ask only what needs the governor. | 10-22 | `wave15-permission-policy` |
+| D20 | Agent program versions are pinned; the A1 trial cases become a conformance test rerun on every upgrade. | 10-22 | `wave15-permission-policy` |
 
 ## Actions
 

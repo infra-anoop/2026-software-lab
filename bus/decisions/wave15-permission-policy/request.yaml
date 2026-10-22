@@ -1,0 +1,25 @@
+schema_version: 1
+kind: decision_request
+id: wave15-permission-policy
+created: 2026-10-22T07:00:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/wave1.5/2026-10-reliability-investigation.md
+  - notes/wave1.5/2026-10-reliability-register.md
+  - bus/decisions/wave15-task-modes/lock.yaml
+owner: governor
+feature: 001-factory-v2
+blocking: false
+prompt: >
+  Why this is asked: thirteen headless trials of the Cursor command-line agent found it never waits:
+  an unlisted shell command or web request is refused at once, but the override flag makes them run;
+  file writes are not fenced by the allow list, only by deny entries in absolute or match-anywhere
+  form; a question ends the run. Four policy points follow for batch work. Settled in open
+  conversation on 2026-10-22, not by a form; the governor asked why batch runs avoid the override
+  flag, and the first point was reworded to answer his concern about too many exceptions.
+options:
+  - label: "A: Fail-closed with a generous allow list and refusals logged and reviewed; file denies in absolute or match-anywhere form, git as the write boundary; a structured status at the end of each chunk; pinned agent versions with a conformance test"
+  - label: "B: The override flag with a deny list only"
+recommended: "A: Fail-closed with a generous allow list and refusals logged and reviewed; file denies in absolute or match-anywhere form, git as the write boundary; a structured status at the end of each chunk; pinned agent versions with a conformance test"
