@@ -28,7 +28,7 @@ checks:
   - diff-within-owned-paths
   - bus.schema
 locks: []
-size_minutes: 90
+size_minutes: 60
 stop_conditions:
   - Any edit needed outside Owned paths
   - Any build work for Wave 1.5 before the Layer 0 walkthrough is approved
