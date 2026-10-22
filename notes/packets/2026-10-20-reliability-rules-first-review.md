@@ -7,7 +7,7 @@ One cross-family pass over three pieces of work the architect led with the gover
 | Field | Value |
 |-------|-------|
 | Packet id | 2026-10-20-reliability-rules-first-review |
-| Status | open (round 1 deposited and triaged, 2026-10-22; round 2 below) |
+| Status | closed 2026-10-22: round 1 changes needed (one blocker), triaged and fixed; round 2 accepts all three pull requests |
 | Gate | Before pull requests #42, #44 and #45 merge; one pass, a second only for a blocker |
 | Under review | Pull request #42 (approach amendment, branch `wo/wo-20261020-wave15-reliability-rules-first`), #44 (reliability report, register and decisions, branch `wo/wo-20261020-wave15-reliability-investigation`), #45 (rules inventory, branch `wo/wo-20261020-wave15-rules-inventory`). Your review branch merges all three onto `main` (e911e34); they touch no common file |
 | Orders | `wo-20261020-wave15-reliability-rules-first`, `wo-20261020-wave15-reliability-investigation`, `wo-20261020-wave15-rules-inventory` |
