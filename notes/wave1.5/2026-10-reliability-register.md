@@ -11,7 +11,7 @@ Each incident in the report (section 3) against what closes it. Updated 2026-10-
 | # | Incident | Closed by | State |
 |---|----------|-----------|-------|
 | 1 | Codespace stops at 12 hours | Documented limit; batch work in Actions (D2); chunks restart from last push (D3) | decided |
-| 2 | Codespace stops after 30 idle minutes | Batch work off the codespace (D2, D13); 240-minute codespace for interactive sessions (A2) | decided; A2 pending |
+| 2 | Codespace stops after 30 idle minutes | Batch work off the codespace (D2, D13); 240-minute codespace for interactive sessions (A2) | decided; A2 done |
 | 3 | Restart wiped working copies | Fixed in Wave 1; Actions machines are fresh | closed |
 | 4 | Worker hung inside Cursor's runner | 60-minute hard limit; retry, then park (D3, D8) | decided |
 | 5 | 10-minute step took 90 | Same as 4 | decided |
@@ -55,7 +55,7 @@ Each incident in the report (section 3) against what closes it. Updated 2026-10-
 | ID | Action | Owner | Done when | Status | Depends on |
 |----|--------|-------|-----------|--------|------------|
 | A1 | **Research the permission blocks in each agent tool.** Tools: Cursor editor (chat-spawned agents), Cursor command-line agent (headless), Copilot command-line agent. Actions: shell command, file write, web request, external tools (MCP). Cases: allowed, refused, on neither list. | architect | A table where every cell is "runs", "refused" or "blocks and reports", each with evidence (documentation or a trial), plus the settings that remove every silent wait. The headless "on neither list" case is tested first. | done for Cursor (report section 11; 13 trial runs, none waited); Copilot by documentation only, trial at build (A12) | — |
-| A2 | Create a new codespace with a 240-minute idle timeout (`gh codespace create --repo infra-anoop/2026-software-lab --idle-timeout 240m`), after saving the chat records and agent stores. | governor (architect gives exact steps) | The new codespace's idle timeout reads 240 through the API. | open | — |
+| A2 | Create a new codespace with a 240-minute idle timeout (`gh codespace create --repo infra-anoop/2026-software-lab --idle-timeout 240m`), after saving the chat records and agent stores. | governor (architect gives exact steps) | The new codespace's idle timeout reads 240 through the API. | done 10-22: new codespace reads 240 through the API; chat records and agent-store files restored from the backup | — |
 | A3 | Fold the reliability findings and decisions D2 to D16 into the approach amendment (pull request #42): corrected Layer 0 list; the outside-reads reason corrected there and in `notes/wave1.5/sources/README.md`. | architect | The amendment cites this register and contains no stale reliability reason. | open | A1 |
 | A4 | Open pull requests for the reliability report and the rules inventory. | architect | Both pull requests open with checks green. | open | — |
 | A5 | One combined cross-family review: rules inventory, reliability report and register, approach amendment. | architect spawns a reviewer | A verdict in git; findings triaged; the governor's yes recorded. | open | A1, A3, A4 |
