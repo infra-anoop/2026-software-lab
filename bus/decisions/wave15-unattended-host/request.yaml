@@ -1,0 +1,26 @@
+schema_version: 1
+kind: decision_request
+id: wave15-unattended-host
+created: 2026-10-21T07:30:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/wave1.5/2026-10-reliability-investigation.md
+  - notes/wave1.5/2026-10-implementation-approach.md
+  - bus/decisions/wave15-reliability-rules-first/lock.yaml
+owner: governor
+feature: 001-factory-v2
+blocking: false
+prompt: >
+  Why this is asked: trial 3 showed the codespace stops 30 minutes after the governor's window goes
+  away, however busy its agents are, and GitHub documents a 12-hour maximum lifetime that no
+  setting changes. The governor asked for a benchmark against current practice before choosing
+  where unattended work runs. The research found that unattended agents run on a fresh machine per
+  task, often GitHub Actions, for parallelism, isolation and resilience, and that GitHub caps its
+  own agent's sessions at one hour. Settled in open conversation on 2026-10-21, not by a form:
+  where unattended work runs, and how large each unit of unattended work is.
+options:
+  - label: "A: GitHub Actions is the baseline host for unattended work; chunks estimated at 30 minutes under a hard 60-minute job limit; Spec Kit workflows triggered by GitHub Actions"
+  - label: "B: Keep unattended work in the codespace, kept alive by a heartbeat and restarted after its 12-hour stop"
+recommended: "A: GitHub Actions is the baseline host for unattended work; chunks estimated at 30 minutes under a hard 60-minute job limit; Spec Kit workflows triggered by GitHub Actions"

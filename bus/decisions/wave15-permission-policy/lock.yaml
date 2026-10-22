@@ -1,0 +1,19 @@
+schema_version: 1
+kind: decision_lock
+id: wave15-permission-policy.lock
+created: 2026-10-22T07:10:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - bus/decisions/wave15-permission-policy/request.yaml
+  - notes/wave1.5/2026-10-reliability-register.md
+chosen: "A: Fail-closed with a generous allow list and refusals logged and reviewed; file denies in absolute or match-anywhere form, git as the write boundary; a structured status at the end of each chunk; pinned agent versions with a conformance test"
+governor_minutes: 10
+notes: >
+  The governor confirmed at about 00:10 PT on 2026-10-22 ("Now I am good with proposal. yes"), after
+  asking why batch runs avoid the override flag and raising the risk of too many exceptions. The
+  architect clarified that a refusal does not end a run (the agent adapts) and that questions, not
+  refusals, create exceptions; the first point was reworded: generous allow list, short deny list,
+  refusals logged and reviewed so the list grows from data, the override reconsidered only on
+  evidence. Register entries D17 to D20. Recorded by the architect.

@@ -1,0 +1,17 @@
+schema_version: 1
+kind: decision_lock
+id: wave15-task-modes.lock
+created: 2026-10-21T17:33:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - bus/decisions/wave15-task-modes/request.yaml
+  - notes/wave1.5/2026-10-reliability-register.md
+chosen: "A: Every action runs, is refused, or blocks and reports, with blocking the same as pausing for the governor; every task tagged interactive (codespace) or batch (Actions), inline subtasks of interactive sessions in the codespace while short, handover through git"
+governor_minutes: 10
+notes: >
+  The governor proposed both points at about 10:29 PT on 2026-10-21 and confirmed the architect's
+  refinements at 10:33 PT ("Yes. It matches."), asking that decisions and actions be recorded crisply,
+  not in prose, and naming the research into permission blocks in each tool as an explicit action.
+  Register entries D10 to D15 and action A1. Recorded by the architect.

@@ -1,0 +1,24 @@
+schema_version: 1
+kind: decision_request
+id: wave15-batch-environment
+created: 2026-10-22T07:15:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/wave1.5/2026-10-reliability-investigation.md
+  - notes/wave1.5/2026-10-reliability-register.md
+  - notes/architect-backlog.md
+owner: governor
+feature: 001-factory-v2
+blocking: false
+prompt: >
+  Why this is asked: incident 11 (package downloads timed out) is the last open reliability incident.
+  Batch chunks start on fresh machines, so a cold install costs time from the 30-minute budget and a
+  download timeout fails a chunk that did nothing wrong; current CI already shows both. Settled in
+  open conversation on 2026-10-22, not by a form; the governor raised drift between the image and
+  newly installed packages, answered by naming each image after a fingerprint of the lock files.
+options:
+  - label: "A: A ready-made image named by a lock-file fingerprint as the baseline; setup failures retried apart from work failures; retries and caches for the image build; lock changes mid-chunk install only the difference"
+  - label: "B: Retries and caches only, installing on every chunk"
+recommended: "A: A ready-made image named by a lock-file fingerprint as the baseline; setup failures retried apart from work failures; retries and caches for the image build; lock changes mid-chunk install only the difference"
