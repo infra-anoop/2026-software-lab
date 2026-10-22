@@ -148,6 +148,8 @@ Two of the comparison articles come from vendors of agent platforms, and details
 5. **Chunk size is a factory requirement fed into Spec Kit's plan.** The plan is shaped so work can be cut into thin pieces that are each testable; the task list carries each task's estimate, at most 30 minutes, with a simple check (starting as a warning) that every task has one and none is larger; the reviewer judges realism. Each chunk must also leave the code working and have its own done-check. Every step is a chunk, not only implementation: specify, plan and review can overrun too. Each chunk reports time used against its estimate; the sprint manager watches the ratio and tightens sizing guidance if tasks routinely run past about 1.5 times their estimate.
 6. **The exception path is automatic first, then the sprint manager.** On a chunk that hits the 60-minute limit: retry once from its last push with a note; on a second overrun, park the task with a clear note and continue with the next task that does not depend on it; the sprint manager takes parked tasks in the morning (split, re-plan, or escalate to the governor). A night loses at most one task's progress, not the whole run. An overnight sprint-manager job in Actions that splits parked tasks is a later option.
 
+Effects on sections 6 and 7, to settle in the Layer 0 walkthrough: the codespace watcher shrinks to daytime use, the long-term watcher is the scheduled GitHub workflow, and the 240-minute codespace protects supervised sessions rather than overnight runs.
+
 ## 10. The unattended chunk: design agreed in principle (2026-10-21)
 
 The governor agreed this narrative at 10:16 PT ("all looks good to me, including notifications and cursor API key"). Design only; nothing is built.
@@ -175,4 +177,19 @@ The governor agreed this narrative at 10:16 PT ("all looks good to me, including
 
 **Proof, in three trials that can fail** (at build time): one chunk in Actions (trial 4's equivalent); a chain of three chunks with no one touching anything; deliberate sabotage (one chunk killed midway, one made to stall) recovered by the watcher, with an alert after the second failure. All three need only a Cursor API key stored as a GitHub secret (governor action at build time).
 
-Effects on sections 6 and 7, to settle in the Layer 0 walkthrough: the codespace watcher shrinks to daytime use, the long-term watcher is the scheduled GitHub workflow, and the 240-minute codespace protects supervised sessions rather than overnight runs.
+## 11. Permission blocks in each agent tool (action A1): documentation pass, 2026-10-21
+
+Read on 2026-10-21 at about 10:40 PT; the codespace then idle-stopped before anything was written (the session's own work died with it, an instance of decision D14's reason). Written up on 2026-10-21 at 23:45 PT. Trials still to run are marked.
+
+| Tool and mode | Allowed | Refused | On neither list | Source |
+|---------------|---------|---------|-----------------|--------|
+| Cursor command-line agent, headless (`-p`) | Runs (trial 4) | Refused at once, no prompt (trial 4: `curl`, web fetch) | **Untested.** Documentation: a web fetch with no allow entry "prompts for approval"; print mode cannot prompt, so it may refuse, or may wait. File writes need `--force` or are only proposed | [CLI permissions](https://cursor.com/docs/cli/reference/permissions); trial 4 |
+| Cursor editor, chat and spawned agents | Runs | No documented instant-refuse list; Auto-review's classifier can block, and Cursor may then show an approval prompt | **Waits for a click** unless the run mode is "Run Everything" (no prompts, no safety). Auto-review (the default) covers shell, external tools and web fetch; Allowlist runs only listed actions | [Run Modes](https://cursor.com/docs/agent/security/run-modes); [permissions.json](https://cursor.com/docs/reference/permissions); trial 1 |
+| Copilot command-line agent, programmatic (`-p`) | Runs (`--allow-tool`) | Refused (`--deny-tool`, which beats any allow) | **Refused, no wait:** "Permission denied and could not request permission from user" (secondary source; to confirm). `--no-ask-user` also stops clarifying questions; a `permissionRequest` hook can allow or deny by script | [Copilot CLI](https://docs.github.com/en/copilot/concepts/copilot-surfaces/copilot-cli); a practitioner's write-up; Copilot CLI release notes |
+
+Findings so far:
+1. **Copilot's headless mode already fails closed:** anything not allowed is refused, never waited on. The target behavior, by default.
+2. **Cursor's headless mode is the open cell.** Trials: a shell command, a web fetch and a file write on neither list, each with and without `--force`. If any waits, the fix is a complete deny-by-default list in the generated policy (decision D6).
+3. **Cursor's editor has no zero-wait setting short of "Run Everything".** Prompts there are acceptable only because a person is present (decision D13). Inline subtasks must stay short and attended (D14), and must not make web requests unless the domain is allowlisted (unified domain allowlisting for web search and fetch, per Cursor's changelog).
+4. **A fifth kind of block: the agent asking a question mid-task.** Copilot has a switch for it (`--no-ask-user`); Cursor's headless equivalent is unknown. Added to the table's action kinds for the trials.
+5. **Policy files are "not a security boundary"** in Cursor's own words. The hard boundaries for batch work stay the job's token permissions, time limit and GitHub rulesets (rules inventory, architect's comment D).
