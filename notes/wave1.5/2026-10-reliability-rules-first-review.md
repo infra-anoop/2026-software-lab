@@ -12,7 +12,7 @@ Changes needed.
 
 ### Pull request #45
 
-Review in progress.
+Changes needed.
 
 ## Findings
 
@@ -66,6 +66,16 @@ Review in progress.
 
 **Fix:** mark conflict 6 resolved and update the architect's comment to say the correction is present.
 
+### 6. The cost note omits the new task-routing and permission-policy work
+
+**Severity:** major  
+**Pull request:** #42  
+**File and sections:** `notes/wave1.5/2026-10-implementation-approach.md`, section 11 Cost; section 4 interactive and batch work; Layer 0
+
+**Evidence:** section 11 names only Copilot from day one, the image and “chunk machinery” as newly unsized work. D12–D15 also add planning-time task classification, host routing, promotion of a subtask from interactive to batch, and git-only handover between modes. D17–D20 add refusal logging and review, generated deny forms and a version-upgrade conformance suite. Those are build and ongoing-process costs, not merely wording changes, and they are not clearly included in the three named buckets.
+
+**Fix:** add task-mode routing and the expanded permission-policy/conformance work to A7's explicit sizing list, or state which existing unsized bucket includes each and size that bucket accordingly.
+
 ## 1. Fidelity to the governor's decisions
 
 Finding 1 is the exception. D1 through D8 and D10 through D24 match their named locks. The approach records those locked choices without an additional unsupported choice that I found. D16 is supported by the `wave15-runner-and-chunks` lock notes, which state that the session gathers decisions and does not implement.
@@ -112,4 +122,13 @@ The keep/rewrite/drop reasons on those sampled rows follow the cited evidence an
 
 ## 6. Cost
 
+Finding 6 is the additional likely work not flagged by the cost paragraph. D10–D11 and D19's block/status path can reasonably be included in the named chunk machinery, and D21–D24 are covered by the image bucket. The task-mode routing and permission conformance work need an explicit home before tranche 1 is re-sized.
+
 ## What I checked and found fine
+
+- All six decision locks and their requests against register D1–D24.
+- All eleven incidents against the report's evidence, register closure and final approach.
+- Every register action's done condition and Layers 0–2 completion criteria.
+- Rules inventory summary and recommendations in full; sampled hard, warned and prose rows against committed settings, code and source rules.
+- `AGENTS.md` and the constitution for inventory omissions.
+- The corrected freeze cause, Copilot switch, watcher placement, batch environment and codespace timeout across the three records.
