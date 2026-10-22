@@ -1,3 +1,7 @@
+# Translated into the Wave 1 verdict schema by the architect, 2026-10-22: the reviewer wrote
+# decision revise and severities blocker, major and minor, as the review packet asked; the schema
+# allows accept or reject and blocker, debate, later or nit. revise -> reject, major -> blocker,
+# minor -> nit; each finding's text keeps the reviewer's severity. Original at reviewer commit 810a69f.
 schema_version: 1
 kind: verdict
 id: wo-20261020-wave15-rules-inventory.verdict-01
@@ -8,16 +12,16 @@ actor_verified: false
 refs:
   - notes/packets/2026-10-20-reliability-rules-first-review.md
   - notes/wave1.5/2026-10-reliability-rules-first-review.md
-decision: revise
+decision: reject
 findings:
   - id: F4
-    severity: major
+    severity: blocker
     tag: arch
-    text: R35 keeps the old blanket workflow-dispatch ban that conflicts with the approved Actions chain.
+    text: "Reviewer's severity: major. R35 keeps the old blanket workflow-dispatch ban that conflicts with the approved Actions chain."
   - id: F5
-    severity: minor
+    severity: nit
     tag: process
-    text: Two passages claim the outside-read correction is still missing when it is present.
+    text: "Reviewer's severity: minor. Two passages claim the outside-read correction is still missing when it is present."
 reviewer_model: gpt-5.6-sol
 reviewer_family: openai
 inputs:
