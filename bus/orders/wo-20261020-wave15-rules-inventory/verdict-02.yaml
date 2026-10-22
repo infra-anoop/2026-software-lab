@@ -1,0 +1,39 @@
+schema_version: 1
+kind: verdict
+id: wo-20261020-wave15-rules-inventory.verdict-02
+created: 2026-10-22T09:00:00Z
+actor: reviewer
+actor_model: gpt-5.6-sol
+actor_verified: false
+refs:
+  - notes/packets/2026-10-20-reliability-rules-first-review.md
+  - notes/wave1.5/2026-10-reliability-rules-first-review.md
+decision: accept
+findings: []
+reviewer_model: gpt-5.6-sol
+reviewer_family: openai
+inputs:
+  - path: notes/packets/2026-10-20-reliability-rules-first-review.md
+    sha: 08769bb
+  - path: notes/wave1.5/2026-10-reliability-rules-first-review.md
+    sha: 08769bb
+  - path: notes/wave1.5/2026-10-implementation-approach.md
+    sha: 08769bb
+  - path: notes/wave1.5/2026-10-reliability-investigation.md
+    sha: 08769bb
+  - path: notes/wave1.5/2026-10-reliability-register.md
+    sha: 08769bb
+  - path: notes/wave1.5/2026-10-rules-inventory.md
+    sha: 08769bb
+  - path: bus/decisions/wave15-chunk-lifecycle/request.yaml
+    sha: 08769bb
+  - path: bus/decisions/wave15-chunk-lifecycle/lock.yaml
+    sha: 08769bb
+  - path: bus/orders/wo-20261020-wave15-reliability-rules-first/verdict-01.yaml
+    sha: 08769bb
+  - path: bus/orders/wo-20261020-wave15-reliability-investigation/order.yaml
+    sha: 08769bb
+  - path: bus/orders/wo-20261020-wave15-reliability-investigation/verdict-01.yaml
+    sha: 08769bb
+  - path: bus/orders/wo-20261020-wave15-rules-inventory/verdict-01.yaml
+    sha: 08769bb
