@@ -88,6 +88,16 @@ The report goes furthest at incident 5 (“probably the same class” as inciden
 
 ## 4. Failable outcomes
 
+Found fine. Every register action has an observable artifact, setting read-back, branch absence, green pull request, recorded decision, measured figure or named trial. “Proposal or a recorded ‘not now’” for A14 is weak as a product result but still objectively checkable as a decision outcome.
+
+Layers 0–2 also have falsifiable completion checks:
+
+- Layer 0 names repository-state checks, green CI, a test pull request, rule-text uniqueness, an allow-list refusal and deliberate watcher failures.
+- Layer 1 requires each named part to run in both environments at a pinned version, and requires the checkout-matching image to run tests and a type checker.
+- Layer 2 requires a recorded pass or fail for all four unknowns and defines a stop on any failure.
+
+No “done when” in those scopes depends only on a mood or an unobservable quality claim.
+
 ## 5. Rules inventory
 
 ## 6. Cost
