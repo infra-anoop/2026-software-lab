@@ -100,6 +100,16 @@ No “done when” in those scopes depends only on a mood or an unobservable qua
 
 ## 5. Rules inventory
 
+Finding 4 is the substantive recommendation error and finding 5 is stale commentary. The sampled enforcement and bypass claims otherwise matched their sources:
+
+- R1, R2, R4 and R76 match the committed live-settings exports: pull requests, deletion and non-fast-forward rules are active; the three status checks are required; strict freshness is off; approval count is zero; code-owner review is off; there are no listed bypass actors.
+- R27 matches `scripts/factory/src/factory/gates/pr/verdict.py`: it checks that a verdict exists, derives and compares declared model families, and checks for a handoff, but never tests the verdict's accept/reject decision.
+- R29 matches `factory.toml`: identity mode is `recorded`, so a written governor actor is not independently verified.
+- R43 matches `.github/workflows/db-bootstrap-tests.yml`: the tests are path-filtered and the workflow is absent from the required-check list, so it warns in practice rather than blocking merge.
+- R76 matches `.github/CODEOWNERS` and the settings export: ownership is declared, but GitHub does not currently require code-owner approval.
+
+The keep/rewrite/drop reasons on those sampled rows follow the cited evidence and the approved approach, apart from the superseded R35 recommendation. Comparing the inventory against all of `AGENTS.md` and the constitution found no omitted rule; combined or rewritten rules are explicitly cross-referenced rather than silently absent.
+
 ## 6. Cost
 
 ## What I checked and found fine
