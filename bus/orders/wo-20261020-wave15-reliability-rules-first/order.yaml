@@ -1,0 +1,41 @@
+# Written by the architect on wo/wo-20261020-wave15-reliability-rules-first (from origin/main
+# e911e34). Amends the approved Wave 1.5 implementation approach after the governor's choices on
+# 2026-10-20: Wave 1's rules inventoried and reviewed before removal, and unattended reliability
+# first. size_minutes is an estimate.
+schema_version: 1
+kind: order
+id: wo-20261020-wave15-reliability-rules-first
+created: 2026-10-20T15:35:00Z
+actor: orchestrator
+actor_model: claude-opus-5.5
+actor_verified: false
+refs:
+  - notes/wave1.5/2026-10-implementation-approach.md
+  - bus/decisions/wave15-implementation-approach/lock.yaml
+  - notes/retro/2026-10-harness-changes.md
+  - notes/retro/2026-10-wave1-items.md
+  - notes/retro/2026-10-wave1-agenda.md
+  - notes/wave1.5/2026-10-reliability-register.md
+  - notes/wave1.5/2026-10-reliability-investigation.md
+feature: 001-factory-v2
+goal: Amend the Wave 1.5 implementation approach so Wave 1's rules are inventoried and reviewed before Layer 0 removes anything, unattended reliability comes first (an investigation before Layer 0, early reliability pieces in Layer 0), and the policy session is set before Layer 4; record the governor's decision. Extended 2026-10-22 by register action A3 to fold the reliability decisions D2 to D24 into the approach, and correct the stale reason for the 2026-10-19 freezes here and in the outside-sources note.
+intents: [I-P8]
+owned_paths:
+  - "notes/wave1.5/2026-10-implementation-approach.md"
+  - "notes/wave1.5/sources/README.md"
+  - "notes/packets/2026-10-20-reliability-rules-first-review.md"
+  - "notes/wave1.5/2026-10-reliability-rules-first-review.md"
+  - "bus/decisions/wave15-reliability-rules-first/**"
+  - "bus/orders/wo-20261020-wave15-reliability-rules-first/**"
+checks:
+  - pr-links-order
+  - diff-within-owned-paths
+  - bus.schema
+locks: []
+size_minutes: 60
+stop_conditions:
+  - Any edit needed outside Owned paths
+  - Any build work for Wave 1.5 before the Layer 0 walkthrough is approved
+depends_on_decisions: []
+tasks: []
+worker_runtime: local_subagent
