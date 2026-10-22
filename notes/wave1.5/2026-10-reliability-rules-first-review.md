@@ -146,4 +146,6 @@ The text above is the reviewer's, unchanged (reviewer commit `810a69f`). All six
 | 5 | Conflict 6 and comment D say the outside-read correction is not made | Accepted. True when written (2026-10-20), stale since pull request #42's commit `930852e` | Both marked resolved, citing that commit | #45 |
 | 6 | The cost note omits task-mode routing and the permission-policy work | Accepted | Section 11's cost paragraph names five unsized items: Copilot from day one, the image, the chunk machinery, task-mode routing (D12 to D15) and the permission policy with its conformance test (D17 to D20). The sprint manager's sizing order (`wo-20261022-wave15-a7-sizing`, register A7) already lists the last two | #42 |
 
+Verdict files: the packet asked for `decision: revise` and severities blocker, major and minor, which the Wave 1 record schema does not accept (rules inventory, conflict 8). The three verdicts on the pull request branches are translated (revise to reject, major to blocker, minor to nit), each finding keeping the reviewer's severity in its text; the originals are at reviewer commit `810a69f`. The round-2 packet uses the schema's words.
+
 Round 2: because finding 1 was a blocker, a short cross-family re-check of these fixes follows, under the same packet.
