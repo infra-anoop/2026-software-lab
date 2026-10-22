@@ -76,6 +76,16 @@ Findings 2 through 5 are the remaining contradictions. The approach otherwise re
 
 ## 3. Evidence behind the reliability decisions
 
+Found fine, subject to the explicit evidence limits already in the report. Each incident's chosen response addresses either its supported cause or, where the cause is unknown, the observable failure:
+
+- Incidents 1–3 are addressed by moving batch work off the codespace, the 240-minute interactive codespace and durable git checkpoints. The cited GitHub documentation for the 12-hour lifetime was not copied into this review input, so that external confirmation is **unverified, outside source**; the report's four observed 12-hour stops remain internal supporting evidence.
+- Incidents 4–6 have unknown vendor causes. The hard job limit, restart from the last push, issue status and scheduled watcher address silence and lost notices without pretending to remove the vendor cause.
+- Incidents 7, 9 and 10 are supported by the prompt and headless trials. D17–D20 follow the 13 Cursor trials: no override flag, correct deny patterns, structured status and version-pinned conformance tests. Copilot remains documentation-only and is correctly scheduled for confirmation in Layer 2.
+- Incident 8 is addressed by an explicit dispatch from one Actions chunk to the next, rather than by relying on a codespace token.
+- Incident 11 supports separating setup failure from work failure and removing per-command downloads. Whether the same package-index failures occur on GitHub runners is correctly left for measurement; the image decision also rests on preserving the chunk's time budget.
+
+The report goes furthest at incident 5 (“probably the same class” as incident 4), but labels the cause unknown and chooses a generic time-limit response, so it does not turn that hypothesis into a false root-cause claim.
+
 ## 4. Failable outcomes
 
 ## 5. Rules inventory
